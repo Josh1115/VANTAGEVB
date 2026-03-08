@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
@@ -77,13 +77,32 @@ export function HomePage() {
     return { wins, losses: all.length - wins, total: all.length };
   }, []);
 
+  const [ballKey, setBallKey] = useState(0);
+  const [showBall, setShowBall] = useState(false);
+
+  useEffect(() => {
+    const trigger = () => {
+      setBallKey((k) => k + 1);
+      setShowBall(true);
+      setTimeout(() => setShowBall(false), 1700);
+    };
+    const first = setTimeout(trigger, 2500);
+    const interval = setInterval(trigger, 15000);
+    return () => { clearTimeout(first); clearInterval(interval); };
+  }, []);
+
   const inProgress = recentMatches?.find((m) => m.status === MATCH_STATUS.IN_PROGRESS);
   const displayMatches = recentMatches ?? [];
 
   return (
     <div>
-      <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 py-3 text-center relative overflow-hidden">
-        <div className="absolute inset-0 crt-scanlines pointer-events-none" aria-hidden="true" />
+      <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 py-3 text-center relative">
+        <div className="absolute inset-0 crt-scanlines pointer-events-none overflow-hidden" aria-hidden="true" />
+        {showBall && (
+          <div key={ballKey} className="absolute inset-x-0 top-0 flex justify-center pointer-events-none z-10" aria-hidden="true">
+            <span className="text-3xl animate-spike-drop inline-block">🏐</span>
+          </div>
+        )}
         <h1 className="tracking-wide flex items-baseline justify-center gap-3">
           <span
             className="scoreboard-flicker text-4xl md:text-5xl"

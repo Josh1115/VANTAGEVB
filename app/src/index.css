@@ -376,6 +376,30 @@
   animation: ball-bounce 0.85s both;
 }
 
+/* ── Spike volleyball bounce in header ── */
+@keyframes spike-drop {
+  /* Ball drops in from above */
+  0%   { transform: translateY(-58px) scaleX(1)    scaleY(1);    opacity: 0; }
+  6%   { transform: translateY(-48px) scaleX(1)    scaleY(1);    opacity: 1; }
+  /* Fast spike impact — squish at floor */
+  33%  { transform: translateY(30px)  scaleX(1.5)  scaleY(0.55); opacity: 1; }
+  /* Spring off floor — slight overstretch */
+  47%  { transform: translateY(-24px) scaleX(0.93) scaleY(1.07); opacity: 1; }
+  /* Second impact — smaller squish */
+  60%  { transform: translateY(30px)  scaleX(1.25) scaleY(0.78); opacity: 1; }
+  /* Small bounce */
+  70%  { transform: translateY(-8px)  scaleX(1)    scaleY(1);    opacity: 1; }
+  /* Settle at floor */
+  80%  { transform: translateY(30px)  scaleX(1)    scaleY(1);    opacity: 1; }
+  /* Hold a beat, then roll off */
+  90%  { transform: translateY(30px)  scaleX(1)    scaleY(1);    opacity: 1; }
+  100% { transform: translateY(30px) translateX(22px) scaleX(1) scaleY(1); opacity: 0; }
+}
+.animate-spike-drop {
+  animation: spike-drop 1.6s var(--ease-out) forwards;
+  transform-origin: center bottom;
+}
+
 /* ── FAB breathing glow ── */
 @keyframes fab-breathe {
   0%, 100% { box-shadow: 0 0 0 0 rgba(249,115,22,0),    0 4px 14px rgba(0,0,0,0.4); }
