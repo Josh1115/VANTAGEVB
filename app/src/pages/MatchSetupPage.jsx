@@ -1,0 +1,392 @@
+import { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db/schema';
+import { PageHeader } from '../components/layout/PageHeader';
+import { Button } from '../components/ui/Button';
+import { useMatchStore } from '../store/matchStore';
+import { MATCH_STATUS, SET_STATUS, FORMAT, SIDE } from '../constants';
+import { serveOrderToZone } from '../components/court/CourtZonePicker';
+import { LineupForm } from '../components/match/LineupForm';
+
+export function MatchSetupPage() {
+  const navigate   = useNavigate();
+  const resetMatch = useMatchStore((s) => s.resetMatch);
+  const [searchParams] = useSearchParams();
+
+  const [seasonId,  setSeasonId]  = useState(searchParams.get('season') ?? '');
+  const [opponent,      setOpponent]      = useState('');
+  const [opponentAbbr,  setOpponentAbbr]  = useState('');
+  const [conference,    setConference]    = useState('non-con');
+  const [location,      setLocation]      = useState('home');
+  const [matchType,     setMatchType]     = useState('reg-season');
+  const [format,    setFormat]    = useState(() => {
+    const saved = localStorage.getItem('vbstat_default_format');
+    return saved === FORMAT.BEST_OF_5 ? FORMAT.BEST_OF_5 : FORMAT.BEST_OF_3;
+  });
+  // lineup[i] = playerId for serve order i+1 (I=0 … VI=5)
+  const [lineup,         setLineupState]    = useState(Array(6).fill(''));
+  // slotPositions[i] = position label override for serve slot i (e.g. 'OH', 'MB')
+  const [slotPositions,  setSlotPositions]  = useState(Array(6).fill(''));
+  // startZone = court zone (1-6) where Player I starts; default 1 = back right
+  const [startZone, setStartZone]  = useState(1);
+  // liberoId = player designated as libero (optional)
+  const [liberoId,  setLiberoId]   = useState('');
+  const [servingSide, setServingSide] = useState(SIDE.US);
+  const [teamJerseyColor,   setTeamJerseyColor]   = useState('black');
+  const [liberoJerseyColor, setLiberoJerseyColor] = useState('black');
+  const [saving,         setSaving]         = useState(false);
+  const [error,          setError]          = useState('');
+  const [loadPickerOpen, setLoadPickerOpen] = useState(false);
+
+  // Load all seasons with their team + org name for the picker
+  const seasons = useLiveQuery(async () => {
+    const allSeasons = await db.seasons.toArray();
+    const teams      = await db.teams.bulkGet(allSeasons.map((s) => s.team_id));
+    return allSeasons.map((s, i) => ({ ...s, teamName: teams[i]?.name ?? '?' }));
+  }, []);
+
+  const selectedSeason = (seasons ?? []).find((s) => s.id === Number(seasonId));
+
+  const players = useLiveQuery(
+    () => selectedSeason
+      ? db.players.where('team_id').equals(selectedSeason.team_id).filter((p) => p.is_active).toArray()
+      : [],
+    [selectedSeason?.team_id]
+  );
+
+  const savedLineups = useLiveQuery(
+    () => selectedSeason
+      ? db.saved_lineups.where('team_id').equals(selectedSeason.team_id).toArray()
+      : [],
+    [selectedSeason?.team_id]
+  );
+
+  const applyLoadedLineup = (sl) => {
+    setLineupState(sl.serve_order.map(String));
+    setStartZone(sl.start_zone ?? 1);
+    setLiberoId(sl.libero_player_id ? String(sl.libero_player_id) : '');
+    setSlotPositions(sl.slot_positions ?? Array(6).fill(''));
+    setLoadPickerOpen(false);
+  };
+
+  const handleStart = async () => {
+    setError('');
+    if (!seasonId) { setError('Select a season.'); return; }
+    if (!opponent.trim()) { setError('Enter opponent name.'); return; }
+    if (lineup.some((id) => !id)) { setError('Assign a player to every position.'); return; }
+
+    setSaving(true);
+    try {
+      resetMatch();
+      useMatchStore.setState({ serveSide: servingSide, teamJerseyColor, liberoJerseyColor });
+
+      // Upsert opponent
+      let oppRecord = await db.opponents.where('name').equals(opponent.trim()).first();
+      if (!oppRecord) {
+        const oppId = await db.opponents.add({ name: opponent.trim() });
+        oppRecord = { id: oppId, name: opponent.trim() };
+      }
+
+      // Create match
+      const matchId = await db.matches.add({
+        season_id:     Number(seasonId),
+        opponent_id:   oppRecord.id,
+        opponent_name: oppRecord.name,
+        opponent_abbr: opponentAbbr.trim().toUpperCase() || null,
+        status:        MATCH_STATUS.IN_PROGRESS,
+        format,
+        location,
+        conference,
+        match_type:    matchType,
+        date:          new Date().toISOString(),
+      });
+
+      // Create first set
+      const setId = await db.sets.add({
+        match_id:         matchId,
+        set_number:       1,
+        status:           SET_STATUS.IN_PROGRESS,
+        our_score:        0,
+        opp_score:        0,
+        libero_player_id: liberoId ? Number(liberoId) : null,
+      });
+
+      // Write lineup rows: position = court zone based on where Player I starts
+      await db.lineups.bulkAdd(
+        lineup.map((playerId, i) => ({
+          set_id:         setId,
+          player_id:      Number(playerId),
+          position:       serveOrderToZone(i, startZone),  // court zone 1-6
+          serve_order:    i + 1,                           // serve order 1-6 (I=1 … VI=6)
+          position_label: slotPositions[i] || '',
+        }))
+      );
+
+      navigate(`/matches/${matchId}/live`);
+    } catch (e) {
+      setError('Failed to create match. Try again.');
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="pb-8">
+      <PageHeader title="New Match" backTo="/" />
+
+      <div className="p-4 md:p-6 space-y-5 max-w-lg mx-auto">
+
+        {/* Season picker */}
+        <div>
+          <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+            Season / Team
+          </label>
+          <select
+            value={seasonId}
+            onChange={(e) => { setSeasonId(e.target.value); setLineupState(Array(6).fill('')); setLiberoId(''); }}
+            className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+          >
+            <option value="">Select season…</option>
+            {(seasons ?? []).map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.teamName} — {s.name ?? s.year}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Opponent */}
+        <div>
+          <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+            Opponent
+          </label>
+          <div className="flex gap-2 items-center">
+            <input
+              type="text"
+              value={opponent}
+              onChange={(e) => setOpponent(e.target.value)}
+              placeholder="Opponent team name"
+              className="flex-1 bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
+            />
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="text-[10px] text-slate-500 uppercase tracking-wide leading-none">Abbr</span>
+              <input
+                type="text"
+                value={opponentAbbr}
+                onChange={(e) => setOpponentAbbr(e.target.value.toUpperCase().slice(0, 3))}
+                placeholder="OPP"
+                maxLength={3}
+                className="w-[56px] bg-surface border border-slate-600 text-white rounded-lg px-2 py-2 text-sm text-center font-bold uppercase tracking-widest focus:outline-none focus:border-primary placeholder:text-slate-600"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Conference */}
+        <div>
+          <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+            Opponent Type
+          </label>
+          <div className="flex gap-2">
+            {[['conference', 'Conference'], ['non-con', 'Non-Con']].map(([val, label]) => (
+              <button
+                key={val}
+                onClick={() => setConference(val)}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors
+                  ${conference === val
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-surface text-slate-300 border-slate-600 hover:border-slate-400'
+                  }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Location */}
+        <div>
+          <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+            Location
+          </label>
+          <div className="flex gap-2">
+            {['home', 'away', 'neutral'].map((loc) => (
+              <button
+                key={loc}
+                onClick={() => setLocation(loc)}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors
+                  ${location === loc
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-surface text-slate-300 border-slate-600 hover:border-slate-400'
+                  }`}
+              >
+                {loc.charAt(0).toUpperCase() + loc.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Match Type */}
+        <div>
+          <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+            Match Type
+          </label>
+          <div className="flex gap-2">
+            {[['reg-season', 'Reg Season'], ['tourney', 'Tourney'], ['ihsa-playoffs', 'IHSA Playoffs'], ['exhibition', 'Exhibition']].map(([val, label]) => (
+              <button
+                key={val}
+                onClick={() => setMatchType(val)}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors
+                  ${matchType === val
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-surface text-slate-300 border-slate-600 hover:border-slate-400'
+                  }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Serve / Serve-Rec */}
+        <div>
+          <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+            Set 1 Start
+          </label>
+          <div className="flex gap-2">
+            {[SIDE.US, SIDE.THEM].map((side) => (
+              <button
+                key={side}
+                onClick={() => setServingSide(side)}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors
+                  ${servingSide === side
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-surface text-slate-300 border-slate-600 hover:border-slate-400'
+                  }`}
+              >
+                {side === SIDE.US ? 'Serving' : 'Serve Rec'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Jersey colors */}
+        {(() => {
+          const TEAM_COLORS = [
+            { id: 'black', label: 'Black', bg: '#111827', border: '#374151', selectedBorder: '#374151' },
+            { id: 'white', label: 'White', bg: '#f8fafc', border: '#94a3b8', selectedBorder: '#6366f1' },
+            { id: 'blue',  label: 'Blue',  bg: '#1d4ed8', border: '#3b82f6', selectedBorder: '#6366f1' },
+          ];
+          const LIBERO_COLORS = [
+            { id: 'black', label: 'Black', bg: '#111827', border: '#374151', selectedBorder: '#374151' },
+            { id: 'blue',  label: 'Blue',  bg: '#1d4ed8', border: '#3b82f6', selectedBorder: '#6366f1' },
+            { id: 'white', label: 'White', bg: '#f8fafc', border: '#94a3b8', selectedBorder: '#6366f1' },
+            { id: 'gray',  label: 'Gray',  bg: '#94a3b8', border: '#64748b', selectedBorder: '#6366f1' },
+          ];
+          const Picker = ({ label, value, onChange, colors }) => (
+            <div>
+              <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">{label}</label>
+              <div className="flex gap-2">
+                {colors.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => onChange(c.id)}
+                    className="flex-1 flex flex-col items-center gap-1 py-2 rounded-lg border transition-colors"
+                    style={{
+                      borderColor: value === c.id ? c.selectedBorder : c.border,
+                      boxShadow:   value === c.id ? `0 0 0 2px ${c.selectedBorder}` : 'none',
+                    }}
+                  >
+                    <span
+                      className="w-6 h-6 rounded-full block"
+                      style={{ background: c.bg, border: `1px solid ${c.border}` }}
+                    />
+                    <span className="text-[11px] text-slate-400 leading-none">{c.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+          return (
+            <>
+              <Picker label="Team Jersey Color"   value={teamJerseyColor}   onChange={setTeamJerseyColor}   colors={TEAM_COLORS} />
+              <Picker label="Libero Jersey Color"  value={liberoJerseyColor} onChange={setLiberoJerseyColor} colors={LIBERO_COLORS} />
+            </>
+          );
+        })()}
+
+        {/* Load saved lineup */}
+        {selectedSeason && (savedLineups ?? []).length > 0 && (
+          <div>
+            <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+              Saved Lineups
+            </label>
+            {loadPickerOpen ? (
+              <div className="space-y-2">
+                {savedLineups.map((sl) => (
+                  <button
+                    key={sl.id}
+                    onClick={() => applyLoadedLineup(sl)}
+                    className="w-full text-left bg-surface border border-slate-600 hover:border-primary rounded-lg px-4 py-3 transition-colors"
+                  >
+                    <span className="font-semibold text-white">{sl.name}</span>
+                    <span className="block text-xs text-slate-400 mt-0.5">
+                      {sl.serve_order.map((pid) => {
+                        const p = (players ?? []).find((pl) => String(pl.id) === String(pid));
+                        return p ? `#${p.jersey_number} ${p.name}` : '?';
+                      }).join(' · ')}
+                    </span>
+                  </button>
+                ))}
+                <button
+                  onClick={() => setLoadPickerOpen(false)}
+                  className="w-full py-2 text-sm text-slate-500 hover:text-slate-300"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setLoadPickerOpen(true)}
+                className="w-full py-2 rounded-lg text-sm font-semibold border border-slate-600 text-slate-300 hover:border-slate-400 bg-surface transition-colors"
+              >
+                Load Saved Lineup
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Lineup builder */}
+        {selectedSeason && (players ?? []).length > 0 && (
+          <LineupForm
+            lineup={lineup}
+            setLineup={setLineupState}
+            slotPositions={slotPositions}
+            setSlotPositions={setSlotPositions}
+            startZone={startZone}
+            setStartZone={setStartZone}
+            liberoId={liberoId}
+            setLiberoId={setLiberoId}
+            players={players}
+          />
+        )}
+
+        {/* Error */}
+        {error && <p className="text-red-400 text-sm">{error}</p>}
+
+        {/* Start */}
+        <Button
+          size="lg"
+          className="w-full"
+          disabled={saving}
+          onClick={handleStart}
+        >
+          {saving ? 'Creating…' : 'Start Match'}
+        </Button>
+      </div>
+    </div>
+  );
+}

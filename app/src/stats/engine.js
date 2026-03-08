@@ -1,0 +1,365 @@
+import {
+  getContactsForMatch, getRalliesForMatch, getSetsPlayedCount,
+  getContactsForMatches, getMatchesForSeason, getRalliesForMatches,
+} from './queries';
+
+// ── Internal helpers ────────────────────────────────────────────────────────
+
+const div = (n, d) => (d > 0 ? n / d : null);
+
+// Position multipliers for VER — exported so callers can apply them post-hoc
+export const POSITION_MULTIPLIERS = {
+  OH:  1.00,
+  OPP: 1.00,
+  MB:  1.05,
+  S:   0.90,
+  L:   1.20,
+  DS:  1.15,
+};
+
+function mkAccum() {
+  return {
+    // serve — totals
+    sa: 0, ace: 0, se: 0,
+    // serve — by type
+    f_sa: 0, f_ace: 0, f_se: 0,   // float
+    t_sa: 0, t_ace: 0, t_se: 0,   // topspin
+    // pass — result stored as '0' | '1' | '2' | '3'
+    pa: 0, p0: 0, p1: 0, p2: 0, p3: 0,
+    // attack
+    ta: 0, k: 0, ae: 0,
+    // set
+    ast: 0, bhe: 0,
+    // block
+    bs: 0, ba: 0, be: 0,
+    // dig
+    dig: 0, de: 0,
+    // freeball
+    fbr: 0, fbs: 0,
+  };
+}
+
+function accumContact(p, { action, result, serve_type }) {
+  if (action === 'serve') {
+    p.sa++;
+    if (result === 'ace')   p.ace++;
+    if (result === 'error') p.se++;
+    if (serve_type === 'float') {
+      p.f_sa++;
+      if (result === 'ace')   p.f_ace++;
+      if (result === 'error') p.f_se++;
+    } else if (serve_type === 'topspin') {
+      p.t_sa++;
+      if (result === 'ace')   p.t_ace++;
+      if (result === 'error') p.t_se++;
+    }
+  } else if (action === 'pass') {
+    p.pa++;
+    if      (result === '0') p.p0++;
+    else if (result === '1') p.p1++;
+    else if (result === '2') p.p2++;
+    else if (result === '3') p.p3++;
+  } else if (action === 'attack') {
+    p.ta++;
+    if (result === 'kill')  p.k++;
+    if (result === 'error') p.ae++;
+  } else if (action === 'set') {
+    if (result === 'assist')              p.ast++;
+    if (result === 'ball_handling_error') p.bhe++;
+  } else if (action === 'block') {
+    if (result === 'solo')   p.bs++;
+    if (result === 'assist') p.ba++;
+    if (result === 'error')  p.be++;
+  } else if (action === 'dig') {
+    if (result === 'success') p.dig++;
+    if (result === 'error')   p.de++;
+  } else if (action === 'freeball_receive') {
+    p.fbr++;
+  } else if (action === 'freeball_send') {
+    p.fbs++;
+  }
+}
+
+// Derive all display-ready stat values from an accumulator + sets played
+function deriveStats(p, sp, posLabel = null) {
+  const posMult = POSITION_MULTIPLIERS[posLabel] ?? 1.0;
+  return {
+    // Serving — totals
+    sa: p.sa, ace: p.ace, se: p.se,
+    ace_pct: div(p.ace, p.sa),
+    se_pct:  div(p.se,  p.sa),
+    si_pct:  div(p.sa - p.se, p.sa),   // 1st-serve-in %
+    // Serving — float
+    f_sa: p.f_sa, f_ace: p.f_ace, f_se: p.f_se,
+    f_ace_pct: div(p.f_ace, p.f_sa),
+    f_si_pct:  div(p.f_sa - p.f_se, p.f_sa),
+    // Serving — topspin
+    t_sa: p.t_sa, t_ace: p.t_ace, t_se: p.t_se,
+    t_ace_pct: div(p.t_ace, p.t_sa),
+    t_si_pct:  div(p.t_sa - p.t_se, p.t_sa),
+
+    // Passing
+    pa: p.pa, p0: p.p0, p1: p.p1, p2: p.p2, p3: p.p3,
+    apr:    div(p.p1 + p.p2 * 2 + p.p3 * 3, p.pa),
+    pp_pct: div(p.p3, p.pa),           // perfect-pass %
+
+    // Attacking
+    ta: p.ta, k: p.k, ae: p.ae,
+    hit_pct: div(p.k - p.ae, p.ta),
+    k_pct:   div(p.k,  p.ta),
+    kps:     div(p.k,  sp),
+
+    // Setting
+    ast: p.ast, bhe: p.bhe,
+    aps: div(p.ast, sp),
+
+    // Blocking
+    bs: p.bs, ba: p.ba, be: p.be,
+    bps: div(p.bs + p.ba * 0.5, sp),
+
+    // Defense
+    dig: p.dig, de: p.de,
+    dips: div(p.dig, sp),
+
+    // Freeball
+    fbr: p.fbr, fbs: p.fbs,
+
+    // Volleyball Efficiency Rating (position-adjusted)
+    // VER = posMult × (1/sp) × [4K + 4ACE + 3.5BS + 1.75BA + 1.5AST + 1DIG − 2.5AE − 2.5SE − 1.5BHE]
+    ver: sp > 0
+      ? posMult * (1 / sp) * (
+          4.0  * p.k   +
+          4.0  * p.ace +
+          3.5  * p.bs  +
+          1.75 * p.ba  +
+          1.5  * p.ast +
+          1.0  * p.dig -
+          2.5  * p.ae  -
+          2.5  * p.se  -
+          1.5  * p.bhe
+        )
+      : null,
+  };
+}
+
+// ── Pure computation functions ──────────────────────────────────────────────
+
+/**
+ * Per-player stats from any contacts array.
+ * Returns { [playerId]: statRow }
+ */
+export function computePlayerStats(contacts, setsPlayed = 1, playerPositions = {}) {
+  const accums = {};
+  for (const c of contacts) {
+    if (!c.player_id || c.opponent_contact) continue;
+    (accums[c.player_id] ??= mkAccum());
+    accumContact(accums[c.player_id], c);
+  }
+  return Object.fromEntries(
+    Object.entries(accums).map(([id, acc]) => [id, deriveStats(acc, setsPlayed, playerPositions[id] ?? null)])
+  );
+}
+
+/**
+ * Team-aggregate stats from any contacts array.
+ * Returns a single statRow summing all players.
+ */
+export function computeTeamStats(contacts, setsPlayed = 1) {
+  const acc = mkAccum();
+  for (const c of contacts) {
+    if (c.opponent_contact) continue;
+    accumContact(acc, c);
+  }
+  return deriveStats(acc, setsPlayed);
+}
+
+/**
+ * Opponent display stats for the live run strip.
+ * ACE  = our '0' passes (opponent served an ace).
+ * SE   = SE button taps (opponent serve errors).
+ * K    = K button taps (opponent kills).
+ * AE   = AE button taps (opponent attack errors).
+ * BLK  = BLK button taps (opponent blocks).
+ * ERRS = BHE + NET button taps combined (opponent unforced errors).
+ */
+export function computeOppDisplayStats(contacts) {
+  let ace = 0, se = 0, k = 0, ae = 0, blk = 0, errs = 0;
+  for (const c of contacts) {
+    if (!c.opponent_contact) {
+      // ACE: our own pass logged as '0' (opponent served an unreturnable)
+      if (c.action === 'pass' && c.result === '0') ace++;
+      continue;
+    }
+    // opponent_contact === true
+    if      (c.action === 'serve'  && c.result === 'error') se++;
+    else if (c.action === 'attack' && c.result === 'kill')  k++;
+    else if (c.action === 'attack' && c.result === 'error') ae++;
+    else if (c.action === 'block'  && c.result === 'solo')  blk++;
+    else if (c.action === 'error')                          errs++; // BHE + NET
+  }
+  return { ace, se, k, ae, blk, errs };
+}
+
+/**
+ * Rotation & sideout stats from a rallies array.
+ * Returns { so_pct, bp_pct, rotations: { 1..6: { so_pct, bp_pct, ... } } }
+ */
+export function computeRotationStats(rallies) {
+  let so_opp = 0, so_win = 0, bp_opp = 0, bp_win = 0;
+  const rots = Object.fromEntries(
+    Array.from({ length: 6 }, (_, i) => [i + 1, { so_opp: 0, so_win: 0, bp_opp: 0, bp_win: 0 }])
+  );
+
+  for (const { serve_side, point_winner, our_rotation } of rallies) {
+    const usWon = point_winner === 'us';
+    const rot   = rots[our_rotation];
+    if (serve_side === 'them') {
+      so_opp++; if (usWon) so_win++;
+      if (rot) { rot.so_opp++; if (usWon) rot.so_win++; }
+    } else {
+      bp_opp++; if (usWon) bp_win++;
+      if (rot) { rot.bp_opp++; if (usWon) rot.bp_win++; }
+    }
+  }
+
+  return {
+    so_pct: div(so_win, so_opp),
+    bp_pct: div(bp_win, bp_opp),
+    rotations: Object.fromEntries(
+      Object.entries(rots).map(([n, r]) => [n, {
+        so_pct: div(r.so_win, r.so_opp),
+        bp_pct: div(r.bp_win, r.bp_opp),
+        so_opp: r.so_opp, so_win: r.so_win,
+        bp_opp: r.bp_opp, bp_win: r.bp_win,
+      }])
+    ),
+  };
+}
+
+/**
+ * Freeball outcome stats — requires both contacts AND rallies arrays
+ * so the caller (match or season) can pass already-fetched data.
+ *
+ * FBO% = rallies where our freeball_receive → we scored / total freeball_receive contacts
+ * FBD% = rallies where we sent freeball → we won the point / total freeball_send contacts
+ */
+export function computeFreeballOutcomes(contacts, rallies) {
+  const rallyMap = new Map(rallies.map(r => [r.id, r]));
+  let fbr = 0, fbrWin = 0, fbs = 0, fbsWin = 0;
+  for (const c of contacts) {
+    if (c.opponent_contact) continue;
+    const rally = rallyMap.get(c.rally_id);
+    if (!rally) continue;
+    if (c.action === 'freeball_receive') {
+      fbr++;
+      if (rally.point_winner === 'us') fbrWin++;
+    } else if (c.action === 'freeball_send') {
+      fbs++;
+      if (rally.point_winner === 'us') fbsWin++;
+    }
+  }
+  return {
+    fbr, fbs,
+    fbo_pct: div(fbrWin, fbr),
+    fbd_pct: div(fbsWin, fbs),
+  };
+}
+
+/**
+ * Point-quality breakdown for a contacts array.
+ * Returns earned / given / free detail objects and totals.
+ *
+ * EARNED  — our team actively scores: ACE, K, SBLK, HBLK
+ * GIVEN   — our errors concede a point: SE, AE, P0, Lift, Dbl, Net
+ * FREE    — opponent errors give us a point: opp SE, AE, BHE, Net
+ */
+export function computePointQuality(contacts) {
+  const earned = { ace: 0, k: 0, sblk: 0, hblk: 0 };
+  const given  = { se: 0, ae: 0, p0: 0, lift: 0, dbl: 0, net: 0 };
+  const free   = { se: 0, ae: 0, bhe: 0, net: 0 };
+
+  for (const c of contacts) {
+    if (c.opponent_contact) {
+      if      (c.action === 'serve'  && c.result === 'error')               free.se++;
+      else if (c.action === 'attack' && c.result === 'error')               free.ae++;
+      else if (c.action === 'error'  && c.result === 'ball_handling_error') free.bhe++;
+      else if (c.action === 'error'  && c.result === 'net')                 free.net++;
+    } else {
+      if      (c.action === 'serve'  && c.result === 'ace')    earned.ace++;
+      else if (c.action === 'attack' && c.result === 'kill')   earned.k++;
+      else if (c.action === 'block'  && c.result === 'solo')   earned.sblk++;
+      else if (c.action === 'block'  && c.result === 'assist') earned.hblk++;
+
+      if      (c.action === 'serve'  && c.result === 'error')  given.se++;
+      else if (c.action === 'attack' && c.result === 'error')  given.ae++;
+      else if (c.action === 'pass'   && c.result === '0')      given.p0++;
+      else if (c.action === 'error'  && c.result === 'lift')   given.lift++;
+      else if (c.action === 'error'  && c.result === 'double') given.dbl++;
+      else if (c.action === 'error'  && c.result === 'net')    given.net++;
+    }
+  }
+
+  const earnedTotal = earned.ace + earned.k + earned.sblk + earned.hblk;
+  const givenTotal  = given.se + given.ae + given.p0 + given.lift + given.dbl + given.net;
+  const freeTotal   = free.se + free.ae + free.bhe + free.net;
+  const scored      = earnedTotal + freeTotal;
+
+  return {
+    earned: { ...earned, total: earnedTotal },
+    given:  { ...given,  total: givenTotal  },
+    free:   { ...free,   total: freeTotal   },
+    scored,
+    earned_pct: scored > 0 ? earnedTotal / scored : null,
+    free_pct:   scored > 0 ? freeTotal   / scored : null,
+  };
+}
+
+// ── Async convenience (report mode) ────────────────────────────────────────
+
+/**
+ * Fetches and computes all stats for a single match.
+ * Returns { players, team, rotation, freeball, setsPlayed }
+ */
+export async function computeMatchStats(matchId) {
+  const [contacts, rallies, setsPlayed] = await Promise.all([
+    getContactsForMatch(matchId),
+    getRalliesForMatch(matchId),
+    getSetsPlayedCount(matchId),
+  ]);
+  return {
+    players:      computePlayerStats(contacts, setsPlayed),
+    team:         computeTeamStats(contacts, setsPlayed),
+    rotation:     computeRotationStats(rallies),
+    freeball:     computeFreeballOutcomes(contacts, rallies),
+    pointQuality: computePointQuality(contacts),
+    setsPlayed,
+    contacts,
+  };
+}
+
+/**
+ * Fetches and aggregates all stats for an entire season.
+ * Returns { players, team, rotation, freeball, setsPlayed, matchCount } or null if no matches.
+ */
+export async function computeSeasonStats(seasonId) {
+  const matches = await getMatchesForSeason(seasonId);
+  if (!matches.length) return null;
+
+  const matchIds = matches.map(m => m.id);
+  const [contacts, rallies, perMatchSets] = await Promise.all([
+    getContactsForMatches(matchIds),
+    getRalliesForMatches(matchIds),
+    Promise.all(matchIds.map(getSetsPlayedCount)),
+  ]);
+  const setsPlayed = perMatchSets.reduce((a, b) => a + b, 0);
+
+  return {
+    players:    computePlayerStats(contacts, setsPlayed),
+    team:       computeTeamStats(contacts, setsPlayed),
+    rotation:   computeRotationStats(rallies),
+    freeball:   computeFreeballOutcomes(contacts, rallies),
+    setsPlayed,
+    matchCount: matchIds.length,
+    contacts,
+  };
+}

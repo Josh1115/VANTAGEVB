@@ -1,0 +1,344 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Animation design tokens ── */
+:root {
+  --duration-fast: 120ms;
+  --duration-base: 250ms;
+  --duration-slow: 500ms;
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  html, body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background-color: #0f172a;
+    color: white;
+    margin: 0;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+  }
+}
+
+@keyframes stat-flash {
+  0%   { opacity: 0; transform: translateX(10px) scale(0.95); }
+  10%  { opacity: 1; transform: translateX(0)    scale(1);    }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes serve-pulse {
+  0%, 100% { opacity: 1;   }
+  50%       { opacity: 0.2; }
+}
+
+.serve-pulse {
+  animation: serve-pulse 1.8s ease-in-out infinite;
+}
+
+
+@keyframes grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@keyframes scoreboard-flicker {
+  /* stable for first 4s (0–66.5% of 6s cycle) */
+  0%,  66.5% { opacity: 1;    text-shadow: 0 0 8px #f97316, 0 0 20px #f9731680, 0 0 40px #f9731640; }
+  /* 2s flutter window (66.7–100%) */
+  66.7%      { opacity: 0.15; text-shadow: none; }
+  68.4%      { opacity: 1;    text-shadow: 0 0 8px #f97316, 0 0 20px #f9731680, 0 0 40px #f9731640; }
+  71.7%      { opacity: 0.4;  text-shadow: none; }
+  74.2%      { opacity: 1;    text-shadow: 0 0 8px #f97316, 0 0 20px #f9731680, 0 0 40px #f9731640; }
+  76.7%      { opacity: 0.1;  text-shadow: none; }
+  78.4%      { opacity: 1;    text-shadow: 0 0 8px #f97316, 0 0 20px #f9731680, 0 0 40px #f9731640; }
+  80.8%      { opacity: 0.6;  text-shadow: none; }
+  82.5%      { opacity: 1;    text-shadow: 0 0 8px #f97316, 0 0 20px #f9731680, 0 0 40px #f9731640; }
+  85%        { opacity: 0.2;  text-shadow: none; }
+  86.7%      { opacity: 1;    text-shadow: 0 0 8px #f97316, 0 0 20px #f9731680, 0 0 40px #f9731640; }
+  90%        { opacity: 0.5;  text-shadow: none; }
+  92.5%      { opacity: 1;    text-shadow: 0 0 8px #f97316, 0 0 20px #f9731680, 0 0 40px #f9731640; }
+  95.1%      { opacity: 0.15; text-shadow: none; }
+  97.5%      { opacity: 1;    text-shadow: 0 0 8px #f97316, 0 0 20px #f9731680, 0 0 40px #f9731640; }
+  100%       { opacity: 1;    text-shadow: 0 0 8px #f97316, 0 0 20px #f9731680, 0 0 40px #f9731640; }
+}
+
+.scoreboard-flicker {
+  animation: scoreboard-flicker 6s linear infinite;
+}
+
+.stat-feed {
+  animation: stat-flash 3s ease-in-out forwards;
+  white-space: nowrap;
+  background-color: rgb(217 119 6 / 0.15);
+  border: 1px solid rgb(217 119 6 / 0.3);
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
+/* ── Item 2: Page transition ── */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+.animate-page-enter {
+  animation: page-enter var(--duration-base) var(--ease-out) both;
+}
+
+/* ── Item 3: CRT scan-line overlay ── */
+.crt-scanlines {
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.05) 2px,
+    rgba(0, 0, 0, 0.05) 4px
+  );
+}
+
+/* ── Item 6: Quick-start card staggered entrance ── */
+@keyframes slide-up-fade {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+.animate-slide-up-fade {
+  animation: slide-up-fade var(--duration-base) var(--ease-out) both;
+}
+
+/* ── Item 7: Match list slide-in-right ── */
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right var(--duration-base) var(--ease-out) both;
+}
+
+/* ── Item 5: Run strip flame glow ── */
+@keyframes flame-pulse {
+  0%, 100% { text-shadow: 0 0 8px #f97316, 0 0 16px rgba(249,115,22,0.4); }
+  33%       { text-shadow: 0 0 12px #f59e0b, 0 0 24px rgba(245,158,11,0.4); }
+  66%       { text-shadow: 0 0 10px #ef4444, 0 0 20px rgba(239,68,68,0.4); }
+}
+
+@keyframes flame-pulse-intense {
+  0%, 100% { text-shadow: 0 0 12px #f97316, 0 0 28px #f97316, 0 0 40px rgba(249,115,22,0.3); }
+  33%       { text-shadow: 0 0 16px #f59e0b, 0 0 36px #f59e0b, 0 0 52px rgba(245,158,11,0.3); }
+  66%       { text-shadow: 0 0 14px #ef4444, 0 0 32px #ef4444, 0 0 44px rgba(239,68,68,0.3); }
+}
+
+.flame-pulse {
+  animation: flame-pulse 1.2s ease-in-out infinite;
+}
+
+.flame-pulse-intense {
+  animation: flame-pulse-intense 0.8s ease-in-out infinite;
+}
+
+/* ── Item 10: Gradient accent top border ── */
+.card-top-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-top-glow::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(to right, #f97316 0%, rgba(249,115,22,0.3) 60%, transparent 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Item 25: NavBar icon bounce on activate ── */
+@keyframes icon-bounce {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.32); }
+  70%  { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+
+.animate-icon-bounce {
+  animation: icon-bounce 220ms var(--ease-spring) forwards;
+}
+
+/* ── Item 26: Score nudge popup bounce entrance ── */
+@keyframes nudge-pop {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.animate-nudge-pop {
+  animation: nudge-pop 220ms var(--ease-spring) both;
+  transform-origin: top center;
+}
+
+/* ── Item 29: Libero box pulse on state change ── */
+@keyframes libero-pulse {
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0   rgba(52,211,153,0); }
+  40%  { transform: scale(1.06); box-shadow: 0 0 0 4px rgba(52,211,153,0.45); }
+  100% { transform: scale(1);    box-shadow: 0 0 0 0   rgba(52,211,153,0); }
+}
+
+.animate-libero-pulse {
+  animation: libero-pulse 420ms var(--ease-spring) forwards;
+}
+
+/* ── Button tap flash ── */
+@keyframes btn-tap-flash {
+  0%   { filter: brightness(1.5); }
+  100% { filter: brightness(1);   }
+}
+.btn-flash {
+  animation: btn-tap-flash 260ms ease-out forwards;
+}
+
+/* ── Stat chip count-up bump ── */
+@keyframes stat-chip-bump {
+  0%   { transform: translateY(6px) scale(0.75); opacity: 0;   }
+  55%  { transform: translateY(-2px) scale(1.1); opacity: 1;   }
+  100% { transform: translateY(0)    scale(1);   opacity: 1;   }
+}
+.stat-chip-bump {
+  animation: stat-chip-bump 220ms var(--ease-spring) both;
+}
+
+/* ── Score digit scale pop (item 1) ── */
+@keyframes score-pop {
+  0%   { transform: scale(0.72); opacity: 0.5; }
+  52%  { transform: scale(1.2);  opacity: 1;   }
+  78%  { transform: scale(0.95);               }
+  100% { transform: scale(1);    opacity: 1;   }
+}
+.score-pop {
+  animation: score-pop 240ms var(--ease-spring) forwards;
+}
+
+/* ── Serve side slide ── */
+@keyframes serve-from-left {
+  from { transform: translateX(-22px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+@keyframes serve-from-right {
+  from { transform: translateX(22px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+.animate-serve-from-left  { animation: serve-from-left  220ms var(--ease-out) both; }
+.animate-serve-from-right { animation: serve-from-right 220ms var(--ease-out) both; }
+
+/* ── Run intensity background pulse ── */
+@keyframes run-intensity-pulse {
+  0%, 100% { box-shadow: inset 0 0 0px  0px transparent; }
+  50%       { box-shadow: inset 0 0 28px 4px var(--run-glow, rgba(249,115,22,0.4)); }
+}
+
+/* ── Rotation tile sweep ── */
+@keyframes tile-rotate-flash {
+  0%   { box-shadow: inset 0 0 0 0 rgba(249,115,22,0.0); }
+  40%  { box-shadow: inset 0 0 0 2px rgba(249,115,22,0.8); }
+  100% { box-shadow: inset 0 0 0 0 rgba(249,115,22,0.0); }
+}
+.tile-rotating {
+  animation: tile-rotate-flash 300ms ease-out both;
+}
+
+/* ── Substitution flash (double pulse) ── */
+@keyframes tile-sub-flash {
+  0%   { box-shadow: inset 0 0 0 0 rgba(249,115,22,0.0); }
+  15%  { box-shadow: inset 0 0 0 4px rgba(249,115,22,1.0); }
+  40%  { box-shadow: inset 0 0 0 4px rgba(249,115,22,0.3); }
+  60%  { box-shadow: inset 0 0 0 4px rgba(249,115,22,0.9); }
+  100% { box-shadow: inset 0 0 0 0 rgba(249,115,22,0.0); }
+}
+.tile-sub-flash {
+  animation: tile-sub-flash 1000ms ease-out both;
+}
+
+/* ── Sub ghost exit (outgoing player name drifts up and fades) ── */
+@keyframes sub-ghost-exit {
+  0%   { opacity: 0.7; transform: translateY(0)    scale(1.0); }
+  100% { opacity: 0;   transform: translateY(-22px) scale(0.85); }
+}
+.sub-ghost-exit {
+  animation: sub-ghost-exit 680ms var(--ease-out) forwards;
+}
+
+/* ── Sub name enter (incoming player name pops in) ── */
+@keyframes sub-name-enter {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.88); }
+  60%  { opacity: 1; transform: translateY(-2px)  scale(1.04); }
+  100% { opacity: 1; transform: translateY(0)     scale(1);    }
+}
+.sub-name-enter {
+  animation: sub-name-enter 380ms var(--ease-spring) both;
+}
+
+/* ── Sub counter warning pulse — fires on each sub taken while ≤2 remain (item 5) ── */
+@keyframes sub-warn-pulse {
+  0%   { transform: scale(1);    }
+  25%  { transform: scale(1.22); }
+  50%  { transform: scale(0.94); }
+  72%  { transform: scale(1.1);  }
+  100% { transform: scale(1);    }
+}
+.sub-warn-pulse {
+  animation: sub-warn-pulse 480ms var(--ease-spring) both;
+}
+
+/* ── Sub counter maxed — slow blink (item 5) ── */
+@keyframes sub-maxed-blink {
+  0%, 100% { opacity: 1;   }
+  50%       { opacity: 0.4; }
+}
+.sub-maxed-blink {
+  animation: sub-maxed-blink 1.2s ease-in-out infinite;
+}
+
+/* ── Serve row slide-down reveal (item 8) ── */
+@keyframes serve-row-in {
+  from { opacity: 0; clip-path: inset(0 0 100% 0); }
+  to   { opacity: 1; clip-path: inset(0 0 0% 0);   }
+}
+.serve-row-in {
+  animation: serve-row-in 180ms ease-out both;
+}
+
+/* ── Serve type button unlock flash — staggered via animationDelay (item 9) ── */
+@keyframes serve-btn-unlock {
+  0%   { filter: brightness(1);   transform: scale(1);    }
+  35%  { filter: brightness(1.9); transform: scale(1.09); }
+  68%  { filter: brightness(1.1); transform: scale(0.97); }
+  100% { filter: brightness(1);   transform: scale(1);    }
+}
+.serve-unlock-btn {
+  animation: serve-btn-unlock 280ms var(--ease-spring) both;
+}
+
+/* ── Timeout pip pop (pip bursts when a timeout is called) ── */
+@keyframes timeout-pip-pop {
+  0%   { transform: scale(1);    opacity: 1; }
+  30%  { transform: scale(1.75); opacity: 0.85; }
+  65%  { transform: scale(0.9);  opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+.timeout-pip-pop {
+  animation: timeout-pip-pop 360ms var(--ease-spring) both;
+}

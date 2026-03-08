@@ -1,0 +1,216 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db/schema';
+import { MATCH_STATUS } from '../constants';
+import { fmtDate } from '../stats/formatters';
+import { Button } from '../components/ui/Button';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+
+async function deleteMatch(matchId) {
+  const sets = await db.sets.where('match_id').equals(matchId).toArray();
+  const setIds = sets.map((s) => s.id);
+  await Promise.all([
+    db.contacts.where('match_id').equals(matchId).delete(),
+    db.rallies.where('set_id').anyOf(setIds).delete(),
+    db.lineups.where('set_id').anyOf(setIds).delete(),
+    db.substitutions.where('set_id').anyOf(setIds).delete(),
+  ]);
+  await db.sets.where('match_id').equals(matchId).delete();
+  await db.matches.delete(matchId);
+}
+
+export function HomePage() {
+  const navigate = useNavigate();
+  const [confirmDelete, setConfirmDelete] = useState(null); // match object to delete
+
+  const recentMatches = useLiveQuery(async () => {
+    const matches = await db.matches.orderBy('date').reverse().limit(5).toArray();
+
+    const seasonIds = [...new Set(matches.map((m) => m.season_id).filter(Boolean))];
+    const seasons = seasonIds.length ? await db.seasons.bulkGet(seasonIds) : [];
+    const seasonMap = Object.fromEntries(seasons.filter(Boolean).map((s) => [s.id, s]));
+
+    // Resolve missing opponent_name via opponents table (for older matches)
+    const needLookup = matches.filter((m) => !m.opponent_name && m.opponent_id);
+    const oppIds = [...new Set(needLookup.map((m) => m.opponent_id))];
+    const opps = oppIds.length ? await db.opponents.bulkGet(oppIds) : [];
+    const oppMap = Object.fromEntries(opps.filter(Boolean).map((o) => [o.id, o.name]));
+
+    const enriched = matches.map((m) => ({
+      ...m,
+      season: seasonMap[m.season_id],
+      opponent_name: m.opponent_name ?? oppMap[m.opponent_id] ?? null,
+    }));
+
+    // Attach current set score for any in-progress match
+    const active = enriched.find((m) => m.status === MATCH_STATUS.IN_PROGRESS);
+    if (active) {
+      const currentSet = await db.sets
+        .where('match_id').equals(active.id)
+        .filter((s) => s.status === 'in_progress')
+        .first();
+      active.currentSet = currentSet ?? null;
+    }
+
+    return enriched;
+  }, []);
+
+  const inProgress = recentMatches?.find((m) => m.status === MATCH_STATUS.IN_PROGRESS);
+  const displayMatches = recentMatches ?? [];
+
+  return (
+    <div>
+      <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 py-3 text-center relative overflow-hidden">
+        <div className="absolute inset-0 crt-scanlines pointer-events-none" aria-hidden="true" />
+        <h1 className="tracking-wide flex items-baseline justify-center gap-3">
+          <span
+            className="scoreboard-flicker text-4xl md:text-5xl"
+            style={{
+              fontFamily: "'Orbitron', sans-serif",
+              fontWeight: 900,
+              letterSpacing: '0.12em',
+              color: '#f97316',
+            }}
+          >
+            VBSTAT
+          </span>
+          <span className="text-slate-400 font-normal text-lg">by SHUA</span>
+        </h1>
+      </header>
+
+      <div className="p-4 md:p-6 space-y-4">
+        {/* Active match banner */}
+        {inProgress && (
+          <div className="card-top-glow bg-primary/20 border border-primary rounded-xl p-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-primary font-semibold uppercase tracking-wide">Match In Progress</p>
+              <p className="font-bold">{inProgress.opponent_name ?? 'Active Match'}</p>
+              <div className="flex gap-3 mt-1 text-sm font-mono">
+                <span>
+                  Sets&nbsp;{inProgress.our_sets_won ?? 0}–{inProgress.opp_sets_won ?? 0}
+                </span>
+                <span className="text-slate-400">·</span>
+                <span>
+                  Set&nbsp;{(inProgress.our_sets_won ?? 0) + (inProgress.opp_sets_won ?? 0) + 1}&nbsp;
+                  {inProgress.currentSet?.our_score ?? 0}–{inProgress.currentSet?.opp_score ?? 0}
+                </span>
+              </div>
+            </div>
+            <Button size="sm" onClick={() => navigate(`/matches/${inProgress.id}/live`)}>
+              Resume
+            </Button>
+          </div>
+        )}
+
+        {/* Quick start */}
+        <div className="grid grid-cols-3 gap-3">
+          <button
+            onClick={() => navigate('/matches/new')}
+            className="card-top-glow bg-surface rounded-xl p-4 text-left hover:bg-slate-700 hover:brightness-110 transition-[transform,filter,background-color] duration-75 active:scale-[0.97] active:brightness-90 animate-slide-up-fade"
+            style={{ animationDelay: '0ms' }}
+          >
+            <div className="text-3xl mb-2">🏐</div>
+            <div className="font-semibold text-sm">New Match</div>
+            <div className="text-xs text-slate-400">Record stats</div>
+          </button>
+          <button
+            onClick={() => navigate('/seasons')}
+            className="card-top-glow bg-surface rounded-xl p-4 text-left hover:bg-slate-700 hover:brightness-110 transition-[transform,filter,background-color] duration-75 active:scale-[0.97] active:brightness-90 animate-slide-up-fade"
+            style={{ animationDelay: '80ms' }}
+          >
+            <div className="text-3xl mb-2">📅</div>
+            <div className="font-semibold text-sm">Seasons</div>
+            <div className="text-xs text-slate-400">Browse by season</div>
+          </button>
+          <button
+            onClick={() => navigate('/teams')}
+            className="card-top-glow bg-surface rounded-xl p-4 text-left hover:bg-slate-700 hover:brightness-110 transition-[transform,filter,background-color] duration-75 active:scale-[0.97] active:brightness-90 animate-slide-up-fade"
+            style={{ animationDelay: '160ms' }}
+          >
+            <div className="text-3xl mb-2">👥</div>
+            <div className="font-semibold text-sm">Teams</div>
+            <div className="text-xs text-slate-400">Rosters</div>
+          </button>
+        </div>
+
+        {/* Recent matches */}
+        <section>
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-2">Recent Matches</h2>
+          {displayMatches.length === 0 && (
+            <EmptyState
+              icon="📋"
+              title="No matches yet"
+              description="Start a new match to begin tracking stats"
+            />
+          )}
+          {displayMatches.map((match, index) => (
+            <div key={match.id} className="bg-surface rounded-xl mb-2 flex items-center animate-slide-in-right" style={{ animationDelay: `${index * 40}ms` }}>
+              <button
+                onClick={() => navigate(
+                  match.status === MATCH_STATUS.COMPLETE
+                    ? `/matches/${match.id}/summary`
+                    : `/matches/${match.id}/live`
+                )}
+                className="flex-1 p-4 text-left flex items-center justify-between hover:bg-slate-700 rounded-l-xl transition-colors"
+              >
+                <div>
+                  <div className="font-semibold">{match.opponent_name ?? 'vs. Unknown'}</div>
+                  <div className="text-xs text-slate-400">
+                    {match.season ? `${match.season.name ?? match.season.year} · ` : ''}{fmtDate(match.date)}
+                  </div>
+                </div>
+                <div className="text-right flex flex-col items-end gap-0.5">
+                  <div className="flex items-center gap-1.5">
+                    {match.status === MATCH_STATUS.COMPLETE && (() => {
+                      const won = (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
+                      return (
+                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${won ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
+                          {won ? 'W' : 'L'}
+                        </span>
+                      );
+                    })()}
+                    <span className="text-sm font-mono">{match.our_sets_won ?? 0}–{match.opp_sets_won ?? 0}</span>
+                  </div>
+                  <div className={`text-xs ${match.status === MATCH_STATUS.IN_PROGRESS ? 'text-primary' : 'text-slate-400'}`}>
+                    {match.status === MATCH_STATUS.IN_PROGRESS ? 'Live'
+                      : match.status === MATCH_STATUS.COMPLETE ? 'Final'
+                      : 'Setup'}
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => setConfirmDelete(match)}
+                className="px-4 py-4 text-slate-600 hover:text-red-400 transition-colors rounded-r-xl"
+                title="Delete match"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  <path d="M10 11v6" />
+                  <path d="M14 11v6" />
+                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </section>
+      </div>
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Delete Match?"
+          message={`Delete match vs. ${confirmDelete.opponent_name ?? 'Unknown'}? This will permanently remove all sets, contacts, and stats for this match.`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={async () => {
+            await deleteMatch(confirmDelete.id);
+            setConfirmDelete(null);
+          }}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+    </div>
+  );
+}
