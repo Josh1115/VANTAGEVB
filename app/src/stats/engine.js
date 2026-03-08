@@ -339,11 +339,21 @@ export async function computeMatchStats(matchId) {
 
 /**
  * Fetches and aggregates all stats for an entire season.
- * Returns { players, team, rotation, freeball, setsPlayed, matchCount } or null if no matches.
+ * Optional filters: { conference: 'conference'|'non-con', location: 'home'|'away'|'neutral', matchType: string }
+ * Returns { players, team, rotation, freeball, setsPlayed, matchCount, totalMatchCount }
+ * or null if no matches exist, or { empty: true, totalMatchCount } if filters exclude all matches.
  */
-export async function computeSeasonStats(seasonId) {
-  const matches = await getMatchesForSeason(seasonId);
+export async function computeSeasonStats(seasonId, filters = {}) {
+  let matches = await getMatchesForSeason(seasonId);
   if (!matches.length) return null;
+
+  const totalMatchCount = matches.length;
+
+  if (filters.conference) matches = matches.filter(m => m.conference === filters.conference);
+  if (filters.location)   matches = matches.filter(m => m.location   === filters.location);
+  if (filters.matchType)  matches = matches.filter(m => m.match_type === filters.matchType);
+
+  if (!matches.length) return { empty: true, totalMatchCount };
 
   const matchIds = matches.map(m => m.id);
   const [contacts, rallies, perMatchSets] = await Promise.all([
@@ -354,12 +364,13 @@ export async function computeSeasonStats(seasonId) {
   const setsPlayed = perMatchSets.reduce((a, b) => a + b, 0);
 
   return {
-    players:    computePlayerStats(contacts, setsPlayed),
-    team:       computeTeamStats(contacts, setsPlayed),
-    rotation:   computeRotationStats(rallies),
-    freeball:   computeFreeballOutcomes(contacts, rallies),
+    players:         computePlayerStats(contacts, setsPlayed),
+    team:            computeTeamStats(contacts, setsPlayed),
+    rotation:        computeRotationStats(rallies),
+    freeball:        computeFreeballOutcomes(contacts, rallies),
     setsPlayed,
-    matchCount: matchIds.length,
+    matchCount:      matchIds.length,
+    totalMatchCount,
     contacts,
   };
 }

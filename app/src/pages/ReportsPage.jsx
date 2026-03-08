@@ -47,10 +47,17 @@ const TEAM_STATS = [
 ];
 
 
+const CHIP = 'px-3 py-1 rounded-full text-xs font-semibold transition-colors';
+const chipClass = (active) =>
+  active ? `${CHIP} bg-primary text-white` : `${CHIP} bg-surface text-slate-400 hover:text-white`;
+
 export function ReportsPage() {
   const [tab, setTab] = useState('team');
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [selectedSeasonId, setSelectedSeasonId] = useState('');
+  const [conference, setConference] = useState('');
+  const [location,   setLocation]   = useState('');
+  const [matchType,  setMatchType]  = useState('');
   const [stats, setStats] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -81,14 +88,21 @@ export function ReportsPage() {
     setContacts([]);
   }
 
-  // Load season stats when season selected
+  // Build active filters object (omit empty strings)
+  const activeFilters = {};
+  if (conference) activeFilters.conference = conference;
+  if (location)   activeFilters.location   = location;
+  if (matchType)  activeFilters.matchType  = matchType;
+  const hasFilters = Object.keys(activeFilters).length > 0;
+
+  // Load season stats when season or filters change
   useEffect(() => {
     if (!selectedSeasonId) return;
     setLoading(true);
-    computeSeasonStats(Number(selectedSeasonId))
+    computeSeasonStats(Number(selectedSeasonId), activeFilters)
       .then((s) => { setStats(s); setContacts(s?.contacts ?? []); })
       .finally(() => setLoading(false));
-  }, [selectedSeasonId]);
+  }, [selectedSeasonId, conference, location, matchType]);
 
   const playerRows = useMemo(() =>
     stats
@@ -145,6 +159,30 @@ export function ReportsPage() {
         </select>
       </div>
 
+      {/* Match filters — only shown once a season is selected */}
+      {selectedSeasonId && (
+        <div className="px-4 pb-3 space-y-2">
+          <div className="flex gap-1.5 flex-wrap items-center">
+            <span className="text-[10px] text-slate-500 uppercase tracking-wide mr-1">Conf</span>
+            {[['', 'All'], ['conference', 'Conference'], ['non-con', 'Non-Con']].map(([val, label]) => (
+              <button key={val} onClick={() => setConference(val)} className={chipClass(conference === val)}>{label}</button>
+            ))}
+          </div>
+          <div className="flex gap-1.5 flex-wrap items-center">
+            <span className="text-[10px] text-slate-500 uppercase tracking-wide mr-1">Site</span>
+            {[['', 'All'], ['home', 'Home'], ['away', 'Away'], ['neutral', 'Neutral']].map(([val, label]) => (
+              <button key={val} onClick={() => setLocation(val)} className={chipClass(location === val)}>{label}</button>
+            ))}
+          </div>
+          <div className="flex gap-1.5 flex-wrap items-center">
+            <span className="text-[10px] text-slate-500 uppercase tracking-wide mr-1">Type</span>
+            {[['', 'All'], ['reg-season', 'Reg Season'], ['tourney', 'Tourney'], ['ihsa-playoffs', 'Playoffs'], ['exhibition', 'Exhibition']].map(([val, label]) => (
+              <button key={val} onClick={() => setMatchType(val)} className={chipClass(matchType === val)}>{label}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* No selection state */}
       {!selectedSeasonId && !loading && (
         <EmptyState icon="📊" title="Select a team and season" description="Choose filters above to view analytics" />
@@ -160,14 +198,35 @@ export function ReportsPage() {
         <EmptyState icon="📋" title="No matches found" description="Record matches to see season analytics" />
       )}
 
+      {/* Filters excluded all matches */}
+      {!loading && stats?.empty && (
+        <EmptyState
+          icon="🔍"
+          title="No matches for this filter"
+          description={`${stats.totalMatchCount} match${stats.totalMatchCount !== 1 ? 'es' : ''} in this season — none match the current filters`}
+          action={
+            <button
+              onClick={() => { setConference(''); setLocation(''); setMatchType(''); }}
+              className="mt-1 text-primary text-sm underline underline-offset-2"
+            >
+              Clear filters
+            </button>
+          }
+        />
+      )}
+
       {/* Stats loaded */}
-      {!loading && stats && (
+      {!loading && stats && !stats.empty && (
         <>
           {/* Summary strip */}
           <div className="mx-4 mb-1 bg-surface rounded-xl p-3 grid grid-cols-4 gap-2 text-center text-sm">
             <div>
               <div className="text-xs text-slate-400">Matches</div>
-              <div className="font-bold text-primary">{stats.matchCount}</div>
+              <div className="font-bold text-primary">
+                {hasFilters && stats.totalMatchCount > stats.matchCount
+                  ? <>{stats.matchCount}<span className="text-slate-500 font-normal text-[10px]">/{stats.totalMatchCount}</span></>
+                  : stats.matchCount}
+              </div>
             </div>
             <div>
               <div className="text-xs text-slate-400">Sets</div>
