@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Drawer } from '../ui/Drawer';
 import { Button } from '../ui/Button';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { ResetRotationModal } from './ResetRotationModal';
 import { useMatchStore } from '../../store/matchStore';
 import { db } from '../../db/schema';
 import { SIDE } from '../../constants';
@@ -14,12 +15,14 @@ export function MenuDrawer({ onClose }) {
   const oppScore        = useMatchStore((s) => s.oppScore);
   const endSet          = useMatchStore((s) => s.endSet);
   const endMatch        = useMatchStore((s) => s.endMatch);
-  const resetCurrentSet = useMatchStore((s) => s.resetCurrentSet);
-  const navigate        = useNavigate();
+  const resetCurrentSet  = useMatchStore((s) => s.resetCurrentSet);
+  const resetToRotation  = useMatchStore((s) => s.resetToRotation);
+  const navigate         = useNavigate();
 
-  const [confirmReset,      setConfirmReset]      = useState(false);
-  const [confirmMatchSetup, setConfirmMatchSetup] = useState(false);
-  const [confirmEndSet,     setConfirmEndSet]     = useState(false);
+  const [confirmReset,        setConfirmReset]        = useState(false);
+  const [confirmMatchSetup,   setConfirmMatchSetup]   = useState(false);
+  const [confirmEndSet,       setConfirmEndSet]       = useState(false);
+  const [resetRotationOpen,   setResetRotationOpen]   = useState(false);
 
   const computeWinner = () => {
     if (ourScore === 0 && oppScore === 0) return null;
@@ -56,6 +59,9 @@ export function MenuDrawer({ onClose }) {
         <div className="space-y-3">
           <Button variant="secondary" className="w-full justify-start" onClick={() => setConfirmMatchSetup(true)}>
             Match Set Up
+          </Button>
+          <Button variant="secondary" className="w-full justify-start" onClick={() => setResetRotationOpen(true)}>
+            Reset to Rotation
           </Button>
           <Button variant="secondary" className="w-full justify-start" onClick={() => setConfirmReset(true)}>
             Reset Current Set
@@ -97,6 +103,17 @@ export function MenuDrawer({ onClose }) {
           danger
           onConfirm={handleResetConfirmed}
           onCancel={() => setConfirmReset(false)}
+        />
+      )}
+
+      {resetRotationOpen && (
+        <ResetRotationModal
+          onCancel={() => setResetRotationOpen(false)}
+          onConfirm={async (rotNum, serving) => {
+            await resetToRotation(rotNum, serving);
+            setResetRotationOpen(false);
+            onClose();
+          }}
         />
       )}
     </>

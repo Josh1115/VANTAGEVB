@@ -182,6 +182,7 @@ export const useMatchStore = create((set, get) => ({
         type:                        'point_us',
         rallyId:                     rallyId,
         prevServeSide:               serveSide,
+        prevRallyPhase:              s.rallyPhase,
         prevLineup:                  lineup,
         prevRotation:                rotationNum,
         prevRun,
@@ -193,9 +194,10 @@ export const useMatchStore = create((set, get) => ({
       });
     } else {
       pushAction(get, set, {
-        type:          'point_them',
-        rallyId:       rallyId,
-        prevServeSide: serveSide,
+        type:           'point_them',
+        rallyId:        rallyId,
+        prevServeSide:  serveSide,
+        prevRallyPhase: s.rallyPhase,
         prevRun,
       });
     }
@@ -311,9 +313,11 @@ export const useMatchStore = create((set, get) => ({
           actionHistory: rest,
           ourScore:      Math.max(0, s.ourScore - 1),
           serveSide:     action.prevServeSide,
+          rallyPhase:    action.prevRallyPhase ?? 'pre_serve',
           lineup:        action.prevLineup,
           rotationNum:   action.prevRotation,
           rallyCount:    Math.max(0, s.rallyCount - 1),
+          pendingHblk:   null,
           lastFeedItem:  null,
           currentRun:    action.prevRun ?? { side: null, count: 0 },
           pointHistory:  s.pointHistory.slice(0, -1),
@@ -334,7 +338,9 @@ export const useMatchStore = create((set, get) => ({
           actionHistory: rest,
           oppScore:      Math.max(0, s.oppScore - 1),
           serveSide:     action.prevServeSide,
+          rallyPhase:    action.prevRallyPhase ?? 'pre_serve',
           rallyCount:    Math.max(0, s.rallyCount - 1),
+          pendingHblk:   null,
           lastFeedItem:  null,
           currentRun:    action.prevRun ?? { side: null, count: 0 },
           pointHistory:  s.pointHistory.slice(0, -1),
@@ -710,6 +716,46 @@ export const useMatchStore = create((set, get) => ({
       rallyPhase:                  'pre_serve',
       currentRun:                  { side: null, count: 0 },
       pointHistory:                [],
+      liberoReplacedPositionLabel: '',
+    });
+  },
+
+  resetToRotation: async (rotNum, serving) => {
+    const s = get();
+    if (!s.currentSetId) return;
+
+    const lineupRows = await db.lineups.where('set_id').equals(s.currentSetId).toArray();
+    if (!lineupRows.length) return;
+
+    const playerIds = lineupRows.map((r) => r.player_id);
+    const players   = await db.players.bulkGet(playerIds);
+
+    // Reconstruct rotation-1 lineup (same shape as LiveMatchPage hydration)
+    let lineup = lineupRows
+      .map((row, i) => ({
+        position:      row.position,
+        serveOrder:    row.serve_order ?? row.position,
+        playerId:      row.player_id,
+        playerName:    players[i]?.name ?? '',
+        jersey:        players[i]?.jersey_number ?? '',
+        positionLabel: row.position_label || players[i]?.position || '',
+      }))
+      .sort((a, b) => a.position - b.position);
+
+    // Advance to requested rotation (rotation 1 needs 0 rotations)
+    for (let i = 1; i < rotNum; i++) lineup = rotateFwd(lineup);
+
+    set({
+      lineup,
+      rotationNum:                 rotNum,
+      serveSide:                   serving ? SIDE.US : SIDE.THEM,
+      rallyPhase:                  'pre_serve',
+      pendingHblk:                 null,
+      actionHistory:               [],
+      liberoOnCourt:               false,
+      liberoReplacedPlayerId:      null,
+      liberoReplacedName:          '',
+      liberoReplacedJersey:        '',
       liberoReplacedPositionLabel: '',
     });
   },
