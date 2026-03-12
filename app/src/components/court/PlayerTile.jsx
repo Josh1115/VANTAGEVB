@@ -208,7 +208,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
           <div className="flex-[4.5_1_0%] flex items-center justify-center px-2 gap-x-3 bg-black/25 border-b border-slate-700/40 overflow-hidden flex-wrap">
             {chips.map(({ val, label, cls, heatKey }) => (
               <span key={`${label}-${val}`} className={`text-[2.1vmin] font-bold leading-none whitespace-nowrap stat-chip-bump ${cls}`}>
-                {val} {label}{heatKey === 'hot' ? ' 🔥' : heatKey === 'cold' ? ' ❄️' : ''}
+                {val} {label}{heatKey === 'hot' ? ' 🔥' : heatKey === 'cold' ? ' 🧊' : ''}
               </span>
             ))}
           </div>
