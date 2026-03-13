@@ -101,6 +101,8 @@ const INITIAL_STATE = {
   oppTimeouts:           0,
   subsUsed:              0,
   maxSubsPerSet:         NFHS.MAX_SUBS_PER_SET,
+  subPairs:              {}, // { [playerId]: slotIdx } — permanent per-set pairing
+  exhaustedPlayerIds:    [], // players who have completed their one allowed return sub
 
   teamJerseyColor:       'black',
   liberoJerseyColor:     'black',
@@ -364,9 +366,11 @@ export const useMatchStore = create((set, get) => ({
             : sl
         );
         set({
-          actionHistory: rest,
-          lineup:        newLineup,
-          subsUsed:      action.prevSubsUsed,
+          actionHistory:       rest,
+          lineup:              newLineup,
+          subsUsed:            action.prevSubsUsed,
+          subPairs:            action.prevSubPairs            ?? s.subPairs,
+          exhaustedPlayerIds:  action.prevExhaustedPlayerIds ?? s.exhaustedPlayerIds,
           ...(action.prevLiberoOnCourt !== undefined && { liberoOnCourt: action.prevLiberoOnCourt }),
         });
         break;
@@ -512,9 +516,18 @@ export const useMatchStore = create((set, get) => ({
     const slotIdx = s.lineup.findIndex((sl) => sl.playerId === outPlayerId);
     if (slotIdx === -1) return false;
 
-    const outPlayer        = s.lineup[slotIdx];
-    const prevSubsUsed     = s.subsUsed;
-    const liberoGoingOut   = outPlayerId === s.liberoId;
+    const outPlayer             = s.lineup[slotIdx];
+    const prevSubsUsed          = s.subsUsed;
+    const prevSubPairs          = s.subPairs;
+    const prevExhaustedPlayerIds = s.exhaustedPlayerIds;
+    const liberoGoingOut        = outPlayerId === s.liberoId;
+
+    // "Return sub" = outPlayer was previously a substitute (already in subPairs)
+    const isReturnSub = s.subPairs[outPlayerId] !== undefined;
+    const newSubPairs = { ...s.subPairs, [outPlayerId]: slotIdx, [inPlayer.id]: slotIdx };
+    const newExhausted = isReturnSub
+      ? [...s.exhaustedPlayerIds, outPlayerId, inPlayer.id]
+      : s.exhaustedPlayerIds;
 
     const subDbId = await db.substitutions.add({
       set_id:       s.currentSetId,
@@ -532,20 +545,24 @@ export const useMatchStore = create((set, get) => ({
           ? { ...sl, playerId: inPlayer.id, playerName: inPlayer.name, jersey: inPlayer.jersey_number, positionLabel: inPlayer.position }
           : sl
       ),
-      subsUsed: s.subsUsed + 1,
+      subsUsed:           s.subsUsed + 1,
+      subPairs:           newSubPairs,
+      exhaustedPlayerIds: newExhausted,
       ...(liberoGoingOut && { liberoOnCourt: false }),
     });
 
     pushAction(get, set, {
-      type:              'sub',
-      subId:             subDbId,
-      slotIdx:           slotIdx,
-      prevPlayerId:      outPlayer.playerId,
-      prevName:          outPlayer.playerName,
-      prevJersey:        outPlayer.jersey,
-      prevPositionLabel: outPlayer.positionLabel,
-      prevSubsUsed:      prevSubsUsed,
-      prevLiberoOnCourt: s.liberoOnCourt,
+      type:                    'sub',
+      subId:                   subDbId,
+      slotIdx:                 slotIdx,
+      prevPlayerId:            outPlayer.playerId,
+      prevName:                outPlayer.playerName,
+      prevJersey:              outPlayer.jersey,
+      prevPositionLabel:       outPlayer.positionLabel,
+      prevSubsUsed:            prevSubsUsed,
+      prevSubPairs:            prevSubPairs,
+      prevExhaustedPlayerIds:  prevExhaustedPlayerIds,
+      prevLiberoOnCourt:       s.liberoOnCourt,
     });
 
     return true;
@@ -662,6 +679,8 @@ export const useMatchStore = create((set, get) => ({
       ourTimeouts:                 0,
       oppTimeouts:                 0,
       subsUsed:                    0,
+      subPairs:                    {},
+      exhaustedPlayerIds:          [],
       rallyCount:                  0,
       rotationNum:                 1,
       committedContacts:           [],
@@ -711,6 +730,8 @@ export const useMatchStore = create((set, get) => ({
       ourTimeouts:                 0,
       oppTimeouts:                 0,
       subsUsed:                    0,
+      subPairs:                    {},
+      exhaustedPlayerIds:          [],
       rallyCount:                  0,
       rotationNum:                 1,
       committedContacts:           [],

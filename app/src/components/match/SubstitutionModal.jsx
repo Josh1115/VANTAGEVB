@@ -1,25 +1,70 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { useMatchStore } from '../../store/matchStore';
 import { db } from '../../db/schema';
 
+/**
+ * Returns eligibility info for a bench player entering a given slot.
+ *
+ *   'ok'        — can legally enter
+ *   'exhausted' — player has completed their one allowed return sub
+ *   'wrong-slot'— player is paired to a different slot this set
+ *   'slot-taken'— slot already has an active pair; only the paired player may return
+ */
+function benchEligibility(playerId, slotIdx, subPairs, exhaustedPlayerIds) {
+  if (exhaustedPlayerIds.includes(playerId)) return 'exhausted';
+  const playerSlot = subPairs[playerId]; // undefined if never subbed this set
+  if (playerSlot !== undefined) {
+    return playerSlot === slotIdx ? 'ok' : 'wrong-slot';
+  }
+  // Player is fresh — can only enter a slot that hasn't been sub-paired yet
+  const slotTaken = Object.values(subPairs).includes(slotIdx);
+  return slotTaken ? 'slot-taken' : 'ok';
+}
+
+const REASON_LABEL = {
+  'exhausted':  'Exhausted',
+  'wrong-slot': 'Wrong slot',
+  'slot-taken': 'Slot taken',
+};
+
 export function SubstitutionModal({ onClose }) {
-  const lineup           = useMatchStore((s) => s.lineup);
-  const teamId           = useMatchStore((s) => s.teamId);
-  const substitutePlayer = useMatchStore((s) => s.substitutePlayer);
+  const lineup              = useMatchStore((s) => s.lineup);
+  const teamId              = useMatchStore((s) => s.teamId);
+  const liberoId            = useMatchStore((s) => s.liberoId);
+  const subsUsed            = useMatchStore((s) => s.subsUsed);
+  const maxSubsPerSet        = useMatchStore((s) => s.maxSubsPerSet);
+  const subPairs            = useMatchStore((s) => s.subPairs);
+  const exhaustedPlayerIds  = useMatchStore((s) => s.exhaustedPlayerIds);
+  const substitutePlayer    = useMatchStore((s) => s.substitutePlayer);
+
   const [outPlayerId, setOutPlayerId] = useState(null);
   const [inPlayerId,  setInPlayerId]  = useState(null);
+  const [error,       setError]       = useState('');
 
-  // All active roster players for this team
   const roster = useLiveQuery(
     () => teamId ? db.players.where('team_id').equals(teamId).filter((p) => p.is_active).toArray() : [],
     [teamId]
   );
 
   const onCourtIds = new Set(lineup.map((sl) => sl.playerId).filter(Boolean));
-  const bench = (roster ?? []).filter((p) => !onCourtIds.has(p.id));
+  // Bench = active roster minus on-court players; libero handled separately
+  const bench = (roster ?? []).filter((p) => !onCourtIds.has(p.id) && p.id !== liberoId);
+
+  // When court selection changes, clear an ineligible bench pre-selection
+  useEffect(() => {
+    if (!outPlayerId || !inPlayerId) return;
+    const outSlot = lineup.findIndex((sl) => sl.playerId === outPlayerId);
+    if (outSlot === -1) return;
+    const elig = benchEligibility(inPlayerId, outSlot, subPairs, exhaustedPlayerIds);
+    if (elig !== 'ok') setInPlayerId(null);
+  }, [outPlayerId]);
+
+  const outSlotIdx = outPlayerId ? lineup.findIndex((sl) => sl.playerId === outPlayerId) : -1;
+  const subsLeft   = maxSubsPerSet - subsUsed;
+  const atMax      = subsLeft <= 0;
 
   const handleConfirm = async () => {
     if (!outPlayerId || !inPlayerId) return;
@@ -27,6 +72,7 @@ export function SubstitutionModal({ onClose }) {
     if (!inPlayer) return;
     const ok = await substitutePlayer(outPlayerId, inPlayer);
     if (ok) onClose();
+    else setError('Substitution failed. Check sub limits.');
   };
 
   return (
@@ -38,7 +84,7 @@ export function SubstitutionModal({ onClose }) {
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
           <Button
             size="sm"
-            disabled={!outPlayerId || !inPlayerId}
+            disabled={!outPlayerId || !inPlayerId || atMax}
             onClick={handleConfirm}
           >
             Confirm Sub
@@ -47,53 +93,115 @@ export function SubstitutionModal({ onClose }) {
       }
     >
       <div className="space-y-4">
-        {/* Who goes out */}
+
+        {atMax && (
+          <div className="px-3 py-2 rounded-lg bg-red-950 border border-red-700 text-red-300 text-xs font-semibold text-center">
+            Substitution limit reached ({maxSubsPerSet}/{maxSubsPerSet})
+          </div>
+        )}
+
+        {error && (
+          <p className="text-red-400 text-xs text-center">{error}</p>
+        )}
+
+        {/* ── Player Out ── */}
         <div>
-          <p className="text-xs text-slate-400 mb-1.5 font-semibold uppercase tracking-wide">Player Out</p>
+          <p className="text-xs text-slate-400 mb-1.5 font-semibold uppercase tracking-wide">
+            Player Out
+          </p>
           <div className="grid grid-cols-3 gap-1.5">
-            {lineup.filter((sl) => sl.playerId).map((sl) => (
-              <button
-                key={sl.playerId}
-                onClick={() => { setOutPlayerId(sl.playerId); setInPlayerId(null); }}
-                className={`px-2 py-1.5 rounded text-xs font-bold border transition-colors text-left
-                  ${outPlayerId === sl.playerId
-                    ? 'bg-primary text-white border-primary'
-                    : 'bg-slate-700 text-slate-200 border-slate-600 hover:bg-slate-600'
-                  }`}
-              >
-                <span className="block text-[1.3vmin] text-slate-400">S{sl.position}</span>
-                #{sl.jersey} {sl.playerName}
-              </button>
-            ))}
+            {lineup.filter((sl) => sl.playerId).map((sl) => {
+              const isExhausted = exhaustedPlayerIds.includes(sl.playerId);
+              const isLibero    = sl.playerId === liberoId;
+              const disabled    = isExhausted || isLibero || atMax;
+              const selected    = outPlayerId === sl.playerId;
+              return (
+                <button
+                  key={sl.playerId}
+                  onClick={() => {
+                    if (disabled) return;
+                    setOutPlayerId(sl.playerId);
+                    setInPlayerId(null);
+                    setError('');
+                  }}
+                  disabled={disabled}
+                  className={`px-2 py-1.5 rounded text-xs font-bold border transition-colors text-left relative
+                    ${selected
+                      ? 'bg-primary text-white border-primary'
+                      : disabled
+                        ? 'bg-slate-800/40 text-slate-600 border-slate-800 cursor-not-allowed'
+                        : 'bg-slate-700 text-slate-200 border-slate-600 hover:bg-slate-600'
+                    }`}
+                >
+                  <span className="block text-[1.3vmin] text-slate-400">S{sl.position}</span>
+                  #{sl.jersey} {sl.playerName}
+                  {isExhausted && (
+                    <span className="block text-[10px] text-red-500 font-semibold mt-0.5">Sub used</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Who comes in */}
-        {outPlayerId && (
-          <div>
-            <p className="text-xs text-slate-400 mb-1.5 font-semibold uppercase tracking-wide">Player In</p>
-            {bench.length === 0 ? (
-              <p className="text-xs text-slate-500">No bench players available.</p>
-            ) : (
-              <div className="grid grid-cols-3 gap-1.5">
-                {bench.map((p) => (
+        {/* ── Player In (always visible) ── */}
+        <div>
+          <p className="text-xs text-slate-400 mb-1.5 font-semibold uppercase tracking-wide">
+            Player In
+            {!outPlayerId && (
+              <span className="ml-2 text-slate-600 normal-case font-normal">← select a player out first</span>
+            )}
+          </p>
+
+          {bench.length === 0 ? (
+            <p className="text-xs text-slate-500">No bench players available.</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-1.5">
+              {bench.map((p) => {
+                const elig     = outSlotIdx !== -1
+                  ? benchEligibility(p.id, outSlotIdx, subPairs, exhaustedPlayerIds)
+                  : 'ok';
+                const eligible = elig === 'ok';
+                const selected = inPlayerId === p.id;
+                const isPaired = subPairs[p.id] !== undefined && subPairs[p.id] === outSlotIdx;
+                return (
                   <button
                     key={p.id}
-                    onClick={() => setInPlayerId(p.id)}
-                    className={`px-2 py-1.5 rounded text-xs font-bold border transition-colors text-left
-                      ${inPlayerId === p.id
+                    onClick={() => {
+                      if (!outPlayerId || !eligible) return;
+                      setInPlayerId(p.id);
+                      setError('');
+                    }}
+                    disabled={!outPlayerId || !eligible}
+                    className={`px-2 py-1.5 rounded text-xs font-bold border transition-colors text-left relative
+                      ${selected
                         ? 'bg-primary text-white border-primary'
-                        : 'bg-slate-700 text-slate-200 border-slate-600 hover:bg-slate-600'
+                        : !outPlayerId
+                          ? 'bg-slate-700 text-slate-400 border-slate-600'
+                          : eligible
+                            ? isPaired
+                              ? 'bg-emerald-900/50 text-emerald-200 border-emerald-700 hover:bg-emerald-900/70'
+                              : 'bg-slate-700 text-slate-200 border-slate-600 hover:bg-slate-600'
+                            : 'bg-red-950/40 text-red-900/70 border-red-900/30 cursor-not-allowed'
                       }`}
                   >
                     #{p.jersey_number} {p.name}
                     <span className="block text-[1.3vmin] text-slate-400">{p.position}</span>
+                    {isPaired && eligible && (
+                      <span className="block text-[10px] text-emerald-400 font-semibold mt-0.5">↩ Return</span>
+                    )}
+                    {!eligible && outPlayerId && (
+                      <span className="block text-[10px] text-red-500/70 font-semibold mt-0.5">
+                        {REASON_LABEL[elig]}
+                      </span>
+                    )}
                   </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </div>
+
       </div>
     </Modal>
   );
