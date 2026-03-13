@@ -710,22 +710,23 @@ export function LiveStatsModal({ open, onClose, teamName, opponentName, recordAl
     [allMatchContacts]
   );
 
-  if (!open) return null;
-
-  const t          = scope === 'set' ? teamStats       : matchTeamStats;
-  const opp        = scope === 'set' ? oppStats        : matchOppStats;
-  const rotPts     = scope === 'set' ? setRotPts       : matchRotPts;
-  const rotContacts = scope === 'set' ? setRotContacts : matchRotContacts;
-  const isvsoos    = scope === 'set' ? setISvsOOS    : matchISvsOOS;
-  const freeDigWin = scope === 'set' ? setFreeDigWin : matchFreeDigWin;
-  const transAtk   = scope === 'set' ? setTransAtk   : matchTransAtk;
-
+  // All hooks must be called before any early return
   const rows = useMemo(() =>
     lineup
       .filter((sl) => sl.playerId)
       .map((sl) => ({ id: sl.playerId, name: sl.playerName, ...(playerStats[sl.playerId] ?? {}) })),
     [lineup, playerStats]
   );
+
+  if (!open) return null;
+
+  const t           = scope === 'set' ? teamStats       : matchTeamStats;
+  const opp         = scope === 'set' ? oppStats        : matchOppStats;
+  const rotPts      = scope === 'set' ? setRotPts       : matchRotPts;
+  const rotContacts = scope === 'set' ? setRotContacts  : matchRotContacts;
+  const isvsoos     = scope === 'set' ? setISvsOOS      : matchISvsOOS;
+  const freeDigWin  = scope === 'set' ? setFreeDigWin   : matchFreeDigWin;
+  const transAtk    = scope === 'set' ? setTransAtk     : matchTransAtk;
 
   const activeColumns = activeTab === 'SERVING' ? SERVING_COLS[serveView] : COLUMNS[activeTab] ?? [];
   const maxSets = format === 'best_of_5' ? 5 : 3;
