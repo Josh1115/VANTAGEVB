@@ -295,6 +295,75 @@ export function computeISvsOOS(contacts, rallies) {
 }
 
 /**
+ * Transition attack stats — hitting efficiency of attacks in rallies
+ * where we had a dig (transition) or specifically a freeball dig (free).
+ *
+ * Groups our contacts by rally_id, flags rallies with digs/freeDigs,
+ * then accumulates attacks from those rallies.
+ *
+ * Returns {
+ *   free:       { total: {ta,k,ae,hit_pct,k_pct}, byRotation: {1..6: same} },
+ *   transition: { total: ..., byRotation: ... }
+ * }
+ */
+export function computeTransitionAttack(contacts) {
+  const byRally = new Map();
+  for (const c of contacts) {
+    if (c.opponent_contact) continue;
+    if (!byRally.has(c.rally_id)) {
+      byRally.set(c.rally_id, { digs: 0, freeDigs: 0, attacks: [], rotation: null });
+    }
+    const r = byRally.get(c.rally_id);
+    if (c.action === 'dig') {
+      if (c.result === 'success' || c.result === 'freeball') r.digs++;
+      if (c.result === 'freeball') r.freeDigs++;
+    } else if (c.action === 'attack') {
+      r.attacks.push(c);
+    }
+    if (r.rotation === null && c.rotation_num) r.rotation = c.rotation_num;
+  }
+
+  const mkSlot  = () => ({ ta: 0, k: 0, ae: 0 });
+  const mkGroup = () => ({
+    total:      mkSlot(),
+    byRotation: Object.fromEntries(Array.from({ length: 6 }, (_, i) => [i + 1, mkSlot()])),
+  });
+  const free       = mkGroup();
+  const transition = mkGroup();
+
+  for (const [, rally] of byRally) {
+    if (!rally.attacks.length) continue;
+    const rot = rally.rotation;
+    for (const atk of rally.attacks) {
+      const k  = atk.result === 'kill'  ? 1 : 0;
+      const ae = atk.result === 'error' ? 1 : 0;
+      const add = (group) => {
+        group.total.ta++; group.total.k += k; group.total.ae += ae;
+        if (rot >= 1 && rot <= 6) {
+          group.byRotation[rot].ta++;
+          group.byRotation[rot].k  += k;
+          group.byRotation[rot].ae += ae;
+        }
+      };
+      if (rally.freeDigs > 0) add(free);
+      if (rally.digs     > 0) add(transition);
+    }
+  }
+
+  const derive = (s) => ({
+    ...s,
+    hit_pct: s.ta > 0 ? (s.k - s.ae) / s.ta : null,
+    k_pct:   s.ta > 0 ?  s.k          / s.ta : null,
+  });
+  const deriveGroup = (g) => ({
+    total:      derive(g.total),
+    byRotation: Object.fromEntries(Object.entries(g.byRotation).map(([r, s]) => [r, derive(s)])),
+  });
+
+  return { free: deriveGroup(free), transition: deriveGroup(transition) };
+}
+
+/**
  * Free-ball dig win stats.
  * FREE dig = action 'dig', result 'freeball'.
  * Returns { byRotation: { 1..6: { fb_dig, fb_won } }, total: same }

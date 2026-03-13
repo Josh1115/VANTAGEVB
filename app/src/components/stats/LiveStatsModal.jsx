@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMatchStore } from '../../store/matchStore';
 import { useMatchStats } from '../../hooks/useMatchStats';
 import { db } from '../../db/schema';
-import { computeTeamStats, computeOppDisplayStats, computeRotationStats, computeRotationContactStats, computeISvsOOS, computeFreeDigWin, computePlayerStats } from '../../stats/engine';
+import { computeTeamStats, computeOppDisplayStats, computeRotationStats, computeRotationContactStats, computeISvsOOS, computeFreeDigWin, computeTransitionAttack, computePlayerStats } from '../../stats/engine';
 import { StatTable } from './StatTable';
 import { PointQualityPanel } from './PointQualityPanel';
 import { RecordAlertPanel } from '../match/RecordAlertPanel';
@@ -262,10 +262,11 @@ function RotationTable({ rotPts, rotContacts }) {
 }
 
 // ── In-System / Out-of-System Table ──────────────────────────────────────────
-function ISvsOOSTable({ data, freeDigData }) {
+function ISvsOOSTable({ data, freeDigData, transAtkData }) {
   const ROTATIONS = [1, 2, 3, 4, 5, 6];
   const pctFmt = (won, pa) => pa > 0 ? Math.round(won / pa * 100) + '%' : '—';
   const cntFmt = (v) => v > 0 ? v : '—';
+  const effFmt = (v) => v != null ? (v >= 0 ? '+' : '') + (v * 1000).toFixed(0) : '—';
 
   const rows = [
     {
@@ -305,6 +306,44 @@ function ISvsOOSTable({ data, freeDigData }) {
       labelCls:  'text-cyan-700',
       fmt:       (r) => pctFmt(freeDigData.byRotation[r]?.fb_won ?? 0, freeDigData.byRotation[r]?.fb_dig ?? 0),
       total:     ()  => pctFmt(freeDigData.total.fb_won, freeDigData.total.fb_dig),
+    },
+    null,
+    {
+      label:     'FREE ATK',
+      labelCls:  'text-cyan-600',
+      fmt:       (r) => cntFmt(n(transAtkData.free.byRotation[r]?.ta)),
+      total:     ()  => cntFmt(n(transAtkData.free.total.ta)),
+    },
+    {
+      label:     'FREE HIT%',
+      labelCls:  'text-cyan-600',
+      fmt:       (r) => effFmt(transAtkData.free.byRotation[r]?.hit_pct),
+      total:     ()  => effFmt(transAtkData.free.total.hit_pct),
+    },
+    {
+      label:     'FREE K%',
+      labelCls:  'text-cyan-600',
+      fmt:       (r) => pctFmt(transAtkData.free.byRotation[r]?.k ?? 0, transAtkData.free.byRotation[r]?.ta ?? 0),
+      total:     ()  => pctFmt(transAtkData.free.total.k, transAtkData.free.total.ta),
+    },
+    null,
+    {
+      label:     'TRANS ATK',
+      labelCls:  'text-violet-600',
+      fmt:       (r) => cntFmt(n(transAtkData.transition.byRotation[r]?.ta)),
+      total:     ()  => cntFmt(n(transAtkData.transition.total.ta)),
+    },
+    {
+      label:     'TRANS HIT%',
+      labelCls:  'text-violet-600',
+      fmt:       (r) => effFmt(transAtkData.transition.byRotation[r]?.hit_pct),
+      total:     ()  => effFmt(transAtkData.transition.total.hit_pct),
+    },
+    {
+      label:     'TRANS K%',
+      labelCls:  'text-violet-600',
+      fmt:       (r) => pctFmt(transAtkData.transition.byRotation[r]?.k ?? 0, transAtkData.transition.byRotation[r]?.ta ?? 0),
+      total:     ()  => pctFmt(transAtkData.transition.total.k, transAtkData.transition.total.ta),
     },
   ];
 
@@ -352,7 +391,7 @@ function ISvsOOSTable({ data, freeDigData }) {
         </table>
       </div>
       <p className="text-[10px] text-slate-600 mt-2 text-center">
-        IS = 3-rated pass · OOS = 1–2 rated · FREE = freeball dig
+        IS/OOS = serve rec pass rating · FREE = freeball dig · TRANS = any dig
       </p>
     </div>
   );
@@ -522,7 +561,10 @@ function OffenseBalanceChart({ setPlayerStats, matchPlayerStats, positionMap }) 
 
 // Stable empty fallbacks — hoisted to avoid recreation on every render
 const EMPTY_ISVSOOS = { byRotation: Object.fromEntries(Array.from({length:6},(_,i)=>[i+1,{is_pa:0,is_won:0,oos_pa:0,oos_won:0}])), total: {is_pa:0,is_won:0,oos_pa:0,oos_won:0} };
-const EMPTY_FREEDIG = { byRotation: Object.fromEntries(Array.from({length:6},(_,i)=>[i+1,{fb_dig:0,fb_won:0}])), total: {fb_dig:0,fb_won:0} };
+const EMPTY_FREEDIG  = { byRotation: Object.fromEntries(Array.from({length:6},(_,i)=>[i+1,{fb_dig:0,fb_won:0}])), total: {fb_dig:0,fb_won:0} };
+const _emptyAtkSlot  = () => ({ ta:0, k:0, ae:0, hit_pct:null, k_pct:null });
+const _emptyAtkGroup = () => ({ total: _emptyAtkSlot(), byRotation: Object.fromEntries(Array.from({length:6},(_,i)=>[i+1,_emptyAtkSlot()])) });
+const EMPTY_TRANSATK = { free: _emptyAtkGroup(), transition: _emptyAtkGroup() };
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export function LiveStatsModal({ open, onClose, teamName, opponentName, recordAlerts = [], defaultTab = null }) {
@@ -659,6 +701,15 @@ export function LiveStatsModal({ open, onClose, teamName, opponentName, recordAl
     [allMatchContacts, allMatchRallies]
   );
 
+  const setTransAtk = useMemo(
+    () => computeTransitionAttack(committedContacts.filter((c) => c.set_id === currentSetId)),
+    [committedContacts, currentSetId]
+  );
+  const matchTransAtk = useMemo(
+    () => computeTransitionAttack(allMatchContacts ?? []),
+    [allMatchContacts]
+  );
+
   if (!open) return null;
 
   const t          = scope === 'set' ? teamStats       : matchTeamStats;
@@ -667,6 +718,7 @@ export function LiveStatsModal({ open, onClose, teamName, opponentName, recordAl
   const rotContacts = scope === 'set' ? setRotContacts : matchRotContacts;
   const isvsoos    = scope === 'set' ? setISvsOOS    : matchISvsOOS;
   const freeDigWin = scope === 'set' ? setFreeDigWin : matchFreeDigWin;
+  const transAtk   = scope === 'set' ? setTransAtk   : matchTransAtk;
 
   const rows = useMemo(() =>
     lineup
@@ -780,7 +832,11 @@ export function LiveStatsModal({ open, onClose, teamName, opponentName, recordAl
 
             {/* In-System / Out-of-System */}
             <div className="border-t border-slate-800">
-              <ISvsOOSTable data={isvsoos ?? EMPTY_ISVSOOS} freeDigData={freeDigWin ?? EMPTY_FREEDIG} />
+              <ISvsOOSTable
+                data={isvsoos ?? EMPTY_ISVSOOS}
+                freeDigData={freeDigWin ?? EMPTY_FREEDIG}
+                transAtkData={transAtk ?? EMPTY_TRANSATK}
+              />
             </div>
           </>
         ) : (
