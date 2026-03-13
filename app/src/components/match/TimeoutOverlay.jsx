@@ -25,7 +25,7 @@ const COLUMNS = {
     { key: 'p2',     label: 'P2',  fmt: fmtCount },
     { key: 'p3',     label: 'P3',  fmt: fmtCount },
     { key: 'apr',    label: 'APR', fmt: fmtPassRating },
-    { key: 'pp_pct', label: 'PP%', fmt: fmtPct },
+    { key: 'pp_pct', label: '3OPT%', fmt: fmtPct },
   ],
   ATTACKING: [
     { key: 'name',    label: 'Player' },
@@ -122,7 +122,7 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
           const groups = [
             { label: 'SERVING',   items: [`${n(t.sa)} SA`, `${n(t.ace)} ACE`, `${n(t.se)} SE`, `${pct(t.si_pct)} SIP`] },
             { label: 'ATTACKING', items: [`${n(t.ta)} TA`, `${n(t.k)} K`, `${n(t.ae)} AE`, `${hitPct(t.hit_pct)} HIT`] },
-            { label: 'PASSING',   items: [`${n(t.pa)} PA`, `${dec1(t.apr)} APR`, `${pct(t.pp_pct)} PP`] },
+            { label: 'PASSING',   items: [`${n(t.pa)} PA`, `${dec1(t.apr)} APR`, `${pct(t.pp_pct)} 3OPT`] },
             { label: 'BLOCKING',  items: [`${n(t.bs)} BS`, `${n(t.ba)} BA`] },
             { label: 'DEFENSE',   items: [`${n(t.dig)} DIG`, `${n(t.de)} DE`] },
           ];

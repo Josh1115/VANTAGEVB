@@ -28,7 +28,7 @@ export function exportMatchCSV(playerStats, playerNames, filename = 'match-stats
     'ACE%': fmtPct(s.ace_pct),  'SE%': fmtPct(s.se_pct),  'S%': fmtPct(s.si_pct),
     // Passing
     PA: s.pa,  P0: s.p0,  P1: s.p1,  P2: s.p2,  P3: s.p3,
-    APR: fmtPassRating(s.apr),  'PP%': fmtPct(s.pp_pct),
+    APR: fmtPassRating(s.apr),  '3OPT%': fmtPct(s.pp_pct),
     // Attacking
     TA: s.ta,  K: s.k,  AE: s.ae,
     'HIT%': fmtHitting(s.hit_pct),  'K%': fmtPct(s.k_pct),  KPS: fmtCount(s.kps),

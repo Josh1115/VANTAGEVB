@@ -66,7 +66,7 @@ const TAB_COLUMNS = {
     { key: 'p2',      label: 'P2',    fmt: fmtCount     },
     { key: 'p3',      label: 'P3',    fmt: fmtCount     },
     { key: 'apr',     label: 'APR',   fmt: fmtPassRating },
-    { key: 'pp_pct',  label: 'PP%',   fmt: fmtPct       },
+    { key: 'pp_pct',  label: '3OPT%', fmt: fmtPct       },
   ],
   attacking: [
     { key: 'name',    label: 'Player' },
