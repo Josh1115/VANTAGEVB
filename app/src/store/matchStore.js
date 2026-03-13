@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { ACTION, RESULT, SIDE, SET_STATUS, MATCH_STATUS, NFHS } from '../constants';
 import { db } from '../db/schema';
 
+const ACTION_HISTORY_LIMIT = 10;
+
 const emptyLineup = () =>
   Array.from({ length: 6 }, (_, i) => ({
     position:   i + 1,
@@ -81,7 +83,7 @@ function setFeed(setFn, label) {
 
 const pushAction = (get, set, entry) => {
   const prev = get().actionHistory;
-  set({ actionHistory: [entry, ...prev].slice(0, 10) });
+  set({ actionHistory: [entry, ...prev].slice(0, ACTION_HISTORY_LIMIT) });
 };
 
 const INITIAL_STATE = {
@@ -443,7 +445,7 @@ export const useMatchStore = create((set, get) => ({
 
     const prevHistory = get().actionHistory;
     set({
-      actionHistory:     [{ type: 'contact', contactId: id, assistId, autoSetId }, ...prevHistory].slice(0, 10),
+      actionHistory:     [{ type: 'contact', contactId: id, assistId, autoSetId }, ...prevHistory].slice(0, ACTION_HISTORY_LIMIT),
       committedContacts: newCommittedContacts,
       ...(contactData.action === ACTION.SERVE || contactData.action === ACTION.PASS
         ? { rallyPhase: 'in_rally' } : {}),
@@ -492,7 +494,7 @@ export const useMatchStore = create((set, get) => ({
         const prevHistory = get().actionHistory;
         set({
           pendingHblk:   null,
-          actionHistory: [{ type: 'hblk_contact', contactId1: id1, contactId2: id2 }, ...prevHistory].slice(0, 10),
+          actionHistory: [{ type: 'hblk_contact', contactId1: id1, contactId2: id2 }, ...prevHistory].slice(0, ACTION_HISTORY_LIMIT),
           committedContacts: newCommittedContacts,
         });
 

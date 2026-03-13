@@ -147,9 +147,14 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   }
 
   const heatVals  = Object.values(heat ?? {}).filter(Boolean);
-  const hotCount  = heatVals.filter(v => v === 'hot').length;
-  const coldCount = heatVals.filter(v => v === 'cold').length;
+  let hotCount = 0, coldCount = 0;
+  for (const v of heatVals) { if (v === 'hot') hotCount++; else if (v === 'cold') coldCount++; }
   const tileHeat  = hotCount > coldCount ? 'hot' : coldCount > hotCount ? 'cold' : null;
+
+  const tileStats = useMemo(
+    () => computePlayerStats(committedContacts, slot.playerId, currentSetId),
+    [committedContacts, slot.playerId, currentSetId]
+  );
 
   const passRingClass = passRing === 0 ? 'pass-ring-0'
     : passRing === 1 ? 'pass-ring-1'
@@ -213,7 +218,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
 
       {/* ── Live stats bar ── */}
       {(() => {
-        const s = computePlayerStats(committedContacts, slot.playerId, currentSetId);
+        const s = tileStats;
         const h = heat ?? {};
         const chips = [
           { val: s.k,   label: 'K',   cls: 'text-orange-400', heatKey: h.attack },

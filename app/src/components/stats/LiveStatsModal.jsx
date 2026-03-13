@@ -200,32 +200,18 @@ function RotationTable({ rotPts, rotContacts }) {
   const ROTATIONS = [1, 2, 3, 4, 5, 6];
 
   const rows = [
-    { label: 'WIN%',  fmt: (r) => pct(rotPts[r]?.win_pct),    hi: true  },
-    { label: 'S/O%',  fmt: (r) => pct(rotPts[r]?.so_pct),     hi: true  },
-    { label: 'SRV%',  fmt: (r) => pct(rotPts[r]?.bp_pct),     hi: false },
-    { label: 'PTS W', fmt: (r) => n(rotPts[r]?.pts_won),      hi: false },
-    { label: 'PTS L', fmt: (r) => n(rotPts[r]?.pts_lost),     hi: false },
+    { label: 'WIN%',  fmt: (r) => pct(rotPts[r]?.win_pct)    },
+    { label: 'S/O%',  fmt: (r) => pct(rotPts[r]?.so_pct)     },
+    { label: 'SRV%',  fmt: (r) => pct(rotPts[r]?.bp_pct)     },
+    { label: 'PTS W', fmt: (r) => n(rotPts[r]?.pts_won)      },
+    { label: 'PTS L', fmt: (r) => n(rotPts[r]?.pts_lost)     },
     null, // divider
-    { label: 'K',     fmt: (r) => n(rotContacts[r]?.k),       hi: false },
-    { label: 'ACE',   fmt: (r) => n(rotContacts[r]?.ace),     hi: false },
-    { label: 'ERR',   fmt: (r) => n(rotContacts[r]?.ae) + n(rotContacts[r]?.se), hi: false },
-    { label: 'APR',   fmt: (r) => dec1(rotContacts[r]?.apr),  hi: false },
-    { label: 'HIT%',  fmt: (r) => hitFmt(rotContacts[r]?.hit_pct), hi: false },
+    { label: 'K',     fmt: (r) => n(rotContacts[r]?.k)       },
+    { label: 'ACE',   fmt: (r) => n(rotContacts[r]?.ace)     },
+    { label: 'ERR',   fmt: (r) => n(rotContacts[r]?.ae) + n(rotContacts[r]?.se) },
+    { label: 'APR',   fmt: (r) => dec1(rotContacts[r]?.apr)  },
+    { label: 'HIT%',  fmt: (r) => hitFmt(rotContacts[r]?.hit_pct) },
   ];
-
-  // Find best rotation per highlighted row
-  function bestRot(rowFmt, higherBetter = true) {
-    let best = null, bestVal = higherBetter ? -Infinity : Infinity;
-    for (const r of ROTATIONS) {
-      const raw = rowFmt === 'so' ? rotPts[r]?.so_pct
-        : rowFmt === 'bp' ? rotPts[r]?.bp_pct
-        : rowFmt === 'win' ? rotPts[r]?.win_pct : null;
-      if (raw != null && (higherBetter ? raw > bestVal : raw < bestVal)) {
-        bestVal = raw; best = r;
-      }
-    }
-    return best;
-  }
 
   return (
     <div className="px-4 pt-3 pb-4">
@@ -399,7 +385,7 @@ function buildPosGroups(playerStats, positionMap) {
 function OffenseBalanceChart({ setPlayerStats, matchPlayerStats, positionMap }) {
   const [scope, setScope] = useState('set');
   const playerStats = scope === 'set' ? setPlayerStats : matchPlayerStats;
-  const groups = buildPosGroups(playerStats, positionMap);
+  const groups = useMemo(() => buildPosGroups(playerStats, positionMap), [playerStats, positionMap]);
 
   const totalK  = groups.reduce((s, g) => s + g.k,  0);
   const totalTA = groups.reduce((s, g) => s + g.ta, 0);
@@ -534,6 +520,10 @@ function OffenseBalanceChart({ setPlayerStats, matchPlayerStats, positionMap }) 
   );
 }
 
+// Stable empty fallbacks — hoisted to avoid recreation on every render
+const EMPTY_ISVSOOS = { byRotation: Object.fromEntries(Array.from({length:6},(_,i)=>[i+1,{is_pa:0,is_won:0,oos_pa:0,oos_won:0}])), total: {is_pa:0,is_won:0,oos_pa:0,oos_won:0} };
+const EMPTY_FREEDIG = { byRotation: Object.fromEntries(Array.from({length:6},(_,i)=>[i+1,{fb_dig:0,fb_won:0}])), total: {fb_dig:0,fb_won:0} };
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export function LiveStatsModal({ open, onClose, teamName, opponentName, recordAlerts = [], defaultTab = null }) {
   const [activeView, setActiveView] = useState('box');
@@ -645,8 +635,6 @@ export function LiveStatsModal({ open, onClose, teamName, opponentName, recordAl
     [allMatchContacts]
   );
 
-  const EMPTY_ISVSOOS = { byRotation: Object.fromEntries(Array.from({length:6},(_,i)=>[i+1,{is_pa:0,is_won:0,oos_pa:0,oos_won:0}])), total: {is_pa:0,is_won:0,oos_pa:0,oos_won:0} };
-
   const setISvsOOS = useMemo(
     () => computeISvsOOS(
       committedContacts.filter((c) => c.set_id === currentSetId),
@@ -658,8 +646,6 @@ export function LiveStatsModal({ open, onClose, teamName, opponentName, recordAl
     () => computeISvsOOS(allMatchContacts ?? [], allMatchRallies ?? []),
     [allMatchContacts, allMatchRallies]
   );
-
-  const EMPTY_FREEDIG = { byRotation: Object.fromEntries(Array.from({length:6},(_,i)=>[i+1,{fb_dig:0,fb_won:0}])), total: {fb_dig:0,fb_won:0} };
 
   const setFreeDigWin = useMemo(
     () => computeFreeDigWin(
@@ -679,16 +665,15 @@ export function LiveStatsModal({ open, onClose, teamName, opponentName, recordAl
   const opp        = scope === 'set' ? oppStats        : matchOppStats;
   const rotPts     = scope === 'set' ? setRotPts       : matchRotPts;
   const rotContacts = scope === 'set' ? setRotContacts : matchRotContacts;
-  const isvsoos    = scope === 'set' ? (setISvsOOS ?? EMPTY_ISVSOOS) : (matchISvsOOS ?? EMPTY_ISVSOOS);
-  const freeDigWin = scope === 'set' ? (setFreeDigWin ?? EMPTY_FREEDIG) : (matchFreeDigWin ?? EMPTY_FREEDIG);
+  const isvsoos    = scope === 'set' ? setISvsOOS    : matchISvsOOS;
+  const freeDigWin = scope === 'set' ? setFreeDigWin : matchFreeDigWin;
 
-  const rows = lineup
-    .filter((sl) => sl.playerId)
-    .map((sl) => ({
-      id:   sl.playerId,
-      name: sl.playerName,
-      ...(playerStats[sl.playerId] ?? {}),
-    }));
+  const rows = useMemo(() =>
+    lineup
+      .filter((sl) => sl.playerId)
+      .map((sl) => ({ id: sl.playerId, name: sl.playerName, ...(playerStats[sl.playerId] ?? {}) })),
+    [lineup, playerStats]
+  );
 
   const activeColumns = activeTab === 'SERVING' ? SERVING_COLS[serveView] : COLUMNS[activeTab] ?? [];
   const maxSets = format === 'best_of_5' ? 5 : 3;
@@ -795,7 +780,7 @@ export function LiveStatsModal({ open, onClose, teamName, opponentName, recordAl
 
             {/* In-System / Out-of-System */}
             <div className="border-t border-slate-800">
-              <ISvsOOSTable data={isvsoos} freeDigData={freeDigWin} />
+              <ISvsOOSTable data={isvsoos ?? EMPTY_ISVSOOS} freeDigData={freeDigWin ?? EMPTY_FREEDIG} />
             </div>
           </>
         ) : (

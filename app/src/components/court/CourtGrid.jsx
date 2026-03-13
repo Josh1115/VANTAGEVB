@@ -68,8 +68,8 @@ function computeAllHeat(contacts, playerIds, setId) {
       const v = Number(result);
       if (!isNaN(v)) { a.pasSum += v; a.pasN++; }
     } else if (action === 'dig') {
-      if (result === 'success') a.digOk++;
-      if (result === 'error')   a.digErr++;
+      if (result === 'success' || result === 'freeball') a.digOk++;
+      if (result === 'error') a.digErr++;
     } else if (action === 'block') {
       if (result === 'solo' || result === 'assist') a.blkPos++;
       if (result === 'error') a.blkErr++;
