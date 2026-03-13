@@ -97,6 +97,34 @@ export function HomePage() {
   return (
     <div>
       <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 py-3 text-center relative">
+        {/* Volleyball net watermark */}
+        <svg
+          className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden"
+          aria-hidden="true"
+          viewBox="0 0 600 66"
+          preserveAspectRatio="xMidYMid slice"
+          style={{ opacity: 0.07 }}
+        >
+          <defs>
+            <pattern id="vb-net-mesh" x="0" y="0" width="18" height="10" patternUnits="userSpaceOnUse">
+              <path d="M 18 0 L 0 0 0 10" fill="none" stroke="white" strokeWidth="0.65" />
+            </pattern>
+          </defs>
+          {/* Net mesh */}
+          <rect x="0" y="30" width="600" height="24" fill="url(#vb-net-mesh)" />
+          {/* Top white tape */}
+          <rect x="0" y="25" width="600" height="6" fill="white" />
+          {/* Bottom tape */}
+          <rect x="0" y="54" width="600" height="3" fill="white" />
+          {/* Left antenna — red/white stripes above tape */}
+          <rect x="44" y="6"  width="3" height="19" fill="white" />
+          <rect x="44" y="6"  width="3" height="4"  fill="#ef4444" />
+          <rect x="44" y="14" width="3" height="4"  fill="#ef4444" />
+          {/* Right antenna */}
+          <rect x="553" y="6"  width="3" height="19" fill="white" />
+          <rect x="553" y="6"  width="3" height="4"  fill="#ef4444" />
+          <rect x="553" y="14" width="3" height="4"  fill="#ef4444" />
+        </svg>
         <div className="absolute inset-0 crt-scanlines pointer-events-none overflow-hidden" aria-hidden="true" />
         {showBall && (
           <div key={ballKey} className="absolute inset-x-0 top-0 flex justify-center pointer-events-none z-10" aria-hidden="true">
