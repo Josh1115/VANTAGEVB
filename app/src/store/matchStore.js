@@ -524,8 +524,8 @@ export const useMatchStore = create((set, get) => ({
     const prevExhaustedPlayerIds = s.exhaustedPlayerIds;
     const liberoGoingOut        = outPlayerId === s.liberoId;
 
-    // "Return sub" = outPlayer was previously a substitute (already in subPairs)
-    const isReturnSub = s.subPairs[outPlayerId] !== undefined;
+    // "Return sub" = incoming player is returning to a slot they previously occupied
+    const isReturnSub = s.subPairs[inPlayer.id] !== undefined && s.subPairs[inPlayer.id] === slotIdx;
     const newSubPairs = { ...s.subPairs, [outPlayerId]: slotIdx, [inPlayer.id]: slotIdx };
     const newExhausted = isReturnSub
       ? [...s.exhaustedPlayerIds, outPlayerId, inPlayer.id]
