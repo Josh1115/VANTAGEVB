@@ -6,29 +6,14 @@ import { useMatchStore } from '../../store/matchStore';
 import { db } from '../../db/schema';
 
 /**
- * Returns eligibility info for a bench player entering a given slot.
- *
- *   'ok'        — can legally enter
- *   'exhausted' — player has completed their one allowed return sub
- *   'wrong-slot'— player is paired to a different slot this set
- *   'slot-taken'— slot already has an active pair; only the paired player may return
+ * Returns eligibility for a bench player.
+ * Only hard rule: exhausted players (completed return sub) cannot re-enter.
+ * Slot pairing is a *suggestion* shown via ring UI, not a gate.
  */
-function benchEligibility(playerId, slotIdx, subPairs, exhaustedPlayerIds) {
+function benchEligibility(playerId, exhaustedPlayerIds) {
   if (exhaustedPlayerIds.includes(playerId)) return 'exhausted';
-  const playerSlot = subPairs[playerId]; // undefined if never subbed this set
-  if (playerSlot !== undefined) {
-    return playerSlot === slotIdx ? 'ok' : 'wrong-slot';
-  }
-  // Player is fresh — can only enter a slot that hasn't been sub-paired yet
-  const slotTaken = Object.values(subPairs).includes(slotIdx);
-  return slotTaken ? 'slot-taken' : 'ok';
+  return 'ok';
 }
-
-const REASON_LABEL = {
-  'exhausted':  'Exhausted',
-  'wrong-slot': 'Wrong slot',
-  'slot-taken': 'Slot taken',
-};
 
 export function SubstitutionModal({ onClose }) {
   const lineup              = useMatchStore((s) => s.lineup);
@@ -53,13 +38,9 @@ export function SubstitutionModal({ onClose }) {
   // Bench = active roster minus on-court players; libero handled separately
   const bench = (roster ?? []).filter((p) => !onCourtIds.has(p.id) && p.id !== liberoId);
 
-  // When court selection changes, clear an ineligible bench pre-selection
+  // Clear bench selection when the court selection changes
   useEffect(() => {
-    if (!outPlayerId || !inPlayerId) return;
-    const outSlot = lineup.findIndex((sl) => sl.playerId === outPlayerId);
-    if (outSlot === -1) return;
-    const elig = benchEligibility(inPlayerId, outSlot, subPairs, exhaustedPlayerIds);
-    if (elig !== 'ok') setInPlayerId(null);
+    setInPlayerId(null);
   }, [outPlayerId]);
 
   const outSlotIdx = outPlayerId ? lineup.findIndex((sl) => sl.playerId === outPlayerId) : -1;
@@ -158,12 +139,11 @@ export function SubstitutionModal({ onClose }) {
           ) : (
             <div className="grid grid-cols-3 gap-1.5">
               {bench.map((p) => {
-                const elig     = outSlotIdx !== -1
-                  ? benchEligibility(p.id, outSlotIdx, subPairs, exhaustedPlayerIds)
-                  : 'ok';
+                const elig     = benchEligibility(p.id, exhaustedPlayerIds);
                 const eligible = elig === 'ok';
                 const selected = inPlayerId === p.id;
-                const isPaired = subPairs[p.id] !== undefined && subPairs[p.id] === outSlotIdx;
+                // Suggestion ring: this player was previously paired to the outgoing slot
+                const isPaired = outSlotIdx !== -1 && subPairs[p.id] === outSlotIdx;
                 return (
                   <button
                     key={p.id}
@@ -175,12 +155,12 @@ export function SubstitutionModal({ onClose }) {
                     disabled={!outPlayerId || !eligible}
                     className={`px-2 py-1.5 rounded text-xs font-bold border transition-colors text-left relative
                       ${selected
-                        ? 'bg-primary text-white border-primary'
+                        ? 'bg-primary text-white border-primary ring-0'
                         : !outPlayerId
                           ? 'bg-slate-700 text-slate-400 border-slate-600'
                           : eligible
                             ? isPaired
-                              ? 'bg-emerald-900/50 text-emerald-200 border-emerald-700 hover:bg-emerald-900/70'
+                              ? 'bg-emerald-900/30 text-emerald-100 border-emerald-400 ring-2 ring-emerald-400/50 hover:bg-emerald-900/50'
                               : 'bg-slate-700 text-slate-200 border-slate-600 hover:bg-slate-600'
                             : 'bg-red-950/40 text-red-900/70 border-red-900/30 cursor-not-allowed'
                       }`}
@@ -191,9 +171,7 @@ export function SubstitutionModal({ onClose }) {
                       <span className="block text-[10px] text-emerald-400 font-semibold mt-0.5">↩ Return</span>
                     )}
                     {!eligible && outPlayerId && (
-                      <span className="block text-[10px] text-red-500/70 font-semibold mt-0.5">
-                        {REASON_LABEL[elig]}
-                      </span>
+                      <span className="block text-[10px] text-red-500/70 font-semibold mt-0.5">Exhausted</span>
                     )}
                   </button>
                 );
