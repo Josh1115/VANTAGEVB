@@ -237,7 +237,7 @@ function PerfectPassBadge({ x, y }) {
         padding: '2px 6px', borderRadius: '5px',
         boxShadow: '0 0 8px rgba(34,197,94,0.5)',
         whiteSpace: 'nowrap', letterSpacing: '0.04em',
-      }}>3!</div>
+      }}>DIME</div>
     </div>
   );
 }
