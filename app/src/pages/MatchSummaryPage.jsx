@@ -581,8 +581,9 @@ export function MatchSummaryPage() {
           const posLabel = players?.[pid]?.position ?? null;
           const posMult  = POSITION_MULTIPLIERS[posLabel] ?? 1.0;
           return {
-            id:   pid,
-            name: playerNames[pid] ?? `#${pid}`,
+            id:       pid,
+            name:     playerNames[pid] ?? `#${pid}`,
+            position: posLabel,
             ...s,
             ver:  s.ver != null ? s.ver * posMult : null,
           };
@@ -738,7 +739,7 @@ export function MatchSummaryPage() {
           <TabBar tabs={TABS} active={tab} onChange={setTab} />
 
           {/* Tab content */}
-          <div className="p-4 md:p-6">
+          <div key={tab} className="p-4 md:p-6 animate-fade-in">
             {tab === 'points' && stats && (
               <PointQualityPanel pq={stats.pointQuality} />
             )}

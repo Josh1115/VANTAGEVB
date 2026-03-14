@@ -114,6 +114,8 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
 
   const flashJersey = () => flashEl(jerseyRef.current, 'jersey-pop');
 
+  const vibrate = (pattern) => navigator.vibrate?.(pattern);
+
   const tap = (action, result, extra = {}) => {
     flashJersey();
     return recordContact({ player_id: slot.playerId, action, result, ...extra });
@@ -121,6 +123,9 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
 
   const tapAndScore = async (action, result, extra = {}) => {
     flashJersey();
+    if (action === ACTION.ATTACK && result === RESULT.KILL)  vibrate(30);
+    else if (action === ACTION.SERVE  && result === RESULT.ACE)  vibrate([18, 25, 45]);
+    else if (action === ACTION.BLOCK  && result === RESULT.SOLO) vibrate(45);
     await recordContact({ player_id: slot.playerId, action, result, ...extra });
     await addPoint(SIDE.US);
   };
@@ -358,7 +363,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
             cls="bg-blue-950/80 text-blue-300 hover:bg-blue-900/80" />
           <Btn
             label={hblkState === 'mine' ? 'HBLK●' : hblkState === 'partner' ? 'HBLK✓' : 'HBLK'}
-            onTap={() => { flashJersey(); tapHblk(slot.playerId); }}
+            onTap={() => { flashJersey(); vibrate(hblkState === 'partner' ? 45 : 15); tapHblk(slot.playerId); }}
             cls={
               hblkState === 'mine'
                 ? 'bg-amber-500 text-white animate-pulse'
