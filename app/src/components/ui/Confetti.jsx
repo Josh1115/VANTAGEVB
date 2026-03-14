@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-const COLORS     = ['#f97316', '#fb923c', '#fbbf24', '#4ade80', '#60a5fa', '#c084fc', '#f43f5e', '#ffffff'];
+const COLORS     = ['#f97316', '#fb923c', '#fbbf24', '#4ade80', '#60a5fa', '#3b82f6', '#c084fc', '#f43f5e', '#ffffff', '#e2e8f0'];
 const SPAWN_RATE = 8;
 const FADE_MS    = 350;
 

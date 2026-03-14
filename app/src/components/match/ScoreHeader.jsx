@@ -118,6 +118,17 @@ function RunStrip({ teamStats: t, oppStats: o, currentRun, teamName, opponentNam
       {currentRun.count >= 3 && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
           <EmberCanvas runCount={currentRun.count} />
+          {/* Rally ball — grows with run count */}
+          <span
+            className="relative"
+            style={{
+              fontSize: '20px',
+              opacity: Math.min(0.45, 0.12 + currentRun.count * 0.04),
+              transform: `scale(${Math.min(1, 0.6 + (currentRun.count - 3) * 0.1)})`,
+              transition: 'transform 500ms ease-out, opacity 500ms ease-out',
+              marginRight: '2px',
+            }}
+          >🏐</span>
           <span className={`relative text-[15px] font-bold tracking-wide ${currentRun.side === 'us' ? 'text-orange-400' : 'text-red-400'} ${currentRun.count >= 6 ? 'flame-pulse-intense' : 'flame-pulse'}`}>
             🔥 {currentRun.side === 'us' ? (teamName || 'HOME') : (opponentName || 'AWAY')} {currentRun.count} RUN
           </span>
@@ -246,16 +257,24 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
   const prevTiedRef = useRef(false);
 
   const [serveVersion,    setServeVersion]    = useState(0);
-  const subWarn2Fired  = useRef(false);
-  const subWarn1Fired  = useRef(false);
-  const usTimer        = useRef(null);
-  const themTimer      = useRef(null);
-  const prevWeServeRef = useRef(weServe);
+  const [serveTrail,      setServeTrail]      = useState(null); // null | 'left' | 'right'
+  const [serveTrailKey,   setServeTrailKey]   = useState(0);
+  const subWarn2Fired    = useRef(false);
+  const subWarn1Fired    = useRef(false);
+  const usTimer          = useRef(null);
+  const themTimer        = useRef(null);
+  const prevWeServeRef   = useRef(weServe);
+  const serveTrailTimer  = useRef(null);
 
   useEffect(() => {
     if (prevWeServeRef.current !== weServe) {
+      const oldSide = prevWeServeRef.current ? 'left' : 'right';
       prevWeServeRef.current = weServe;
       setServeVersion((v) => v + 1);
+      clearTimeout(serveTrailTimer.current);
+      setServeTrail(oldSide);
+      setServeTrailKey((k) => k + 1);
+      serveTrailTimer.current = setTimeout(() => setServeTrail(null), 500);
     }
   }, [weServe]);
 
@@ -385,7 +404,9 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
 
           {weServe
             ? <span key={`srv-l-${serveVersion}`} className="text-xl leading-none serve-pulse animate-serve-from-right">🏐</span>
-            : <span className="text-xl leading-none opacity-0">🏐</span>}
+            : serveTrail === 'left'
+              ? <span key={`trail-l-${serveTrailKey}`} className="text-xl leading-none serve-trail">🏐</span>
+              : <span className="text-xl leading-none opacity-0">🏐</span>}
 
           {/* set number + sparkline */}
           <div className="flex flex-col items-center px-2 gap-[1px]">
@@ -400,7 +421,9 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
 
           {!weServe
             ? <span key={`srv-r-${serveVersion}`} className="text-xl leading-none serve-pulse animate-serve-from-left">🏐</span>
-            : <span className="text-xl leading-none opacity-0">🏐</span>}
+            : serveTrail === 'right'
+              ? <span key={`trail-r-${serveTrailKey}`} className="text-xl leading-none serve-trail">🏐</span>
+              : <span className="text-xl leading-none opacity-0">🏐</span>}
 
           {/* THEM score — hold 3s to open nudge */}
           <div

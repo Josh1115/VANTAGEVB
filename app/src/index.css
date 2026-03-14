@@ -19,6 +19,8 @@
     margin: 0;
     -webkit-tap-highlight-color: transparent;
     -webkit-font-smoothing: antialiased;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='35'%3E%3Cg fill='none' stroke='white' stroke-width='0.7' opacity='0.04'%3E%3Cpolygon points='50,0 40,-17 20,-17 10,0 20,17 40,17'/%3E%3Cpolygon points='20,17 10,0 -10,0 -20,17 -10,35 10,35'/%3E%3Cpolygon points='80,17 70,0 50,0 40,17 50,35 70,35'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 60px 35px;
   }
 
   * {
@@ -221,16 +223,16 @@
   animation: stat-chip-bump 220ms var(--ease-spring) both;
 }
 
-/* ── Score digit slot-machine roll-in ── */
+/* ── Score digit split-flap flip ── */
 @keyframes score-flip-in {
-  0%   { transform: translateY(65%) scaleY(0.75); opacity: 0;   }
-  58%  { transform: translateY(-6%) scaleY(1.06); opacity: 1;   }
-  78%  { transform: translateY(2%)  scaleY(0.98);               }
-  100% { transform: translateY(0)   scaleY(1);    opacity: 1;   }
+  0%   { transform: perspective(220px) rotateX(-90deg); opacity: 0; }
+  45%  { transform: perspective(220px) rotateX(12deg);  opacity: 1; }
+  65%  { transform: perspective(220px) rotateX(-4deg);  opacity: 1; }
+  100% { transform: perspective(220px) rotateX(0deg);   opacity: 1; }
 }
 .score-pop {
-  animation: score-flip-in 230ms var(--ease-spring) forwards;
-  transform-origin: center center;
+  animation: score-flip-in 300ms var(--ease-spring) forwards;
+  transform-origin: center top;
 }
 
 /* ── Modal backdrop fade + blur ── */
@@ -697,4 +699,66 @@
   transform-box: fill-box;
   transform-origin: center top;
   animation: court-line-scale-v 400ms ease-out both;
+}
+
+/* ── Serve indicator ghost trail ── */
+@keyframes serve-trail {
+  0%   { opacity: 0.55; filter: blur(0px) saturate(1); transform: scale(1.1); }
+  100% { opacity: 0;    filter: blur(7px) saturate(0); transform: scale(0.4); }
+}
+.serve-trail {
+  animation: serve-trail 430ms ease-out forwards;
+  pointer-events: none;
+}
+
+/* ── Kill burst emoji variant ── */
+.kill-burst-emoji {
+  position: absolute;
+  line-height: 1;
+  animation: kill-burst-dot 520ms cubic-bezier(0, 0.9, 0.57, 1) forwards;
+}
+
+/* ── Block hands rise over net ── */
+@keyframes block-hands-rise {
+  0%   { transform: translateY(16px) scaleY(0.5); opacity: 0; }
+  28%  { transform: translateY(0px)  scaleY(1.0); opacity: 1; }
+  100% { transform: translateY(-10px) scaleY(0.8); opacity: 0; }
+}
+.block-hands {
+  animation: block-hands-rise 430ms var(--ease-spring) forwards;
+}
+
+/* ── ACE golden ring pulse ── */
+@keyframes ace-ring {
+  0%   { transform: scale(0.5); opacity: 0.9; }
+  100% { transform: scale(2.4); opacity: 0;   }
+}
+.ace-ring {
+  animation: ace-ring 620ms ease-out forwards;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* ── ACE text zoom-fade ── */
+@keyframes ace-text {
+  0%   { transform: scale(0.4) translateY(8px);   opacity: 0; }
+  25%  { transform: scale(1.2) translateY(-4px);  opacity: 1; }
+  70%  { transform: scale(1.0) translateY(-14px); opacity: 1; }
+  100% { transform: scale(0.85) translateY(-24px); opacity: 0; }
+}
+.ace-text {
+  animation: ace-text 720ms ease-out forwards;
+  pointer-events: none;
+}
+
+/* ── Perfect pass 3! pop badge ── */
+@keyframes perfect-pass-pop {
+  0%   { transform: scale(0.5) translateY(0px);   opacity: 0; }
+  30%  { transform: scale(1.15) translateY(-14px); opacity: 1; }
+  70%  { transform: scale(1.0) translateY(-22px);  opacity: 1; }
+  100% { transform: scale(0.85) translateY(-32px); opacity: 0; }
+}
+.perfect-pass-pop {
+  animation: perfect-pass-pop 820ms ease-out forwards;
+  pointer-events: none;
 }

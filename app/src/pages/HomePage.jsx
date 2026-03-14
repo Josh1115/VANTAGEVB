@@ -7,6 +7,7 @@ import { fmtDate } from '../stats/formatters';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { NetDivider } from '../components/ui/NetDivider';
 
 async function deleteMatch(matchId) {
   const sets = await db.sets.where('match_id').equals(matchId).toArray();
@@ -271,6 +272,8 @@ export function HomePage() {
           </div>
           <span className="text-slate-500 text-lg">›</span>
         </button>
+
+        <NetDivider />
 
         {/* Recent matches */}
         <section>

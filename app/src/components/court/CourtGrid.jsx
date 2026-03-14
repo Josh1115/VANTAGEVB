@@ -146,27 +146,98 @@ function BallArc({ startX, startY }) {
   );
 }
 
-// #4 Kill / Ace burst — 8 particles radiate from contact point
-function KillBurst({ x, y, isAce }) {
-  const color = isAce ? '#f59e0b' : '#f97316';
+// #4 Kill burst — volleyball emojis scatter from contact point
+function KillBurst({ x, y }) {
   return (
     <div className="fixed pointer-events-none z-[998]" style={{ left: x, top: y }}>
-      {Array.from({ length: 8 }, (_, i) => {
-        const angle = (i / 8) * Math.PI * 2;
-        const dist  = 38 + (i % 2) * 18;
+      {Array.from({ length: 4 }, (_, i) => {
+        const angle = (i / 4) * Math.PI * 2 + Math.PI / 8;
+        const dist  = 30 + i * 14;
         return (
           <div
             key={i}
-            className="kill-burst-dot"
+            className="kill-burst-emoji"
             style={{
               '--dx': `${Math.cos(angle) * dist}px`,
               '--dy': `${Math.sin(angle) * dist}px`,
-              background: color,
-              animationDelay: `${i * 16}ms`,
+              fontSize: `${11 + i * 2}px`,
+              animationDelay: `${i * 35}ms`,
             }}
-          />
+          >🏐</div>
         );
       })}
+    </div>
+  );
+}
+
+// Ace celebration — gold ring pulse + "ACE" text zoom-fade + volleyball scatter
+function AceCelebration({ x, y }) {
+  return (
+    <div className="fixed pointer-events-none z-[998]" style={{ left: x, top: y }}>
+      <div
+        className="ace-ring absolute"
+        style={{
+          width: '64px', height: '64px',
+          border: '3px solid #f59e0b',
+          boxShadow: '0 0 14px #f59e0b, 0 0 32px rgba(245,158,11,0.35)',
+          left: '-32px', top: '-32px',
+        }}
+      />
+      <div
+        className="ace-text absolute"
+        style={{
+          left: '-22px', top: '-16px',
+          fontFamily: "'Orbitron', system-ui, sans-serif",
+          fontSize: '17px', fontWeight: 900,
+          color: '#fbbf24',
+          textShadow: '0 0 10px #f59e0b, 0 0 22px rgba(245,158,11,0.55)',
+          letterSpacing: '0.08em', whiteSpace: 'nowrap',
+        }}
+      >ACE</div>
+      {Array.from({ length: 3 }, (_, i) => {
+        const angle = (i / 3) * Math.PI * 2 - Math.PI / 6;
+        const dist  = 28 + i * 10;
+        return (
+          <div
+            key={i}
+            className="kill-burst-emoji"
+            style={{
+              '--dx': `${Math.cos(angle) * dist}px`,
+              '--dy': `${Math.sin(angle) * dist}px`,
+              fontSize: '11px',
+              animationDelay: `${i * 45}ms`,
+            }}
+          >🏐</div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Block hands — two hands rise over the net on a block
+function BlockHands({ blockKey }) {
+  return (
+    <div
+      key={blockKey}
+      className="block-hands absolute pointer-events-none z-[25]"
+      style={{ top: 'calc(50% - 3.2vmin)', left: '50%', transform: 'translateX(-50%)', fontSize: '3vmin', letterSpacing: '0.5vmin' }}
+      aria-hidden="true"
+    >🤚🤚</div>
+  );
+}
+
+// Perfect pass badge — "3!" pops above the tile
+function PerfectPassBadge({ x, y }) {
+  return (
+    <div className="perfect-pass-pop fixed pointer-events-none z-[998]" style={{ left: x, top: y }}>
+      <div style={{
+        position: 'absolute', left: '-14px', top: '-8px',
+        background: '#15803d', color: '#fff',
+        fontWeight: 900, fontSize: '13px',
+        padding: '2px 6px', borderRadius: '5px',
+        boxShadow: '0 0 8px rgba(34,197,94,0.5)',
+        whiteSpace: 'nowrap', letterSpacing: '0.04em',
+      }}>3!</div>
     </div>
   );
 }
@@ -184,11 +255,17 @@ export const CourtGrid = memo(function CourtGrid() {
   const inServeReceive = serveSide === 'them' && !inRally;
 
   // #1 Ball arc
-  const [ballArc,       setBallArc]       = useState(null); // { key, x, y } | null
-  // #4 Kill/ace burst
-  const [killBurst,     setKillBurst]     = useState(null); // { key, x, y, isAce } | null
+  const [ballArc,           setBallArc]           = useState(null); // { key, x, y } | null
+  // #4 Kill burst (volleyball emojis)
+  const [killBurst,         setKillBurst]         = useState(null); // { key, x, y } | null
+  // Ace celebration (ring + text)
+  const [aceCeleb,          setAceCeleb]          = useState(null); // { key, x, y } | null
+  // Block hands
+  const [blockHandsKey,     setBlockHandsKey]     = useState(0);
+  // Perfect pass badge
+  const [perfectPassBadge,  setPerfectPassBadge]  = useState(null); // { key, x, y } | null
   // #2 Net flash
-  const [netFlash,      setNetFlash]      = useState(0);
+  const [netFlash,          setNetFlash]          = useState(0);
   // #7 Libero ghosts — grid indices where the outgoing player was the libero
   const [liberoGhosts,  setLiberoGhosts]  = useState(new Set());
   // #7 Rotation ghosts — pre-rotation cell snapshot for ghost fade-out during sweep
@@ -203,7 +280,9 @@ export const CourtGrid = memo(function CourtGrid() {
 
   // Combined contact watcher — fires on new non-opponent contacts
   const prevContactsLenRef = useRef(0);
-  const arcTimerRef = useRef(null);
+  const arcTimerRef  = useRef(null);
+  const aceTimerRef  = useRef(null);
+  const passTimerRef = useRef(null);
   useEffect(() => {
     const len = committedContacts.length;
     if (len <= prevContactsLenRef.current) return;
@@ -212,26 +291,46 @@ export const CourtGrid = memo(function CourtGrid() {
     if (!c || c.opponent_contact) return;
 
     // #1 Ball arc + #4 Kill/Ace burst on ACE or KILL
-    if ((c.action === ACTION.SERVE  && c.result === RESULT.ACE) ||
-        (c.action === ACTION.ATTACK && c.result === RESULT.KILL)) {
+    const isAce  = c.action === ACTION.SERVE  && c.result === RESULT.ACE;
+    const isKill = c.action === ACTION.ATTACK && c.result === RESULT.KILL;
+    if (isAce || isKill) {
       const el = playerRefs.current[c.player_id];
       if (el) {
         const r   = el.getBoundingClientRect();
         const x   = r.left + r.width  * 0.5;
         const y   = r.top  + r.height * 0.5;
         const key = c.id ?? len;
-        const isAce = c.action === ACTION.SERVE;
         setBallArc({ key, x, y });
-        setKillBurst({ key, x, y, isAce });
-        clearTimeout(arcTimerRef.current);
-        arcTimerRef.current = setTimeout(() => { setBallArc(null); setKillBurst(null); }, 750);
+        if (isKill) {
+          setKillBurst({ key, x, y });
+          clearTimeout(arcTimerRef.current);
+          arcTimerRef.current = setTimeout(() => { setBallArc(null); setKillBurst(null); }, 780);
+        }
+        if (isAce) {
+          clearTimeout(aceTimerRef.current);
+          setAceCeleb({ key, x, y });
+          aceTimerRef.current = setTimeout(() => { setBallArc(null); setAceCeleb(null); }, 820);
+        }
       }
     }
 
-    // #2 Net flash on BLOCK solo/assist or NET_TOUCH error
-    if ((c.action === ACTION.BLOCK && (c.result === RESULT.SOLO || c.result === RESULT.ASSIST)) ||
-        (c.action === ACTION.ERROR && c.result === RESULT.NET_TOUCH)) {
+    // Perfect pass badge on rating 3
+    if (c.action === ACTION.PASS && c.result === '3') {
+      const el = playerRefs.current[c.player_id];
+      if (el) {
+        const r = el.getBoundingClientRect();
+        clearTimeout(passTimerRef.current);
+        setPerfectPassBadge({ key: c.id ?? len, x: r.left + r.width * 0.5, y: r.top + r.height * 0.35 });
+        passTimerRef.current = setTimeout(() => setPerfectPassBadge(null), 920);
+      }
+    }
+
+    // #2 Net flash + block hands on BLOCK solo/assist or NET_TOUCH error
+    const isBlock    = c.action === ACTION.BLOCK && (c.result === RESULT.SOLO || c.result === RESULT.ASSIST);
+    const isNetTouch = c.action === ACTION.ERROR && c.result === RESULT.NET_TOUCH;
+    if (isBlock || isNetTouch) {
       setNetFlash((k) => k + 1);
+      if (isBlock) setBlockHandsKey((k) => k + 1);
     }
   }, [committedContacts]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -416,6 +515,9 @@ export const CourtGrid = memo(function CourtGrid() {
           />
         )}
 
+        {/* Block hands — rise above the net on a block */}
+        {blockHandsKey > 0 && <BlockHands blockKey={blockHandsKey} />}
+
         {/* #12 Court lines draw-in — one-shot SVG on mount */}
         {showCourtDraw && (
           <svg
@@ -454,14 +556,19 @@ export const CourtGrid = memo(function CourtGrid() {
         />
       )}
 
-      {/* #4 Kill/Ace burst — particles radiate from contact point */}
+      {/* #4 Kill burst — volleyball emojis scatter */}
       {killBurst && (
-        <KillBurst
-          key={killBurst.key}
-          x={killBurst.x}
-          y={killBurst.y}
-          isAce={killBurst.isAce}
-        />
+        <KillBurst key={killBurst.key} x={killBurst.x} y={killBurst.y} />
+      )}
+
+      {/* Ace celebration — gold ring + ACE text */}
+      {aceCeleb && (
+        <AceCelebration key={aceCeleb.key} x={aceCeleb.x} y={aceCeleb.y} />
+      )}
+
+      {/* Perfect pass badge — "3!" pops above tile */}
+      {perfectPassBadge && (
+        <PerfectPassBadge key={perfectPassBadge.key} x={perfectPassBadge.x} y={perfectPassBadge.y} />
       )}
     </>
   );

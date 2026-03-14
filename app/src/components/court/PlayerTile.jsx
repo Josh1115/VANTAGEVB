@@ -163,6 +163,17 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   for (const v of heatVals) { if (v === 'hot') hotCount++; else if (v === 'cold') coldCount++; }
   const tileHeat  = hotCount > coldCount ? 'hot' : coldCount > hotCount ? 'cold' : null;
 
+  // Position color for left-border on badge strip
+  const POS_BORDER = {
+    S:   'rgba(59,130,246,0.75)',
+    OH:  'rgba(249,115,22,0.75)',
+    MB:  'rgba(34,197,94,0.75)',
+    OPP: 'rgba(168,85,247,0.75)',
+    L:   'rgba(52,211,153,0.75)',
+    DS:  'rgba(148,163,184,0.55)',
+  };
+  const posBorderColor = POS_BORDER[slot?.positionLabel] ?? null;
+
   const tileStats = useMemo(
     () => computePlayerStats(committedContacts, slot.playerId, currentSetId),
     [committedContacts, slot.playerId, currentSetId]
@@ -174,15 +185,29 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
     : passRing === 3 ? 'pass-ring-3'
     : '';
 
+  const tileBg = isServer ? 'bg-orange-950/30' : isLibero ? 'bg-emerald-950/25' : 'bg-slate-900';
+  const tileBorder = isLibero
+    ? 'border-emerald-500/50 border-dashed'
+    : tileHeat === 'hot'  ? 'border-orange-400/40'
+    : tileHeat === 'cold' ? 'border-blue-400/30'
+    : 'border-slate-800/60';
+  const tileShadow = !isLibero && tileHeat === 'hot'  ? 'shadow-[inset_0_0_12px_rgba(251,146,60,0.08)]'
+    : !isLibero && tileHeat === 'cold' ? 'shadow-[inset_0_0_12px_rgba(96,165,250,0.06)]'
+    : isLibero ? 'shadow-[inset_0_0_14px_rgba(52,211,153,0.06)]'
+    : '';
+
   return (
     <div className={`relative flex flex-col h-full w-full overflow-hidden border
-      ${isServer ? 'bg-orange-950/30' : 'bg-slate-900'}
-      ${tileHeat === 'hot'  ? 'border-orange-400/40 shadow-[inset_0_0_12px_rgba(251,146,60,0.08)]' : ''}
-      ${tileHeat === 'cold' ? 'border-blue-400/30   shadow-[inset_0_0_12px_rgba(96,165,250,0.06)]'  : ''}
-      ${!tileHeat ? 'border-slate-800/60' : ''}
-      ${passRingClass}`}>
+      ${tileBg} ${tileBorder} ${tileShadow} ${passRingClass}`}>
       {isDimmed && (
         <div className="absolute inset-0 bg-slate-900/55 pointer-events-none z-10 first-contact-overlay" />
+      )}
+      {/* Libero "L" badge — top-left corner pill */}
+      {isLibero && (
+        <div className="absolute top-0.5 left-0.5 z-20 flex items-center justify-center rounded-full bg-emerald-500"
+          style={{ width: '2.1vmin', height: '2.1vmin' }}>
+          <span className="font-black text-emerald-950 leading-none" style={{ fontSize: '1.1vmin' }}>L</span>
+        </div>
       )}
       {rippleColor && (
         <div
@@ -193,7 +218,10 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
       )}
 
       {/* ── Player badge strip ── */}
-      <div className="flex-[8_1_0%] min-h-[0.2275vmin] relative flex items-center justify-center px-2 bg-black/40 border-b border-slate-700/50 overflow-hidden">
+      <div
+        className="flex-[8_1_0%] min-h-[0.2275vmin] relative flex items-center justify-center px-2 bg-black/40 border-b border-slate-700/50 overflow-hidden"
+        style={posBorderColor ? { borderLeft: `2px solid ${posBorderColor}` } : undefined}
+      >
 
         {/* ── Left: jersey icon ── */}
         <div className="absolute left-2 flex items-center gap-1">
