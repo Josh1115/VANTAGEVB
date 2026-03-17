@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
@@ -13,6 +13,8 @@ export function MatchSetupPage() {
   const navigate   = useNavigate();
   const resetMatch = useMatchStore((s) => s.resetMatch);
   const [searchParams] = useSearchParams();
+
+  const scheduledMatchId = searchParams.get('match') ? Number(searchParams.get('match')) : null;
 
   const [seasonId,  setSeasonId]  = useState(searchParams.get('season') ?? '');
   const [opponent,      setOpponent]      = useState('');
@@ -62,6 +64,23 @@ export function MatchSetupPage() {
     [selectedSeason?.team_id]
   );
 
+  const scheduledMatch = useLiveQuery(
+    () => scheduledMatchId ? db.matches.get(scheduledMatchId) : Promise.resolve(null),
+    [scheduledMatchId]
+  );
+
+  const [prefilled, setPrefilled] = useState(false);
+  useEffect(() => {
+    if (scheduledMatch && !prefilled) {
+      setOpponent(scheduledMatch.opponent_name ?? '');
+      setOpponentAbbr(scheduledMatch.opponent_abbr ?? '');
+      setConference(scheduledMatch.conference ?? 'non-con');
+      setLocation(scheduledMatch.location ?? 'home');
+      setMatchType(scheduledMatch.match_type ?? 'reg-season');
+      setPrefilled(true);
+    }
+  }, [scheduledMatch, prefilled]);
+
   const applyLoadedLineup = (sl) => {
     setLineupState(sl.serve_order.map(String));
     setStartZone(sl.start_zone ?? 1);
@@ -88,23 +107,39 @@ export function MatchSetupPage() {
         oppRecord = { id: oppId, name: opponent.trim() };
       }
 
-      // Create match
-      const matchId = await db.matches.add({
-        season_id:     Number(seasonId),
-        opponent_id:   oppRecord.id,
-        opponent_name: oppRecord.name,
-        opponent_abbr: opponentAbbr.trim().toUpperCase() || null,
-        status:        MATCH_STATUS.IN_PROGRESS,
-        format,
-        location,
-        conference,
-        match_type:    matchType,
-        date:          new Date().toISOString(),
-      });
+      // Create or update match
+      let effectiveMatchId;
+      if (scheduledMatchId) {
+        await db.matches.update(scheduledMatchId, {
+          opponent_id:   oppRecord.id,
+          opponent_name: oppRecord.name,
+          opponent_abbr: opponentAbbr.trim().toUpperCase() || null,
+          status:        MATCH_STATUS.IN_PROGRESS,
+          format,
+          location,
+          conference,
+          match_type:    matchType,
+          date:          new Date().toISOString(),
+        });
+        effectiveMatchId = scheduledMatchId;
+      } else {
+        effectiveMatchId = await db.matches.add({
+          season_id:     Number(seasonId),
+          opponent_id:   oppRecord.id,
+          opponent_name: oppRecord.name,
+          opponent_abbr: opponentAbbr.trim().toUpperCase() || null,
+          status:        MATCH_STATUS.IN_PROGRESS,
+          format,
+          location,
+          conference,
+          match_type:    matchType,
+          date:          new Date().toISOString(),
+        });
+      }
 
       // Create first set
       const setId = await db.sets.add({
-        match_id:         matchId,
+        match_id:         effectiveMatchId,
         set_number:       1,
         status:           SET_STATUS.IN_PROGRESS,
         our_score:        0,
@@ -123,7 +158,7 @@ export function MatchSetupPage() {
         }))
       );
 
-      navigate(`/matches/${matchId}/live`);
+      navigate(`/matches/${effectiveMatchId}/live`);
     } catch (e) {
       setError('Failed to create match. Try again.');
       console.error(e);

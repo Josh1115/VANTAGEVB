@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
 import { PageHeader } from '../../components/layout/PageHeader';
+import { useUiStore, selectShowToast } from '../../store/uiStore';
 
 // Standard FIVB zone layout from server's POV (aiming at opponent's court)
 // Front row: 4 | 3 | 2    Back row: 5 | 6 | 1
@@ -23,6 +24,10 @@ function calcStats(serves) {
     if (typeof s === 'number') zoneCounts[s] = (zoneCounts[s] ?? 0) + 1;
   }
   return { total, inCount, netCount, outCount, zoneCounts };
+}
+
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 // ─── Shared UI primitives ─────────────────────────────────────────────────────
@@ -117,6 +122,10 @@ function SetupView({ onStart }) {
   const players = useLiveQuery(
     () => teamId ? db.players.where('team_id').equals(teamId).filter((p) => p.is_active).toArray() : [],
     [teamId]
+  );
+  const recentSessions = useLiveQuery(
+    () => db.practice_sessions.where('tool_type').equals('serve_tracker').reverse().limit(10).toArray(),
+    []
   );
 
   const sorted = [...(players ?? [])].sort((a, b) => (a.jersey_number ?? 0) - (b.jersey_number ?? 0));
@@ -219,7 +228,7 @@ function SetupView({ onStart }) {
       {/* Start buttons */}
       {canStartTeam && (
         <button
-          onClick={() => onStart({ mode: 'team', label: teamName ?? 'Team' })}
+          onClick={() => onStart({ mode: 'team', label: teamName ?? 'Team', teamId })}
           className="w-full bg-primary rounded-xl p-4 font-bold text-white text-base active:scale-[0.97] transition-transform"
         >
           Start Team Session{teamName ? ` · ${teamName}` : ''}
@@ -227,11 +236,41 @@ function SetupView({ onStart }) {
       )}
       {canStartIndividual && (
         <button
-          onClick={() => onStart({ mode: 'individual', players: sorted.filter((p) => checked.has(p.id)) })}
+          onClick={() => onStart({ mode: 'individual', players: sorted.filter((p) => checked.has(p.id)), teamId })}
           className="w-full bg-primary rounded-xl p-4 font-bold text-white text-base active:scale-[0.97] transition-transform"
         >
           Start Session · {checked.size} server{checked.size !== 1 ? 's' : ''}
         </button>
+      )}
+
+      {/* Recent Sessions */}
+      {recentSessions?.length > 0 && (
+        <div className="bg-surface rounded-xl overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-slate-700">
+            <span className="text-xs text-slate-400 uppercase tracking-wide font-semibold">Recent Sessions</span>
+          </div>
+          {recentSessions.map((s) => {
+            const d = s.data;
+            let total, inCount;
+            if (d.mode === 'team') {
+              total = d.stats.total;
+              inCount = d.stats.inCount;
+            } else {
+              total = d.players.reduce((acc, p) => acc + p.stats.total, 0);
+              inCount = d.players.reduce((acc, p) => acc + p.stats.inCount, 0);
+            }
+            const pct = total ? Math.round(inCount / total * 100) : 0;
+            return (
+              <div key={s.id} className="px-4 py-2.5 border-b border-slate-700/50 last:border-0">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-sm font-semibold truncate mr-2">{s.label}</span>
+                  <span className="text-xs text-slate-500 flex-shrink-0">{fmtDate(s.date)}</span>
+                </div>
+                <div className="text-xs text-slate-400 mt-0.5">{total} serves · {pct}% in</div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
@@ -239,9 +278,10 @@ function SetupView({ onStart }) {
 
 // ─── Team session ─────────────────────────────────────────────────────────────
 
-function TeamSessionView({ label }) {
+function TeamSessionView({ label, teamId }) {
   const [serves,  setServes]  = useState([]);
   const [history, setHistory] = useState([]);
+  const showToast = useUiStore(selectShowToast);
 
   function record(serve) {
     setServes((s) => [...s, serve]);
@@ -252,6 +292,17 @@ function TeamSessionView({ label }) {
     if (!history.length) return;
     setServes((s) => s.slice(0, -1));
     setHistory((h) => h.slice(0, -1));
+  }
+
+  async function handleSave() {
+    await db.practice_sessions.add({
+      tool_type: 'serve_tracker',
+      team_id: teamId ?? null,
+      date: new Date().toISOString(),
+      label,
+      data: { mode: 'team', label, stats },
+    });
+    showToast('Session saved', 'success');
   }
 
   const stats = calcStats(serves);
@@ -267,18 +318,26 @@ function TeamSessionView({ label }) {
       <ZoneGrid zoneCounts={stats.zoneCounts} onZone={record} />
       <ErrorButtons netCount={stats.netCount} outCount={stats.outCount} onNet={() => record('net')} onOut={() => record('out')} />
       <StatsBar stats={stats} onUndo={undo} canUndo={history.length > 0} />
+      <button
+        onClick={handleSave}
+        disabled={stats.total === 0}
+        className="w-full bg-emerald-700 disabled:opacity-30 rounded-xl py-3 font-bold text-white text-sm active:scale-[0.97] transition-transform"
+      >
+        Save Session
+      </button>
     </div>
   );
 }
 
 // ─── Individual session ───────────────────────────────────────────────────────
 
-function IndividualSessionView({ players: initPlayers }) {
+function IndividualSessionView({ players: initPlayers, teamId }) {
   const [players,   setPlayers]   = useState(() =>
     initPlayers.map((p) => ({ id: p.id, name: p.name, jersey: p.jersey_number, serves: [] }))
   );
   const [activeIdx, setActiveIdx] = useState(0);
   const [history,   setHistory]   = useState([]);
+  const showToast = useUiStore(selectShowToast);
 
   function record(serve) {
     setPlayers((ps) => ps.map((p, i) => i === activeIdx ? { ...p, serves: [...p.serves, serve] } : p));
@@ -292,8 +351,24 @@ function IndividualSessionView({ players: initPlayers }) {
     setHistory((h) => h.slice(0, -1));
   }
 
+  async function handleSave() {
+    const label = players.map((p) => `#${p.jersey} ${p.name.split(' ').pop()}`).join(', ');
+    await db.practice_sessions.add({
+      tool_type: 'serve_tracker',
+      team_id: teamId ?? null,
+      date: new Date().toISOString(),
+      label,
+      data: {
+        mode: 'individual',
+        players: players.map((p) => ({ id: p.id, name: p.name, jersey: p.jersey, stats: calcStats(p.serves) })),
+      },
+    });
+    showToast('Session saved', 'success');
+  }
+
   const active = players[activeIdx];
   const stats  = calcStats(active.serves);
+  const totalServes = players.reduce((s, p) => s + p.serves.length, 0);
 
   return (
     <div className="p-4 space-y-4">
@@ -315,6 +390,13 @@ function IndividualSessionView({ players: initPlayers }) {
       <ZoneGrid zoneCounts={stats.zoneCounts} onZone={record} />
       <ErrorButtons netCount={stats.netCount} outCount={stats.outCount} onNet={() => record('net')} onOut={() => record('out')} />
       <StatsBar stats={stats} onUndo={undo} canUndo={history.length > 0} />
+      <button
+        onClick={handleSave}
+        disabled={totalServes === 0}
+        className="w-full bg-emerald-700 disabled:opacity-30 rounded-xl py-3 font-bold text-white text-sm active:scale-[0.97] transition-transform"
+      >
+        Save Session
+      </button>
     </div>
   );
 }
@@ -322,7 +404,7 @@ function IndividualSessionView({ players: initPlayers }) {
 // ─── Page shell ───────────────────────────────────────────────────────────────
 
 export function ServeTrackerPage() {
-  const [session, setSession] = useState(null); // null | { mode, label?, players? }
+  const [session, setSession] = useState(null); // null | { mode, label?, players?, teamId }
 
   return (
     <div>
@@ -344,10 +426,10 @@ export function ServeTrackerPage() {
         <SetupView onStart={setSession} />
       )}
       {session?.mode === 'team' && (
-        <TeamSessionView label={session.label} />
+        <TeamSessionView label={session.label} teamId={session.teamId} />
       )}
       {session?.mode === 'individual' && (
-        <IndividualSessionView players={session.players} />
+        <IndividualSessionView players={session.players} teamId={session.teamId} />
       )}
     </div>
   );

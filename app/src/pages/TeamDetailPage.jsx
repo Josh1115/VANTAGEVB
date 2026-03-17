@@ -20,6 +20,7 @@ const POS_COLOR = { S: 'blue', OH: 'orange', OPP: 'orange', MB: 'green', L: 'gra
 
 function PlayerFormModal({ onClose, teamId, player }) {
   const [name, setName]       = useState(player?.name ?? '');
+  const [nickname, setNickname] = useState(player?.nickname ?? '');
   const [jersey, setJersey]   = useState(player?.jersey_number ?? '');
   const [position, setPosition] = useState(player?.position ?? 'OH');
   const [secondaryPosition, setSecondaryPosition] = useState(player?.secondary_position ?? '');
@@ -28,18 +29,39 @@ function PlayerFormModal({ onClose, teamId, player }) {
   const [heightFt, setHeightFt] = useState(player?.height_ft != null ? String(player.height_ft) : '');
   const [heightIn, setHeightIn] = useState(player?.height_in != null ? String(player.height_in) : '');
   const showToast = useUiStore(selectShowToast);
+  const nameRef = useRef(null);
+
+  const buildData = () => {
+    const hFt = heightFt !== '' ? Number(heightFt) : null;
+    const hIn = heightIn !== '' ? Number(heightIn) : null;
+    return { name: name.trim(), nickname: nickname.trim() || null, jersey_number: jersey.trim(), position, secondary_position: secondaryPosition || null, is_captain: isCaptain, year: year || null, height_ft: hFt, height_in: hIn };
+  };
 
   const save = async () => {
     if (!name.trim()) return;
     try {
-      const hFt = heightFt !== '' ? Number(heightFt) : null;
-      const hIn = heightIn !== '' ? Number(heightIn) : null;
+      const data = buildData();
       if (player) {
-        await db.players.update(player.id, { name: name.trim(), jersey_number: jersey.trim(), position, secondary_position: secondaryPosition || null, is_captain: isCaptain, year: year || null, height_ft: hFt, height_in: hIn });
+        await db.players.update(player.id, data);
       } else {
-        await db.players.add({ team_id: teamId, name: name.trim(), jersey_number: jersey.trim(), position, secondary_position: secondaryPosition || null, is_captain: isCaptain, year: year || null, height_ft: hFt, height_in: hIn, is_active: true });
+        await db.players.add({ team_id: teamId, ...data, is_active: true });
       }
       onClose();
+    } catch (err) {
+      showToast(`Save failed: ${err.message}`, 'error');
+    }
+  };
+
+  const saveAndAddAnother = async () => {
+    if (!name.trim()) return;
+    try {
+      const data = buildData();
+      await db.players.add({ team_id: teamId, ...data, is_active: true });
+      setName('');
+      setNickname('');
+      setJersey('');
+      setIsCaptain(false);
+      setTimeout(() => nameRef.current?.focus(), 0);
     } catch (err) {
       showToast(`Save failed: ${err.message}`, 'error');
     }
@@ -52,6 +74,9 @@ function PlayerFormModal({ onClose, teamId, player }) {
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          {!player && (
+            <Button variant="secondary" onClick={saveAndAddAnother}>Save &amp; Add Another</Button>
+          )}
           <Button onClick={save}>Save</Button>
         </>
       }
@@ -60,11 +85,21 @@ function PlayerFormModal({ onClose, teamId, player }) {
         <div>
           <label className="block text-sm text-slate-400 mb-1">Name</label>
           <input
+            ref={nameRef}
             className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Emma Johnson"
             autoFocus
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">Nickname <span className="text-slate-500">(optional)</span></label>
+          <input
+            className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            placeholder="Em"
           />
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -736,6 +771,11 @@ export function TeamDetailPage() {
     [id]
   );
 
+  const practiceSessions = useLiveQuery(
+    () => db.practice_sessions.where('team_id').equals(id).reverse().toArray(),
+    [id]
+  );
+
   const [tab, setTab]             = useState('roster');
   const [showImportModal, setShowImportModal] = useState(false);
   const [showPlayerModal, setShowPlayerModal] = useState(false);
@@ -774,10 +814,11 @@ export function TeamDetailPage() {
 
       <TabBar
         tabs={[
-          { value: 'roster',  label: `Roster (${activePlayers.length})` },
-          { value: 'lineups', label: 'Lineups' },
-          { value: 'seasons', label: 'Seasons' },
-          { value: 'records', label: 'Records' },
+          { value: 'roster',   label: `Roster (${activePlayers.length})` },
+          { value: 'lineups',  label: 'Lineups' },
+          { value: 'seasons',  label: 'Seasons' },
+          { value: 'records',  label: 'Records' },
+          { value: 'practice', label: 'Practice' },
         ]}
         active={tab}
         onChange={setTab}
@@ -983,6 +1024,64 @@ export function TeamDetailPage() {
               </section>
             );
           })}
+        </div>
+      )}
+
+      {tab === 'practice' && (
+        <div className="p-4 md:p-6 space-y-6">
+          {practiceSessions?.length === 0 ? (
+            <EmptyState
+              icon="🏟️"
+              title="No practice sessions yet"
+              description="Start a Practice Game, Serve Receive, or Serve Tracker session and save it to see history here"
+            />
+          ) : (
+            <>
+              {['practice_game', 'serve_receive', 'serve_tracker'].map((toolType) => {
+                const sessions = (practiceSessions ?? []).filter((s) => s.tool_type === toolType);
+                if (sessions.length === 0) return null;
+                const titles = { practice_game: 'Practice Games', serve_receive: 'Serve Receive', serve_tracker: 'Serve Tracker' };
+                return (
+                  <section key={toolType}>
+                    <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-2">{titles[toolType]}</h2>
+                    <div className="space-y-2">
+                      {sessions.map((s) => (
+                        <div key={s.id} className="bg-surface rounded-xl px-4 py-3">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <span className="font-semibold text-sm truncate">{s.label}</span>
+                            <span className="text-xs text-slate-500 flex-shrink-0">
+                              {new Date(s.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-400 mt-1">
+                            {toolType === 'practice_game' && (() => {
+                              const { sets, players } = s.data;
+                              const setStr = sets.map((st) => `${st.us}-${st.opp}`).join('  ');
+                              const totalKills  = players?.reduce((a, p) => a + (p.kills  ?? 0), 0) ?? 0;
+                              const totalErrors = players?.reduce((a, p) => a + (p.errors ?? 0), 0) ?? 0;
+                              const totalDigs   = players?.reduce((a, p) => a + (p.digs   ?? 0), 0) ?? 0;
+                              return <span>{setStr && <span className="mr-2">{setStr}</span>}K: {totalKills}  E: {totalErrors}  Digs: {totalDigs}</span>;
+                            })()}
+                            {toolType === 'serve_receive' && (() => {
+                              const { overallAPR, totalPasses } = s.data;
+                              return <span>{overallAPR} APR · {totalPasses} passes</span>;
+                            })()}
+                            {toolType === 'serve_tracker' && (() => {
+                              const d = s.data;
+                              const total   = d.mode === 'team' ? d.stats.total : d.players?.reduce((a, p) => a + p.stats.total, 0) ?? 0;
+                              const inCount = d.mode === 'team' ? d.stats.inCount : d.players?.reduce((a, p) => a + p.stats.inCount, 0) ?? 0;
+                              const pct     = total ? Math.round(inCount / total * 100) : 0;
+                              return <span>{total} serves · {pct}% in</span>;
+                            })()}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+            </>
+          )}
         </div>
       )}
 

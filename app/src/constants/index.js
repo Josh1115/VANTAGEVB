@@ -12,6 +12,7 @@ export const POSITION_KEYS = Object.keys(POSITIONS);
 
 // Match states
 export const MATCH_STATUS = {
+  SCHEDULED:   'scheduled',
   SETUP:       'setup',
   IN_PROGRESS: 'in_progress',
   COMPLETE:    'complete',

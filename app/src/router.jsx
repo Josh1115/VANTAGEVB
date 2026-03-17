@@ -14,6 +14,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { ToolsPage } from './pages/ToolsPage';
 import { ServeReceivePage } from './pages/tools/ServeReceivePage';
 import { ServeTrackerPage } from './pages/tools/ServeTrackerPage';
+import { PracticeGamePage } from './pages/tools/PracticeGamePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 export const router = createBrowserRouter([
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
       { path: 'tools',                       element: <ToolsPage /> },
       { path: 'tools/serve-receive',         element: <ServeReceivePage /> },
       { path: 'tools/serve-tracker',         element: <ServeTrackerPage /> },
+      { path: 'tools/practice-game',        element: <PracticeGamePage /> },
       { path: '*',                           element: <NotFoundPage /> },
     ],
   },

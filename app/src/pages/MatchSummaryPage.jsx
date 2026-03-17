@@ -281,14 +281,14 @@ function RotationBarChart({ rotationRows }) {
   const data = rotationRows.map(r => ({
     name: `R${r.id}`,
     'SO%': r.so_pct != null ? Math.round(r.so_pct * 100) : 0,
-    'BP%': r.bp_pct != null ? Math.round(r.bp_pct * 100) : 0,
+    'SP%': r.bp_pct != null ? Math.round(r.bp_pct * 100) : 0,
   }));
 
   if (!data.length) return null;
 
   return (
     <div>
-      <div className="text-xs text-slate-400 font-medium mb-2 uppercase tracking-wider">SO% &amp; BP% by Rotation</div>
+      <div className="text-xs text-slate-400 font-medium mb-2 uppercase tracking-wider">SO% &amp; SP% by Rotation</div>
       <ResponsiveContainer width="100%" height={160}>
         <BarChart data={data} margin={{ top: 4, right: 8, left: -24, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -300,7 +300,7 @@ function RotationBarChart({ rotationRows }) {
             formatter={(v) => `${v}%`}
           />
           <Bar dataKey="SO%" fill="#f97316" radius={[3, 3, 0, 0]} />
-          <Bar dataKey="BP%" fill="#60a5fa" radius={[3, 3, 0, 0]} />
+          <Bar dataKey="SP%" fill="#60a5fa" radius={[3, 3, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -461,13 +461,16 @@ const ShareCard = ({ cardRef, match, sets, stats, fmtDate }) => {
 
 const SERVING_COLS = {
   all: [
-    { key: 'name',    label: 'Player' },
-    { key: 'sa',      label: 'SA',    fmt: fmtCount },
-    { key: 'ace',     label: 'ACE',   fmt: fmtCount },
-    { key: 'se',      label: 'SE',    fmt: fmtCount },
-    { key: 'ace_pct', label: 'ACE%',  fmt: fmtPct   },
-    { key: 'se_pct',  label: 'SE%',   fmt: fmtPct   },
-    { key: 'si_pct',  label: 'S%',  fmt: fmtPct   },
+    { key: 'name',     label: 'Player' },
+    { key: 'sa',       label: 'SA',    fmt: fmtCount },
+    { key: 'ace',      label: 'ACE',   fmt: fmtCount },
+    { key: 'se',       label: 'SE',    fmt: fmtCount },
+    { key: 'se_ob',    label: 'SOB',   fmt: fmtCount },
+    { key: 'se_net',   label: 'SNET',  fmt: fmtCount },
+    { key: 'ace_pct',  label: 'ACE%',  fmt: fmtPct   },
+    { key: 'si_pct',   label: 'S%',    fmt: fmtPct   },
+    { key: 'sob_pct',  label: 'SOB%',  fmt: fmtPct   },
+    { key: 'snet_pct', label: 'SNET%', fmt: fmtPct   },
   ],
   float: [
     { key: 'name',      label: 'Player' },
@@ -797,7 +800,7 @@ export function MatchSummaryPage() {
                     <div className="text-lg font-bold text-primary">{fmtPct(stats.rotation.so_pct)}</div>
                   </div>
                   <div className="bg-surface rounded-xl p-3">
-                    <div className="text-xs text-slate-400">Overall BP%</div>
+                    <div className="text-xs text-slate-400">Overall SP%</div>
                     <div className="text-lg font-bold text-sky-400">{fmtPct(stats.rotation.bp_pct)}</div>
                   </div>
                 </div>

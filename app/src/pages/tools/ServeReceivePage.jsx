@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
 import { PageHeader } from '../../components/layout/PageHeader';
+import { useUiStore, selectShowToast } from '../../store/uiStore';
 
 const RATING_BG = {
   0: 'bg-red-600 active:brightness-75',
@@ -15,6 +16,10 @@ function calcAPR(passes) {
   return (passes.reduce((s, v) => s + v, 0) / passes.length).toFixed(2);
 }
 
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 // ─── Setup screen ────────────────────────────────────────────────────────────
 
 function SetupView({ onStart }) {
@@ -25,6 +30,10 @@ function SetupView({ onStart }) {
   const players = useLiveQuery(
     () => teamId ? db.players.where('team_id').equals(teamId).filter((p) => p.is_active).toArray() : [],
     [teamId]
+  );
+  const recentSessions = useLiveQuery(
+    () => db.practice_sessions.where('tool_type').equals('serve_receive').reverse().limit(10).toArray(),
+    []
   );
 
   const sorted = [...(players ?? [])].sort((a, b) => (a.jersey_number ?? 0) - (b.jersey_number ?? 0));
@@ -99,11 +108,31 @@ function SetupView({ onStart }) {
       {/* Start */}
       {checked.size > 0 && (
         <button
-          onClick={() => onStart(sorted.filter((p) => checked.has(p.id)))}
+          onClick={() => onStart({ players: sorted.filter((p) => checked.has(p.id)), teamId })}
           className="w-full bg-primary rounded-xl p-4 font-bold text-white text-base active:scale-[0.97] transition-transform"
         >
           Start Session · {checked.size} player{checked.size !== 1 ? 's' : ''}
         </button>
+      )}
+
+      {/* Recent Sessions */}
+      {recentSessions?.length > 0 && (
+        <div className="bg-surface rounded-xl overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-slate-700">
+            <span className="text-xs text-slate-400 uppercase tracking-wide font-semibold">Recent Sessions</span>
+          </div>
+          {recentSessions.map((s) => (
+            <div key={s.id} className="px-4 py-2.5 border-b border-slate-700/50 last:border-0">
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm font-semibold truncate mr-2">{s.label}</span>
+                <span className="text-xs text-slate-500 flex-shrink-0">{fmtDate(s.date)}</span>
+              </div>
+              <div className="text-xs text-slate-400 mt-0.5">
+                {s.data.overallAPR} APR · {s.data.totalPasses} passes
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -111,11 +140,12 @@ function SetupView({ onStart }) {
 
 // ─── Active session screen ───────────────────────────────────────────────────
 
-function SessionView({ players: initPlayers, onReset }) {
+function SessionView({ players: initPlayers, teamId }) {
   const [players, setPlayers] = useState(() =>
     initPlayers.map((p) => ({ id: p.id, name: p.name, jersey: p.jersey_number, passes: [] }))
   );
   const [history, setHistory] = useState([]); // [{ playerId, rating }]
+  const showToast = useUiStore(selectShowToast);
 
   function record(playerId, rating) {
     setPlayers((ps) => ps.map((p) => p.id === playerId ? { ...p, passes: [...p.passes, rating] } : p));
@@ -127,6 +157,22 @@ function SessionView({ players: initPlayers, onReset }) {
     if (!last) return;
     setPlayers((ps) => ps.map((p) => p.id === last.playerId ? { ...p, passes: p.passes.slice(0, -1) } : p));
     setHistory((h) => h.slice(0, -1));
+  }
+
+  async function handleSave() {
+    const label = players.map((p) => `#${p.jersey} ${p.name.split(' ').pop()}`).join(', ');
+    await db.practice_sessions.add({
+      tool_type: 'serve_receive',
+      team_id: teamId ?? null,
+      date: new Date().toISOString(),
+      label,
+      data: {
+        players: players.map((p) => ({ ...p, apr: calcAPR(p.passes) })),
+        overallAPR,
+        totalPasses,
+      },
+    });
+    showToast('Session saved', 'success');
   }
 
   const totalPasses = players.reduce((s, p) => s + p.passes.length, 0);
@@ -185,6 +231,14 @@ function SessionView({ players: initPlayers, onReset }) {
           );
         })}
       </div>
+
+      <button
+        onClick={handleSave}
+        disabled={totalPasses === 0}
+        className="w-full bg-emerald-700 disabled:opacity-30 rounded-xl py-3 font-bold text-white text-sm active:scale-[0.97] transition-transform"
+      >
+        Save Session
+      </button>
     </div>
   );
 }
@@ -192,7 +246,7 @@ function SessionView({ players: initPlayers, onReset }) {
 // ─── Page shell ──────────────────────────────────────────────────────────────
 
 export function ServeReceivePage() {
-  const [session, setSession] = useState(null); // null = setup, array = active
+  const [session, setSession] = useState(null); // null | { players, teamId }
 
   return (
     <div>
@@ -211,8 +265,8 @@ export function ServeReceivePage() {
         }
       />
       {session
-        ? <SessionView players={session} onReset={() => setSession(null)} />
-        : <SetupView onStart={(players) => setSession(players)} />
+        ? <SessionView players={session.players} teamId={session.teamId} />
+        : <SetupView onStart={setSession} />
       }
     </div>
   );

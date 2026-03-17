@@ -25,11 +25,11 @@ function deriveHeat(a) {
     if (a.srvAce / a.srvTA >= 0.15)      serve = 'hot';
     else if (a.srvErr / a.srvTA >= 0.35) serve = 'cold';
   }
-  // Pass: hot = APR ≥ 2.3, cold = APR ≤ 1.25, min 3 passes
+  // Pass: hot = APR ≥ 2.0, cold = APR ≤ 1.25, min 3 passes
   let pass = null;
   if (a.pasN >= 3) {
     const apr = a.pasSum / a.pasN;
-    if (apr >= 2.3)       pass = 'hot';
+    if (apr >= 2.0)       pass = 'hot';
     else if (apr <= 1.25) pass = 'cold';
   }
   // Dig: hot = success rate ≥ 75%, cold = ≤ 40%, min 3 digs
@@ -333,10 +333,15 @@ export const CourtGrid = memo(function CourtGrid() {
   const passTimerRef = useRef(null);
   useEffect(() => {
     const len = committedContacts.length;
+    if (len < prevContactsLenRef.current) prevContactsLenRef.current = 0; // reset on new set
     if (len <= prevContactsLenRef.current) return;
+    const prevLen = prevContactsLenRef.current;
     prevContactsLenRef.current = len;
-    const c = committedContacts[len - 1];
-    if (!c || c.opponent_contact) return;
+    // A kill auto-adds a SET contact in the same batch — scan all new contacts
+    // and use the non-set one as the trigger (fall back to last if all are sets)
+    const newContacts = committedContacts.slice(prevLen).filter((nc) => !nc.opponent_contact);
+    if (newContacts.length === 0) return;
+    const c = newContacts.find((nc) => nc.action !== ACTION.SET) ?? newContacts[newContacts.length - 1];
 
     // #1 Ball arc + #4 Kill/Ace burst on ACE or KILL
     const isAce  = c.action === ACTION.SERVE  && c.result === RESULT.ACE;

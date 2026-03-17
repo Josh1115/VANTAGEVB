@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { computeSeasonStats } from '../stats/engine';
-import { fmtHitting, fmtPassRating, fmtPct, fmtCount } from '../stats/formatters';
+import { fmtHitting, fmtPassRating, fmtPct, fmtCount, fmtVER } from '../stats/formatters';
 import { ROTATION_COLS } from '../stats/columns';
 import { PageHeader } from '../components/layout/PageHeader';
 import { TabBar } from '../components/ui/Tab';
@@ -24,6 +24,7 @@ const TABS = [
 
 const PLAYER_COLS = [
   { key: 'name',    label: 'Player'  },
+  { key: 'ver',     label: 'VER',   fmt: fmtVER       },
   { key: 'sa',      label: 'SA',    fmt: fmtCount     },
   { key: 'ace',     label: 'ACE',   fmt: fmtCount     },
   { key: 'ace_pct', label: 'ACE%',  fmt: fmtPct       },
@@ -47,6 +48,80 @@ const TEAM_STATS = [
   { label: 'Blocks',    key: 'bs',       fmt: fmtCount      },
 ];
 
+// IS/OOS per-rotation table columns
+const ISOOS_COLS = [
+  { key: 'name',        label: 'Rot'     },
+  { key: 'is_pa',       label: 'IS',      fmt: fmtCount },
+  { key: 'is_win_pct',  label: 'IS Win%', fmt: fmtPct   },
+  { key: 'oos_pa',      label: 'OOS',     fmt: fmtCount },
+  { key: 'oos_win_pct', label: 'OOS Win%',fmt: fmtPct   },
+];
+
+// Transition/free-ball per-rotation table columns
+const TRANS_COLS = [
+  { key: 'name',          label: 'Rot'       },
+  { key: 'free_ta',       label: 'FB ATK',   fmt: fmtCount   },
+  { key: 'free_hit_pct',  label: 'FB HIT%',  fmt: fmtHitting },
+  { key: 'free_k_pct',    label: 'FB K%',    fmt: fmtPct     },
+  { key: 'trans_ta',      label: 'TR ATK',   fmt: fmtCount   },
+  { key: 'trans_hit_pct', label: 'TR HIT%',  fmt: fmtHitting },
+  { key: 'trans_k_pct',   label: 'TR K%',    fmt: fmtPct     },
+];
+
+const fmtAvg = (val) => val == null ? '—' : val.toFixed(1);
+
+// Run breakdown per-rotation table columns
+const RUN_COLS = [
+  { key: 'name',      label: 'Rot'     },
+  { key: 'max_run',   label: 'Best',   fmt: fmtCount },
+  { key: 'avg_run',   label: 'Avg',    fmt: fmtAvg   },
+  { key: 'runs_3plus',label: '3+',     fmt: fmtCount },
+  { key: 'runs_5plus',label: '5+',     fmt: fmtCount },
+];
+
+// Simple fixed-order (non-sortable) table for rotation breakdowns
+function MiniTable({ cols, rows }) {
+  if (!rows.length) return null;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-slate-700">
+            {cols.map((c) => (
+              <th
+                key={c.key}
+                className={`px-2 py-1.5 font-semibold text-slate-400 whitespace-nowrap ${c.key === 'name' ? 'text-left' : 'text-right'}`}
+              >
+                {c.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr
+              key={row.rot}
+              className={`border-b ${row.isTotal ? 'border-t border-slate-600 font-semibold text-white' : 'border-slate-800/60 ' + (i % 2 === 0 ? '' : 'bg-slate-900/30')}`}
+            >
+              {cols.map((c) => (
+                <td
+                  key={c.key}
+                  className={`px-2 py-1.5 tabular-nums ${c.key === 'name' ? 'text-left text-slate-300' : 'text-right text-slate-300'}`}
+                >
+                  {c.fmt ? c.fmt(row[c.key]) : (row[c.key] ?? '—')}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function SectionHeader({ children }) {
+  return <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-2">{children}</h3>;
+}
 
 const CHIP = 'px-3 py-1 rounded-full text-xs font-semibold transition-colors';
 const chipClass = (active) =>
@@ -56,6 +131,7 @@ export function ReportsPage() {
   const [tab, setTab] = useState('team');
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [selectedSeasonId, setSelectedSeasonId] = useState('');
+  const [selectedMatchIds, setSelectedMatchIds] = useState(null); // null = all matches
   const [conference, setConference] = useState('');
   const [location,   setLocation]   = useState('');
   const [matchType,  setMatchType]  = useState('');
@@ -72,6 +148,14 @@ export function ReportsPage() {
     [selectedTeamId]
   );
 
+  // Matches for the selected season (for the match picker)
+  const seasonMatches = useLiveQuery(
+    () => selectedSeasonId
+      ? db.matches.where('season_id').equals(Number(selectedSeasonId)).sortBy('date')
+      : Promise.resolve([]),
+    [selectedSeasonId]
+  );
+
   // Players for the selected team
   const players = useLiveQuery(
     () => selectedTeamId
@@ -81,29 +165,58 @@ export function ReportsPage() {
   );
   const playerNames = Object.fromEntries((players ?? []).map(p => [p.id, p.name]));
 
-  // Reset season when team changes
+  // Reset everything when team changes
   function handleTeamChange(e) {
     setSelectedTeamId(e.target.value);
     setSelectedSeasonId('');
+    setSelectedMatchIds(null);
     setStats(null);
     setContacts([]);
   }
 
-  // Build active filters object (omit empty strings)
+  // Reset match selection when season changes
+  function handleSeasonChange(e) {
+    setSelectedSeasonId(e.target.value);
+    setSelectedMatchIds(null);
+    setStats(null);
+    setContacts([]);
+  }
+
+  // Toggle an individual match on/off; deselecting the last one goes back to "All"
+  function toggleMatch(id) {
+    setSelectedMatchIds(prev => {
+      const current = prev ?? [];
+      const next = current.includes(id) ? current.filter(x => x !== id) : [...current, id];
+      return next.length === 0 ? null : next;
+    });
+  }
+
+  // When specific matches are selected, conference/site/type chips are hidden
+  const showChipFilters = !selectedMatchIds?.length;
+
+  // Build active filters object
   const activeFilters = {};
-  if (conference) activeFilters.conference = conference;
-  if (location)   activeFilters.location   = location;
-  if (matchType)  activeFilters.matchType  = matchType;
+  if (selectedMatchIds?.length) activeFilters.matchIds = selectedMatchIds;
+  if (showChipFilters && conference) activeFilters.conference = conference;
+  if (showChipFilters && location)   activeFilters.location   = location;
+  if (showChipFilters && matchType)  activeFilters.matchType  = matchType;
   const hasFilters = Object.keys(activeFilters).length > 0;
 
-  // Load season stats when season or filters change
+  // Short date label for match chips — "3/15"
+  const fmtShortDate = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+  };
+
+  // Load season stats when season, match selection, or chip filters change
   useEffect(() => {
     if (!selectedSeasonId) return;
     setLoading(true);
     computeSeasonStats(Number(selectedSeasonId), activeFilters)
       .then((s) => { setStats(s); setContacts(s?.contacts ?? []); })
       .finally(() => setLoading(false));
-  }, [selectedSeasonId, conference, location, matchType]);
+  }, [selectedSeasonId, selectedMatchIds, conference, location, matchType]);
 
   const playerRows = useMemo(() =>
     stats
@@ -132,6 +245,64 @@ export function ReportsPage() {
     [stats]
   );
 
+  // IS/OOS rows for per-rotation MiniTable
+  const isOosRows = useMemo(() => {
+    if (!stats?.isOos) return [];
+    const { byRotation, total } = stats.isOos;
+    const toRow = (rot, label, d) => ({
+      rot,
+      name: label,
+      is_pa:       d.is_pa,
+      is_win_pct:  d.is_pa  > 0 ? d.is_won  / d.is_pa  : null,
+      oos_pa:      d.oos_pa,
+      oos_win_pct: d.oos_pa > 0 ? d.oos_won / d.oos_pa : null,
+    });
+    return [
+      ...Object.entries(byRotation).map(([r, d]) => toRow(r, `R${r}`, d)),
+      { ...toRow('total', 'Total', total), isTotal: true },
+    ];
+  }, [stats]);
+
+  // Transition / free-ball rows for per-rotation MiniTable
+  const transRows = useMemo(() => {
+    if (!stats?.transitionAttack) return [];
+    const { free, transition } = stats.transitionAttack;
+    const toRow = (rot, label, f, t) => ({
+      rot,
+      name:          label,
+      free_ta:       f.ta,
+      free_hit_pct:  f.hit_pct,
+      free_k_pct:    f.k_pct,
+      trans_ta:      t.ta,
+      trans_hit_pct: t.hit_pct,
+      trans_k_pct:   t.k_pct,
+    });
+    const rows = [];
+    for (let r = 1; r <= 6; r++) {
+      rows.push(toRow(String(r), `R${r}`, free.byRotation[r], transition.byRotation[r]));
+    }
+    rows.push({ ...toRow('total', 'Total', free.total, transition.total), isTotal: true });
+    return rows;
+  }, [stats]);
+
+  // Scoring run rows for per-rotation MiniTable
+  const runRows = useMemo(() => {
+    if (!stats?.runs) return [];
+    const { byRotation, total } = stats.runs;
+    const toRow = (rot, label, d) => ({
+      rot,
+      name:       label,
+      max_run:    d.max_run   > 0 ? d.max_run   : null,
+      avg_run:    d.avg_run,
+      runs_3plus: d.runs_3plus,
+      runs_5plus: d.runs_5plus,
+    });
+    return [
+      ...Object.entries(byRotation).map(([r, d]) => toRow(r, `R${r}`, d)),
+      { ...toRow('total', 'Total', total), isTotal: true },
+    ];
+  }, [stats]);
+
   const selectClass = 'bg-surface border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary';
 
   return (
@@ -150,7 +321,7 @@ export function ReportsPage() {
         <select
           className={selectClass}
           value={selectedSeasonId}
-          onChange={e => setSelectedSeasonId(e.target.value)}
+          onChange={handleSeasonChange}
           disabled={!selectedTeamId}
         >
           <option value="">Select Season</option>
@@ -160,8 +331,32 @@ export function ReportsPage() {
         </select>
       </div>
 
-      {/* Match filters — only shown once a season is selected */}
-      {selectedSeasonId && (
+      {/* Match picker — individual match chips, shown once a season is selected */}
+      {selectedSeasonId && (seasonMatches ?? []).length > 0 && (
+        <div className="px-4 pb-2">
+          <div className="flex gap-1.5 items-center overflow-x-auto pb-1 no-scrollbar">
+            <span className="text-[10px] text-slate-500 uppercase tracking-wide shrink-0 mr-1">Match</span>
+            <button
+              onClick={() => setSelectedMatchIds(null)}
+              className={chipClass(!selectedMatchIds?.length) + ' shrink-0'}
+            >
+              All
+            </button>
+            {(seasonMatches ?? []).map(m => (
+              <button
+                key={m.id}
+                onClick={() => toggleMatch(m.id)}
+                className={chipClass(selectedMatchIds?.includes(m.id)) + ' shrink-0'}
+              >
+                {m.opponent_name || 'Opp'}{m.date ? ` · ${fmtShortDate(m.date)}` : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Conf / site / type chip filters — hidden when specific matches are selected */}
+      {selectedSeasonId && showChipFilters && (
         <div className="px-4 pb-3 space-y-2">
           <div className="flex gap-1.5 flex-wrap items-center">
             <span className="text-[10px] text-slate-500 uppercase tracking-wide mr-1">Conf</span>
@@ -207,7 +402,7 @@ export function ReportsPage() {
           description={`${stats.totalMatchCount} match${stats.totalMatchCount !== 1 ? 'es' : ''} in this season — none match the current filters`}
           action={
             <button
-              onClick={() => { setConference(''); setLocation(''); setMatchType(''); }}
+              onClick={() => { setConference(''); setLocation(''); setMatchType(''); setSelectedMatchIds(null); }}
               className="mt-1 text-primary text-sm underline underline-offset-2"
             >
               Clear filters
@@ -260,10 +455,50 @@ export function ReportsPage() {
                   ))}
                 </div>
 
+                {/* In System vs Out of System */}
+                {stats.isOos && (stats.isOos.total.is_pa > 0 || stats.isOos.total.oos_pa > 0) && (
+                  <div className="bg-surface rounded-xl p-3 space-y-2">
+                    <SectionHeader>In System vs Out of System</SectionHeader>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { label: 'IS Passes',  val: fmtCount(stats.isOos.total.is_pa)  },
+                        { label: 'IS Win%',    val: fmtPct(stats.isOos.total.is_pa  > 0 ? stats.isOos.total.is_won  / stats.isOos.total.is_pa  : null) },
+                        { label: 'OOS Passes', val: fmtCount(stats.isOos.total.oos_pa) },
+                        { label: 'OOS Win%',   val: fmtPct(stats.isOos.total.oos_pa > 0 ? stats.isOos.total.oos_won / stats.isOos.total.oos_pa : null) },
+                      ].map(({ label, val }) => (
+                        <div key={label}>
+                          <div className="text-xs text-slate-400">{label}</div>
+                          <div className="text-lg font-bold text-primary">{val}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Transition & Free Ball Offense */}
+                {stats.transitionAttack && (stats.transitionAttack.free.total.ta > 0 || stats.transitionAttack.transition.total.ta > 0) && (
+                  <div className="bg-surface rounded-xl p-3 space-y-2">
+                    <SectionHeader>Transition &amp; Free Ball Offense</SectionHeader>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { label: 'FB Attacks',  val: fmtCount(stats.transitionAttack.free.total.ta)       },
+                        { label: 'FB Hit%',     val: fmtHitting(stats.transitionAttack.free.total.hit_pct) },
+                        { label: 'Trans Attacks',val: fmtCount(stats.transitionAttack.transition.total.ta)       },
+                        { label: 'Trans Hit%',  val: fmtHitting(stats.transitionAttack.transition.total.hit_pct) },
+                      ].map(({ label, val }) => (
+                        <div key={label}>
+                          <div className="text-xs text-slate-400">{label}</div>
+                          <div className="text-lg font-bold text-primary">{val}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Hitting bar */}
                 {hittingBarData.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-2">Player Hitting%</h3>
+                    <SectionHeader>Player Hitting%</SectionHeader>
                     <HittingBarChart data={hittingBarData} />
                   </div>
                 )}
@@ -280,11 +515,36 @@ export function ReportsPage() {
               <>
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <SideoutPieChart so_pct={stats.rotation.so_pct} label="Sideout" />
-                  <SideoutPieChart so_pct={stats.rotation.bp_pct} label="Break Point" />
+                  <SideoutPieChart so_pct={stats.rotation.bp_pct} label="Serving Point" />
                 </div>
                 <RotationRadarChart rotationStats={stats.rotation} />
                 <RotationSpotlight rows={rotationRows} />
                 <StatTable columns={ROTATION_COLS} rows={rotationRows} />
+
+                {/* IS vs OOS by Rotation */}
+                {isOosRows.length > 0 && (
+                  <div className="bg-surface rounded-xl p-3">
+                    <SectionHeader>In System vs Out of System by Rotation</SectionHeader>
+                    <MiniTable cols={ISOOS_COLS} rows={isOosRows} />
+                  </div>
+                )}
+
+                {/* Transition & Free Ball by Rotation */}
+                {transRows.length > 0 && (
+                  <div className="bg-surface rounded-xl p-3">
+                    <SectionHeader>Transition &amp; Free Ball Offense by Rotation</SectionHeader>
+                    <MiniTable cols={TRANS_COLS} rows={transRows} />
+                  </div>
+                )}
+
+                {/* Scoring Runs by Rotation */}
+                {runRows.length > 0 && (
+                  <div className="bg-surface rounded-xl p-3">
+                    <SectionHeader>Scoring Runs by Rotation</SectionHeader>
+                    <p className="text-xs text-slate-500 mb-2">Runs of 2+ consecutive points, grouped by the rotation where the run started.</p>
+                    <MiniTable cols={RUN_COLS} rows={runRows} />
+                  </div>
+                )}
               </>
             )}
 

@@ -99,6 +99,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   const jerseyRef   = useRef(null);
   const [serveType,     setServeType]     = useState(null);
   const [serveRecorded, setServeRecorded] = useState(false);
+  const [sePending,     setSePending]     = useState(false);
   const [passRing,      setPassRing]      = useState(null); // null | 0|1|2|3
   const [rippleKey,     setRippleKey]     = useState(0);
   const [rippleColor,   setRippleColor]   = useState(null);
@@ -107,6 +108,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   useEffect(() => {
     setServeRecorded(false);
     setServeType(null);
+    setSePending(false);
   }, [rallyCount]);
 
   const isServing = serveSide === SIDE.US;
@@ -304,29 +306,50 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
         {/* Serve outcome row — FL / TS / ATT / ACE / SE — only visible when this player is serving */}
         {showServeRow && (
           <div className="serve-row-in">
-            <div className="px-[7.5%]"><span className="text-[1.3vmin] font-bold uppercase tracking-wide text-slate-500 leading-none">Serving</span></div>
+            <div className="px-[7.5%]">
+              <span className={`text-[1.3vmin] font-bold uppercase tracking-wide leading-none ${sePending ? 'text-red-300' : 'text-slate-500'}`}>
+                {sePending ? 'Serve Error — OB or Net?' : 'Serving'}
+              </span>
+            </div>
             <div className="flex flex-none h-[3.837vmin] py-0 px-[7.5%] gap-[0.5vmin] border-b border-black/30">
-              <Btn label="FLOAT"
-                onTap={() => setServeType(SERVE_TYPE.FLOAT)}
-                cls={serveType === SERVE_TYPE.FLOAT ? 'bg-emerald-700/80 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'} />
-              <Btn label="TOP"
-                onTap={() => setServeType(SERVE_TYPE.TOPSPIN)}
-                cls={serveType === SERVE_TYPE.TOPSPIN ? 'bg-teal-600/80 text-white' : 'bg-violet-900/70 text-violet-400 hover:bg-violet-800/70'} />
-              <Btn key={`att-${!!serveType}`} label="ATT"
-                onTap={serveType ? () => { tap(ACTION.SERVE, RESULT.IN, { serve_type: serveType }); setServeRecorded(true); } : undefined}
-                cls={`${!serveType ? 'bg-slate-800/40 text-slate-700 cursor-not-allowed pointer-events-none'
-                  : serveType === SERVE_TYPE.FLOAT ? 'bg-emerald-950/80 text-emerald-300 hover:bg-emerald-900/80'
-                  : 'bg-teal-950/80 text-teal-300 hover:bg-teal-900/80'}${serveType ? ' serve-unlock-btn' : ''}`} />
-              <Btn key={`ace-${!!serveType}`} label="ACE"
-                onTap={serveType ? () => { tapAndScore(ACTION.SERVE, RESULT.ACE, { serve_type: serveType }); setServeRecorded(true); } : undefined}
-                cls={`${!serveType ? 'bg-slate-800/40 text-slate-700 cursor-not-allowed pointer-events-none'
-                  : serveType === SERVE_TYPE.FLOAT ? 'bg-emerald-700/80 text-white hover:bg-emerald-600/90'
-                  : 'bg-teal-600/80 text-white hover:bg-teal-500/90'}${serveType ? ' serve-unlock-btn' : ''}`}
-                style={serveType ? { animationDelay: '50ms' } : undefined} />
-              <Btn key={`se-${!!serveType}`} label="SE"
-                onTap={serveType ? () => { tapAndScoreThem(ACTION.SERVE, RESULT.ERROR, { serve_type: serveType }); setServeRecorded(true); } : undefined}
-                cls={`${!serveType ? 'bg-slate-800/40 text-slate-700 cursor-not-allowed pointer-events-none' : 'bg-red-950/80 text-red-300 hover:bg-red-900/80'}${serveType ? ' serve-unlock-btn' : ''}`}
-                style={serveType ? { animationDelay: '100ms' } : undefined} />
+              {sePending ? (
+                <>
+                  <Btn label="×"
+                    onTap={() => setSePending(false)}
+                    cls="bg-slate-700 text-slate-300 hover:bg-slate-600" />
+                  <Btn label="OB"
+                    onTap={() => { tapAndScoreThem(ACTION.SERVE, RESULT.ERROR, { serve_type: serveType, error_type: 'ob' }); setServeRecorded(true); setSePending(false); }}
+                    cls="bg-red-900/80 text-red-200 hover:bg-red-800/90 serve-unlock-btn" />
+                  <Btn label="NET"
+                    onTap={() => { tapAndScoreThem(ACTION.SERVE, RESULT.ERROR, { serve_type: serveType, error_type: 'net' }); setServeRecorded(true); setSePending(false); }}
+                    cls="bg-rose-950/80 text-rose-300 hover:bg-rose-900/80 serve-unlock-btn"
+                    style={{ animationDelay: '50ms' }} />
+                </>
+              ) : (
+                <>
+                  <Btn label="FLOAT"
+                    onTap={() => setServeType(SERVE_TYPE.FLOAT)}
+                    cls={serveType === SERVE_TYPE.FLOAT ? 'bg-emerald-700/80 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'} />
+                  <Btn label="TOP"
+                    onTap={() => setServeType(SERVE_TYPE.TOPSPIN)}
+                    cls={serveType === SERVE_TYPE.TOPSPIN ? 'bg-teal-600/80 text-white' : 'bg-violet-900/70 text-violet-400 hover:bg-violet-800/70'} />
+                  <Btn key={`att-${!!serveType}`} label="ATT"
+                    onTap={serveType ? () => { tap(ACTION.SERVE, RESULT.IN, { serve_type: serveType }); setServeRecorded(true); } : undefined}
+                    cls={`${!serveType ? 'bg-slate-800/40 text-slate-700 cursor-not-allowed pointer-events-none'
+                      : serveType === SERVE_TYPE.FLOAT ? 'bg-emerald-950/80 text-emerald-300 hover:bg-emerald-900/80'
+                      : 'bg-teal-950/80 text-teal-300 hover:bg-teal-900/80'}${serveType ? ' serve-unlock-btn' : ''}`} />
+                  <Btn key={`ace-${!!serveType}`} label="ACE"
+                    onTap={serveType ? () => { tapAndScore(ACTION.SERVE, RESULT.ACE, { serve_type: serveType }); setServeRecorded(true); } : undefined}
+                    cls={`${!serveType ? 'bg-slate-800/40 text-slate-700 cursor-not-allowed pointer-events-none'
+                      : serveType === SERVE_TYPE.FLOAT ? 'bg-emerald-700/80 text-white hover:bg-emerald-600/90'
+                      : 'bg-teal-600/80 text-white hover:bg-teal-500/90'}${serveType ? ' serve-unlock-btn' : ''}`}
+                    style={serveType ? { animationDelay: '50ms' } : undefined} />
+                  <Btn key={`se-${!!serveType}`} label="SE"
+                    onTap={serveType ? () => setSePending(true) : undefined}
+                    cls={`${!serveType ? 'bg-slate-800/40 text-slate-700 cursor-not-allowed pointer-events-none' : 'bg-red-950/80 text-red-300 hover:bg-red-900/80'}${serveType ? ' serve-unlock-btn' : ''}`}
+                    style={serveType ? { animationDelay: '100ms' } : undefined} />
+                </>
+              )}
             </div>
           </div>
         )}

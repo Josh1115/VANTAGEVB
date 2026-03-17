@@ -7,10 +7,10 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#f97316',   // orange
+        primary: 'rgb(var(--color-primary-rgb) / <alpha-value>)',
         court: '#1e3a5f',     // deep navy (court color)
         surface: '#1e293b',   // dark slate
-        bg: '#0f172a',        // app background
+        bg: '#000000',        // app background
       },
       keyframes: {
         'fade-in': {

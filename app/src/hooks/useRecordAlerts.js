@@ -5,7 +5,7 @@ import { TRACKABLE_STATS } from '../constants';
  * Compute the highest milestone met for a (currentValue, recordValue, statType) triple.
  * Returns the milestone string or null if none met.
  */
-function computeMilestone(current, record, statType) {
+export function computeMilestone(current, record, statType) {
   if (current == null || record == null || isNaN(current) || isNaN(record) || record <= 0) return null;
 
   if (current > record) return 'beat';

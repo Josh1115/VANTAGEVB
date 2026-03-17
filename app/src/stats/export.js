@@ -190,7 +190,7 @@ export function exportMatchPDF(matchMeta, playerStats, teamStats, rotationStats,
 
   autoTable(doc, {
     startY: 35,
-    head: [['Rotation', 'SO%', 'SO W/L', 'BP%', 'BP W/L']],
+    head: [['Rotation', 'SO%', 'SO W/L', 'SP%', 'SP W/L']],
     body: [
       ...rotBody,
       ['Overall', fmtPct(rotationStats.so_pct), '', fmtPct(rotationStats.bp_pct), ''],

@@ -227,6 +227,7 @@ const NudgeBtn = memo(function NudgeBtn({ label, onTap }) {
 });
 
 export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, opponentName, onTimeoutCalled, onAssignLibero }) {
+  const flipped = localStorage.getItem('vbstat_flip_layout') === '1';
   const ourScore      = useMatchStore((s) => s.ourScore);
   const oppScore      = useMatchStore((s) => s.oppScore);
   const ourSetsWon    = useMatchStore((s) => s.ourSetsWon);
@@ -342,12 +343,29 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
       {/* ── Main header row ── */}
       <div className="relative flex items-center h-[5.85vmin] bg-surface border-b border-slate-700 text-white overflow-hidden px-2 gap-1">
 
-        {/* ── Far left: US sets won + our timeouts + sub counter ── */}
+        {/* ── Far left: US sets won + our timeouts + sub counter  (swaps when flipped) ── */}
         <div className="flex items-center gap-1 shrink-0">
-          <div className="flex flex-col items-center w-9">
-            <span className="text-[3.1vmin] font-black text-orange-400 leading-none">{ourSetsWon}</span>
-          </div>
-          <TimeoutBox used={ourTimeouts} onTap={() => setTimeoutConfirm('us')} />
+          {flipped ? (
+            // Flipped: show opponent corner on the left
+            <>
+              <div className="flex flex-col items-center">
+                <div className="border-2 border-slate-500 rounded px-[1.8vmin] py-[0.5vmin] bg-slate-800/40">
+                  <span className="text-[3.1vmin] font-black text-slate-300 leading-none tabular-nums">{oppSetsWon}</span>
+                </div>
+              </div>
+              <TimeoutBox used={oppTimeouts} onTap={() => setTimeoutConfirm('them')} />
+            </>
+          ) : (
+            // Normal: show our corner on the left
+            <>
+              <div className="flex flex-col items-center">
+                <div className="border-2 border-orange-500 rounded px-[1.8vmin] py-[0.5vmin] bg-orange-950/30">
+                  <span className="text-[3.1vmin] font-black text-orange-400 leading-none tabular-nums">{ourSetsWon}</span>
+                </div>
+              </div>
+              <TimeoutBox used={ourTimeouts} onTap={() => setTimeoutConfirm('us')} />
+            </>
+          )}
           {(() => {
             const subsLeft  = maxSubsPerSet - subsUsed;
             const isMaxed   = subsLeft <= 0;
@@ -384,25 +402,30 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
           {tiedFlashKey > 0 && (
             <div key={tiedFlashKey} className="equalize-flash absolute inset-[-6px] rounded-lg bg-white pointer-events-none z-10" />
           )}
-          {/* home team name — always a 3-letter abbreviation */}
+
+          {/* Left name — our team (normal) or opponent (flipped) */}
           <span className="text-[2.9vmin] text-slate-100 font-bold uppercase tracking-widest leading-none">
-            {teamName || 'HOM'}
+            {flipped ? (opponentName || 'AWY') : (teamName || 'HOM')}
           </span>
 
-          {/* US score — hold 3s to open nudge */}
+          {/* Left score */}
           <div
-            onPointerDown={(e) => onScoreDown('us', e)}
-            onPointerUp={() => onScoreUp('us')}
-            onPointerLeave={() => onScoreUp('us')}
-            className={`cursor-pointer select-none transition-opacity overflow-hidden leading-none ${usHolding ? 'opacity-40' : ''}`}
+            onPointerDown={(e) => onScoreDown(flipped ? 'them' : 'us', e)}
+            onPointerUp={() => onScoreUp(flipped ? 'them' : 'us')}
+            onPointerLeave={() => onScoreUp(flipped ? 'them' : 'us')}
+            className={`cursor-pointer select-none transition-opacity overflow-hidden leading-none ${(flipped ? themHolding : usHolding) ? 'opacity-40' : ''}`}
             title="Hold 3s to adjust score"
           >
-            <span key={`us-${ourScore}`} className={`block text-[4.2vmin] font-black tabular-nums leading-none score-pop ${ourScoreCls}`}>
-              {String(ourScore).padStart(2, '0')}
+            <span
+              key={flipped ? `them-${oppScore}` : `us-${ourScore}`}
+              className={`block text-[4.2vmin] font-black tabular-nums leading-none score-pop ${flipped ? theirScoreCls : ourScoreCls}`}
+            >
+              {String(flipped ? oppScore : ourScore).padStart(2, '0')}
             </span>
           </div>
 
-          {weServe
+          {/* Left ball indicator */}
+          {(flipped ? !weServe : weServe)
             ? <span key={`srv-l-${serveVersion}`} className="text-xl leading-none serve-pulse animate-serve-from-right">🏐</span>
             : serveTrail === 'left'
               ? <span key={`trail-l-${serveTrailKey}`} className="text-xl leading-none serve-trail">🏐</span>
@@ -419,28 +442,32 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
             <ScoreSparkline pointHistory={pointHistory} />
           </div>
 
-          {!weServe
+          {/* Right ball indicator */}
+          {(flipped ? weServe : !weServe)
             ? <span key={`srv-r-${serveVersion}`} className="text-xl leading-none serve-pulse animate-serve-from-left">🏐</span>
             : serveTrail === 'right'
               ? <span key={`trail-r-${serveTrailKey}`} className="text-xl leading-none serve-trail">🏐</span>
               : <span className="text-xl leading-none opacity-0">🏐</span>}
 
-          {/* THEM score — hold 3s to open nudge */}
+          {/* Right score */}
           <div
-            onPointerDown={(e) => onScoreDown('them', e)}
-            onPointerUp={() => onScoreUp('them')}
-            onPointerLeave={() => onScoreUp('them')}
-            className={`cursor-pointer select-none transition-opacity overflow-hidden leading-none ${themHolding ? 'opacity-40' : ''}`}
+            onPointerDown={(e) => onScoreDown(flipped ? 'us' : 'them', e)}
+            onPointerUp={() => onScoreUp(flipped ? 'us' : 'them')}
+            onPointerLeave={() => onScoreUp(flipped ? 'us' : 'them')}
+            className={`cursor-pointer select-none transition-opacity overflow-hidden leading-none ${(flipped ? usHolding : themHolding) ? 'opacity-40' : ''}`}
             title="Hold 3s to adjust score"
           >
-            <span key={`them-${oppScore}`} className={`block text-[4.2vmin] font-black tabular-nums leading-none score-pop ${theirScoreCls}`}>
-              {String(oppScore).padStart(2, '0')}
+            <span
+              key={flipped ? `us-${ourScore}` : `them-${oppScore}`}
+              className={`block text-[4.2vmin] font-black tabular-nums leading-none score-pop ${flipped ? ourScoreCls : theirScoreCls}`}
+            >
+              {String(flipped ? ourScore : oppScore).padStart(2, '0')}
             </span>
           </div>
 
-          {/* away team name — always a 3-letter abbreviation */}
+          {/* Right name */}
           <span className="text-[2.9vmin] text-slate-300 font-bold uppercase tracking-widest leading-none">
-            {opponentName || 'AWY'}
+            {flipped ? (teamName || 'HOM') : (opponentName || 'AWY')}
           </span>
         </div>
 
@@ -457,12 +484,29 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
           )}
         </div>
 
-        {/* ── Far right: their timeouts + THEM sets won ── */}
+        {/* ── Far right: their timeouts + THEM sets won  (swaps when flipped) ── */}
         <div className="flex items-center gap-1 shrink-0">
-          <TimeoutBox used={oppTimeouts} onTap={() => setTimeoutConfirm('them')} />
-          <div className="flex flex-col items-center w-9">
-            <span className="text-[3.1vmin] font-black text-slate-300 leading-none">{oppSetsWon}</span>
-          </div>
+          {flipped ? (
+            // Flipped: show our corner on the right
+            <>
+              <TimeoutBox used={ourTimeouts} onTap={() => setTimeoutConfirm('us')} />
+              <div className="flex flex-col items-center">
+                <div className="border-2 border-orange-500 rounded px-[1.8vmin] py-[0.5vmin] bg-orange-950/30">
+                  <span className="text-[3.1vmin] font-black text-orange-400 leading-none tabular-nums">{ourSetsWon}</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            // Normal: show opponent corner on the right
+            <>
+              <TimeoutBox used={oppTimeouts} onTap={() => setTimeoutConfirm('them')} />
+              <div className="flex flex-col items-center">
+                <div className="border-2 border-slate-500 rounded px-[1.8vmin] py-[0.5vmin] bg-slate-800/40">
+                  <span className="text-[3.1vmin] font-black text-slate-300 leading-none tabular-nums">{oppSetsWon}</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
       </div>

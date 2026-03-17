@@ -13,7 +13,7 @@ export function RotationSpotlight({ rows }) {
 
   const parts = [];
   if (weakSO) parts.push(`${weakSO.name} SO% ${Math.round(weakSO.so_pct * 100)}%`);
-  if (weakBP) parts.push(`${weakBP.name} BP% ${Math.round(weakBP.bp_pct * 100)}%`);
+  if (weakBP) parts.push(`${weakBP.name} SP% ${Math.round(weakBP.bp_pct * 100)}%`);
 
   return (
     <div className="bg-red-950/40 border border-red-800/50 rounded-lg px-3 py-2 text-sm">

@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hide scrollbar while keeping scroll behavior */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* ── Animation design tokens ── */
 :root {
   --duration-fast: 120ms;
@@ -9,12 +13,16 @@
   --duration-slow: 500ms;
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Accent color — set by JS in main.jsx on startup; overridden by user pick */
+  --color-primary: #f97316;
+  --color-primary-rgb: 249 115 22;
 }
 
 @layer base {
   html, body {
     font-family: system-ui, -apple-system, sans-serif;
-    background-color: #0f172a;
+    background-color: #000000;
     color: white;
     margin: 0;
     -webkit-tap-highlight-color: transparent;
@@ -171,7 +179,7 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(to right, #f97316 0%, rgba(249,115,22,0.3) 60%, transparent 100%);
+  background: linear-gradient(to right, var(--color-primary) 0%, rgb(var(--color-primary-rgb) / 0.3) 60%, transparent 100%);
   pointer-events: none;
   z-index: 1;
 }
@@ -393,7 +401,7 @@
   position: absolute;
   inset: -2px;
   border-radius: inherit;
-  border: 2px solid #f97316;
+  border: 2px solid var(--color-primary);
   animation: sonar-ring 1.8s ease-out infinite;
   pointer-events: none;
 }
@@ -439,8 +447,8 @@
 
 /* ── FAB breathing glow ── */
 @keyframes fab-breathe {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(249,115,22,0),    0 4px 14px rgba(0,0,0,0.4); }
-  50%       { box-shadow: 0 0 0 7px rgba(249,115,22,0.3), 0 4px 14px rgba(249,115,22,0.25); }
+  0%, 100% { box-shadow: 0 0 0 0   rgb(var(--color-primary-rgb) / 0),    0 4px 14px rgba(0,0,0,0.4); }
+  50%       { box-shadow: 0 0 0 7px rgb(var(--color-primary-rgb) / 0.3), 0 4px 14px rgb(var(--color-primary-rgb) / 0.25); }
 }
 .fab-glow {
   animation: fab-breathe 2s ease-in-out infinite;
@@ -610,13 +618,16 @@
 .tile-rotate-up    { animation: tile-rotate-up    320ms var(--ease-spring) both; }
 .tile-rotate-down  { animation: tile-rotate-down  320ms var(--ease-spring) both; }
 
-/* ── Net cable wave — gentle mesh oscillation ── */
+/* ── Net cable wave — gentle horizontal sway like a real net in a gym ── */
 @keyframes net-cable-wave {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(2px); }
+  0%   { transform: translateX(0px)  skewX(0deg); }
+  18%  { transform: translateX(4px)  skewX(0.35deg); }
+  45%  { transform: translateX(-6px) skewX(-0.55deg); }
+  72%  { transform: translateX(5px)  skewX(0.45deg); }
+  100% { transform: translateX(0px)  skewX(0deg); }
 }
 .net-wave {
-  animation: net-cable-wave 3s ease-in-out infinite;
+  animation: net-cable-wave 9s ease-in-out infinite;
 }
 
 /* ── Net ripple on VBSTAT tap ── */
@@ -793,6 +804,40 @@
 .kill-badge-pop {
   animation: kill-badge-pop 860ms ease-out forwards;
   pointer-events: none;
+}
+
+/* ── "New Match" hero button shimmer sweep ── */
+@keyframes btn-shimmer-sweep {
+  0%, 55%  { transform: translateX(-160%); }
+  100%     { transform: translateX(220%); }
+}
+.btn-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.16) 50%,
+    transparent 70%
+  );
+  transform: translateX(-160%);
+  animation: btn-shimmer-sweep 5s ease-in-out infinite;
+  animation-delay: 2.5s;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ── Ball hover spin on New Match button ── */
+@keyframes vb-ball-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.group:hover .vb-ball-spin {
+  animation: vb-ball-rotate 1.8s linear infinite;
+}
+.group:active .vb-ball-spin {
+  animation: vb-ball-rotate 0.5s linear infinite;
 }
 
 /* ── Perfect pass 3! pop badge ── */

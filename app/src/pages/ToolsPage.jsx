@@ -3,6 +3,12 @@ import { PageHeader } from '../components/layout/PageHeader';
 
 const TOOLS = [
   {
+    to:          '/tools/practice-game',
+    icon:        '🏟️',
+    label:       'Practice Game',
+    description: 'Record kills, errors, digs & passes in a scrimmage',
+  },
+  {
     to:          '/tools/serve-receive',
     icon:        '🏐',
     label:       'Serve Receive',

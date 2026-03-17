@@ -26,6 +26,14 @@ const fmtMB = (bytes) => (bytes / (1024 * 1024)).toFixed(1);
 const DEFAULT_MAX_SUBS   = 18;
 const DEFAULT_FORMAT     = FORMAT.BEST_OF_3;
 
+const ACCENT_COLORS = [
+  { id: 'orange', label: 'Orange', hex: '#f97316', rgb: '249 115 22' },
+  { id: 'blue',   label: 'Blue',   hex: '#3b82f6', rgb: '59 130 246' },
+  { id: 'green',  label: 'Green',  hex: '#22c55e', rgb: '34 197 94'  },
+  { id: 'red',    label: 'Red',    hex: '#ef4444', rgb: '239 68 68'  },
+  { id: 'purple', label: 'Purple', hex: '#a855f7', rgb: '168 85 247' },
+];
+
 function useMaxSubs() {
   const [maxSubs, setMaxSubsState] = useState(() => {
     const saved = parseInt(localStorage.getItem('vbstat_max_subs'), 10);
@@ -61,13 +69,42 @@ function useAmoledMode() {
   return [amoled, save];
 }
 
+function useToggleSetting(key) {
+  const [val, setVal] = useState(() => localStorage.getItem(key) === '1');
+  const save = (next) => { localStorage.setItem(key, next ? '1' : '0'); setVal(next); };
+  return [val, save];
+}
+
+function useAccentColor() {
+  const [accent, setAccent] = useState(() => localStorage.getItem('vbstat_accent') ?? 'orange');
+  const save = (id) => {
+    const c = ACCENT_COLORS.find((x) => x.id === id) ?? ACCENT_COLORS[0];
+    localStorage.setItem('vbstat_accent', id);
+    document.documentElement.style.setProperty('--color-primary', c.hex);
+    document.documentElement.style.setProperty('--color-primary-rgb', c.rgb);
+    setAccent(id);
+  };
+  return [accent, save];
+}
+
+function useCoachName() {
+  const [name, setName] = useState(() => localStorage.getItem('vbstat_coach_name') ?? '');
+  const save = (val) => { localStorage.setItem('vbstat_coach_name', val); setName(val); };
+  return [name, save];
+}
+
 export function SettingsPage() {
   const showToast    = useUiStore((s) => s.showToast);
   const fileInputRef = useRef(null);
   const [maxSubs, saveMaxSubs]           = useMaxSubs();
   const [defaultFormat, saveDefaultFormat] = useDefaultFormat();
 
-  const [amoled, saveAmoled] = useAmoledMode();
+  const [amoled,      saveAmoled]      = useAmoledMode();
+  const [accent,      saveAccent]      = useAccentColor();
+  const [coachName,   saveCoachName]   = useCoachName();
+  const [wakeLock,    saveWakeLock]    = useToggleSetting('vbstat_wake_lock');
+  const [hapticOn,    saveHaptic]      = useToggleSetting('vbstat_haptic');
+  const [flipLayout,  saveFlipLayout]  = useToggleSetting('vbstat_flip_layout');
   const [confirmClear,   setConfirmClear]   = useState(false);
   const [confirmImport,  setConfirmImport]  = useState(false);
   const [pendingFile,    setPendingFile]    = useState(null);
@@ -175,6 +212,58 @@ export function SettingsPage() {
           </div>
         )}
 
+        {/* Personalization */}
+        <section className="bg-surface rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-700">
+            <h2 className="font-semibold">Personalization</h2>
+          </div>
+          <div className="p-4 space-y-5">
+
+            {/* Coach / program name */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Coach / Program Name</label>
+              <div className="text-xs text-slate-400 mb-2">Shown on the home screen header ("by ___")</div>
+              <input
+                type="text"
+                value={coachName}
+                onChange={(e) => saveCoachName(e.target.value)}
+                placeholder="SHUA"
+                maxLength={20}
+                className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
+              />
+            </div>
+
+            {/* Accent color */}
+            <div>
+              <div className="text-sm font-medium mb-1">Accent Color</div>
+              <div className="text-xs text-slate-400 mb-3">Applied to buttons, badges, and highlights throughout the app</div>
+              <div className="flex gap-3">
+                {ACCENT_COLORS.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => saveAccent(c.id)}
+                    className="flex flex-col items-center gap-1.5"
+                    title={c.label}
+                  >
+                    <span
+                      className="w-9 h-9 rounded-full block transition-transform"
+                      style={{
+                        background: c.hex,
+                        boxShadow: accent === c.id ? `0 0 0 3px #000, 0 0 0 5px ${c.hex}` : 'none',
+                        transform: accent === c.id ? 'scale(1.15)' : 'scale(1)',
+                      }}
+                    />
+                    <span className={`text-[10px] font-semibold ${accent === c.id ? 'text-white' : 'text-slate-500'}`}>
+                      {c.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        </section>
+
         {/* Display */}
         <section className="bg-surface rounded-xl overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-700">
@@ -195,6 +284,65 @@ export function SettingsPage() {
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${amoled ? 'translate-x-5' : ''}`} />
               </button>
             </div>
+          </div>
+        </section>
+
+        {/* Live Match */}
+        <section className="bg-surface rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-700">
+            <h2 className="font-semibold">Live Match</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Applied during active stat recording</p>
+          </div>
+          <div className="p-4 divide-y divide-slate-700/60 space-y-0">
+
+            {/* Keep Screen Awake */}
+            <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+              <div>
+                <div className="text-sm font-medium">Keep Screen Awake</div>
+                <div className="text-xs text-slate-400 mt-0.5">Prevent the screen from sleeping during a match</div>
+              </div>
+              <button
+                onClick={() => saveWakeLock(!wakeLock)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${wakeLock ? 'bg-primary' : 'bg-slate-600'}`}
+                aria-checked={wakeLock}
+                role="switch"
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${wakeLock ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+
+            {/* Haptic Feedback */}
+            <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+              <div>
+                <div className="text-sm font-medium">Haptic Feedback</div>
+                <div className="text-xs text-slate-400 mt-0.5">Brief vibration on each point scored</div>
+              </div>
+              <button
+                onClick={() => saveHaptic(!hapticOn)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${hapticOn ? 'bg-primary' : 'bg-slate-600'}`}
+                aria-checked={hapticOn}
+                role="switch"
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${hapticOn ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+
+            {/* Flip team layout */}
+            <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+              <div>
+                <div className="text-sm font-medium">Flip Team Layout</div>
+                <div className="text-xs text-slate-400 mt-0.5">Show your team on the right side of the scoreboard</div>
+              </div>
+              <button
+                onClick={() => saveFlipLayout(!flipLayout)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${flipLayout ? 'bg-primary' : 'bg-slate-600'}`}
+                aria-checked={flipLayout}
+                role="switch"
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${flipLayout ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+
           </div>
         </section>
 

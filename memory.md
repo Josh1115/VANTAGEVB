@@ -261,6 +261,48 @@ Libero rule update: libero CAN serve (S1) — no position restriction
 - Wired `teamName` state from `LiveMatchPage` into `<Confetti>` call
 - **Build:** Clean ✓ — 451KB gzip (size increase is from additional modules added since Mar 6, not regression)
 
+### 2026-03-17 — Practice Tools Persistence + Records Live Tracking
+
+**Schema:**
+- Added Dexie schema version 6: `practice_sessions` table (`++id, team_id, tool_type, date`) — additive only, no migration
+
+**ServeTrackerPage (`src/pages/tools/ServeTrackerPage.jsx`):**
+- SetupView: queries last 10 `serve_tracker` sessions via `useLiveQuery`; renders Recent Sessions list; passes `teamId` through `onStart`
+- TeamSessionView + IndividualSessionView: added Save button (disabled when `stats.total === 0`); `handleSave()` persists session to `practice_sessions`; shows toast on success
+- Session state shape: `{ mode, label?, players?, teamId }`
+
+**ServeReceivePage (`src/pages/tools/ServeReceivePage.jsx`):**
+- SetupView: queries last 10 `serve_receive` sessions; renders Recent Sessions list
+- SessionView: Save button (disabled when `totalPasses === 0`); `handleSave()` serializes all player stats + APR
+
+**PracticeGamePage (`src/pages/tools/PracticeGamePage.jsx`) — new file:**
+- SetupView: team picker, opponent text input, player multi-select, Recent Sessions history (W/L + set scores)
+- GameView: score header with `ourScore`/`oppScore`/`sets[]`; player tabs; action grid (Kill/Error/Ace/SE/Dig/Block/Pass 0-3); point side effects (Kill/Ace/Block = us, Error/SE = opp); undo stack (clears on End Set); per-player stat grid
+- Saves to `practice_sessions` with `tool_type: 'practice_game'`; label format: `"vs Blue Team (W 2-1)"`
+
+**Router + ToolsPage:**
+- Added `/tools/practice-game` route pointing to `PracticeGamePage`
+- Added Practice Game card to `ToolsPage` TOOLS array
+
+**TeamDetailPage (`src/pages/TeamDetailPage.jsx`):**
+- Added 5th "Practice" tab; queries all `practice_sessions` for team via `useLiveQuery`
+- Sessions grouped by `tool_type` (practice_game / serve_receive / serve_tracker); each row shows date, label, tool-specific summary stat
+
+**Records live tracking fix:**
+- `useRecordAlerts.js`: exported `computeMilestone` so it can be imported in LiveStatsModal
+- `LiveMatchPage.jsx`:
+  - Removed type filter from records fetch (now fetches all record types for team)
+  - Added `allMatchContacts` useLiveQuery: `db.contacts.where('match_id').equals(matchId).toArray()`
+  - Added `matchPlayerStats` + `matchTeamStats` via `useMemo` using `computePlayerStats`/`computeTeamStats` (full match scope, not set-scoped); fixes the `committedContacts` reset-on-endSet bug
+  - Passes `records` prop to `<LiveStatsModal>`
+- `LiveStatsModal.jsx`:
+  - Replaced `RecordAlertPanel` with new `RecordsProgressPanel` component
+  - `RecordRow`: per-record progress bar with milestone badge (🏆 RECORD / ⚡ TIED / 🔥 1 AWAY / ▲ 90%+ / ▲ 80%+), current/record values, `−N` remaining count
+  - `RecordsProgressPanel`: handles all 4 record types — `individual_match`/`team_match` get progress bars (grouped by player, on-court first); `individual_season`/`team_season` shown as static reference section (free-text stat can't map to TRACKABLE_STATS keys)
+  - Empty state points user to Teams → Records when no records set
+
+**Key bug fixed:** `committedContacts` resets to `[]` on every `endSet()`, making `useMatchStats()` set-scoped only. Fixed by querying `db.contacts` directly by `match_id` for full-match record tracking.
+
 ## Weekly Summaries
 
 ## Monthly Summaries

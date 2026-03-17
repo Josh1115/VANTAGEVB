@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { useMatchStore } from '../store/matchStore';
+import { computePlayerStats, computeTeamStats } from '../stats/engine';
 import { SET_STATUS, FORMAT, SIDE } from '../constants';
 import { useMatchStats } from '../hooks/useMatchStats';
 import { useRecordAlerts } from '../hooks/useRecordAlerts';
+import { useWakeLock } from '../hooks/useWakeLock';
+import { haptic } from '../utils/haptic';
 import { ScoreHeader } from '../components/match/ScoreHeader';
 import { CourtGrid } from '../components/court/CourtGrid';
 import { ActionBar } from '../components/match/ActionBar';
@@ -55,22 +59,55 @@ export function LiveMatchPage() {
   const oppSetsWon          = useMatchStore((s) => s.oppSetsWon);
   const format              = useMatchStore((s) => s.format);
 
-  const teamId     = useMatchStore((s) => s.teamId);
-  const pointHistory  = useMatchStore((s) => s.pointHistory);
-  const currentRun    = useMatchStore((s) => s.currentRun);
+  const teamId       = useMatchStore((s) => s.teamId);
+  const lineup       = useMatchStore((s) => s.lineup);
+  const setNumber    = useMatchStore((s) => s.setNumber);
+  const pointHistory = useMatchStore((s) => s.pointHistory);
+  const currentRun   = useMatchStore((s) => s.currentRun);
 
   const { playerStats, teamStats } = useMatchStats();
 
   const [records, setRecords] = useState([]);
   useEffect(() => {
     if (!teamId) return;
-    db.records.where('team_id').equals(teamId)
-      .filter((r) => r.type === 'individual_match' || r.type === 'team_match')
-      .toArray()
-      .then(setRecords);
+    db.records.where('team_id').equals(teamId).toArray().then(setRecords);
   }, [teamId]);
 
-  const { activeAlerts, pendingAlerts, markPendingShown } = useRecordAlerts(records ?? [], playerStats, teamStats);
+  // Full-match contacts (across all sets) for accurate cross-set record tracking
+  const matchId = parseInt(matchIdParam, 10);
+  const allMatchContacts = useLiveQuery(
+    () => matchId ? db.contacts.where('match_id').equals(matchId).toArray() : [],
+    [matchId]
+  );
+
+  const matchPositionMap = useMemo(() =>
+    Object.fromEntries(lineup.filter((sl) => sl.playerId).map((sl) => [sl.playerId, sl.positionLabel])),
+    [lineup]
+  );
+
+  const matchPlayerStats = useMemo(
+    () => computePlayerStats(allMatchContacts ?? [], setNumber, matchPositionMap),
+    [allMatchContacts, setNumber, matchPositionMap]
+  );
+  const matchTeamStats = useMemo(
+    () => computeTeamStats(allMatchContacts ?? [], setNumber),
+    [allMatchContacts, setNumber]
+  );
+
+  const { activeAlerts, pendingAlerts, markPendingShown } = useRecordAlerts(records ?? [], matchPlayerStats, matchTeamStats);
+
+  // Keep screen awake during live match if setting is on
+  useWakeLock(localStorage.getItem('vbstat_wake_lock') === '1');
+
+  // Haptic feedback on score change
+  const prevScoreRef = useRef({ our: ourScore, opp: oppScore });
+  useEffect(() => {
+    const prev = prevScoreRef.current;
+    if (ourScore !== prev.our || oppScore !== prev.opp) {
+      haptic(28);
+      prevScoreRef.current = { our: ourScore, opp: oppScore };
+    }
+  }, [ourScore, oppScore]);
 
   // Auto-open LiveStatsModal on RECORDS tab when new milestone is crossed between points
   const pointCount = pointHistory.length;
@@ -286,6 +323,7 @@ export function LiveMatchPage() {
         teamName={teamName}
         opponentName={opponentName}
         recordAlerts={activeAlerts}
+        records={records}
         defaultTab={liveStatsDefaultTab}
       />
       {summaryOpen && <ScoringSummaryModal onClose={() => setSummaryOpen(false)} />}

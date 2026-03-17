@@ -21,7 +21,7 @@ export const ROTATION_COLS = [
   { key: 'so_pct',  label: 'SO%',    fmt: fmtPct,   cellClass: soColor },
   { key: 'so_opp',  label: 'SO Opp', fmt: fmtCount },
   { key: 'so_win',  label: 'SO Win', fmt: fmtCount },
-  { key: 'bp_pct',  label: 'BP%',    fmt: fmtPct,   cellClass: bpColor },
-  { key: 'bp_opp',  label: 'BP Opp', fmt: fmtCount },
-  { key: 'bp_win',  label: 'BP Win', fmt: fmtCount },
+  { key: 'bp_pct',  label: 'SP%',    fmt: fmtPct,   cellClass: bpColor },
+  { key: 'bp_opp',  label: 'SP Opp', fmt: fmtCount },
+  { key: 'bp_win',  label: 'SP Win', fmt: fmtCount },
 ];

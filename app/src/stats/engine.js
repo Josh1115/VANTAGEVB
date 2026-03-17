@@ -20,7 +20,7 @@ export const POSITION_MULTIPLIERS = {
 function mkAccum() {
   return {
     // serve — totals
-    sa: 0, ace: 0, se: 0,
+    sa: 0, ace: 0, se: 0, se_ob: 0, se_net: 0,
     // serve — by type
     f_sa: 0, f_ace: 0, f_se: 0,   // float
     t_sa: 0, t_ace: 0, t_se: 0,   // topspin
@@ -39,11 +39,15 @@ function mkAccum() {
   };
 }
 
-function accumContact(p, { action, result, serve_type }) {
+function accumContact(p, { action, result, serve_type, error_type }) {
   if (action === 'serve') {
     p.sa++;
     if (result === 'ace')   p.ace++;
-    if (result === 'error') p.se++;
+    if (result === 'error') {
+      p.se++;
+      if (error_type === 'ob')  p.se_ob++;
+      if (error_type === 'net') p.se_net++;
+    }
     if (serve_type === 'float') {
       p.f_sa++;
       if (result === 'ace')   p.f_ace++;
@@ -86,10 +90,12 @@ function deriveStats(p, sp, posLabel = null) {
   const posMult = POSITION_MULTIPLIERS[posLabel] ?? 1.0;
   return {
     // Serving — totals
-    sa: p.sa, ace: p.ace, se: p.se,
-    ace_pct: div(p.ace, p.sa),
-    se_pct:  div(p.se,  p.sa),
-    si_pct:  div(p.sa - p.se, p.sa),   // 1st-serve-in %
+    sa: p.sa, ace: p.ace, se: p.se, se_ob: p.se_ob, se_net: p.se_net,
+    ace_pct:  div(p.ace,    p.sa),
+    se_pct:   div(p.se,     p.sa),
+    si_pct:   div(p.sa - p.se, p.sa),   // 1st-serve-in %
+    sob_pct:  div(p.se_ob,  p.sa),      // OB errors as % of serves attempted
+    snet_pct: div(p.se_net, p.sa),      // NET errors as % of serves attempted
     // Serving — float
     f_sa: p.f_sa, f_ace: p.f_ace, f_se: p.f_se,
     f_ace_pct: div(p.f_ace, p.f_sa),
@@ -364,6 +370,52 @@ export function computeTransitionAttack(contacts) {
 }
 
 /**
+ * Scoring run breakdown by rotation.
+ * A run = 2+ consecutive rallies won by us. Runs reset at set boundaries.
+ * "Belongs to" the rotation where the run started.
+ *
+ * Returns { byRotation: { 1..6: { max_run, avg_run, runs_3plus, runs_5plus, total_runs } }, total: same }
+ */
+export function computeRunsByRotation(rallies) {
+  const sorted = [...rallies].sort((a, b) =>
+    a.set_id !== b.set_id ? a.set_id - b.set_id : a.rally_number - b.rally_number
+  );
+
+  const mkSlot = () => ({ max_run: 0, runs_3plus: 0, runs_5plus: 0, total_runs: 0, run_pts: 0 });
+  const byRotation = {};
+  for (let r = 1; r <= 6; r++) byRotation[r] = mkSlot();
+  const tot = mkSlot();
+
+  const record = (len, rot) => {
+    if (len < 2) return;
+    const add = (s) => {
+      s.max_run = Math.max(s.max_run, len);
+      s.total_runs++; s.run_pts += len;
+      if (len >= 3) s.runs_3plus++;
+      if (len >= 5) s.runs_5plus++;
+    };
+    if (rot >= 1 && rot <= 6) add(byRotation[rot]);
+    add(tot);
+  };
+
+  let len = 0, startRot = null, prevSetId = null;
+  for (const rally of sorted) {
+    if (rally.set_id !== prevSetId) { record(len, startRot); len = 0; startRot = null; prevSetId = rally.set_id; }
+    if (rally.point_winner === 'us') {
+      if (len === 0) startRot = rally.our_rotation;
+      len++;
+    } else { record(len, startRot); len = 0; startRot = null; }
+  }
+  record(len, startRot);
+
+  const derive = (s) => ({ ...s, avg_run: s.total_runs > 0 ? s.run_pts / s.total_runs : null });
+  return {
+    byRotation: Object.fromEntries(Object.entries(byRotation).map(([r, s]) => [r, derive(s)])),
+    total: derive(tot),
+  };
+}
+
+/**
  * Free-ball dig win stats.
  * FREE dig = action 'dig', result 'freeball'.
  * Returns { byRotation: { 1..6: { fb_dig, fb_won } }, total: same }
@@ -479,11 +531,15 @@ export async function computeMatchStats(matchId) {
     getSetsPlayedCount(matchId),
   ]);
   return {
-    players:      computePlayerStats(contacts, setsPlayed),
-    team:         computeTeamStats(contacts, setsPlayed),
-    rotation:     computeRotationStats(rallies),
-    freeball:     computeFreeballOutcomes(contacts, rallies),
-    pointQuality: computePointQuality(contacts),
+    players:          computePlayerStats(contacts, setsPlayed),
+    team:             computeTeamStats(contacts, setsPlayed),
+    rotation:         computeRotationStats(rallies),
+    freeball:         computeFreeballOutcomes(contacts, rallies),
+    isOos:            computeISvsOOS(contacts, rallies),
+    transitionAttack: computeTransitionAttack(contacts),
+    freeDigWin:       computeFreeDigWin(contacts, rallies),
+    runs:             computeRunsByRotation(rallies),
+    pointQuality:     computePointQuality(contacts),
     setsPlayed,
     contacts,
   };
@@ -501,6 +557,7 @@ export async function computeSeasonStats(seasonId, filters = {}) {
 
   const totalMatchCount = matches.length;
 
+  if (filters.matchIds?.length) matches = matches.filter(m => filters.matchIds.includes(m.id));
   if (filters.conference) matches = matches.filter(m => m.conference === filters.conference);
   if (filters.location)   matches = matches.filter(m => m.location   === filters.location);
   if (filters.matchType)  matches = matches.filter(m => m.match_type === filters.matchType);
@@ -516,12 +573,16 @@ export async function computeSeasonStats(seasonId, filters = {}) {
   const setsPlayed = perMatchSets.reduce((a, b) => a + b, 0);
 
   return {
-    players:         computePlayerStats(contacts, setsPlayed),
-    team:            computeTeamStats(contacts, setsPlayed),
-    rotation:        computeRotationStats(rallies),
-    freeball:        computeFreeballOutcomes(contacts, rallies),
+    players:          computePlayerStats(contacts, setsPlayed),
+    team:             computeTeamStats(contacts, setsPlayed),
+    rotation:         computeRotationStats(rallies),
+    freeball:         computeFreeballOutcomes(contacts, rallies),
+    isOos:            computeISvsOOS(contacts, rallies),
+    transitionAttack: computeTransitionAttack(contacts),
+    freeDigWin:       computeFreeDigWin(contacts, rallies),
+    runs:             computeRunsByRotation(rallies),
     setsPlayed,
-    matchCount:      matchIds.length,
+    matchCount:       matchIds.length,
     totalMatchCount,
     contacts,
   };

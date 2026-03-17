@@ -12,7 +12,7 @@ export function RotationRadarChart({ rotationStats }) {
   const data = Object.entries(rotationStats.rotations).map(([n, r]) => ({
     rotation: `R${n}`,
     'SO%': r.so_pct != null ? +(r.so_pct * 100).toFixed(1) : 0,
-    'BP%': r.bp_pct != null ? +(r.bp_pct * 100).toFixed(1) : 0,
+    'SP%': r.bp_pct != null ? +(r.bp_pct * 100).toFixed(1) : 0,
   }));
 
   return (
@@ -27,7 +27,7 @@ export function RotationRadarChart({ rotationStats }) {
           tickFormatter={(v) => `${v}%`}
         />
         <Radar name="SO%" dataKey="SO%" stroke="#f97316" fill="#f97316" fillOpacity={0.25} />
-        <Radar name="BP%" dataKey="BP%" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.15} />
+        <Radar name="SP%" dataKey="SP%" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.15} />
         <Tooltip
           contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8 }}
           formatter={(v) => [`${v}%`]}
