@@ -5,7 +5,7 @@ import { db } from '../db/schema';
 import { useMatchStore } from '../store/matchStore';
 import { useUiStore } from '../store/uiStore';
 import { computePlayerStats, computeTeamStats } from '../stats/engine';
-import { SET_STATUS, FORMAT, SIDE } from '../constants';
+import { SET_STATUS, FORMAT, SIDE, MATCH_STATUS } from '../constants';
 import { useMatchStats } from '../hooks/useMatchStats';
 import { useRecordAlerts } from '../hooks/useRecordAlerts';
 import { useWakeLock } from '../hooks/useWakeLock';
@@ -175,7 +175,11 @@ export function LiveMatchPage() {
         const allSets = await db.sets.where('match_id').equals(matchId).sortBy('set_number');
         currentSet = allSets[allSets.length - 1];
       }
-      if (!currentSet) return;
+      if (!currentSet) {
+        // Scheduled match with no sets yet — send to setup to configure lineup
+        navigate(`/matches/new?match=${matchId}`);
+        return;
+      }
 
       // Level 2: season + lineup rows in parallel
       const [season, lineupRows] = await Promise.all([
