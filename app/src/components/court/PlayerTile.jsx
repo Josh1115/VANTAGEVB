@@ -1,6 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useMatchStore } from '../../store/matchStore';
-import { useUiStore, selectShowServeZonePicker } from '../../store/uiStore';
 import { ACTION, RESULT, SERVE_TYPE, SIDE } from '../../constants';
 import { fmtPlayerName } from '../../stats/formatters';
 
@@ -89,8 +88,6 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   const liberoJerseyColor   = useMatchStore((s) => s.liberoJerseyColor);
   const rallyCount          = useMatchStore((s) => s.rallyCount);
   const rotationNum         = useMatchStore((s) => s.rotationNum);
-
-  const showServeZonePicker = useUiStore(selectShowServeZonePicker);
 
   const isLibero     = slot?.playerId && slot.playerId === liberoId;
   const jerseyColor  = isLibero ? liberoJerseyColor : teamJerseyColor;
@@ -335,12 +332,12 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
                     onTap={() => setServeType(SERVE_TYPE.TOPSPIN)}
                     cls={serveType === SERVE_TYPE.TOPSPIN ? 'bg-teal-600/80 text-white' : 'bg-violet-900/70 text-violet-400 hover:bg-violet-800/70'} />
                   <Btn key={`att-${!!serveType}`} label="ATT"
-                    onTap={serveType ? async () => { const id = await tap(ACTION.SERVE, RESULT.IN, { serve_type: serveType }); setServeRecorded(true); showServeZonePicker(id); } : undefined}
+                    onTap={serveType ? () => { tap(ACTION.SERVE, RESULT.IN, { serve_type: serveType }); setServeRecorded(true); } : undefined}
                     cls={`${!serveType ? 'bg-slate-800/40 text-slate-700 cursor-not-allowed pointer-events-none'
                       : serveType === SERVE_TYPE.FLOAT ? 'bg-emerald-950/80 text-emerald-300 hover:bg-emerald-900/80'
                       : 'bg-teal-950/80 text-teal-300 hover:bg-teal-900/80'}${serveType ? ' serve-unlock-btn' : ''}`} />
                   <Btn key={`ace-${!!serveType}`} label="ACE"
-                    onTap={serveType ? async () => { const id = await tapAndScore(ACTION.SERVE, RESULT.ACE, { serve_type: serveType }); setServeRecorded(true); showServeZonePicker(id); } : undefined}
+                    onTap={serveType ? () => { tapAndScore(ACTION.SERVE, RESULT.ACE, { serve_type: serveType }); setServeRecorded(true); } : undefined}
                     cls={`${!serveType ? 'bg-slate-800/40 text-slate-700 cursor-not-allowed pointer-events-none'
                       : serveType === SERVE_TYPE.FLOAT ? 'bg-emerald-700/80 text-white hover:bg-emerald-600/90'
                       : 'bg-teal-600/80 text-white hover:bg-teal-500/90'}${serveType ? ' serve-unlock-btn' : ''}`}
