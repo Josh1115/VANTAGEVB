@@ -31,92 +31,97 @@ export function ServeZoneModal({ pendingContact, reticles, onConfirm, onDismiss 
   }
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black/85 flex flex-col items-center justify-center gap-3 p-4">
+    <div className="fixed inset-0 z-[70] bg-black/85 flex flex-col items-center justify-center gap-2 p-2">
 
-      {/* Court */}
-      <div className="flex flex-col items-center gap-1">
-        {/* Wrapper div handles tap — more reliable than SVG onPointerDown on iOS Safari */}
-        <div
-          ref={courtRef}
-          className="relative rounded overflow-hidden"
-          style={{ maxWidth: '90vw', maxHeight: '65vh', aspectRatio: `${W} / ${H}`, touchAction: 'none', cursor: 'crosshair' }}
-          onPointerDown={handleCourtTap}
+      {/* Court — fills as much of the landscape viewport as possible.
+          Width is the binding constraint on iPad landscape: min(95vw, 132vh)
+          keeps the court within 95% of screen width while also preventing it
+          from exceeding 88% of screen height (132vh = 88vh × 1.5 aspect).   */}
+      <div
+        ref={courtRef}
+        className="relative rounded overflow-hidden"
+        style={{ width: 'min(95vw, 132vh)', aspectRatio: `${W} / ${H}`, touchAction: 'none', cursor: 'crosshair' }}
+        onPointerDown={handleCourtTap}
+      >
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          style={{ width: '100%', height: '100%', display: 'block', pointerEvents: 'none' }}
         >
-          <svg
-            viewBox={`0 0 ${W} ${H}`}
-            style={{ width: '100%', height: '100%', display: 'block', pointerEvents: 'none' }}
-          >
-            {/* Background */}
-            <rect width={W} height={H} fill="#0f172a" />
+          {/* Background */}
+          <rect width={W} height={H} fill="#0f172a" />
 
-            {/* Zone cells */}
-            {ZONE_GRID.map((row, ri) =>
-              row.map((zone, ci) => {
-                const x = ci * (W / 3);
-                const y = ri * (H / 2);
-                return (
-                  <g key={zone}>
-                    <rect
-                      x={x} y={y}
-                      width={W / 3} height={H / 2}
-                      fill="transparent"
-                      stroke="#334155"
-                      strokeWidth={1}
-                    />
-                    <text
-                      x={x + W / 6} y={y + H / 4}
-                      textAnchor="middle" dominantBaseline="middle"
-                      fill="rgba(148,163,184,0.4)" fontSize={22} fontWeight="bold"
-                    >
-                      {zone}
-                    </text>
-                  </g>
-                );
-              })
-            )}
+          {/* Zone cells */}
+          {ZONE_GRID.map((row, ri) =>
+            row.map((zone, ci) => {
+              const x = ci * (W / 3);
+              const y = ri * (H / 2);
+              return (
+                <g key={zone}>
+                  <rect
+                    x={x} y={y}
+                    width={W / 3} height={H / 2}
+                    fill="transparent"
+                    stroke="#334155"
+                    strokeWidth={1}
+                  />
+                  <text
+                    x={x + W / 6} y={y + H / 4}
+                    textAnchor="middle" dominantBaseline="middle"
+                    fill="rgba(148,163,184,0.4)" fontSize={22} fontWeight="bold"
+                  >
+                    {zone}
+                  </text>
+                </g>
+              );
+            })
+          )}
 
-            {/* Net line at bottom */}
-            <line x1={0} y1={H - 2} x2={W} y2={H - 2} stroke="#f97316" strokeWidth={3} />
+          {/* Net line at bottom with NET label inside the SVG */}
+          <line x1={0} y1={H - 2} x2={W} y2={H - 2} stroke="#f97316" strokeWidth={3} />
+          <text
+            x={W / 2} y={H - 14}
+            textAnchor="middle" dominantBaseline="middle"
+            fill="#f97316" fontSize={18} fontWeight="bold" letterSpacing={4}
+            opacity={0.75}
+          >NET</text>
 
-            {/* Confirmed reticles */}
-            {reticles.map((r) =>
-              r.result === 'ace' ? (
-                <text
-                  key={r.contactId}
-                  x={r.court_x * W} y={r.court_y * H}
-                  textAnchor="middle" dominantBaseline="middle"
-                  fontSize={14} fill="#f59e0b"
-                >★</text>
-              ) : (
-                <circle
-                  key={r.contactId}
-                  cx={r.court_x * W} cy={r.court_y * H}
-                  r={6} fill="none" stroke="#34d399" strokeWidth={2}
-                />
-              )
-            )}
+          {/* Confirmed reticles */}
+          {reticles.map((r) =>
+            r.result === 'ace' ? (
+              <text
+                key={r.contactId}
+                x={r.court_x * W} y={r.court_y * H}
+                textAnchor="middle" dominantBaseline="middle"
+                fontSize={14} fill="#f59e0b"
+              >★</text>
+            ) : (
+              <circle
+                key={r.contactId}
+                cx={r.court_x * W} cy={r.court_y * H}
+                r={6} fill="none" stroke="#34d399" strokeWidth={2}
+              />
+            )
+          )}
 
-            {/* Pending reticle (before confirm) */}
-            {pendingCoords && (
-              pendingContact.result === 'ace' ? (
-                <text
-                  x={pendingCoords.nx * W} y={pendingCoords.ny * H}
-                  textAnchor="middle" dominantBaseline="middle"
-                  fontSize={18} fill="#f59e0b" opacity={0.65}
-                >★</text>
-              ) : (
-                <circle
-                  cx={pendingCoords.nx * W} cy={pendingCoords.ny * H}
-                  r={8} fill="none" stroke="#34d399" strokeWidth={2} opacity={0.65}
-                />
-              )
-            )}
-          </svg>
-        </div>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-orange-400">NET</span>
+          {/* Pending reticle (before confirm) */}
+          {pendingCoords && (
+            pendingContact.result === 'ace' ? (
+              <text
+                x={pendingCoords.nx * W} y={pendingCoords.ny * H}
+                textAnchor="middle" dominantBaseline="middle"
+                fontSize={18} fill="#f59e0b" opacity={0.65}
+              >★</text>
+            ) : (
+              <circle
+                cx={pendingCoords.nx * W} cy={pendingCoords.ny * H}
+                r={8} fill="none" stroke="#34d399" strokeWidth={2} opacity={0.65}
+              />
+            )
+          )}
+        </svg>
       </div>
 
-      {/* Buttons below court */}
+      {/* Compact control row below court */}
       <div className="flex items-center gap-4">
         <p className="text-slate-400 text-sm">
           Zone: <span className="text-white font-bold text-base">{pendingCoords?.zone ?? '—'}</span>
