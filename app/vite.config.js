@@ -37,31 +37,15 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Take control of all open tabs immediately when a new SW activates.
+        // Without this, old code keeps running in open tabs until a manual reload.
+        clientsClaim: true,
+
         // Serve offline.html if navigation fails while offline
         navigateFallback: '/offline.html',
         navigateFallbackDenylist: [/^\/api\//],
 
-        // Cache app shell (JS, CSS, HTML) with CacheFirst
-        runtimeCaching: [
-          {
-            urlPattern: /\.(?:js|css|html)$/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'app-shell-v1',
-              expiration: { maxEntries: 60, maxAgeSeconds: 30 * 24 * 60 * 60 },
-            },
-          },
-          {
-            urlPattern: /\.(?:png|svg|ico|woff2?)$/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'assets-v1',
-              expiration: { maxEntries: 40, maxAgeSeconds: 30 * 24 * 60 * 60 },
-            },
-          },
-        ],
-
-        // Pre-cache all built assets
+        // Pre-cache all built assets (content-hashed filenames handle versioning)
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
       },
     }),

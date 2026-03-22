@@ -40,64 +40,45 @@ db.version(2).stores({
 });
 
 db.version(1).stores({
-  // School or club
-  // Queryable: name, type
   organizations: '++id, name, type',
-
-  // Teams belong to an org
-  // gender: M | F | Mixed
-  // level: varsity | jv | frosh | club
-  // Queryable: by org_id (list all org teams)
-  teams: '++id, org_id, name',
-
-  // Seasons belong to a team
-  // Queryable: by team_id; year for ordering
-  seasons: '++id, team_id, year',
-
-  // Players belong to a team
-  // position: OH | OPP | MB | S | L | DS | RS
-  // Queryable: by team_id; is_active for active roster filter
-  players: '++id, team_id, is_active',
-
-  // Opponent teams
-  // Queryable: by name
-  opponents: '++id, name',
-
-  // Matches belong to a season, played against an opponent
-  // status: setup | in_progress | complete
-  // Queryable: by season_id (season schedule), by status (find live match), by date (recent)
-  // Two common patterns: WHERE season_id=X | WHERE status='in_progress' | ORDER BY date DESC
-  matches: '++id, season_id, status, date',
-
-  // Sets belong to a match
-  // status: in_progress | complete
-  // Queryable: by match_id (all sets in match)
-  sets: '++id, match_id, set_number',
-
-  // Starting lineup for a set (6 rows per set)
-  // Queryable: by set_id (get full lineup)
-  lineups: '++id, set_id, player_id',
-
-  // Substitutions within a set
-  // Queryable: by set_id (all subs in set)
+  teams:         '++id, org_id, name',
+  seasons:       '++id, team_id, year',
+  players:       '++id, team_id, is_active',
+  opponents:     '++id, name',
+  matches:       '++id, season_id, status, date',
+  sets:          '++id, match_id, set_number',
+  lineups:       '++id, set_id, player_id',
   substitutions: '++id, set_id, rally_number',
+  rallies:       '++id, set_id, rally_number',
+  contacts:      '++id, match_id, player_id, action, set_id, rally_id',
+});
 
-  // One rally per point
-  // point_winner: us | them
-  // serve_side: us | them
-  // our_rotation: 1–6
-  // Queryable: by set_id (all rallies in set) — primary access pattern
-  rallies: '++id, set_id, rally_number',
+// When another page/tab needs to upgrade the DB to a newer version, close
+// this connection immediately so the upgrade isn't blocked indefinitely.
+db.on('versionchange', () => {
+  db.close();
+  window.location.reload();
+});
 
-  // Every ball contact in a rally
-  // action: serve | pass | set | attack | block | dig | freeball_receive | freeball_send | cover
-  // result: varies by action (see directives/01-db-schema.md)
-  // court_x, court_y: 0.0–1.0 normalized; zone: 1–6 pre-computed
-  // opponent_contact: true if opponent made this touch
-  //
-  // Index strategy: match_id first (broadest filter), then player_id for per-player stats,
-  // then action for category queries. set_id for set-level queries.
-  contacts: '++id, match_id, player_id, action, set_id, rally_id',
+// If another connection is blocking the upgrade, reload and retry.
+db.on('blocked', () => {
+  window.location.reload();
+});
+
+// If the DB fails to open for ANY reason (corrupt state, version mismatch,
+// failed prior migration, etc.), delete the DB and reload so the app stays
+// functional. A sessionStorage flag prevents an infinite reload loop in
+// environments where IndexedDB itself is unavailable (e.g. iOS Private Mode).
+db.open().catch(async (err) => {
+  console.error('[VBStat] DB open failed, resetting database:', err);
+  const alreadyReset = sessionStorage.getItem('vbstat_db_reset');
+  if (alreadyReset) {
+    console.error('[VBStat] DB reset already attempted — IndexedDB may be unavailable in this context.');
+    return;
+  }
+  sessionStorage.setItem('vbstat_db_reset', '1');
+  try { await Dexie.delete('VBAPPv2'); } catch (deleteErr) { console.error('[VBStat] DB delete failed:', deleteErr); }
+  window.location.reload();
 });
 
 export default db;
