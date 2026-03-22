@@ -257,9 +257,6 @@ export function LiveMatchPage() {
           }))
           .sort((a, b) => a.position - b.position);
         setLineup(lineup);
-        setPlayerNicknames(
-          Object.fromEntries(players.filter(Boolean).map((p) => [p.id, p.nickname ?? '']))
-        );
       }
 
       // Resolve libero: explicit set designation → full-roster 'L' scan → nothing
@@ -274,6 +271,14 @@ export function LiveMatchPage() {
         setLibero(libero.id);
         setLiberoPlayer(libero);
       }
+
+      // Build nickname map for all players including the libero so the libero
+      // respects the same name-display setting as the rest of the court.
+      setPlayerNicknames(
+        Object.fromEntries(
+          [...players, libero].filter(Boolean).map((p) => [p.id, p.nickname ?? ''])
+        )
+      );
 
       // Resolve opponent name: stored on match, or look up from opponents table
       let resolvedOpponentName = match.opponent_name ?? '';

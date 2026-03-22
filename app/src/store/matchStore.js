@@ -779,14 +779,18 @@ export const useMatchStore = create((set, get) => ({
       opponent_contact: true,
       timestamp:        Date.now(),
     };
-    const id = await db.contacts.add(contactFull);
-    const prevHistory = get().actionHistory;
-    set({
-      committedContacts: [...get().committedContacts, { ...contactFull, id }],
-      actionHistory: [{ type: 'opp_contact', contactId: id }, ...prevHistory].slice(0, ACTION_HISTORY_LIMIT),
-    });
-    setFeed(set, feedLabel);
-    await get().addPoint(pointSide);
+    try {
+      const id = await db.contacts.add(contactFull);
+      const prevHistory = get().actionHistory;
+      set({
+        committedContacts: [...get().committedContacts, { ...contactFull, id }],
+        actionHistory: [{ type: 'opp_contact', contactId: id }, ...prevHistory].slice(0, ACTION_HISTORY_LIMIT),
+      });
+      setFeed(set, feedLabel);
+      await get().addPoint(pointSide);
+    } catch (err) {
+      useUiStore.getState().showToast('Recording error — try again', 'error');
+    }
   },
 
   useTimeout: (side) => {
