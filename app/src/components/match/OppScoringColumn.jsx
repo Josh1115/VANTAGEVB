@@ -5,7 +5,6 @@ import { useMatchStore } from '../../store/matchStore';
 // pointsUs: false → opponent scores (red)
 const BUTTONS = [
   { reason: 'K',   label: 'K',   pointsUs: false },
-  { reason: 'BLK', label: 'BLK', pointsUs: false },
   { reason: 'SE',  label: 'SE',  pointsUs: true  },
   { reason: 'AE',  label: 'AE',  pointsUs: true  },
   { reason: 'BHE', label: 'BHE', pointsUs: true  },

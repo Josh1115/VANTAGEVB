@@ -388,6 +388,26 @@ export const useMatchStore = create((set, get) => ({
         break;
       }
 
+      // Blocked attack: AE contact for home player + opp BLK contact bundled together.
+      // Identical to 'contact' undo but also deletes the opponent block contact.
+      case 'blocked_attack': {
+        await db.contacts.delete(action.contactId);
+        if (action.blkContactId) await db.contacts.delete(action.blkContactId);
+        if (action.autoSetId) {
+          await db.contacts.delete(action.autoSetId);
+        } else if (action.assistId) {
+          await db.contacts.update(action.assistId, { result: action.prevAssistResult ?? RESULT.ATTEMPT });
+        }
+        set({
+          actionHistory:     rest,
+          committedContacts: s.committedContacts
+            .filter(c => c.id !== action.contactId && c.id !== action.blkContactId && c.id !== action.autoSetId)
+            .map(c => !action.autoSetId && c.id === action.assistId ? { ...c, result: action.prevAssistResult ?? RESULT.ATTEMPT } : c),
+          lastFeedItem: null,
+        });
+        break;
+      }
+
       case 'hblk_contact': {
         await db.contacts.delete(action.contactId1);
         await db.contacts.delete(action.contactId2);
@@ -574,6 +594,39 @@ export const useMatchStore = create((set, get) => ({
     }
 
     return id;
+  },
+
+  // Records an opponent block (BLK solo) without awarding a point.
+  // Called after recordContact() for a blocked AE so both contacts share one undo step.
+  // aeContactId: the contactId just returned by recordContact — used to upgrade that
+  // actionHistory entry from 'contact' to 'blocked_attack' so undo removes both at once.
+  recordOppBlock: async (aeContactId) => {
+    const s = get();
+    const contactFull = {
+      match_id:         s.matchId,
+      set_id:           s.currentSetId,
+      player_id:        null,
+      rally_number:     s.rallyCount,
+      action:           ACTION.BLOCK,
+      result:           RESULT.SOLO,
+      opponent_contact: true,
+      timestamp:        Date.now(),
+    };
+    try {
+      const blkId = await db.contacts.add(contactFull);
+      set((cur) => ({
+        committedContacts: [...cur.committedContacts, { ...contactFull, id: blkId }],
+        // Upgrade the matching 'contact' entry so undo removes both contacts together
+        actionHistory: cur.actionHistory.map((a) =>
+          a.type === 'contact' && a.contactId === aeContactId
+            ? { ...a, type: 'blocked_attack', blkContactId: blkId }
+            : a
+        ),
+      }));
+      setFeed(set, 'Opp Block');
+    } catch (err) {
+      console.error('[VBStat] recordOppBlock failed:', err);
+    }
   },
 
   // HBLK requires two players to tap — first tap sets pending, second completes both
