@@ -268,7 +268,9 @@ export const useMatchStore = create((set, get) => ({
             liberoReplacedName, liberoReplacedJersey, liberoReplacedPositionLabel } = liberoState;
 
     // 1. Push action entry with null rallyId — backfilled after DB write
-    const actionKey = crypto.randomUUID();
+    const actionKey = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
     if (side === SIDE.US) {
       pushAction(get, set, {
         type:                        'point_us',
