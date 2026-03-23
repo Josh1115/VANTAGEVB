@@ -251,7 +251,7 @@ export function ReportsPage() {
   }, [selectedSeasonId, selectedMatchIds, conference, location, matchType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const playerRows = useMemo(() =>
-    stats
+    stats && !stats.empty
       ? Object.entries(stats.players).map(([pid, s]) => ({
           id: pid,
           name: playerNames[pid] ?? `#${pid}`,
@@ -267,7 +267,7 @@ export function ReportsPage() {
   );
 
   const rotationRows = useMemo(() =>
-    stats
+    stats && !stats.empty
       ? Object.entries(stats.rotation.rotations).map(([n, r]) => ({
           id: n,
           name: `R${n}`,
