@@ -459,12 +459,13 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
           <Btn label="3" onTap={() => tapPass(3, false)} cls="bg-teal-900/80 text-teal-200 hover:bg-teal-800/90" />
         </div>
 
-        {/* Row 5 — Penalty errors: L DBL NET (opponent scores) */}
+        {/* Row 5 — Penalty errors: L DBL NET BHE (opponent scores) */}
         <div className="px-[7.5%]"><span className="text-[1.3vmin] font-bold uppercase tracking-wide text-slate-500 leading-none">Errors</span></div>
         <div className="flex flex-none h-[3.837vmin] py-0 px-[7.5%] gap-[0.5vmin]">
-          <Btn label="L"   onTap={() => tapAndScoreThem(ACTION.ERROR, RESULT.LIFT)}      cls="bg-rose-950/60 text-rose-300 border border-rose-800/50 hover:bg-rose-900/70" />
-          <Btn label="DBL" onTap={() => tapAndScoreThem(ACTION.ERROR, RESULT.DOUBLE)}    cls="bg-rose-950/60 text-rose-300 border border-rose-800/50 hover:bg-rose-900/70" />
-          <Btn label="NET" onTap={() => tapAndScoreThem(ACTION.ERROR, RESULT.NET_TOUCH)} cls="bg-rose-950/60 text-rose-300 border border-rose-800/50 hover:bg-rose-900/70" />
+          <Btn label="L"   onTap={() => tapAndScoreThem(ACTION.ERROR, RESULT.LIFT)}                    cls="bg-rose-950/60 text-rose-300 border border-rose-800/50 hover:bg-rose-900/70" />
+          <Btn label="DBL" onTap={() => tapAndScoreThem(ACTION.ERROR, RESULT.DOUBLE)}                  cls="bg-rose-950/60 text-rose-300 border border-rose-800/50 hover:bg-rose-900/70" />
+          <Btn label="NET" onTap={() => tapAndScoreThem(ACTION.ERROR, RESULT.NET_TOUCH)}               cls="bg-rose-950/60 text-rose-300 border border-rose-800/50 hover:bg-rose-900/70" />
+          <Btn label="BHE" onTap={() => tapAndScoreThem(ACTION.SET,   RESULT.BALL_HANDLING_ERROR)}     cls="bg-rose-950/60 text-rose-300 border border-rose-800/50 hover:bg-rose-900/70" />
         </div>
 
       </div>
