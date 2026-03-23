@@ -1115,7 +1115,7 @@ export function TeamDetailPage() {
                     className="flex-1 px-4 py-3 text-left flex items-center justify-between"
                   >
                     <div>
-                      <div className="font-semibold">{season.name}</div>
+                      <div className="font-semibold capitalize">{season.name}</div>
                       <div className="text-sm text-slate-400">{season.year}</div>
                     </div>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500">
