@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { STORAGE_KEYS, getStorageItem } from '../utils/storage';
+import { STORAGE_KEYS, getStorageItem, getIntStorage } from '../utils/storage';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
@@ -126,6 +126,38 @@ export function HomePage() {
     return { wins, losses: all.length - wins, total: all.length };
   }, []);
 
+  const defaultTeamId   = useMemo(() => getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID),   []);
+  const defaultSeasonId = useMemo(() => getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID), []);
+
+  const seasonRecord = useLiveQuery(async () => {
+    if (!defaultTeamId || !defaultSeasonId) return null;
+    const [team, season, matches] = await Promise.all([
+      db.teams.get(defaultTeamId),
+      db.seasons.get(defaultSeasonId),
+      db.matches.where('season_id').equals(defaultSeasonId)
+        .filter(m => m.status === MATCH_STATUS.COMPLETE)
+        .toArray(),
+    ]);
+    if (!team || !season) return null;
+    const isWin = m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0);
+    const wins   = matches.filter(isWin).length;
+    const losses = matches.length - wins;
+    const homeW  = matches.filter(m => m.location === 'home'    &&  isWin(m)).length;
+    const homeL  = matches.filter(m => m.location === 'home'    && !isWin(m)).length;
+    const awayW  = matches.filter(m => m.location === 'away'    &&  isWin(m)).length;
+    const awayL  = matches.filter(m => m.location === 'away'    && !isWin(m)).length;
+    const neutW  = matches.filter(m => m.location === 'neutral' &&  isWin(m)).length;
+    const neutL  = matches.filter(m => m.location === 'neutral' && !isWin(m)).length;
+    return {
+      teamName:   team.name ?? team.abbreviation ?? 'Team',
+      seasonName: season.name ?? String(season.year),
+      wins, losses, total: matches.length,
+      winPct:  matches.length ? wins / matches.length : null,
+      homeW, homeL, awayW, awayL, neutW, neutL,
+      hasLocData: (homeW + homeL + awayW + awayL + neutW + neutL) > 0,
+    };
+  }, [defaultTeamId, defaultSeasonId]);
+
   // ── Multi-ball system ──────────────────────────────────────────────────────
   const [balls,       setBalls]       = useState([]); // [{ id, type, left }]
   const [netRippling, setNetRippling] = useState(false);
@@ -204,6 +236,28 @@ export function HomePage() {
     }, 600 / steps);
     return () => clearInterval(timer);
   }, [allTimeRecord]);
+
+  const [displaySeasonRecord, setDisplaySeasonRecord] = useState({ wins: 0, losses: 0 });
+  const seasonRecordAnimated = useRef(false);
+
+  useEffect(() => {
+    if (!seasonRecord || seasonRecord.total === 0) return;
+    if (seasonRecordAnimated.current) {
+      setDisplaySeasonRecord({ wins: seasonRecord.wins, losses: seasonRecord.losses });
+      return;
+    }
+    seasonRecordAnimated.current = true;
+    const { wins, losses } = seasonRecord;
+    const steps = 20;
+    let step = 0;
+    const timer = setInterval(() => {
+      step++;
+      const t = step / steps;
+      setDisplaySeasonRecord({ wins: Math.round(wins * t), losses: Math.round(losses * t) });
+      if (step >= steps) { clearInterval(timer); setDisplaySeasonRecord({ wins, losses }); }
+    }, 600 / steps);
+    return () => clearInterval(timer);
+  }, [seasonRecord]);
 
   const inProgress    = recentMatches?.find((m) => m.status === MATCH_STATUS.IN_PROGRESS);
   const displayMatches = recentMatches ?? [];
@@ -340,8 +394,84 @@ export function HomePage() {
           </div>
         </div>
 
-        {/* ── W–L record strip ── */}
-        {allTimeRecord && allTimeRecord.total > 0 && (
+        {/* ── Season record card (shown when default team + season set) ── */}
+        {seasonRecord && seasonRecord.total > 0 && (
+          <div className="bg-surface rounded-xl overflow-hidden animate-slide-up-fade card-top-glow" style={{ animationDelay: '200ms' }}>
+            {/* Header */}
+            <div className="px-4 py-2 border-b border-slate-700/60 text-center">
+              <span
+                className="text-sm font-black tracking-widest text-white uppercase"
+                style={{ fontFamily: "'Orbitron', sans-serif" }}
+              >
+                {seasonRecord.teamName}
+              </span>
+              <span className="text-slate-600 mx-2">·</span>
+              <span className="text-xs text-slate-400 font-semibold">{seasonRecord.seasonName}</span>
+            </div>
+
+            {/* W / L numbers */}
+            <div className="grid grid-cols-2 divide-x divide-slate-700/60">
+              <div className="py-5 text-center">
+                <div
+                  className="text-6xl font-black text-emerald-400 tabular-nums leading-none scoreboard-flicker"
+                  style={{ fontFamily: "'Orbitron', sans-serif" }}
+                >
+                  {displaySeasonRecord.wins}
+                </div>
+                <div className="text-xs font-black tracking-[0.2em] text-emerald-700 mt-2">WINS</div>
+              </div>
+              <div className="py-5 text-center">
+                <div
+                  className="text-6xl font-black text-red-400 tabular-nums leading-none scoreboard-flicker"
+                  style={{ fontFamily: "'Orbitron', sans-serif" }}
+                >
+                  {displaySeasonRecord.losses}
+                </div>
+                <div className="text-xs font-black tracking-[0.2em] text-red-800 mt-2">LOSSES</div>
+              </div>
+            </div>
+
+            {/* Stats row */}
+            <div className="px-4 py-2.5 border-t border-slate-700/60 flex items-center justify-center gap-3 flex-wrap text-xs">
+              {seasonRecord.winPct !== null && (
+                <>
+                  <span className="font-black text-primary">
+                    {Math.round(seasonRecord.winPct * 100)}% WIN
+                  </span>
+                  {seasonRecord.hasLocData && <span className="text-slate-700">·</span>}
+                </>
+              )}
+              {seasonRecord.hasLocData && (
+                <>
+                  {(seasonRecord.homeW + seasonRecord.homeL) > 0 && (
+                    <span className="text-slate-400 font-semibold">
+                      {seasonRecord.homeW}–{seasonRecord.homeL} <span className="text-slate-500">HOME</span>
+                    </span>
+                  )}
+                  {(seasonRecord.awayW + seasonRecord.awayL) > 0 && (
+                    <>
+                      <span className="text-slate-700">·</span>
+                      <span className="text-slate-400 font-semibold">
+                        {seasonRecord.awayW}–{seasonRecord.awayL} <span className="text-slate-500">AWAY</span>
+                      </span>
+                    </>
+                  )}
+                  {(seasonRecord.neutW + seasonRecord.neutL) > 0 && (
+                    <>
+                      <span className="text-slate-700">·</span>
+                      <span className="text-slate-400 font-semibold">
+                        {seasonRecord.neutW}–{seasonRecord.neutL} <span className="text-slate-500">NEUT</span>
+                      </span>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── W–L record strip (fallback when no default season set) ── */}
+        {!seasonRecord && allTimeRecord && allTimeRecord.total > 0 && (
           <div className="flex items-center gap-4 px-1 animate-slide-up-fade" style={{ animationDelay: '200ms' }}>
             <div className="flex items-center gap-2">
               <span className="text-xs font-black px-2 py-0.5 rounded bg-emerald-900/60 text-emerald-400">{displayRecord.wins}W</span>
