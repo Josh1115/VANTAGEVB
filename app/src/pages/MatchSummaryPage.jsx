@@ -530,6 +530,37 @@ export function MatchSummaryPage() {
     [stats, playerNames]
   );
 
+  const servingTotals = useMemo(() => {
+    if (!playerRows.length) return null;
+    const sum = (key) => playerRows.reduce((acc, r) => acc + (r[key] ?? 0), 0);
+
+    const sa = sum('sa'), ace = sum('ace'), se = sum('se'),
+          se_ob = sum('se_ob'), se_net = sum('se_net');
+    const f_sa = sum('f_sa'), f_ace = sum('f_ace'), f_se = sum('f_se');
+    const t_sa = sum('t_sa'), t_ace = sum('t_ace'), t_se = sum('t_se');
+    const sp = sum('sp'), mp = sum('mp');
+
+    return {
+      all: {
+        name: 'TOTAL', sp, mp, sa, ace, se, se_ob, se_net,
+        ace_pct:  sa > 0 ? ace / sa : null,
+        si_pct:   sa > 0 ? (sa - se) / sa : null,
+        sob_pct:  sa > 0 ? se_ob / sa : null,
+        snet_pct: sa > 0 ? se_net / sa : null,
+      },
+      float: {
+        name: 'TOTAL', sp, mp, f_sa, f_ace, f_se,
+        f_ace_pct: f_sa > 0 ? f_ace / f_sa : null,
+        f_si_pct:  f_sa > 0 ? (f_sa - f_se) / f_sa : null,
+      },
+      top: {
+        name: 'TOTAL', sp, mp, t_sa, t_ace, t_se,
+        t_ace_pct: t_sa > 0 ? t_ace / t_sa : null,
+        t_si_pct:  t_sa > 0 ? (t_sa - t_se) / t_sa : null,
+      },
+    };
+  }, [playerRows]);
+
   const rotationRows = useMemo(() =>
     stats
       ? Object.entries(stats.rotation.rotations).map(([n, r]) => ({
@@ -743,7 +774,7 @@ export function MatchSummaryPage() {
                   value={serveView}
                   onChange={setServeView}
                 />
-                <StatTable columns={SERVING_COLS[serveView]} rows={playerRows} />
+                <StatTable columns={SERVING_COLS[serveView]} rows={playerRows} totalsRow={servingTotals?.[serveView]} />
                 {stats?.serveZones && (
                   <ServeZoneGrid zones={stats.serveZones} />
                 )}

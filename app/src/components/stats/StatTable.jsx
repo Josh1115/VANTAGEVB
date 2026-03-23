@@ -7,7 +7,7 @@ import clsx from 'clsx';
  * columns: [{ key, label, fmt?, defaultDesc? }]
  * rows:    [{ id, name, ...statValues }]
  */
-export function StatTable({ columns, rows }) {
+export function StatTable({ columns, rows, totalsRow }) {
   const [sortKey, setSortKey] = useState(columns[1]?.key ?? columns[0].key);
   const [desc, setDesc] = useState(true);
 
@@ -80,6 +80,23 @@ export function StatTable({ columns, rows }) {
             </tr>
           )}
         </tbody>
+        {totalsRow && (
+          <tfoot>
+            <tr className="border-t-2 border-slate-600 bg-slate-800/70">
+              {columns.map((col) => (
+                <td
+                  key={col.key}
+                  className={clsx(
+                    'px-2 py-2 tabular-nums font-bold',
+                    col.key === 'name' ? 'text-left text-slate-300' : 'text-right text-white',
+                  )}
+                >
+                  {col.fmt ? col.fmt(totalsRow[col.key]) : (totalsRow[col.key] ?? '—')}
+                </td>
+              ))}
+            </tr>
+          </tfoot>
+        )}
       </table>
     </div>
   );
