@@ -120,12 +120,12 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
     if (action === ACTION.ATTACK && result === RESULT.KILL)  vibrate(30);
     else if (action === ACTION.SERVE  && result === RESULT.ACE)  vibrate([18, 25, 45]);
     else if (action === ACTION.BLOCK  && result === RESULT.SOLO) vibrate(45);
-    // Score update is completely independent of contact recording.
-    // addPoint commits ourScore as its very first action, so the scoreboard
-    // updates immediately regardless of what happens with the DB write.
+    // Capture rally number BEFORE addPoint increments it so the scoring
+    // contact lands in the same rally bucket as the pass/dig that preceded it.
+    const currentRally = rallyCount;
     addPoint(SIDE.US);
     try {
-      return await recordContact({ player_id: slot.playerId, action, result, ...extra });
+      return await recordContact({ player_id: slot.playerId, action, result, rally_number: currentRally, ...extra });
     } catch (err) {
       console.error('tapAndScore recordContact', err);
       showToast(`Stat not recorded: ${err?.message ?? err}`, 'error');
@@ -134,9 +134,10 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
 
   const tapAndScoreThem = async (action, result, extra = {}) => {
     flashJersey();
+    const currentRally = rallyCount;
     addPoint(SIDE.THEM);
     try {
-      await recordContact({ player_id: slot.playerId, action, result, ...extra });
+      await recordContact({ player_id: slot.playerId, action, result, rally_number: currentRally, ...extra });
     } catch (err) {
       console.error('tapAndScoreThem recordContact', err);
       showToast(`Stat not recorded: ${err?.message ?? err}`, 'error');
@@ -145,9 +146,10 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
 
   const handleAeBlocked = async () => {
     flashJersey();
+    const currentRally = rallyCount;
     addPoint(SIDE.THEM);
     try {
-      const aeId = await recordContact({ player_id: slot.playerId, action: ACTION.ATTACK, result: RESULT.ERROR, error_type: 'blk' });
+      const aeId = await recordContact({ player_id: slot.playerId, action: ACTION.ATTACK, result: RESULT.ERROR, error_type: 'blk', rally_number: currentRally });
       recordOppBlock(aeId);
     } catch (err) {
       console.error('handleAeBlocked recordContact', err);
