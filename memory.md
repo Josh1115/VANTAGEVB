@@ -330,6 +330,38 @@ Libero rule update: libero CAN serve (S1) — no position restriction
 - Updated `ReportsPage.jsx`: `ISOOS_COLS` now 9 columns (Rot + 4 IS + 4 OOS); `isOosRows` useMemo updated; IS/OOS summary box now shows 8 stats (IS ATK/Win%/K%/HIT% + OOS same).
 - All 43 tests passing ✓
 
+### 2026-03-23 — Per-Set Stat Filtering on MatchSummaryPage
+
+**Feature:** Added set-level filter pills to MatchSummaryPage so users can view stats for individual sets (S1, S2, S3) instead of only full-match aggregates.
+
+**Only file changed:** `src/pages/MatchSummaryPage.jsx`
+
+**Implementation:**
+- Added `selectedSetId` state (null = all sets) and `rawRallies` state
+- Updated stats load effect to also call `getRalliesForMatch(id)` in parallel with `computeMatchStats(id)`; resets `selectedSetId` on match change
+- Added `displayStats` useMemo: when a set is selected, filters `stats.contacts` and `rawRallies` by `set_id`, recomputes `players`/`team`/`rotation`/`pointQuality` in memory; returns `stats` unchanged when no filter
+- `playerRows`, `statTotals`, `rotationRows` all derive from `displayStats`
+- Set picker pill row (ALL + S1/S2/S3) renders between set scores strip and team totals strip; hidden when match has only 1 set
+- Export functions (PDF/CSV/MaxPreps) continue to use full-match `stats` (not displayStats)
+- No changes to engine.js, queries.js, or schema.js
+
+**Tests:** 56/56 passing
+
+### 2026-03-23 (continued) — Serve Reticle Plot + serveZones Fix
+
+**Features:** Serving tab on MatchSummaryPage now shows individual serve placement dots on a court SVG; also fixed serveZones not filtering by set.
+
+**Only file changed:** `src/pages/MatchSummaryPage.jsx`
+
+**Changes:**
+- Added `computeServeZoneStats` to engine imports
+- Fixed `displayStats` useMemo to include `contacts: fc` and `serveZones: computeServeZoneStats(fc)` when a set is selected — previously the zone grid showed full-match totals even when a set pill was active
+- Added `ServeReticlePlot` component: SVG court (912×608 viewBox, same as ServeZoneModal) with per-contact markers — gold ★ for aces, green ○ for received serves; only renders contacts where `court_x != null`; shows ace/in-play count legend
+- Serve errors (SE) have no coordinates (never reach court) so they don't appear on the plot
+- Plot + zone grid both respond to the set filter pills
+
+**Tests:** 56/56 passing
+
 ## Weekly Summaries
 
 ## Monthly Summaries

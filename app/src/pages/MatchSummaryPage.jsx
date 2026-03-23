@@ -2,7 +2,10 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
-import { computeMatchStats, computeSetTrends, computeRallyHistogram } from '../stats/engine';
+import { computeMatchStats, computeSetTrends, computeRallyHistogram,
+         computePlayerStats, computeTeamStats, computeRotationStats, computePointQuality,
+         computeServeZoneStats } from '../stats/engine';
+import { getRalliesForMatch } from '../stats/queries';
 import { exportMatchCSV, exportMatchPDF, exportMaxPrepsCSV } from '../stats/export';
 import { fmtHitting, fmtPassRating, fmtPct, fmtCount, fmtDate, fmtVER } from '../stats/formatters';
 import { ROTATION_COLS, SERVING_COLS, TAB_COLUMNS } from '../stats/columns';
@@ -61,6 +64,75 @@ function ServeZoneGrid({ zones }) {
   );
 }
 
+const RETICLE_ZONE_GRID = [[1, 6, 5], [2, 3, 4]];
+const RW = 912, RH = 608;
+
+function ServeReticlePlot({ contacts, serveType }) {
+  const serves = contacts.filter(c =>
+    c.action === 'serve' && !c.opponent_contact && c.court_x != null &&
+    (serveType === 'all' || c.serve_type === serveType)
+  );
+  if (!serves.length) return null;
+  const aces = serves.filter(c => c.result === 'ace').length;
+  const ins  = serves.filter(c => c.result !== 'ace').length;
+
+  return (
+    <div className="mt-4">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide">Serve Placement</p>
+        <div className="flex gap-3 text-xs text-slate-400">
+          {aces > 0 && <span className="text-yellow-400 font-bold">★ {aces} ace{aces !== 1 ? 's' : ''}</span>}
+          {ins > 0  && <span className="text-emerald-400 font-bold">○ {ins} in-play</span>}
+        </div>
+      </div>
+      <div className="rounded-lg overflow-hidden" style={{ aspectRatio: `${RW} / ${RH}` }}>
+        <svg viewBox={`0 0 ${RW} ${RH}`} style={{ width: '100%', height: '100%', display: 'block' }}>
+          {/* Background */}
+          <rect width={RW} height={RH} fill="#0f172a" />
+
+          {/* Zone cells */}
+          {RETICLE_ZONE_GRID.map((row, ri) =>
+            row.map((zone, ci) => {
+              const x = ci * (RW / 3);
+              const y = ri * (RH / 2);
+              return (
+                <g key={zone}>
+                  <rect x={x} y={y} width={RW / 3} height={RH / 2}
+                    fill="transparent" stroke="#334155" strokeWidth={1} />
+                  <text x={x + RW / 6} y={y + RH / 4}
+                    textAnchor="middle" dominantBaseline="middle"
+                    fill="rgba(148,163,184,0.25)" fontSize={22} fontWeight="bold"
+                  >{zone}</text>
+                </g>
+              );
+            })
+          )}
+
+          {/* Net line */}
+          <line x1={0} y1={RH - 2} x2={RW} y2={RH - 2} stroke="#f97316" strokeWidth={3} />
+          <text x={RW / 2} y={RH - 14} textAnchor="middle" dominantBaseline="middle"
+            fill="#f97316" fontSize={18} fontWeight="bold" letterSpacing={4} opacity={0.75}
+          >NET</text>
+
+          {/* Reticles */}
+          {serves.map((c) =>
+            c.result === 'ace' ? (
+              <text key={c.id} x={c.court_x * RW} y={c.court_y * RH}
+                textAnchor="middle" dominantBaseline="middle"
+                fontSize={16} fill="#f59e0b"
+              >★</text>
+            ) : (
+              <circle key={c.id} cx={c.court_x * RW} cy={c.court_y * RH}
+                r={7} fill="rgba(52,211,153,0.2)" stroke="#34d399" strokeWidth={2}
+              />
+            )
+          )}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 function SubToggle({ options, value, onChange }) {
   return (
     <div className="flex gap-1 mb-3">
@@ -85,7 +157,9 @@ const TABS = [
   { value: 'serving',   label: 'Serving'   },
   { value: 'passing',   label: 'Passing'   },
   { value: 'attacking', label: 'Attacking' },
+  { value: 'blocking',  label: 'Blocking'  },
   { value: 'defense',   label: 'Defense'   },
+  { value: 'compare',   label: 'Compare'   },
   { value: 'opponent',  label: 'Opp'       },
 ];
 
@@ -468,10 +542,10 @@ export function MatchSummaryPage() {
   const [serveView,     setServeView]     = useState('all');
   const [trendsView,    setTrendsView]    = useState('trends');
   const [passingView,   setPassingView]   = useState('passing');
-  const [attackingView, setAttackingView] = useState('attacking');
-  const [defenseView,   setDefenseView]   = useState('defense');
   const [stats, setStats] = useState(null);
   const [contacts, setContacts] = useState([]);
+  const [rawRallies, setRawRallies] = useState([]);
+  const [selectedSetId, setSelectedSetId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [statsError, setStatsError] = useState(null);
   const [sharingCard, setSharingCard] = useState(false);
@@ -502,14 +576,31 @@ export function MatchSummaryPage() {
     if (!id) return;
     setLoading(true);
     setStatsError(null);
-    computeMatchStats(id)
-      .then((s) => { setStats(s); setContacts(s.contacts); })
+    setSelectedSetId(null);
+    Promise.all([computeMatchStats(id), getRalliesForMatch(id)])
+      .then(([s, rallies]) => { setStats(s); setContacts(s.contacts); setRawRallies(rallies); })
       .catch((err) => {
         console.error('computeMatchStats failed', err);
         setStatsError(err?.message ?? 'Failed to load stats');
       })
       .finally(() => setLoading(false));
   }, [id, statsVersion]);
+
+  const displayStats = useMemo(() => {
+    if (!stats) return null;
+    if (!selectedSetId) return stats;
+    const fc = stats.contacts.filter(c => c.set_id === selectedSetId);
+    const fr = rawRallies.filter(r => r.set_id === selectedSetId);
+    return {
+      ...stats,
+      contacts:     fc,
+      players:      computePlayerStats(fc, 1),
+      team:         computeTeamStats(fc, 1),
+      rotation:     computeRotationStats(fr),
+      pointQuality: computePointQuality(fc),
+      serveZones:   computeServeZoneStats(fc),
+    };
+  }, [stats, rawRallies, selectedSetId]);
 
   const playerNames   = useMemo(() => players
     ? Object.fromEntries(Object.entries(players).map(([pid, p]) => [pid, p.name]))
@@ -520,14 +611,14 @@ export function MatchSummaryPage() {
   const playerList = useMemo(() => players ? Object.values(players) : [], [players]);
 
   const playerRows = useMemo(() =>
-    stats
-      ? Object.entries(stats.players).map(([pid, s]) => ({
+    displayStats
+      ? Object.entries(displayStats.players).map(([pid, s]) => ({
           id:   pid,
           name: playerNames[pid] ?? `#${pid}`,
           ...s,
         }))
       : [],
-    [stats, playerNames]
+    [displayStats, playerNames]
   );
 
   const statTotals = useMemo(() => {
@@ -605,14 +696,14 @@ export function MatchSummaryPage() {
   }, [playerRows]);
 
   const rotationRows = useMemo(() =>
-    stats
-      ? Object.entries(stats.rotation.rotations).map(([n, r]) => ({
+    displayStats
+      ? Object.entries(displayStats.rotation.rotations).map(([n, r]) => ({
           id: n,
           name: `Rotation ${n}`,
           ...r,
         }))
       : [],
-    [stats]
+    [displayStats]
   );
 
   const matchMeta = match ? { ...match, sets: sets ?? [] } : {};
@@ -747,14 +838,40 @@ export function MatchSummaryPage() {
             </div>
           </div>
 
+          {/* Set filter picker */}
+          {sets && sets.length > 1 && stats && (
+            <div className="flex gap-1.5 mx-4 mb-3">
+              <button
+                onClick={() => setSelectedSetId(null)}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                  !selectedSetId ? 'bg-orange-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                }`}
+              >
+                ALL
+              </button>
+              {sets.filter(s => s.status !== 'scheduled').map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => setSelectedSetId(s.id)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                    selectedSetId === s.id ? 'bg-orange-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                  }`}
+                >
+                  S{s.set_number}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Team totals strip */}
-          {stats && (
-            <div className="mx-4 mb-2 bg-surface rounded-xl p-3 grid grid-cols-4 gap-2 text-center text-sm">
+          {displayStats && (
+            <div className="mx-4 mb-2 bg-surface rounded-xl p-3 grid grid-cols-5 gap-2 text-center text-sm">
               {[
-                { label: 'HIT%',  val: fmtHitting(stats.team.hit_pct) },
-                { label: 'ACE%',  val: fmtPct(stats.team.ace_pct)     },
-                { label: 'APR',   val: fmtPassRating(stats.team.apr)  },
-                { label: 'SO%',   val: fmtPct(stats.rotation.so_pct)  },
+                { label: 'HIT%',  val: fmtHitting(displayStats.team.hit_pct)  },
+                { label: 'S%',    val: fmtPct(displayStats.team.si_pct)        },
+                { label: 'Aces',  val: fmtCount(displayStats.team.ace)         },
+                { label: 'Kills', val: fmtCount(displayStats.team.k)           },
+                { label: 'APR',   val: fmtPassRating(displayStats.team.apr)    },
               ].map(({ label, val }) => (
                 <div key={label}>
                   <div className="text-xs text-slate-400">{label}</div>
@@ -769,8 +886,8 @@ export function MatchSummaryPage() {
 
           {/* Tab content */}
           <div key={tab} className="p-4 md:p-6 animate-fade-in">
-            {tab === 'points' && stats && (
-              <PointQualityPanel pq={stats.pointQuality} />
+            {tab === 'points' && displayStats && (
+              <PointQualityPanel pq={displayStats.pointQuality} />
             )}
 
             {tab === 'trends' && (
@@ -788,20 +905,20 @@ export function MatchSummaryPage() {
                     </div>
                   </div>
                 )}
-                {trendsView === 'rotation' && stats?.rotation && (
+                {trendsView === 'rotation' && displayStats?.rotation && (
                   <div className="space-y-6 mt-3">
                     <RotationBarChart rotationRows={rotationRows} />
-                    <RotationRadarChart rotationStats={stats.rotation} />
+                    <RotationRadarChart rotationStats={displayStats.rotation} />
                     <RotationSpotlight rows={rotationRows} />
                     <StatTable columns={ROTATION_COLS} rows={rotationRows} />
                     <div className="grid grid-cols-2 gap-4 text-sm text-center">
                       <div className="bg-surface rounded-xl p-3">
                         <div className="text-xs text-slate-400">Overall SO%</div>
-                        <div className="text-lg font-bold text-primary">{fmtPct(stats.rotation.so_pct)}</div>
+                        <div className="text-lg font-bold text-primary">{fmtPct(displayStats.rotation.so_pct)}</div>
                       </div>
                       <div className="bg-surface rounded-xl p-3">
                         <div className="text-xs text-slate-400">Overall SP%</div>
-                        <div className="text-lg font-bold text-sky-400">{fmtPct(stats.rotation.bp_pct)}</div>
+                        <div className="text-lg font-bold text-sky-400">{fmtPct(displayStats.rotation.bp_pct)}</div>
                       </div>
                     </div>
                     <CourtHeatMap contacts={contacts} />
@@ -818,8 +935,11 @@ export function MatchSummaryPage() {
                   onChange={setServeView}
                 />
                 <StatTable columns={SERVING_COLS[serveView]} rows={playerRows} totalsRow={statTotals?.[serveView]} />
-                {stats?.serveZones && (
-                  <ServeZoneGrid zones={stats.serveZones} />
+                {displayStats?.serveZones && (
+                  <ServeZoneGrid zones={displayStats.serveZones} />
+                )}
+                {displayStats?.contacts && (
+                  <ServeReticlePlot contacts={displayStats.contacts} serveType={serveView} />
                 )}
               </>
             )}
@@ -836,43 +956,32 @@ export function MatchSummaryPage() {
             )}
 
             {tab === 'attacking' && (
-              <>
-                <SubToggle
-                  options={[['attacking', 'ATTACK'], ['blocking', 'BLOCK']]}
-                  value={attackingView}
-                  onChange={setAttackingView}
-                />
-                <StatTable columns={TAB_COLUMNS[attackingView]} rows={playerRows} totalsRow={statTotals?.[attackingView]} />
-              </>
+              <StatTable columns={TAB_COLUMNS['attacking']} rows={playerRows} totalsRow={statTotals?.attacking} />
+            )}
+
+            {tab === 'blocking' && (
+              <StatTable columns={TAB_COLUMNS['blocking']} rows={playerRows} totalsRow={statTotals?.blocking} />
             )}
 
             {tab === 'defense' && (
-              <>
-                <SubToggle
-                  options={[['defense', 'DEFENSE'], ['compare', 'COMPARE']]}
-                  value={defenseView}
-                  onChange={setDefenseView}
-                />
-                {defenseView === 'defense' && (
-                  <StatTable columns={TAB_COLUMNS['defense']} rows={playerRows} totalsRow={statTotals?.defense} />
-                )}
-                {defenseView === 'compare' && (
-                  <PlayerComparison playerRows={playerRows} />
-                )}
-              </>
+              <StatTable columns={TAB_COLUMNS['defense']} rows={playerRows} totalsRow={statTotals?.defense} />
             )}
 
-            {tab === 'opponent' && stats?.opp && (
+            {tab === 'compare' && (
+              <PlayerComparison playerRows={playerRows} />
+            )}
+
+            {tab === 'opponent' && displayStats?.opp && (
               <div className="space-y-3">
                 <p className="text-xs text-slate-400 mb-4">Opponent performance this match</p>
                 <div className="grid grid-cols-3 gap-3">
                   {[
-                    { label: 'ACE',  val: stats.opp.ace,  desc: 'Aces vs us'         },
-                    { label: 'SE',   val: stats.opp.se,   desc: 'Serve errors'        },
-                    { label: 'K',    val: stats.opp.k,    desc: 'Kills'               },
-                    { label: 'AE',   val: stats.opp.ae,   desc: 'Attack errors'       },
-                    { label: 'BLK',  val: stats.opp.blk,  desc: 'Blocked by us'       },
-                    { label: 'ERR',  val: stats.opp.errs, desc: 'Ball handling errors' },
+                    { label: 'ACE',  val: displayStats.opp.ace,  desc: 'Aces vs us'         },
+                    { label: 'SE',   val: displayStats.opp.se,   desc: 'Serve errors'        },
+                    { label: 'K',    val: displayStats.opp.k,    desc: 'Kills'               },
+                    { label: 'AE',   val: displayStats.opp.ae,   desc: 'Attack errors'       },
+                    { label: 'BLK',  val: displayStats.opp.blk,  desc: 'Blocked by us'       },
+                    { label: 'ERR',  val: displayStats.opp.errs, desc: 'Ball handling errors' },
                   ].map(({ label, val, desc }) => (
                     <div key={label} className="bg-surface rounded-xl p-3 text-center">
                       <div className="text-xs text-slate-400 mb-1">{desc}</div>
