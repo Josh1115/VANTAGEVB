@@ -127,10 +127,10 @@ export function SeasonDetailPage() {
   }
 
   const wins = matches.filter(
-    (m) => m.status === MATCH_STATUS.COMPLETE && (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)
+    (m) => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition' && (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)
   ).length;
   const losses = matches.filter(
-    (m) => m.status === MATCH_STATUS.COMPLETE && (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)
+    (m) => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition' && (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)
   ).length;
 
   return (

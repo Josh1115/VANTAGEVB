@@ -121,7 +121,8 @@ export function HomePage() {
   }, [matchView]);
 
   const allTimeRecord = useLiveQuery(async () => {
-    const all = await db.matches.where('status').equals(MATCH_STATUS.COMPLETE).toArray();
+    const all = await db.matches.where('status').equals(MATCH_STATUS.COMPLETE)
+      .filter(m => m.match_type !== 'exhibition').toArray();
     const wins = all.filter((m) => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
     return { wins, losses: all.length - wins, total: all.length };
   }, []);
@@ -135,7 +136,7 @@ export function HomePage() {
       db.teams.get(defaultTeamId),
       db.seasons.get(defaultSeasonId),
       db.matches.where('season_id').equals(defaultSeasonId)
-        .filter(m => m.status === MATCH_STATUS.COMPLETE)
+        .filter(m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition')
         .toArray(),
     ]);
     if (!team || !season) return null;
