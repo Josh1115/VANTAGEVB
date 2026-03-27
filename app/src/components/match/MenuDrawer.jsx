@@ -8,11 +8,12 @@ import { useMatchStore } from '../../store/matchStore';
 import { db } from '../../db/schema';
 import { SIDE } from '../../constants';
 
-export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout }) {
+export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName, opponentName }) {
   const matchId         = useMatchStore((s) => s.matchId);
   const currentSetId    = useMatchStore((s) => s.currentSetId);
   const ourScore        = useMatchStore((s) => s.ourScore);
   const oppScore        = useMatchStore((s) => s.oppScore);
+  const fudgeScore      = useMatchStore((s) => s.fudgeScore);
   const endSet          = useMatchStore((s) => s.endSet);
   const endMatch        = useMatchStore((s) => s.endMatch);
   const resetCurrentSet  = useMatchStore((s) => s.resetCurrentSet);
@@ -70,6 +71,30 @@ export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout }) {
             <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${flipLayout ? 'translate-x-5' : ''}`} />
           </button>
         </div>
+        {/* ── Score Adjustment ── */}
+        <div className="mb-3 pb-3 border-b border-slate-700">
+          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Score Adjustment</div>
+          {[
+            { label: teamName || 'Home', score: ourScore, side: SIDE.US },
+            { label: opponentName || 'Away', score: oppScore, side: SIDE.THEM },
+          ].map(({ label, score, side }) => (
+            <div key={side} className="flex items-center justify-between py-1.5">
+              <span className="text-sm text-slate-300 truncate max-w-[120px]">{label}</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onPointerDown={(e) => { e.preventDefault(); fudgeScore(side, -1); }}
+                  className="w-8 h-8 rounded-lg bg-slate-700 text-white text-lg font-bold flex items-center justify-center active:brightness-75 select-none"
+                >−</button>
+                <span className="w-7 text-center text-lg font-black text-white tabular-nums">{score}</span>
+                <button
+                  onPointerDown={(e) => { e.preventDefault(); fudgeScore(side, +1); }}
+                  className="w-8 h-8 rounded-lg bg-slate-700 text-white text-lg font-bold flex items-center justify-center active:brightness-75 select-none"
+                >+</button>
+              </div>
+            </div>
+          ))}
+        </div>
+
         <div className="space-y-3">
           <Button variant="secondary" className="w-full justify-start" onClick={() => setConfirmMatchSetup(true)}>
             Match Set Up

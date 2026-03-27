@@ -432,7 +432,7 @@ export function LiveMatchPage() {
           onPick={(idx) => { swapLibero(liberoPlayer, idx); setLiberoSwapOpen(false); }}
         />
       )}
-      {menuOpen  && <MenuDrawer onClose={() => setMenuOpen(false)} flipLayout={flipLayout} onFlipLayout={handleToggleFlip} />}
+      {menuOpen  && <MenuDrawer onClose={() => setMenuOpen(false)} flipLayout={flipLayout} onFlipLayout={handleToggleFlip} teamName={teamName} opponentName={opponentName} />}
       <LiveStatsModal
         open={statsOpen}
         onClose={() => { setStatsOpen(false); setLiveStatsDefaultTab(null); }}

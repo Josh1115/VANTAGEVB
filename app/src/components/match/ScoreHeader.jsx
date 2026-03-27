@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState, useCallback } from 'react';
 import { useMatchStore } from '../../store/matchStore';
 import { useMatchStats } from '../../hooks/useMatchStats';
+import { useWinProbability } from '../../hooks/useWinProbability';
 import { SIDE, FORMAT, NFHS } from '../../constants';
 import { LiberoBox } from './LiberoBox';
 
@@ -70,7 +71,18 @@ function EmberCanvas({ runCount }) {
   );
 }
 
-function RunStrip({ teamStats: t, oppStats: o, currentRun, teamName, opponentName }) {
+function WinProbBadge({ matchWinProb }) {
+  const pct = Math.round(matchWinProb * 100);
+  const color = pct >= 60 ? 'text-green-400' : pct <= 40 ? 'text-red-400' : 'text-yellow-400';
+  return (
+    <span className={`flex items-baseline gap-[0.2vmin] shrink-0 ${color}`}>
+      <span className="text-slate-500 text-[1.5vmin] font-medium">WIN</span>
+      <span className="text-[1.9vmin] font-black tabular-nums">{pct}%</span>
+    </span>
+  );
+}
+
+function RunStrip({ teamStats: t, oppStats: o, currentRun, teamName, opponentName, matchWinProb, showWinProb }) {
   const n    = (v) => v ?? 0;
   const pct  = (v) => v != null ? Math.round(v * 100) + '%' : '—';
   const dec1 = (v) => v != null ? v.toFixed(1) : '—';
@@ -109,6 +121,12 @@ function RunStrip({ teamStats: t, oppStats: o, currentRun, teamName, opponentNam
       style={runPulseStyle}
     >
       <div className="flex items-center gap-2 pl-2 text-[1.7vmin] leading-none">
+        {showWinProb && (
+          <>
+            <WinProbBadge matchWinProb={matchWinProb} />
+            <span className="text-slate-600 text-[1.5vmin]">|</span>
+          </>
+        )}
         {STATS.map(([lbl, val]) => (
           <span key={lbl} className="flex items-baseline gap-[0.25vmin]">
             <span className="text-slate-500 font-medium">{lbl}</span>
@@ -135,16 +153,14 @@ function RunStrip({ teamStats: t, oppStats: o, currentRun, teamName, opponentNam
           </span>
         </div>
       )}
-      {OPP_STATS.length > 0 && (
-        <div className="ml-auto flex items-center gap-2 pr-2 text-[1.7vmin] leading-none">
-          {OPP_STATS.map(([lbl, val]) => (
-            <span key={lbl} className="flex items-baseline gap-[0.25vmin]">
-              <span className="text-red-500 font-medium">{lbl}</span>
-              <span className="text-red-300 font-bold">{val}</span>
-            </span>
-          ))}
-        </div>
-      )}
+      <div className="ml-auto flex items-center gap-2 pr-2 text-[1.7vmin] leading-none">
+        {OPP_STATS.map(([lbl, val]) => (
+          <span key={lbl} className="flex items-baseline gap-[0.25vmin]">
+            <span className="text-red-500 font-medium">{lbl}</span>
+            <span className="text-red-300 font-bold">{val}</span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -248,6 +264,9 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
   const lastSetScore  = useMatchStore((s) => s.lastSetScore);
 
   const { teamStats, oppStats } = useMatchStats();
+  const { matchWinProb } = useWinProbability();
+  const totalRallies = useMatchStore((s) => s.committedRallies.length);
+  const showWinProb  = totalRallies >= 5;
 
   const [nudgeOpen,       setNudgeOpen]       = useState(null); // null | 'us' | 'them'
   const [timeoutConfirm,  setTimeoutConfirm]  = useState(null); // null | 'us' | 'them'
@@ -522,6 +541,8 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
         currentRun={currentRun}
         teamName={teamName}
         opponentName={opponentName}
+        matchWinProb={matchWinProb}
+        showWinProb={showWinProb}
       />
 
 

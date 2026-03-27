@@ -4,7 +4,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { computeMatchStats,
          computePlayerStats, computeTeamStats, computeRotationStats, computePointQuality,
-         computeServeZoneStats, computeISvsOOS, computeTransitionAttack } from '../stats/engine';
+         computeServeZoneStats, computeISvsOOS, computeTransitionAttack,
+         computePQ, computeSetWinProb, computeMatchWinProb } from '../stats/engine';
 import { getRalliesForMatch } from '../stats/queries';
 import { exportMatchCSV, exportMatchPDF, exportMaxPrepsCSV } from '../stats/export';
 import { fmtHitting, fmtPassRating, fmtPct, fmtCount, fmtDate } from '../stats/formatters';
@@ -26,9 +27,10 @@ import { RallyHistogram } from '../components/stats/RallyHistogram';
 import { PlayerComparison } from '../components/stats/PlayerComparison';
 import { ReviseSetModal } from '../components/match/ReviseSetModal';
 import { BoxScoreEntryModal } from '../components/match/BoxScoreEntryModal';
+import { FORMAT } from '../constants';
 import { useSwipe } from '../hooks/useSwipe';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
   ResponsiveContainer,
 } from 'recharts';
 
@@ -66,6 +68,91 @@ function ServeZoneGrid({ zones }) {
             })}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Win Probability Timeline ─────────────────────────────────────────────────
+
+function buildWinProbTimeline(rallies, sets, format) {
+  if (!rallies?.length || !sets?.length) return [];
+  const { p, q }    = computePQ(rallies);
+  const setsToWin   = format === FORMAT.BEST_OF_3 ? 2 : 3;
+  const decidingNum = format === FORMAT.BEST_OF_3 ? 3 : 5;
+  const pFutureSet  = computeSetWinProb(p, q, 0, 0, 'them', false);
+
+  const sortedSets  = [...sets].sort((a, b) => a.set_number - b.set_number);
+  const rallysBySet = new Map();
+  for (const r of rallies) {
+    if (!rallysBySet.has(r.set_id)) rallysBySet.set(r.set_id, []);
+    rallysBySet.get(r.set_id).push(r);
+  }
+
+  const points = [];
+  let ourSets = 0, oppSets = 0, x = 0;
+
+  for (const set of sortedSets) {
+    const setRallies = (rallysBySet.get(set.id) ?? []).sort((a, b) => a.rally_number - b.rally_number);
+    if (!setRallies.length) continue;
+    const isDecider = set.set_number === decidingNum;
+    let s1 = 0, s2 = 0;
+
+    for (const rally of setRallies) {
+      const sp  = computeSetWinProb(p, q, s1, s2, rally.serve_side, isDecider);
+      const mp  = computeMatchWinProb(sp, pFutureSet, ourSets, oppSets, setsToWin);
+      points.push({ x, pct: Math.round(mp * 100), set: set.set_number });
+      x++;
+      if (rally.point_winner === 'us') s1++; else s2++;
+    }
+    if (s1 > s2) ourSets++; else oppSets++;
+  }
+
+  return points;
+}
+
+function WinProbChart({ rawRallies, sets, format }) {
+  const data = useMemo(
+    () => buildWinProbTimeline(rawRallies, sets, format),
+    [rawRallies, sets, format]
+  );
+
+  if (data.length < 2) {
+    return <p className="text-center text-slate-500 text-sm py-8">Not enough rally data</p>;
+  }
+
+  // Find set boundaries for reference lines
+  const setBoundaries = [];
+  let prev = data[0]?.set;
+  for (const d of data) {
+    if (d.set !== prev) { setBoundaries.push(d.x); prev = d.set; }
+  }
+
+  return (
+    <div>
+      <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-3">Match Win Probability</p>
+      <ResponsiveContainer width="100%" height={180}>
+        <LineChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+          <XAxis dataKey="x" hide />
+          <YAxis domain={[0, 100]} ticks={[25, 50, 75]} tick={{ fill: '#64748b', fontSize: 10 }} tickFormatter={v => `${v}%`} />
+          <ReferenceLine y={50} stroke="#334155" strokeDasharray="4 4" />
+          {setBoundaries.map(x => (
+            <ReferenceLine key={x} x={x} stroke="#334155" strokeDasharray="2 4" label={{ value: `S${data.find(d => d.x === x)?.set}`, fill: '#475569', fontSize: 9, position: 'insideTopLeft' }} />
+          ))}
+          <Tooltip
+            contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }}
+            formatter={(val) => [`${val}%`, 'Win Prob']}
+            labelFormatter={() => ''}
+          />
+          <Line
+            type="monotone" dataKey="pct" stroke="#f97316" strokeWidth={2} dot={false}
+            activeDot={{ r: 3, fill: '#f97316' }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+      <div className="flex justify-between text-[10px] text-slate-500 mt-1 px-1">
+        <span>Start</span><span>End</span>
       </div>
     </div>
   );
@@ -677,7 +764,7 @@ export function MatchSummaryPage() {
             {tab === 'trends' && (
               <>
                 <SubToggle
-                  options={[['trends', 'TRENDS'], ['rotation', 'ROTATION']]}
+                  options={[['trends', 'TRENDS'], ['rotation', 'ROTATION'], ['winprob', 'WIN PROB']]}
                   value={trendsView}
                   onChange={setTrendsView}
                 />
@@ -687,6 +774,15 @@ export function MatchSummaryPage() {
                     <div className="border-t border-slate-700/50 pt-6">
                       <RallyHistogram contacts={contacts} />
                     </div>
+                  </div>
+                )}
+                {trendsView === 'winprob' && (
+                  <div className="mt-3">
+                    <WinProbChart
+                      rawRallies={rawRallies}
+                      sets={sets ?? []}
+                      format={match?.format ?? FORMAT.BEST_OF_5}
+                    />
                   </div>
                 )}
                 {trendsView === 'rotation' && displayStats?.rotation && (

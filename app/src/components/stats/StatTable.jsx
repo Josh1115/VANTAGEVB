@@ -71,7 +71,7 @@ export function StatTable({ columns, rows, totalsRow, onRowClick, selectedRowId 
                     col.cellClass?.(row[col.key], row)
                   )}
                 >
-                  {col.fmt ? col.fmt(row[col.key]) : (row[col.key] ?? '—')}
+                  {col.render ? col.render(row[col.key], row) : col.fmt ? col.fmt(row[col.key]) : (row[col.key] ?? '—')}
                 </td>
               ))}
             </tr>

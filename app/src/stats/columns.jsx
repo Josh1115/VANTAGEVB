@@ -1,4 +1,5 @@
 import { fmtPct, fmtCount, fmtRate, fmtPassRating, fmtHitting, fmtVER } from './formatters';
+import { VERBadge } from '../components/stats/VERBadge';
 
 function soColor(v) {
   if (v == null) return '';
@@ -85,7 +86,7 @@ export const TAB_COLUMNS = {
   ver: [
     { key: 'name',      label: 'Player' },
     ...SP_MP_COLS,
-    { key: 'ver',       label: 'VER',   fmt: fmtVER     },
+    { key: 'ver',       label: 'VER',   fmt: fmtVER,    render: (v) => <VERBadge ver={v} /> },
     { key: 'k',         label: 'K',     fmt: fmtCount   },
     { key: 'ace',       label: 'ACE',   fmt: fmtCount   },
     { key: 'bs',        label: 'BS',    fmt: fmtCount   },

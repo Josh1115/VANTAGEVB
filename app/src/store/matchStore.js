@@ -371,6 +371,33 @@ export const useMatchStore = create((set, get) => ({
 
   clearPendingSetWin: () => set({ pendingSetWin: null }),
 
+  // Manually adjust home (us) or away (them) score by +1 or -1.
+  // Used to correct scoring errors. Clamps at 0, checks set-win, fully undoable.
+  fudgeScore: (side, delta) => {
+    const s = get();
+    if (side === SIDE.US) {
+      const next = Math.max(0, s.ourScore + delta);
+      if (next === s.ourScore) return;
+      set((cur) => ({
+        ourScore:      next,
+        actionHistory: [{ type: 'fudge', side, delta }, ...cur.actionHistory],
+        lastFeedItem:  { label: `Score adj: ${delta > 0 ? '+' : ''}${delta} (Us)`, id: Date.now() },
+      }));
+      const winner = checkSetWin(next, s.oppScore, s.setNumber, s.format, s.lastSetScore);
+      if (winner) set({ pendingSetWin: winner });
+    } else {
+      const next = Math.max(0, s.oppScore + delta);
+      if (next === s.oppScore) return;
+      set((cur) => ({
+        oppScore:      next,
+        actionHistory: [{ type: 'fudge', side, delta }, ...cur.actionHistory],
+        lastFeedItem:  { label: `Score adj: ${delta > 0 ? '+' : ''}${delta} (Opp)`, id: Date.now() },
+      }));
+      const winner = checkSetWin(s.ourScore, next, s.setNumber, s.format, s.lastSetScore);
+      if (winner) set({ pendingSetWin: winner });
+    }
+  },
+
   undoLast: async () => {
     const s = get();
     if (!s.actionHistory.length) return;
@@ -520,6 +547,14 @@ export const useMatchStore = create((set, get) => ({
           liberoReplacedJersey:        action.prevReplacedJersey,
           liberoReplacedPositionLabel: action.prevReplacedPositionLabel ?? '',
         });
+        break;
+      }
+
+      case 'fudge': {
+        if (action.side === SIDE.US)
+          set({ actionHistory: rest, ourScore: Math.max(0, s.ourScore - action.delta), lastFeedItem: null });
+        else
+          set({ actionHistory: rest, oppScore: Math.max(0, s.oppScore - action.delta), lastFeedItem: null });
         break;
       }
     }

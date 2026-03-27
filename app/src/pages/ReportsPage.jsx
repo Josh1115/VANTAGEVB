@@ -4,8 +4,9 @@ import { buildPlayerMaps } from '../utils/players';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getIntStorage, STORAGE_KEYS } from '../utils/storage';
 import { db } from '../db/schema';
-import { computeSeasonStats } from '../stats/engine';
+import { computeSeasonStats, computePQ, computeSetWinProb } from '../stats/engine';
 import { fmtHitting, fmtPassRating, fmtPct, fmtCount, fmtVER } from '../stats/formatters';
+import { VERBadge } from '../components/stats/VERBadge';
 import { ROTATION_COLS, SERVING_COLS, TAB_COLUMNS } from '../stats/columns';
 import { PageHeader } from '../components/layout/PageHeader';
 import { TabBar } from '../components/ui/Tab';
@@ -35,7 +36,7 @@ const PLAYER_COLS = [
   { key: 'mp',        label: 'MP',    fmt: fmtCount     },
   { key: 'sp',        label: 'SP',    fmt: fmtCount     },
   { key: 'pos_label', label: 'POS',   fmt: (v) => v ?? '—' },
-  { key: 'ver',       label: 'VER',   fmt: fmtVER       },
+  { key: 'ver',       label: 'VER',   fmt: fmtVER,      render: (v) => <VERBadge ver={v} /> },
   { key: 'sa',      label: 'SA',    fmt: fmtCount     },
   { key: 'si_pct',  label: 'SRV%',  fmt: fmtPct       },
   { key: 'ace',     label: 'ACE',   fmt: fmtCount     },
@@ -623,6 +624,39 @@ export function ReportsPage() {
                     <HittingBarChart data={hittingBarData} />
                   </div>
                 )}
+
+                {/* Win Probability */}
+                {stats.rallies?.length > 0 && (() => {
+                  const { p, q } = computePQ(stats.rallies);
+                  const pct = (v) => Math.round(v * 100);
+                  const expectedWin = computeSetWinProb(p, q, 0, 0, 'them', false);
+                  const COLOR_P = p >= 0.58 ? 'text-green-400' : p >= 0.50 ? 'text-yellow-400' : 'text-red-400';
+                  const COLOR_Q = q >= 0.42 ? 'text-green-400' : q >= 0.35 ? 'text-yellow-400' : 'text-red-400';
+                  const COLOR_W = expectedWin >= 0.55 ? 'text-green-400' : expectedWin >= 0.45 ? 'text-yellow-400' : 'text-red-400';
+                  return (
+                    <div className="bg-surface rounded-xl p-3 space-y-2">
+                      <SectionHeader>Win Probability Model</SectionHeader>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-slate-800/60 rounded-lg p-2">
+                          <div className="text-[10px] text-slate-400 leading-none mb-1">Sideout%</div>
+                          <div className={`text-xl font-black leading-none ${COLOR_P}`}>{pct(p)}%</div>
+                          <div className="text-[9px] text-slate-500 mt-0.5">when receiving</div>
+                        </div>
+                        <div className="bg-slate-800/60 rounded-lg p-2">
+                          <div className="text-[10px] text-slate-400 leading-none mb-1">Break%</div>
+                          <div className={`text-xl font-black leading-none ${COLOR_Q}`}>{pct(q)}%</div>
+                          <div className="text-[9px] text-slate-500 mt-0.5">when serving</div>
+                        </div>
+                        <div className="bg-slate-800/60 rounded-lg p-2">
+                          <div className="text-[10px] text-slate-400 leading-none mb-1">Set Win</div>
+                          <div className={`text-xl font-black leading-none ${COLOR_W}`}>{pct(expectedWin)}%</div>
+                          <div className="text-[9px] text-slate-500 mt-0.5">at 0–0 serve</div>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-slate-500 text-center pt-1">Based on {stats.rallies.length} recorded rallies</p>
+                    </div>
+                  );
+                })()}
               </>
             )}
 

@@ -11,6 +11,7 @@ import { PointQualityPanel } from './PointQualityPanel';
 import { computeMilestone } from '../../hooks/useRecordAlerts';
 import { TRACKABLE_STATS } from '../../constants';
 import { fmtCount, fmtPct, fmtHitting, fmtPassRating, fmtVER } from '../../stats/formatters';
+import { VERBadge } from './VERBadge';
 
 const TABS = ['POINTS', 'SERVING', 'PASSING', 'ATTACKING', 'BLOCKING', 'DEFENSE', 'VER', 'RECORDS'];
 
@@ -85,7 +86,7 @@ const COLUMNS = {
   ],
   VER: [
     { key: 'name', label: 'Player' },
-    { key: 'ver',  label: 'VER',  fmt: fmtVER   },
+    { key: 'ver',  label: 'VER',  fmt: fmtVER,  render: (v) => <VERBadge ver={v} /> },
     { key: 'k',    label: 'K',    fmt: fmtCount },
     { key: 'ace',  label: 'ACE',  fmt: fmtCount },
     { key: 'bs',   label: 'BS',   fmt: fmtCount },

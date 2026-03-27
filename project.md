@@ -14,7 +14,7 @@ Modeled after iStatVball. Solo user, no backend, no auth. Fully offline-first vi
 - jsPDF 2 + PapaParse 5
 
 ## Project Root
-~/VBAPPv.2/app/   (Vite project root)
+~/VBSTAT/app/   (Vite project root)
 
 ## Key Architecture Decisions
 1. All data lives in IndexedDB via Dexie. No API calls, no server.

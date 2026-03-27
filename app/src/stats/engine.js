@@ -711,6 +711,7 @@ export async function computeSeasonStats(seasonId, filters = {}) {
     totalMatchCount,
     oppScored,
     contacts,
+    rallies,
   };
 }
 
@@ -824,6 +825,73 @@ const RALLY_BUCKETS = [
   { label: '7–10', min: 7,  max: 10        },
   { label: '11+',  min: 11, max: Infinity  },
 ];
+
+// ── Win Probability — Markov chain model ─────────────────────────────────────
+// p = sideout rate  (P we win rally | serve_side = 'them')
+// q = break rate    (P we win rally | serve_side = 'us')
+// Fallback defaults from HS volleyball averages when sample is too small.
+const WP_FALLBACK_P = 0.58;
+const WP_FALLBACK_Q = 0.42;
+const WP_MIN_SAMPLE = 10; // rallies per side before trusting observed rates
+
+export function computePQ(rallies) {
+  if (!rallies?.length) return { p: WP_FALLBACK_P, q: WP_FALLBACK_Q };
+  let recvTotal = 0, recvWin = 0, servTotal = 0, servWin = 0;
+  for (const r of rallies) {
+    if (r.serve_side === 'them') {
+      recvTotal++;
+      if (r.point_winner === 'us') recvWin++;
+    } else if (r.serve_side === 'us') {
+      servTotal++;
+      if (r.point_winner === 'us') servWin++;
+    }
+  }
+  const p = recvTotal >= WP_MIN_SAMPLE ? recvWin / recvTotal : WP_FALLBACK_P;
+  const q = servTotal >= WP_MIN_SAMPLE ? servWin / servTotal : WP_FALLBACK_Q;
+  return { p, q };
+}
+
+export function computeSetWinProb(p, q, ourScore, oppScore, serveSide, isDecider = false) {
+  const target = isDecider ? 15 : 25;
+  const memo = new Map();
+
+  function dp(s1, s2, side) {
+    if (s1 >= target && s1 >= s2 + 2) return 1;
+    if (s2 >= target && s2 >= s1 + 2) return 0;
+    // Safety cap for extended deuce
+    if (s1 > 50 || s2 > 50) return 0.5;
+    const key = `${s1},${s2},${side}`;
+    if (memo.has(key)) return memo.get(key);
+    // winProb: P we win this rally
+    const w = side === 'us' ? q : p;
+    // If we win: we score and we serve next (sideout: side flips to us; break: stays us)
+    // If we lose: they score and they serve next
+    const val = w * dp(s1 + 1, s2, 'us') + (1 - w) * dp(s1, s2 + 1, 'them');
+    memo.set(key, val);
+    return val;
+  }
+
+  return dp(ourScore, oppScore, serveSide === 'us' ? 'us' : 'them');
+}
+
+export function computeMatchWinProb(pCurrentSet, pFutureSet, ourSets, oppSets, setsToWin = 3) {
+  const memo = new Map();
+
+  function dp(w, l) {
+    if (w === setsToWin) return 1;
+    if (l === setsToWin) return 0;
+    const key = `${w},${l}`;
+    if (memo.has(key)) return memo.get(key);
+    const val = pFutureSet * dp(w + 1, l) + (1 - pFutureSet) * dp(w, l + 1);
+    memo.set(key, val);
+    return val;
+  }
+
+  // Current set outcome leads into the future sets tree
+  const winAfter  = dp(ourSets + 1, oppSets);
+  const loseAfter = dp(ourSets, oppSets + 1);
+  return pCurrentSet * winAfter + (1 - pCurrentSet) * loseAfter;
+}
 
 export function computeRallyHistogram(contacts) {
   if (!contacts?.length) return [];
