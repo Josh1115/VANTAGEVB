@@ -2,6 +2,40 @@ import Dexie from 'dexie';
 
 export const db = new Dexie('VBAPPv2');
 
+// v11: add opponent_id index on matches for efficient opponent history queries.
+db.version(11).stores({
+  rallies:         '++id, set_id, rally_number',
+  sets:            '++id, match_id, set_number',
+  lineups:         '++id, set_id, player_id',
+  substitutions:   '++id, set_id, rally_number',
+  organizations:   '++id, name, type',
+  teams:           '++id, org_id, name',
+  seasons:         '++id, team_id, year',
+  players:         '++id, team_id, is_active',
+  opponents:       '++id, name',
+  saved_lineups:   '++id, team_id',
+  contacts:        '++id, match_id, player_id, action, set_id, rally_id, rotation_num',
+  matches:         '++id, season_id, status, date, opponent_id',
+  opp_tendencies:  '++id, opp_id, match_id',
+});
+
+// v10: add opp_tendencies table for structured opponent scouting data.
+db.version(10).stores({
+  rallies:         '++id, set_id, rally_number',
+  sets:            '++id, match_id, set_number',
+  lineups:         '++id, set_id, player_id',
+  substitutions:   '++id, set_id, rally_number',
+  organizations:   '++id, name, type',
+  teams:           '++id, org_id, name',
+  seasons:         '++id, team_id, year',
+  players:         '++id, team_id, is_active',
+  opponents:       '++id, name',
+  saved_lineups:   '++id, team_id',
+  contacts:        '++id, match_id, player_id, action, set_id, rally_id, rotation_num',
+  matches:         '++id, season_id, status, date',
+  opp_tendencies:  '++id, opp_id, match_id',
+});
+
 // v9: re-declare every table that was only ever defined in v1.
 //   If a prior failed migration left the DB in a state where these tables
 //   were never created, this forces Dexie to create them. If they already

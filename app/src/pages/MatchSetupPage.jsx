@@ -80,10 +80,30 @@ export function MatchSetupPage() {
     [scheduledMatchId]
   );
 
+  const allOpponents = useLiveQuery(() => db.opponents.toArray(), []);
+
+  // lockedOppId is set when the user picks an existing opponent from the autocomplete.
+  // It is cleared whenever the text field changes after a selection.
+  const [lockedOppId, setLockedOppId] = useState(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const opponentSuggestions = useMemo(() => {
+    const q = opponent.trim().toLowerCase();
+    if (!q || !allOpponents) return [];
+    return allOpponents
+      .filter(o => o.name.toLowerCase().includes(q))
+      .slice(0, 6);
+  }, [opponent, allOpponents]);
+
+  const lockedOpponent = lockedOppId != null
+    ? (allOpponents ?? []).find(o => o.id === lockedOppId) ?? null
+    : null;
+
   const [prefilled, setPrefilled] = useState(false);
   useEffect(() => {
     if (scheduledMatch && !prefilled) {
       setOpponent(scheduledMatch.opponent_name ?? '');
+      if (scheduledMatch.opponent_id) setLockedOppId(scheduledMatch.opponent_id);
       setOpponentAbbr(scheduledMatch.opponent_abbr ?? '');
       setConference(scheduledMatch.conference ?? 'non-con');
       setLocation(scheduledMatch.location ?? 'home');
@@ -122,8 +142,16 @@ export function MatchSetupPage() {
       resetMatch();
       useMatchStore.setState({ serveSide: servingSide, teamJerseyColor, liberoJerseyColor });
 
-      // Upsert opponent
-      let oppRecord = await db.opponents.where('name').equals(opponent.trim()).first();
+      // Upsert opponent — prefer the locked id from autocomplete selection,
+      // fall back to case-insensitive name match, then create new.
+      let oppRecord = lockedOppId != null
+        ? await db.opponents.get(lockedOppId)
+        : null;
+      if (!oppRecord) {
+        const nameLower = opponent.trim().toLowerCase();
+        const all = await db.opponents.toArray();
+        oppRecord = all.find(o => o.name.toLowerCase() === nameLower) ?? null;
+      }
       if (!oppRecord) {
         const oppId = await db.opponents.add({ name: opponent.trim() });
         oppRecord = { id: oppId, name: opponent.trim() };
@@ -225,14 +253,58 @@ export function MatchSetupPage() {
           <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
             Opponent
           </label>
-          <div className="flex gap-2 items-center">
-            <input
-              type="text"
-              value={opponent}
-              onChange={(e) => setOpponent(e.target.value)}
-              placeholder="Opponent team name"
-              className="flex-1 bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
-            />
+          <div className="relative flex gap-2 items-start">
+            <div className="flex-1 relative">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={opponent}
+                  onChange={(e) => {
+                    setOpponent(e.target.value);
+                    setLockedOppId(null);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  placeholder="Opponent team name"
+                  className={`w-full bg-surface border text-white rounded-lg px-3 py-2 text-sm focus:outline-none placeholder:text-slate-600
+                    ${lockedOppId != null ? 'border-emerald-500' : 'border-slate-600 focus:border-primary'}`}
+                />
+                {lockedOppId != null && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400 text-sm">✓</span>
+                )}
+              </div>
+              {lockedOppId != null && (
+                <p className="text-[10px] text-emerald-400 mt-0.5 px-1">Linked to existing opponent — stats will merge.</p>
+              )}
+              {showSuggestions && opponentSuggestions.length > 0 && (
+                <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg overflow-hidden shadow-xl">
+                  {opponentSuggestions.map(opp => (
+                    <button
+                      key={opp.id}
+                      type="button"
+                      onMouseDown={() => {
+                        setOpponent(opp.name);
+                        setLockedOppId(opp.id);
+                        setShowSuggestions(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-white hover:bg-slate-700 border-b border-slate-700/50 last:border-0"
+                    >
+                      {opp.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {lockedOpponent && (
+              <button
+                type="button"
+                onClick={() => navigate(`/opponents/${lockedOpponent.id}`)}
+                className="text-xs font-semibold text-primary hover:text-orange-300 whitespace-nowrap transition-colors pt-2.5"
+              >
+                Scout ›
+              </button>
+            )}
             <div className="flex flex-col items-center gap-0.5">
               <span className="text-[10px] text-slate-500 uppercase tracking-wide leading-none">Abbr</span>
               <input

@@ -1075,7 +1075,10 @@ export function TeamDetailPage() {
             <div className="space-y-2">
               {activePlayers.map((player) => (
                 <SwipeableMatchCard key={player.id} onDeleteConfirm={() => setDeletePlayer(player)}>
-                  <div className="bg-surface rounded-xl px-4 py-3 flex items-center gap-3">
+                  <div
+                    className="bg-surface rounded-xl px-4 py-3 flex items-center gap-3 cursor-pointer active:brightness-110"
+                    onClick={() => navigate(`/teams/${teamId}/players/${player.id}`)}
+                  >
                     <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-mono font-bold text-primary shrink-0">
                       #{player.jersey_number}
                     </div>
@@ -1095,7 +1098,12 @@ export function TeamDetailPage() {
                         {player.year && <span className="text-xs text-slate-400">{player.year}</span>}
                       </div>
                     </div>
-                    <button onClick={() => setEditPlayer(player)} className="text-slate-400 hover:text-white text-sm shrink-0">Edit</button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditPlayer(player); }}
+                      className="text-slate-400 hover:text-white text-sm shrink-0"
+                    >
+                      Edit
+                    </button>
                   </div>
                 </SwipeableMatchCard>
               ))}
@@ -1114,7 +1122,10 @@ export function TeamDetailPage() {
         <div className="p-4 md:p-6">
           <div className="flex justify-between items-center mb-3">
             <span className="text-sm text-slate-400">{savedLineups?.length ?? 0} saved</span>
-            <Button size="sm" onClick={() => setShowLineupModal(true)}>+ Lineup</Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="ghost" onClick={() => navigate(`/teams/${teamId}/optimizer`)}>Optimizer</Button>
+              <Button size="sm" onClick={() => setShowLineupModal(true)}>+ Lineup</Button>
+            </div>
           </div>
 
           {(savedLineups ?? []).length === 0 ? (

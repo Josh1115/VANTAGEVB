@@ -548,6 +548,20 @@ export function HomePage() {
           );
         })()}
 
+        {/* ── Opponents ── */}
+        <button
+          onClick={() => navigate('/opponents')}
+          className="group w-full card-top-glow bg-surface rounded-xl p-4 text-left flex items-center gap-4 hover:bg-slate-700 active:scale-[0.97] transition-[transform,background-color] duration-75 animate-slide-up-fade"
+          style={{ animationDelay: '180ms' }}
+        >
+          <span className="text-3xl inline-block transition-transform duration-75 group-active:-translate-y-1.5 group-active:scale-125">🔭</span>
+          <div className="flex-1">
+            <div className="font-semibold text-sm">Opponents</div>
+            <div className="text-xs text-slate-400">Scouting, tendencies & match history</div>
+          </div>
+          <span className="text-slate-500 text-lg">›</span>
+        </button>
+
         {/* ── Tools ── */}
         <button
           onClick={() => navigate('/tools')}

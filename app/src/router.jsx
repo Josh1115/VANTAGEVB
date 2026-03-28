@@ -10,6 +10,10 @@ import { NotFoundPage } from './pages/NotFoundPage';
 // Lazily loaded — heavy pages only fetched when navigated to
 const TeamsPage        = lazy(() => import('./pages/TeamsPage').then(m => ({ default: m.TeamsPage })));
 const TeamDetailPage   = lazy(() => import('./pages/TeamDetailPage').then(m => ({ default: m.TeamDetailPage })));
+const PlayerStatsPage       = lazy(() => import('./pages/PlayerStatsPage').then(m => ({ default: m.PlayerStatsPage })));
+const RotationOptimizerPage = lazy(() => import('./pages/RotationOptimizerPage').then(m => ({ default: m.RotationOptimizerPage })));
+const OpponentListPage      = lazy(() => import('./pages/OpponentListPage').then(m => ({ default: m.OpponentListPage })));
+const OpponentDetailPage    = lazy(() => import('./pages/OpponentDetailPage').then(m => ({ default: m.OpponentDetailPage })));
 const MatchSetupPage   = lazy(() => import('./pages/MatchSetupPage').then(m => ({ default: m.MatchSetupPage })));
 const LiveMatchPage    = lazy(() => import('./pages/LiveMatchPage').then(m => ({ default: m.LiveMatchPage })));
 const SetLineupPage    = lazy(() => import('./pages/SetLineupPage').then(m => ({ default: m.SetLineupPage })));
@@ -43,6 +47,10 @@ export const router = createBrowserRouter([
       { index: true,                         element: <HomePage /> },
       { path: 'teams',                       element: <S><TeamsPage /></S> },
       { path: 'teams/:teamId',               element: <S><TeamDetailPage /></S> },
+      { path: 'teams/:teamId/players/:playerId', element: <S><PlayerStatsPage /></S> },
+      { path: 'teams/:teamId/optimizer',        element: <S><RotationOptimizerPage /></S> },
+      { path: 'opponents',                      element: <S><OpponentListPage /></S> },
+      { path: 'opponents/:oppId',               element: <S><OpponentDetailPage /></S> },
       { path: 'seasons',                     element: <S><SeasonsPage /></S> },
       { path: 'seasons/:seasonId',           element: <S><SeasonDetailPage /></S> },
       { path: 'matches/new',                 element: <S><MatchSetupPage /></S> },
