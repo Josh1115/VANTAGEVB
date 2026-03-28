@@ -145,7 +145,7 @@ export function RotationOptimizerPage() {
     return <div className="flex items-center justify-center h-48"><Spinner /></div>;
   }
 
-  const activeRot = rotStats?.[activeRotation] ?? rotStats?.[String(activeRotation)];
+  const activeRot = rotStats?.[activeRotation];
 
   return (
     <div className="pb-8">
@@ -154,7 +154,7 @@ export function RotationOptimizerPage() {
       {/* ── Rotation selector strip ── */}
       <div className="grid grid-cols-6 gap-px bg-slate-700 mx-4 mt-4 rounded-xl overflow-hidden">
         {[1, 2, 3, 4, 5, 6].map(r => {
-          const rs   = rotStats?.[r] ?? rotStats?.[String(r)];
+          const rs   = rotStats?.[r];
           const pct  = rs?.so_pct ?? null;
           const active = r === activeRotation;
           return (
@@ -203,7 +203,7 @@ export function RotationOptimizerPage() {
             const si     = slotIdxForCell(g, activeRotation);
             const pid    = slots[si];
             const player = pid ? playerMap[pid] : null;
-            const pStats = pid ? (playerStats[pid] ?? playerStats[String(pid)]) : null;
+            const pStats = pid ? (playerStats[pid]) : null;
             const keyStat = keyStatLabel(pStats, player);
             const isServer = CELL_LABELS[g] === 'S1';
             return (

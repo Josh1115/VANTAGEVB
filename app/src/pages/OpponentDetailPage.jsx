@@ -19,11 +19,6 @@ const TENDENCY_TYPES = [
   { type: 'note',            label: 'Other Note',       icon: '📝', placeholder: 'General observation…' },
 ];
 
-function TendencyTypeIcon({ type }) {
-  const t = TENDENCY_TYPES.find(t => t.type === type);
-  return <span>{t?.icon ?? '📝'}</span>;
-}
-
 // ── History tab ──────────────────────────────────────────────────────────────
 function HistoryTab({ oppId, oppName }) {
   const navigate = useNavigate();
@@ -31,17 +26,11 @@ function HistoryTab({ oppId, oppName }) {
   // Matches linked by opponent_id (new) OR opponent_name (legacy, pre-scouting).
   // Must union both since old matches only have opponent_name.
   const matches = useLiveQuery(async () => {
-    const [byId, all] = await Promise.all([
-      db.matches.where('opponent_id').equals(oppId).toArray(),
-      db.matches.toArray(),
-    ]);
     const nameLower = (oppName ?? '').toLowerCase();
-    const byName = all.filter(
-      m => !m.opponent_id && (m.opponent_name ?? '').toLowerCase() === nameLower
-    );
-    const seen = new Set(byId.map(m => m.id));
-    const merged = [...byId, ...byName.filter(m => !seen.has(m.id))];
-    return merged.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
+    const all = await db.matches.toArray();
+    return all
+      .filter(m => m.opponent_id === oppId || (m.opponent_name ?? '').toLowerCase() === nameLower)
+      .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
   }, [oppId, oppName]);
 
   if (!matches) return <div className="flex justify-center p-8"><Spinner /></div>;

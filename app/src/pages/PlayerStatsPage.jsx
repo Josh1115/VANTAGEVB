@@ -172,7 +172,7 @@ export function PlayerStatsPage() {
         </div>
       ) : mainTab === 'season' ? (
         !stats?.playerRow ? (
-          <EmptyState title="No stats yet" message="Record a match to see stats here." />
+          <EmptyState title="No stats yet" description="Record a match to see stats here." />
         ) : (
           <div>
             <TabBar tabs={STAT_TABS} active={statTab} onChange={setStatTab} />
@@ -195,7 +195,7 @@ export function PlayerStatsPage() {
       ) : (
         // By Game tab
         byGameRows.length === 0 ? (
-          <EmptyState title="No matches" message="No matches recorded this season." />
+          <EmptyState title="No matches" description="No matches recorded this season." />
         ) : (
           <div className="overflow-x-auto py-3">
             <table className="w-full text-sm">

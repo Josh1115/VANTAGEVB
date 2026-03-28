@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
@@ -17,7 +17,7 @@ export function OpponentListPage() {
   // For each opponent, pull most-recent match date + W/L record
   const matches = useLiveQuery(() => db.matches.toArray(), []);
 
-  const oppStats = (() => {
+  const oppStats = useMemo(() => {
     if (!opponents || !matches) return {};
     const m = {};
     for (const opp of opponents) {
@@ -37,7 +37,7 @@ export function OpponentListPage() {
       m[opp.id] = { wins, losses, total: played.length, latest };
     }
     return m;
-  })();
+  }, [opponents, matches]);
 
   // Sort by most-recently-played first, then alphabetical
   const sorted = [...(opponents ?? [])].sort((a, b) => {
