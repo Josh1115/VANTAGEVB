@@ -6,7 +6,7 @@ import { computeMatchStats,
          computePlayerStats, computeTeamStats, computeRotationStats, computePointQuality,
          computeServeZoneStats, computeISvsOOS, computeTransitionAttack,
          computePQ, computeSetWinProb, computeMatchWinProb,
-         computeXKByPassRating } from '../stats/engine';
+         aggregateXKTeamStats } from '../stats/engine';
 import { getRalliesForMatch } from '../stats/queries';
 import { exportMatchCSV, exportMatchPDF, exportMaxPrepsCSV } from '../stats/export';
 import { fmtHitting, fmtPassRating, fmtPct, fmtCount, fmtDate } from '../stats/formatters';
@@ -472,26 +472,7 @@ export function MatchSummaryPage() {
     [displayStats, playerNames]
   );
 
-  const xkTeam = useMemo(() => {
-    const contacts = displayStats?.contacts ?? [];
-    const xkByPlayer = computeXKByPassRating(contacts);
-    const totals = { '1': { ta: 0, k: 0, ae: 0 }, '2': { ta: 0, k: 0, ae: 0 }, '3': { ta: 0, k: 0, ae: 0 } };
-    for (const x of Object.values(xkByPlayer)) {
-      for (const r of ['1', '2', '3']) {
-        totals[r].ta += x[`xk${r}_ta`] ?? 0;
-        totals[r].k  += x[`xk${r}_k`]  ?? 0;
-        totals[r].ae += x[`xk${r}_ae`] ?? 0;
-      }
-    }
-    return {
-      xk1:   totals['1'].ta > 0 ? totals['1'].k / totals['1'].ta : null,
-      xk2:   totals['2'].ta > 0 ? totals['2'].k / totals['2'].ta : null,
-      xk3:   totals['3'].ta > 0 ? totals['3'].k / totals['3'].ta : null,
-      xhit1: totals['1'].ta > 0 ? (totals['1'].k - totals['1'].ae) / totals['1'].ta : null,
-      xhit2: totals['2'].ta > 0 ? (totals['2'].k - totals['2'].ae) / totals['2'].ta : null,
-      xhit3: totals['3'].ta > 0 ? (totals['3'].k - totals['3'].ae) / totals['3'].ta : null,
-    };
-  }, [displayStats]);
+  const xkTeam = useMemo(() => aggregateXKTeamStats(playerRows), [playerRows]);
 
   const statTotals = useMemo(() => {
     if (!playerRows.length) return null;
@@ -970,9 +951,9 @@ export function MatchSummaryPage() {
                             {xkRows.map((r, i) => (
                               <tr key={r.id} className={`border-b border-slate-800/60 ${i % 2 !== 0 ? 'bg-slate-900/30' : ''}`}>
                                 <td className="px-2 py-1.5 text-slate-300">{r.name}</td>
-                                <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{r.xk1 != null ? fmtPct(r.xk1) : '—'}</td>
-                                <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{r.xk2 != null ? fmtPct(r.xk2) : '—'}</td>
-                                <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{r.xk3 != null ? fmtPct(r.xk3) : '—'}</td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{fmtPct(r.xk1)}</td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{fmtPct(r.xk2)}</td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{fmtPct(r.xk3)}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -982,10 +963,9 @@ export function MatchSummaryPage() {
                   );
                 })()}
 
-                {/* Hit% by Pass Rating (xHIT%) */}
                 {(() => {
-                  const xhitRows = playerRows.filter(r => (r.xk1_ta ?? 0) > 0 || (r.xk2_ta ?? 0) > 0 || (r.xk3_ta ?? 0) > 0);
-                  if (!xhitRows.length) return null;
+                  const xkRows = playerRows.filter(r => (r.xk1_ta ?? 0) > 0 || (r.xk2_ta ?? 0) > 0 || (r.xk3_ta ?? 0) > 0);
+                  if (!xkRows.length) return null;
                   return (
                     <div className="bg-surface rounded-xl p-3">
                       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Hit% by Pass Rating (xHIT%)</p>
@@ -1000,12 +980,12 @@ export function MatchSummaryPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {xhitRows.map((r, i) => (
+                            {xkRows.map((r, i) => (
                               <tr key={r.id} className={`border-b border-slate-800/60 ${i % 2 !== 0 ? 'bg-slate-900/30' : ''}`}>
                                 <td className="px-2 py-1.5 text-slate-300">{r.name}</td>
-                                <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{r.xhit1 != null ? fmtHitting(r.xhit1) : '—'}</td>
-                                <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{r.xhit2 != null ? fmtHitting(r.xhit2) : '—'}</td>
-                                <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{r.xhit3 != null ? fmtHitting(r.xhit3) : '—'}</td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{fmtHitting(r.xhit1)}</td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{fmtHitting(r.xhit2)}</td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{fmtHitting(r.xhit3)}</td>
                               </tr>
                             ))}
                           </tbody>

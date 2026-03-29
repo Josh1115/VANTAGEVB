@@ -1002,6 +1002,11 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
     [committedContacts]
   );
 
+  const nameMap = useMemo(
+    () => Object.fromEntries((roster ?? []).map(p => [String(p.id), p.name])),
+    [roster]
+  );
+
   const matchTeamStats = useMemo(
     () => computeTeamStats(allMatchContacts ?? [], setNumber),
     [allMatchContacts, setNumber]
@@ -1351,7 +1356,6 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
                           positionMap={fullPositionMap}
                         />
                         {(() => {
-                          const nameMap = Object.fromEntries((roster ?? []).map(p => [String(p.id), p.name]));
                           const xkRows = Object.entries(xkByPlayer)
                             .filter(([, x]) => (x.xk1_ta ?? 0) > 0 || (x.xk2_ta ?? 0) > 0 || (x.xk3_ta ?? 0) > 0)
                             .map(([pid, x]) => ({ pid, name: nameMap[pid] ?? `#${pid}`, ...x }));
@@ -1359,7 +1363,6 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
                           const cell = 'px-2 py-1.5 text-right tabular-nums text-slate-300';
                           return (
                             <div className="px-4 pb-4 space-y-3">
-                              {/* xK% */}
                               <div className="bg-slate-800/60 rounded-xl p-3">
                                 <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Kill% by Pass Rating (xK%)</p>
                                 <table className="w-full text-xs">
@@ -1375,15 +1378,14 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
                                     {xkRows.map((r, i) => (
                                       <tr key={r.pid} className={`border-b border-slate-800/60 ${i % 2 !== 0 ? 'bg-slate-900/30' : ''}`}>
                                         <td className="px-2 py-1.5 text-slate-300">{r.name}</td>
-                                        <td className={cell}>{r.xk1 != null ? fmtPct(r.xk1) : '—'}</td>
-                                        <td className={cell}>{r.xk2 != null ? fmtPct(r.xk2) : '—'}</td>
-                                        <td className={cell}>{r.xk3 != null ? fmtPct(r.xk3) : '—'}</td>
+                                        <td className={cell}>{fmtPct(r.xk1)}</td>
+                                        <td className={cell}>{fmtPct(r.xk2)}</td>
+                                        <td className={cell}>{fmtPct(r.xk3)}</td>
                                       </tr>
                                     ))}
                                   </tbody>
                                 </table>
                               </div>
-                              {/* xHIT% */}
                               <div className="bg-slate-800/60 rounded-xl p-3">
                                 <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Hit% by Pass Rating (xHIT%)</p>
                                 <table className="w-full text-xs">
@@ -1399,9 +1401,9 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
                                     {xkRows.map((r, i) => (
                                       <tr key={r.pid} className={`border-b border-slate-800/60 ${i % 2 !== 0 ? 'bg-slate-900/30' : ''}`}>
                                         <td className="px-2 py-1.5 text-slate-300">{r.name}</td>
-                                        <td className={cell}>{r.xhit1 != null ? fmtHitting(r.xhit1) : '—'}</td>
-                                        <td className={cell}>{r.xhit2 != null ? fmtHitting(r.xhit2) : '—'}</td>
-                                        <td className={cell}>{r.xhit3 != null ? fmtHitting(r.xhit3) : '—'}</td>
+                                        <td className={cell}>{fmtHitting(r.xhit1)}</td>
+                                        <td className={cell}>{fmtHitting(r.xhit2)}</td>
+                                        <td className={cell}>{fmtHitting(r.xhit3)}</td>
                                       </tr>
                                     ))}
                                   </tbody>

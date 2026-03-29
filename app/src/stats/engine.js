@@ -654,11 +654,10 @@ export function computeXKByPassRating(contacts) {
   for (const rallyContacts of byRally.values()) {
     const sorted = rallyContacts.slice().sort((a, b) => (a.timestamp ?? a.id ?? 0) - (b.timestamp ?? b.id ?? 0));
 
-    const passContact = sorted.find(c => c.action === 'pass' && ['1', '2', '3'].includes(String(c.result)));
-    if (!passContact) continue;
+    const passIdx = sorted.findIndex(c => c.action === 'pass' && ['1', '2', '3'].includes(String(c.result)));
+    if (passIdx === -1) continue;
 
-    const rating = String(passContact.result);
-    const passIdx = sorted.indexOf(passContact);
+    const rating = String(sorted[passIdx].result);
     const firstAttack = sorted.slice(passIdx + 1).find(c => c.action === 'attack' && c.player_id);
     if (!firstAttack) continue;
 
@@ -682,6 +681,25 @@ export function computeXKByPassRating(contacts) {
     }
   }
   return result;
+}
+
+export function aggregateXKTeamStats(rows) {
+  const totals = { '1': { ta: 0, k: 0, ae: 0 }, '2': { ta: 0, k: 0, ae: 0 }, '3': { ta: 0, k: 0, ae: 0 } };
+  for (const x of rows) {
+    for (const r of ['1', '2', '3']) {
+      totals[r].ta += x[`xk${r}_ta`] ?? 0;
+      totals[r].k  += x[`xk${r}_k`]  ?? 0;
+      totals[r].ae += x[`xk${r}_ae`] ?? 0;
+    }
+  }
+  return {
+    xk1:   totals['1'].ta > 0 ? totals['1'].k / totals['1'].ta : null,
+    xk2:   totals['2'].ta > 0 ? totals['2'].k / totals['2'].ta : null,
+    xk3:   totals['3'].ta > 0 ? totals['3'].k / totals['3'].ta : null,
+    xhit1: totals['1'].ta > 0 ? (totals['1'].k - totals['1'].ae) / totals['1'].ta : null,
+    xhit2: totals['2'].ta > 0 ? (totals['2'].k - totals['2'].ae) / totals['2'].ta : null,
+    xhit3: totals['3'].ta > 0 ? (totals['3'].k - totals['3'].ae) / totals['3'].ta : null,
+  };
 }
 
 // ── Async convenience (report mode) ────────────────────────────────────────
