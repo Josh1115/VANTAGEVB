@@ -217,6 +217,7 @@ const INITIAL_STATE = {
 
   serveReceiveFormations: null, // { [rotationNum]: number[6] } | null — soIdx per grid cell
   plannedSubs:            [],   // [{ rotation, player_out_so, player_in_id }]
+  _undoInFlight:          false, // guard against concurrent undo taps
 };
 
 export const useMatchStore = create((set, get) => ({
@@ -399,9 +400,16 @@ export const useMatchStore = create((set, get) => ({
   },
 
   undoLast: async () => {
+    // Guard against concurrent taps: two async undo calls racing on the same
+    // actionHistory[0] would double-delete the same DB row and corrupt state.
+    if (get()._undoInFlight) return;
+    set({ _undoInFlight: true });
+
     const s = get();
-    if (!s.actionHistory.length) return;
+    if (!s.actionHistory.length) { set({ _undoInFlight: false }); return; }
     const [action, ...rest] = s.actionHistory;
+
+    try {
 
     switch (action.type) {
 
@@ -418,6 +426,10 @@ export const useMatchStore = create((set, get) => ({
             .filter(c => c.id !== action.contactId && c.id !== action.autoSetId)
             .map(c => !action.autoSetId && c.id === action.assistId ? { ...c, result: action.prevAssistResult ?? RESULT.ATTEMPT } : c),
           lastFeedItem: null,
+          // Restore rallyPhase to what it was before this contact was recorded
+          rallyPhase: action.prevRallyPhase ?? 'pre_serve',
+          // Clear lastSetContactId if the undone contact was the tracked setter contact
+          ...(s.lastSetContactId === action.contactId ? { lastSetContactId: null } : {}),
           serveReticles: s.serveReticles.filter(r => r.contactId !== action.contactId),
           pendingServeContact: s.pendingServeContact?.contactId === action.contactId
             ? null : s.pendingServeContact,
@@ -441,6 +453,7 @@ export const useMatchStore = create((set, get) => ({
             .filter(c => c.id !== action.contactId && c.id !== action.blkContactId && c.id !== action.autoSetId)
             .map(c => !action.autoSetId && c.id === action.assistId ? { ...c, result: action.prevAssistResult ?? RESULT.ATTEMPT } : c),
           lastFeedItem: null,
+          rallyPhase: action.prevRallyPhase ?? 'pre_serve',
         });
         break;
       }
@@ -479,6 +492,7 @@ export const useMatchStore = create((set, get) => ({
           rallyCount:       Math.max(0, s.rallyCount - 1),
           pendingHblk:      null,
           lastFeedItem:     null,
+          pendingSetWin:    null, // clear any set-win triggered by the undone point
           currentRun:       action.prevRun ?? { side: null, count: 0 },
           pointHistory:     s.pointHistory.slice(0, -1),
           committedRallies: s.committedRallies.slice(0, -1),
@@ -503,6 +517,7 @@ export const useMatchStore = create((set, get) => ({
           rallyCount:       Math.max(0, s.rallyCount - 1),
           pendingHblk:      null,
           lastFeedItem:     null,
+          pendingSetWin:    null, // clear any set-win triggered by the undone point
           currentRun:       action.prevRun ?? { side: null, count: 0 },
           pointHistory:     s.pointHistory.slice(0, -1),
           committedRallies: s.committedRallies.slice(0, -1),
@@ -557,6 +572,10 @@ export const useMatchStore = create((set, get) => ({
           set({ actionHistory: rest, oppScore: Math.max(0, s.oppScore - action.delta), lastFeedItem: null });
         break;
       }
+    }
+
+    } finally {
+      set({ _undoInFlight: false });
     }
   },
 
@@ -621,7 +640,7 @@ export const useMatchStore = create((set, get) => ({
 
     const prevHistory = get().actionHistory;
     set({
-      actionHistory:     [{ type: 'contact', contactId: id, assistId, prevAssistResult, autoSetId }, ...prevHistory],
+      actionHistory:     [{ type: 'contact', contactId: id, assistId, prevAssistResult, autoSetId, prevRallyPhase: s.rallyPhase }, ...prevHistory],
       committedContacts: newCommittedContacts,
       // Track last SET contact id so assist back-assignment is O(1) instead of O(n)
       ...(contactData.action === ACTION.SET ? { lastSetContactId: id } : {}),
