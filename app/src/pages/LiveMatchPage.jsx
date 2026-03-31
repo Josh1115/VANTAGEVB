@@ -194,7 +194,7 @@ export function LiveMatchPage() {
 
   useEffect(() => {
     // Lock to landscape; release on unmount
-    screen.orientation?.lock('landscape').catch((err) => { console.warn('[VBStat] orientation lock:', err?.message ?? err); });
+    screen.orientation?.lock?.('landscape').catch((err) => { console.warn('[VBStat] orientation lock:', err?.message ?? err); });
     return () => screen.orientation?.unlock?.();
   }, []);
 
