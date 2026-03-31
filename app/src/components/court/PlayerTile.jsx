@@ -141,7 +141,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   }, [rallyPhase]);
 
   const isServing = serveSide === SIDE.US;
-  const showServeRow = isServer && isServing && !serveRecorded;
+  const showServeRow = isServer && isServing && rallyPhase === 'pre_serve' && !serveRecorded;
 
   const flashJersey = () => flashEl(jerseyRef.current, 'jersey-pop');
 

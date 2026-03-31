@@ -362,6 +362,20 @@ Libero rule update: libero CAN serve (S1) — no position restriction
 
 **Tests:** 56/56 passing
 
+### 2026-03-29 — Team Season Totals on HomePage
+
+**Only file changed:** `src/pages/HomePage.jsx`
+
+**Changes:**
+- Added `computeTeamStats` to engine import
+- Replaced manual 9-variable summation loop in `seasonLeaders` query with `computeTeamStats(contacts)` — cleaner, same result
+- Added `ttKey` field to each entry in `LEADERS` array mapping to the `teamTotals` key
+- Each leader card now shows team season total (small gray mono number + "TEAM" label) below the player name
+- Cards with no data show `—` for both player leader and team total
+- APR team total uses same `fmt` (`.toFixed(2)`) as player leader
+
+**Build:** Clean ✓ — 117/117 tests passing
+
 ## Weekly Summaries
 
 ## Monthly Summaries
