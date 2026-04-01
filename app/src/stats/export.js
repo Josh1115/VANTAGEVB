@@ -48,39 +48,47 @@ export function exportMatchCSV(playerStats, playerNames, filename = 'match-stats
   triggerDownload(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), filename);
 }
 
-// ── MaxPreps CSV Export ───────────────────────────────────────────────────────
-// Column order matches MaxPreps volleyball stat upload template exactly:
-// # Name GP SP SA A SE PTS ATT K E R RE BS BA BE BHA AST BHE D DE
+// ── MaxPreps TXT Export ───────────────────────────────────────────────────────
+// Pipe-delimited format required by MaxPreps volleyball stat import.
+// Line 1: team UUID, Line 2: headers, Lines 3+: player data.
 
-export function exportMaxPrepsCSV(playerStats, playerNames, playerJerseys, setsPlayed, filename = 'maxpreps-stats.txt') {
+const MAXPREPS_HEADERS = [
+  'Jersey', 'MatchGamesPlayed', 'TotalServes', 'ServingAces', 'ServingErrors',
+  'ServingPoints', 'AttacksAttempts', 'AttacksKills', 'AttacksErrors',
+  'ServingReceivedSuccess', 'ServingReceivedErrors', 'BlocksSolo', 'BlocksAssists',
+  'BlocksErrors', 'BallHandlingAttempt', 'Assists', 'AssistsErrors', 'Digs', 'DigsErrors',
+];
+
+export function exportMaxPrepsCSV(playerStats, playerNames, playerJerseys, setsPlayed, teamUUID = '', filename = 'maxpreps-stats.txt') {
   const n = (v) => v ?? 0;
-  const rows = playerRows(playerStats, playerNames).map(({ id, name, ...s }) => ({
-    '#':   playerJerseys[id] ?? '',
-    'Name': name,
-    'GP':  1,
-    'SP':  setsPlayed,
-    'SA':  n(s.sa),
-    'A':   n(s.ace),
-    'SE':  n(s.se),
-    'PTS': n(s.k) + n(s.ace) + n(s.bs),
-    'ATT': n(s.ta),
-    'K':   n(s.k),
-    'E':   n(s.ae),
-    'R':   n(s.pa),
-    'RE':  n(s.p0),
-    'BS':  n(s.bs),
-    'BA':  n(s.ba),
-    'BE':  n(s.be),
-    // BHA (Ball Handling Assists) = setting assists + ball handling errors per MaxPreps template
-    'BHA': n(s.ast) + n(s.bhe),
-    'AST': n(s.ast),
-    'BHE': n(s.bhe),
-    'D':   n(s.dig),
-    'DE':  n(s.de),
-  }));
+  const dataRows = playerRows(playerStats, playerNames).map(({ id, ...s }) => [
+    playerJerseys[id] ?? '',
+    setsPlayed,
+    n(s.sa),
+    n(s.ace),
+    n(s.se),
+    n(s.ace),                        // ServingPoints = aces (direct serving points)
+    n(s.ta),
+    n(s.k),
+    n(s.ae),
+    Math.max(0, n(s.pa) - n(s.p0)), // ServingReceivedSuccess = passes minus errors
+    n(s.p0),
+    n(s.bs),
+    n(s.ba),
+    n(s.be),
+    n(s.ast) + n(s.bhe),            // BallHandlingAttempt = assists + ball handling errors
+    n(s.ast),
+    n(s.bhe),
+    n(s.dig),
+    n(s.de),
+  ].join('|'));
 
-  const csv = Papa.unparse(rows);
-  triggerDownload(new Blob([csv], { type: 'text/plain;charset=utf-8;' }), filename);
+  const lines = [];
+  if (teamUUID) lines.push(teamUUID);
+  lines.push(MAXPREPS_HEADERS.join('|'));
+  lines.push(...dataRows);
+
+  triggerDownload(new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8;' }), filename);
 }
 
 // ── PDF Export ────────────────────────────────────────────────────────────────

@@ -62,8 +62,14 @@ export function SeasonDetailPage() {
 
   async function handleMaxPreps(e, matchId) {
     e.stopPropagation();
+    let uuid = localStorage.getItem('vbstat_maxpreps_id') ?? '';
+    if (!uuid) {
+      uuid = window.prompt('Enter your MaxPreps Team ID (the UUID from your MaxPreps account or a previous export file):') ?? '';
+      if (!uuid) return;
+      localStorage.setItem('vbstat_maxpreps_id', uuid.trim());
+    }
     const stats = await computeMatchStats(matchId);
-    exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, `match-${matchId}-maxpreps.txt`);
+    exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, uuid.trim(), `match-${matchId}-maxpreps.txt`);
   }
 
   function resetSchedForm() {
