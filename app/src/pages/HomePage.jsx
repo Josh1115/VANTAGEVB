@@ -182,7 +182,7 @@ export function HomePage() {
       digs:    findLeader(ps => ps.dig  ?? 0),
       assists: findLeader(ps => ps.ast  ?? 0),
       rec:     findLeader(ps => ps.pa  ?? 0),
-      apr:     findLeader(ps => (ps.pa ?? 0) >= 10 ? (ps.apr ?? 0) : 0),
+      apr:     findLeader(ps => (ps.pa ?? 0) > 0 ? (ps.apr ?? 0) : 0),
       teamTotals: {
         k:   ts.k,
         ace: ts.ace,
