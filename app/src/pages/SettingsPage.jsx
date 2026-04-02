@@ -148,6 +148,15 @@ function useDefaultSeason() {
   return [defaultSeasonId, save];
 }
 
+function useMaxPrepsId() {
+  const [id, setId] = useState(() => getStorageItem(STORAGE_KEYS.MAXPREPS_TEAM_ID, ''));
+  const save = (val) => {
+    setStorageItem(STORAGE_KEYS.MAXPREPS_TEAM_ID, val.trim() || null);
+    setId(val);
+  };
+  return [id, save];
+}
+
 export function SettingsPage() {
   const showToast    = useUiStore((s) => s.showToast);
   const fileInputRef = useRef(null);
@@ -168,6 +177,7 @@ export function SettingsPage() {
     () => defaultTeamId ? db.seasons.where('team_id').equals(defaultTeamId).sortBy('year') : Promise.resolve([]),
     [defaultTeamId]
   );
+  const [maxPrepsId,  saveMaxPrepsId]  = useMaxPrepsId();
   const [wakeLock,    saveWakeLock]    = useToggleSetting('vbstat_wake_lock');
   const [hapticOn,    saveHaptic]      = useToggleSetting('vbstat_haptic');
   const [flipLayout,  saveFlipLayout]  = useToggleSetting('vbstat_flip_layout');
@@ -589,6 +599,26 @@ export function SettingsPage() {
                 )}
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Exports */}
+        <section className="bg-surface rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-700">
+            <h2 className="font-semibold">Exports</h2>
+          </div>
+          <div className="p-4">
+            <label className="block text-sm font-medium mb-1">MaxPreps Team ID</label>
+            <div className="text-xs text-slate-400 mb-2">
+              Required for MaxPreps .txt export. Find it in your team's MaxPreps URL or stat import settings.
+            </div>
+            <input
+              type="text"
+              value={maxPrepsId}
+              onChange={(e) => saveMaxPrepsId(e.target.value)}
+              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-primary placeholder:text-slate-600"
+            />
           </div>
         </section>
 

@@ -127,6 +127,7 @@ function deriveStats(p, sp, posLabel = null) {
     // Defense
     dig: p.dig, fb_dig: p.fb_dig, de: p.de,
     dips: div(p.dig, sp),
+    recs: div(p.pa,  sp),
 
     // Freeball
     fbr: p.fbr, fbs: p.fbs, fbe: p.fbe,
@@ -693,12 +694,15 @@ export function aggregateXKTeamStats(rows) {
     }
   }
   return {
-    xk1:   totals['1'].ta > 0 ? totals['1'].k / totals['1'].ta : null,
-    xk2:   totals['2'].ta > 0 ? totals['2'].k / totals['2'].ta : null,
-    xk3:   totals['3'].ta > 0 ? totals['3'].k / totals['3'].ta : null,
-    xhit1: totals['1'].ta > 0 ? (totals['1'].k - totals['1'].ae) / totals['1'].ta : null,
-    xhit2: totals['2'].ta > 0 ? (totals['2'].k - totals['2'].ae) / totals['2'].ta : null,
-    xhit3: totals['3'].ta > 0 ? (totals['3'].k - totals['3'].ae) / totals['3'].ta : null,
+    xk1:    totals['1'].ta > 0 ? totals['1'].k / totals['1'].ta : null,
+    xk2:    totals['2'].ta > 0 ? totals['2'].k / totals['2'].ta : null,
+    xk3:    totals['3'].ta > 0 ? totals['3'].k / totals['3'].ta : null,
+    xhit1:  totals['1'].ta > 0 ? (totals['1'].k - totals['1'].ae) / totals['1'].ta : null,
+    xhit2:  totals['2'].ta > 0 ? (totals['2'].k - totals['2'].ae) / totals['2'].ta : null,
+    xhit3:  totals['3'].ta > 0 ? (totals['3'].k - totals['3'].ae) / totals['3'].ta : null,
+    xk1_ta: totals['1'].ta,
+    xk2_ta: totals['2'].ta,
+    xk3_ta: totals['3'].ta,
   };
 }
 

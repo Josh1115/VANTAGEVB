@@ -21,6 +21,7 @@ import { RotationRadarChart } from '../components/charts/RotationRadarChart';
 import { SideoutPieChart } from '../components/charts/SideoutPieChart';
 import { CourtHeatMap } from '../components/charts/CourtHeatMap';
 import { PlayerTrendsChart } from '../components/charts/PlayerTrendsChart';
+import { TeamComparison } from '../components/stats/TeamComparison';
 
 const TABS = [
   { value: 'team',     label: 'Team Stats'        },
@@ -569,9 +570,9 @@ export function ReportsPage() {
 
                 {/* xK% & xHIT% by Pass Rating */}
                 {(xkTeam.xk1 != null || xkTeam.xk2 != null || xkTeam.xk3 != null) && (
-                  <div>
-                    <SectionHeader>Attack by Pass Rating</SectionHeader>
-                    <div className="grid grid-cols-3 gap-1.5">
+                  <div className="bg-surface rounded-xl p-3">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Attack by Pass Rating</p>
+                    <div className="grid grid-cols-3 gap-2">
                       {[
                         { label: 'xK1%',  val: fmtPct(xkTeam.xk1)      },
                         { label: 'xK2%',  val: fmtPct(xkTeam.xk2)      },
@@ -580,9 +581,21 @@ export function ReportsPage() {
                         { label: 'xHIT2', val: fmtHitting(xkTeam.xhit2) },
                         { label: 'xHIT3', val: fmtHitting(xkTeam.xhit3) },
                       ].map(({ label, val }) => (
-                        <div key={label} className="bg-surface rounded-lg px-1 py-1 text-center">
-                          <div className="text-[10px] text-slate-400 leading-none">{label}</div>
-                          <div className="text-base font-bold text-primary mt-0.5 leading-none">{val}</div>
+                        <div key={label} className="bg-slate-800/60 rounded-lg p-2 text-center">
+                          <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">{label}</div>
+                          <div className="text-lg font-black text-primary mt-0.5">{val}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      {[
+                        { label: 'P1 ATT', val: xkTeam.xk1_ta ?? 0 },
+                        { label: 'P2 ATT', val: xkTeam.xk2_ta ?? 0 },
+                        { label: 'P3 ATT', val: xkTeam.xk3_ta ?? 0 },
+                      ].map(({ label, val }) => (
+                        <div key={label} className="text-center">
+                          <div className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide">{label}</div>
+                          <div className="text-sm font-bold text-slate-400">{val}</div>
                         </div>
                       ))}
                     </div>
@@ -682,6 +695,19 @@ export function ReportsPage() {
                     </div>
                   );
                 })()}
+
+                {/* Team vs Opponents comparison */}
+                {stats.opp && (
+                  <div>
+                    <SectionHeader>Team vs Opponents</SectionHeader>
+                    <TeamComparison
+                      team={stats.team}
+                      opp={stats.opp}
+                      teamName={teams?.find(t => t.id === Number(selectedTeamId))?.name ?? 'Us'}
+                      oppName="Opponents"
+                    />
+                  </div>
+                )}
               </>
             )}
 

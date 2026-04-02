@@ -1141,6 +1141,27 @@ export const useMatchStore = create((set, get) => ({
     }
   },
 
+  // Permanently delete a set and all its associated data.
+  deleteSet: async (setId) => {
+    const setRow = await db.sets.get(setId);
+    await db.contacts.where('set_id').equals(setId).delete();
+    await db.rallies.where('set_id').equals(setId).delete();
+    await db.substitutions.where('set_id').equals(setId).delete();
+    await db.lineups.where('set_id').equals(setId).delete();
+    await db.sets.delete(setId);
+    // Recount set wins from remaining sets and restore match to complete if warranted
+    if (setRow?.match_id) {
+      const remaining = await db.sets.where('match_id').equals(setRow.match_id).toArray();
+      const usWins  = remaining.filter(s => s.winner === 'us').length;
+      const oppWins = remaining.filter(s => s.winner === 'opp').length;
+      const winner  = usWins > oppWins ? 'us' : oppWins > usWins ? 'opp' : null;
+      await db.matches.update(setRow.match_id, {
+        status: winner ? MATCH_STATUS.COMPLETE : MATCH_STATUS.IN_PROGRESS,
+        winner,
+      });
+    }
+  },
+
   // Finalize a revised set — called by LiveMatchPage when the re-entered set ends.
   // Recounts set wins from DB rather than incrementing to handle any result change.
   finishRevisedSet: async (winner) => {

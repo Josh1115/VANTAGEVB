@@ -6,6 +6,7 @@ import { MATCH_STATUS } from '../constants';
 import { fmtDate } from '../stats/formatters';
 import { computeMatchStats } from '../stats/engine';
 import { exportMaxPrepsCSV } from '../stats/export';
+import { getStorageItem, STORAGE_KEYS } from '../utils/storage';
 import { deleteMatch } from '../stats/queries';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
@@ -62,14 +63,9 @@ export function SeasonDetailPage() {
 
   async function handleMaxPreps(e, matchId) {
     e.stopPropagation();
-    let uuid = localStorage.getItem('vbstat_maxpreps_id') ?? '';
-    if (!uuid) {
-      uuid = window.prompt('Enter your MaxPreps Team ID (the UUID from your MaxPreps account or a previous export file):') ?? '';
-      if (!uuid) return;
-      localStorage.setItem('vbstat_maxpreps_id', uuid.trim());
-    }
+    const uuid = getStorageItem(STORAGE_KEYS.MAXPREPS_TEAM_ID, '');
     const stats = await computeMatchStats(matchId);
-    exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, uuid.trim(), `match-${matchId}-maxpreps.txt`);
+    exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, uuid, `match-${matchId}-maxpreps.txt`);
   }
 
   function resetSchedForm() {

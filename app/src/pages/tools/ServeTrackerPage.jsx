@@ -5,6 +5,7 @@ import { PageHeader } from '../../components/layout/PageHeader';
 import { useUiStore, selectShowToast } from '../../store/uiStore';
 import { fmtDateShort } from '../../stats/formatters';
 import { getIntStorage, setStorageItem, readDraftJson, STORAGE_KEYS } from '../../utils/storage';
+import { SwipeableMatchCard } from '../../components/ui/SwipeableMatchCard';
 
 // Standard FIVB zone layout from server's POV (aiming at opponent's court)
 // Front row: 4 | 3 | 2    Back row: 5 | 6 | 1
@@ -264,8 +265,8 @@ function SetupView({ onStart, onResume, onDiscardDraft }) {
 
       {/* Recent Sessions */}
       {recentSessions?.length > 0 && (
-        <div className="bg-surface rounded-xl overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-slate-700">
+        <div>
+          <div className="px-1 pb-1.5">
             <span className="text-xs text-slate-400 uppercase tracking-wide font-semibold">Recent Sessions</span>
           </div>
           {recentSessions.map((s) => {
@@ -280,13 +281,15 @@ function SetupView({ onStart, onResume, onDiscardDraft }) {
             }
             const pct = total ? Math.round(inCount / total * 100) : 0;
             return (
-              <div key={s.id} className="px-4 py-2.5 border-b border-slate-700/50 last:border-0">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-sm font-semibold truncate mr-2">{s.label}</span>
-                  <span className="text-xs text-slate-500 flex-shrink-0">{fmtDateShort(s.date)}</span>
+              <SwipeableMatchCard key={s.id} onDeleteConfirm={() => db.practice_sessions.delete(s.id)}>
+                <div className="px-4 py-2.5 bg-surface">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm font-semibold truncate mr-2">{s.label}</span>
+                    <span className="text-xs text-slate-500 flex-shrink-0">{fmtDateShort(s.date)}</span>
+                  </div>
+                  <div className="text-xs text-slate-400 mt-0.5">{total} serves · {pct}% in</div>
                 </div>
-                <div className="text-xs text-slate-400 mt-0.5">{total} serves · {pct}% in</div>
-              </div>
+              </SwipeableMatchCard>
             );
           })}
         </div>

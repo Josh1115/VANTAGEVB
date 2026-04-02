@@ -17,6 +17,7 @@ export const STORAGE_KEYS = {
   HAPTIC:             'vbstat_haptic',
   FLIP_LAYOUT:        'vbstat_flip_layout',
   LAST_SET_SCORE:     'vbstat_last_set_score',
+  MAXPREPS_TEAM_ID:   'vbstat_maxpreps_id',
 };
 
 export function getStorageItem(key, defaultValue = null) {

@@ -8,9 +8,12 @@ import { fmtHitting, fmtPassRating, fmtPct } from '../../stats/formatters';
 const STAT_OPTIONS = [
   { key: 'ver',     label: 'VER',   fmtY: v => v?.toFixed(1) ?? '',      fmtTip: v => v?.toFixed(2) ?? '—'  },
   { key: 'hit_pct', label: 'HIT%',  fmtY: v => v != null ? ((v >= 0 ? '+' : '') + (v * 100).toFixed(0) + '%') : '', fmtTip: fmtHitting },
+  { key: 'k_pct',   label: 'K%',    fmtY: v => v != null ? (v * 100).toFixed(0) + '%' : '', fmtTip: fmtPct  },
   { key: 'apr',     label: 'APR',   fmtY: v => v?.toFixed(1) ?? '',      fmtTip: fmtPassRating               },
   { key: 'kps',     label: 'K/S',   fmtY: v => v?.toFixed(1) ?? '',      fmtTip: v => v?.toFixed(2) ?? '—'  },
   { key: 'dips',    label: 'Dig/S', fmtY: v => v?.toFixed(1) ?? '',      fmtTip: v => v?.toFixed(2) ?? '—'  },
+  { key: 'recs',    label: 'REC/S', fmtY: v => v?.toFixed(1) ?? '',      fmtTip: v => v?.toFixed(2) ?? '—'  },
+  { key: 'si_pct',  label: 'S%',    fmtY: v => v != null ? (v * 100).toFixed(0) + '%' : '', fmtTip: fmtPct  },
   { key: 'ace_pct', label: 'ACE%',  fmtY: v => v != null ? (v * 100).toFixed(0) + '%' : '', fmtTip: fmtPct  },
 ];
 

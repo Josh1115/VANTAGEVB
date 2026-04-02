@@ -6,6 +6,7 @@ import { PageHeader } from '../../components/layout/PageHeader';
 import { useUiStore, selectShowToast } from '../../store/uiStore';
 import { fmtDateShort, calcAPR } from '../../stats/formatters';
 import { NFHS } from '../../constants';
+import { SwipeableMatchCard } from '../../components/ui/SwipeableMatchCard';
 
 const RATING_BG = {
   0: 'bg-red-600',
@@ -166,8 +167,8 @@ function SetupView({ onStart, onResume, onDiscardDraft }) {
 
       {/* Recent sessions */}
       {recentSessions?.length > 0 && (
-        <div className="bg-surface rounded-xl overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-slate-700">
+        <div>
+          <div className="px-1 pb-1.5">
             <span className="text-xs text-slate-400 uppercase tracking-wide font-semibold">Recent Sessions</span>
           </div>
           {recentSessions.map((s) => {
@@ -177,22 +178,24 @@ function SetupView({ onStart, onResume, onDiscardDraft }) {
             const result  = sets.length > 0 ? `${usWins > oppWins ? 'W' : usWins < oppWins ? 'L' : 'T'} ${usWins}-${oppWins}` : null;
             const setStr  = sets.map((st) => `${st.us}-${st.opp}`).join('  ');
             return (
-              <div key={s.id} className="px-4 py-2.5 border-b border-slate-700/50 last:border-0">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-sm font-semibold truncate mr-2">{s.label}</span>
-                  <span className="text-xs text-slate-500 flex-shrink-0">{fmtDateShort(s.date)}</span>
-                </div>
-                {sets.length > 0 && (
-                  <div className="text-xs text-slate-400 mt-0.5">
-                    {result && (
-                      <span className={`mr-1.5 font-bold ${usWins > oppWins ? 'text-emerald-400' : usWins < oppWins ? 'text-red-400' : 'text-slate-400'}`}>
-                        {result}
-                      </span>
-                    )}
-                    {setStr}
+              <SwipeableMatchCard key={s.id} onDeleteConfirm={() => db.practice_sessions.delete(s.id)}>
+                <div className="px-4 py-2.5 bg-surface">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm font-semibold truncate mr-2">{s.label}</span>
+                    <span className="text-xs text-slate-500 flex-shrink-0">{fmtDateShort(s.date)}</span>
                   </div>
-                )}
-              </div>
+                  {sets.length > 0 && (
+                    <div className="text-xs text-slate-400 mt-0.5">
+                      {result && (
+                        <span className={`mr-1.5 font-bold ${usWins > oppWins ? 'text-emerald-400' : usWins < oppWins ? 'text-red-400' : 'text-slate-400'}`}>
+                          {result}
+                        </span>
+                      )}
+                      {setStr}
+                    </div>
+                  )}
+                </div>
+              </SwipeableMatchCard>
             );
           })}
         </div>

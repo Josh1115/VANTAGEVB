@@ -26,10 +26,12 @@ import { SubToggle } from '../components/stats/SubToggle';
 import { SetTrendsChart } from '../components/stats/SetTrendsChart';
 import { RallyHistogram } from '../components/stats/RallyHistogram';
 import { PlayerComparison } from '../components/stats/PlayerComparison';
+import { TeamComparison } from '../components/stats/TeamComparison';
 import { ReviseSetModal } from '../components/match/ReviseSetModal';
 import { BoxScoreEntryModal } from '../components/match/BoxScoreEntryModal';
 import { Modal } from '../components/ui/Modal';
 import { FORMAT } from '../constants';
+import { getStorageItem, STORAGE_KEYS } from '../utils/storage';
 import { useSwipe } from '../hooks/useSwipe';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
@@ -395,6 +397,7 @@ export function MatchSummaryPage() {
   const [selectedServingPlayerId, setSelectedServingPlayerId] = useState(null);
   const [trendsView,    setTrendsView]    = useState('trends');
   const [passingView,   setPassingView]   = useState('passing');
+  const [scoringView,   setScoringView]   = useState('scoring');
   const [stats, setStats] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [rawRallies, setRawRallies] = useState([]);
@@ -641,13 +644,8 @@ export function MatchSummaryPage() {
 
   function handleMaxPreps() {
     if (!stats) return;
-    let uuid = localStorage.getItem('vbstat_maxpreps_id') ?? '';
-    if (!uuid) {
-      uuid = window.prompt('Enter your MaxPreps Team ID (the UUID from your MaxPreps account or a previous export file):') ?? '';
-      if (!uuid) return;
-      localStorage.setItem('vbstat_maxpreps_id', uuid.trim());
-    }
-    exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, uuid.trim(), `match-${id}-maxpreps.txt`);
+    const uuid = getStorageItem(STORAGE_KEYS.MAXPREPS_TEAM_ID, '');
+    exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, uuid, `match-${id}-maxpreps.txt`);
   }
 
   async function handleShareCard() {
@@ -824,32 +822,61 @@ export function MatchSummaryPage() {
           <div key={tab} className="p-4 md:p-6 animate-fade-in" {...swipeHandlers}>
             {tab === 'scoring' && displayStats && (
               <div className="space-y-6">
-                <PointQualityPanel pq={displayStats.pointQuality} oppScored={oppScored} />
-                <ScoreTimeline
-                  rawRallies={selectedSetId ? rawRallies.filter(r => r.set_id === selectedSetId) : rawRallies}
-                  sets={selectedSetId ? (sets ?? []).filter(s => s.id === selectedSetId) : (sets ?? [])}
-                  teamName={match?.team_name}
-                  opponentName={match?.opponent_name}
+                <SubToggle
+                  options={[['scoring', 'SCORING'], ['teamvsopp', 'TEAM VS OPP']]}
+                  value={scoringView}
+                  onChange={setScoringView}
                 />
-                {(xkTeam.xk1 != null || xkTeam.xk2 != null || xkTeam.xk3 != null) && (
-                  <div className="bg-surface rounded-xl p-3">
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Attack by Pass Rating</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { label: 'xK1%',  val: fmtPct(xkTeam.xk1)       },
-                        { label: 'xK2%',  val: fmtPct(xkTeam.xk2)       },
-                        { label: 'xK3%',  val: fmtPct(xkTeam.xk3)       },
-                        { label: 'xHIT1', val: fmtHitting(xkTeam.xhit1)  },
-                        { label: 'xHIT2', val: fmtHitting(xkTeam.xhit2)  },
-                        { label: 'xHIT3', val: fmtHitting(xkTeam.xhit3)  },
-                      ].map(({ label, val }) => (
-                        <div key={label} className="bg-slate-800/60 rounded-lg p-2 text-center">
-                          <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">{label}</div>
-                          <div className="text-lg font-black text-primary mt-0.5">{val}</div>
+                {scoringView === 'scoring' && (
+                  <>
+                    <PointQualityPanel pq={displayStats.pointQuality} oppScored={oppScored} />
+                    <ScoreTimeline
+                      rawRallies={selectedSetId ? rawRallies.filter(r => r.set_id === selectedSetId) : rawRallies}
+                      sets={selectedSetId ? (sets ?? []).filter(s => s.id === selectedSetId) : (sets ?? [])}
+                      teamName={match?.team_name}
+                      opponentName={match?.opponent_name}
+                    />
+                    {(xkTeam.xk1 != null || xkTeam.xk2 != null || xkTeam.xk3 != null) && (
+                      <div className="bg-surface rounded-xl p-3">
+                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Attack by Pass Rating</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { label: 'xK1%',  val: fmtPct(xkTeam.xk1)       },
+                            { label: 'xK2%',  val: fmtPct(xkTeam.xk2)       },
+                            { label: 'xK3%',  val: fmtPct(xkTeam.xk3)       },
+                            { label: 'xHIT1', val: fmtHitting(xkTeam.xhit1)  },
+                            { label: 'xHIT2', val: fmtHitting(xkTeam.xhit2)  },
+                            { label: 'xHIT3', val: fmtHitting(xkTeam.xhit3)  },
+                          ].map(({ label, val }) => (
+                            <div key={label} className="bg-slate-800/60 rounded-lg p-2 text-center">
+                              <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">{label}</div>
+                              <div className="text-lg font-black text-primary mt-0.5">{val}</div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  </div>
+                        <div className="grid grid-cols-3 gap-2 mt-2">
+                          {[
+                            { label: 'P1 ATT', val: xkTeam.xk1_ta ?? 0 },
+                            { label: 'P2 ATT', val: xkTeam.xk2_ta ?? 0 },
+                            { label: 'P3 ATT', val: xkTeam.xk3_ta ?? 0 },
+                          ].map(({ label, val }) => (
+                            <div key={label} className="text-center">
+                              <div className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide">{label}</div>
+                              <div className="text-sm font-bold text-slate-400">{val}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+                {scoringView === 'teamvsopp' && displayStats.team && displayStats.opp && (
+                  <TeamComparison
+                    team={displayStats.team}
+                    opp={displayStats.opp}
+                    teamName={match?.team_name ?? 'Us'}
+                    oppName={match?.opponent_name ?? 'Opponent'}
+                  />
                 )}
               </div>
             )}
