@@ -989,6 +989,68 @@ export function MatchSummaryPage() {
               <div className="space-y-4">
                 <StatTable columns={TAB_COLUMNS['attacking']} rows={playerRows} totalsRow={statTotals?.attacking} />
 
+                {/* Set Distribution by Position */}
+                {(() => {
+                  const POS_ORDER  = ['OH', 'MB', 'RS'];
+                  const POS_LABELS = { OH: 'Outside', MB: 'Middle', RS: 'Right Side' };
+                  const groups = {};
+                  for (const row of playerRows) {
+                    const pos = row.pos_label;
+                    if (!POS_ORDER.includes(pos)) continue;
+                    groups[pos] ??= { ta: 0, k: 0, ae: 0 };
+                    groups[pos].ta += row.ta ?? 0;
+                    groups[pos].k  += row.k  ?? 0;
+                    groups[pos].ae += row.ae ?? 0;
+                  }
+                  const totalTA = POS_ORDER.reduce((s, p) => s + (groups[p]?.ta ?? 0), 0);
+                  if (totalTA === 0) return null;
+                  const maxTA = Math.max(...POS_ORDER.map(p => groups[p]?.ta ?? 0));
+                  return (
+                    <div className="bg-surface rounded-xl p-3">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Set Distribution</p>
+                      <div className="space-y-3">
+                        {POS_ORDER.map(pos => {
+                          const g = groups[pos];
+                          if (!g || g.ta === 0) return null;
+                          const sharePct = Math.round(g.ta / totalTA * 100);
+                          const kW      = g.ta > 0 ? (g.k  / g.ta) * 100 : 0;
+                          const eW      = g.ta > 0 ? (g.ae / g.ta) * 100 : 0;
+                          const inPlayW = Math.max(0, 100 - kW - eW);
+                          const barW    = (g.ta / maxTA) * 100;
+                          const hitting = g.ta > 0 ? (g.k - g.ae) / g.ta : null;
+                          return (
+                            <div key={pos}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-semibold text-slate-300">
+                                  {POS_LABELS[pos]}
+                                  <span className="ml-1.5 text-slate-500 font-normal">{sharePct}%</span>
+                                </span>
+                                <span className="text-xs text-slate-400 tabular-nums">
+                                  {g.ta} TA · {hitting !== null ? fmtHitting(hitting) : '—'}
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-800 rounded-full h-4 overflow-hidden">
+                                <div className="h-full flex rounded-full overflow-hidden" style={{ width: `${barW}%` }}>
+                                  <div className="bg-emerald-500 h-full" style={{ width: `${kW}%` }} />
+                                  <div className="bg-slate-600 h-full"   style={{ width: `${inPlayW}%` }} />
+                                  <div className="bg-red-500 h-full"     style={{ width: `${eW}%` }} />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <div className="flex gap-4 pt-1">
+                          {[['bg-emerald-500','Kill'],['bg-slate-600','In Play'],['bg-red-500','Error']].map(([cls,lbl]) => (
+                            <span key={lbl} className="flex items-center gap-1 text-[10px] text-slate-500">
+                              <span className={`w-2 h-2 rounded-sm ${cls} inline-block`} />{lbl}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* In System vs Out of System */}
                 {displayStats?.isOos && (
                   (displayStats.isOos.total.is.ta > 0 || displayStats.isOos.total.oos.ta > 0)
