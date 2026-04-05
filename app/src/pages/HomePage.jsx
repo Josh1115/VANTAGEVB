@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { MATCH_STATUS } from '../constants';
-import { fmtDate } from '../stats/formatters';
+import { fmtDate, fmtHitting, fmtPct } from '../stats/formatters';
 import { computePlayerStats, computeTeamStats } from '../stats/engine';
 import { deleteMatch } from '../stats/queries';
 import { Button } from '../components/ui/Button';
@@ -123,13 +123,14 @@ export function HomePage() {
 
   const seasonRecord = useLiveQuery(async () => {
     if (!defaultTeamId || !defaultSeasonId) return null;
-    const [team, season, matches] = await Promise.all([
+    const [team, season, allSeasonMatches] = await Promise.all([
       db.teams.get(defaultTeamId),
       db.seasons.get(defaultSeasonId),
       db.matches.where('season_id').equals(defaultSeasonId)
-        .filter(m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition')
+        .filter(m => m.match_type !== 'exhibition')
         .toArray(),
     ]);
+    const matches = allSeasonMatches.filter(m => m.status === MATCH_STATUS.COMPLETE);
     if (!team || !season) return null;
     const isWin = m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0);
     const wins   = matches.filter(isWin).length;
@@ -147,6 +148,7 @@ export function HomePage() {
       winPct:  matches.length ? wins / matches.length : null,
       homeW, homeL, awayW, awayL, neutW, neutL,
       hasLocData: (homeW + homeL + awayW + awayL + neutW + neutL) > 0,
+      matchProgress: { completed: matches.length, total: allSeasonMatches.length },
     };
   }, [defaultTeamId, defaultSeasonId]);
 
@@ -169,7 +171,7 @@ export function HomePage() {
       for (const [id, ps] of Object.entries(stats)) {
         const val = getValue(ps);
         if (val > 0 && (!best || val > best.val)) {
-          best = { name: nameMap[id] ?? '—', val };
+          best = { name: nameMap[id] ?? '—', val, id: Number(id) };
         }
       }
       return best;
@@ -191,6 +193,11 @@ export function HomePage() {
         ast: ts.ast,
         rec: ts.pa,
         apr: ts.apr,
+      },
+      teamStats: {
+        hit_pct: ts.hit_pct,
+        si_pct:  ts.si_pct,
+        ace_pct: ts.ace_pct,
       },
     };
   }, [defaultTeamId, defaultSeasonId]);
@@ -497,6 +504,38 @@ export function HomePage() {
                 </>
               )}
             </div>
+
+            {/* Season progress bar */}
+            {seasonRecord.matchProgress.total > 0 && (
+              <div className="px-4 pt-2 pb-3 border-t border-slate-700/60">
+                <div className="flex justify-between text-[10px] font-bold tracking-[0.15em] text-slate-500 mb-1.5">
+                  <span>SEASON PROGRESS</span>
+                  <span>{seasonRecord.matchProgress.completed} / {seasonRecord.matchProgress.total}</span>
+                </div>
+                <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all duration-700"
+                    style={{ width: `${(seasonRecord.matchProgress.completed / seasonRecord.matchProgress.total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Quick team stats strip ── */}
+        {seasonLeaders?.teamStats && (
+          <div className="grid grid-cols-3 gap-2 animate-slide-up-fade" style={{ animationDelay: '220ms' }}>
+            {[
+              { label: 'HIT%', val: fmtHitting(seasonLeaders.teamStats.hit_pct) },
+              { label: 'SRV%', val: fmtPct(seasonLeaders.teamStats.si_pct)      },
+              { label: 'ACE%', val: fmtPct(seasonLeaders.teamStats.ace_pct)     },
+            ].map(({ label, val }) => (
+              <div key={label} className="bg-surface rounded-xl p-3 text-center">
+                <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</div>
+                <div className="text-xl font-black text-primary tabular-nums mt-0.5">{val}</div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -524,13 +563,20 @@ export function HomePage() {
           ];
           const tt = seasonLeaders?.teamTotals;
           return (
-            <div className="animate-slide-up-fade space-y-2" style={{ animationDelay: '250ms' }}>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 px-0.5">Season Leaders</p>
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 px-0.5 animate-slide-up-fade" style={{ animationDelay: '250ms' }}>Season Leaders</p>
               <div className="grid grid-cols-7 gap-2">
-                {LEADERS.map(({ label, key, fmt }) => {
+                {LEADERS.map(({ label, key, fmt }, i) => {
                   const leader = seasonLeaders?.[key];
+                  const canNav = leader?.id && defaultTeamId;
                   return (
-                    <div key={key} className="bg-surface rounded-xl p-2 text-center flex flex-col items-center gap-1">
+                    <button
+                      key={key}
+                      onClick={() => canNav && navigate(`/teams/${defaultTeamId}/players/${leader.id}`)}
+                      disabled={!canNav}
+                      className="bg-surface rounded-xl p-2 text-center flex flex-col items-center gap-1 animate-slide-up-fade active:scale-95 transition-transform disabled:active:scale-100"
+                      style={{ animationDelay: `${260 + i * 45}ms` }}
+                    >
                       <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</span>
                       {leader ? (
                         <>
@@ -540,16 +586,20 @@ export function HomePage() {
                       ) : (
                         <span className="text-xl font-black text-slate-600 leading-none">—</span>
                       )}
-                    </div>
+                    </button>
                   );
                 })}
               </div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 px-0.5">Team Totals</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 px-0.5 animate-slide-up-fade" style={{ animationDelay: `${260 + LEADERS.length * 45}ms` }}>Team Totals</p>
               <div className="grid grid-cols-7 gap-2">
-                {LEADERS.map(({ label, ttKey, fmt }) => {
+                {LEADERS.map(({ label, ttKey, fmt }, i) => {
                   const teamVal = tt?.[ttKey];
                   return (
-                    <div key={ttKey} className="bg-surface rounded-xl p-2 text-center flex flex-col items-center gap-1">
+                    <div
+                      key={ttKey}
+                      className="bg-surface rounded-xl p-2 text-center flex flex-col items-center gap-1 animate-slide-up-fade"
+                      style={{ animationDelay: `${320 + LEADERS.length * 45 + i * 45}ms` }}
+                    >
                       <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</span>
                       <span className="text-xl font-black text-slate-300 tabular-nums leading-none">
                         {teamVal != null ? (fmt ? fmt(teamVal) : teamVal) : '—'}
@@ -676,7 +726,15 @@ export function HomePage() {
                     ? `/matches/${match.id}/summary`
                     : `/matches/${match.id}/live`
                 )}
-                className="w-full bg-surface p-4 text-left flex items-center justify-between hover:bg-slate-700 rounded-xl transition-colors"
+                className={`w-full bg-surface p-4 text-left flex items-center justify-between hover:bg-slate-700 rounded-xl transition-colors border-l-4 ${
+                  match.status === MATCH_STATUS.COMPLETE
+                    ? (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0)
+                      ? 'border-emerald-600'
+                      : 'border-red-700'
+                    : match.status === MATCH_STATUS.IN_PROGRESS
+                    ? 'border-primary'
+                    : 'border-transparent'
+                }`}
               >
                   <div>
                     <div className="font-semibold">
