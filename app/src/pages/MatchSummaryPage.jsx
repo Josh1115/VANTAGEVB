@@ -184,6 +184,7 @@ function WinProbChart({ rawRallies, sets, format }) {
 
 const TABS = [
   { value: 'scoring',   label: 'Scoring'   },
+  { value: 'report',    label: 'Report'    },
   { value: 'trends',    label: 'Trends'    },
   { value: 'serving',   label: 'Serving'   },
   { value: 'passing',   label: 'Passing'   },
@@ -193,7 +194,6 @@ const TABS = [
   { value: 'ver',       label: 'VER'       },
   { value: 'compare',   label: 'Compare'   },
   { value: 'opponent',  label: 'Opp'       },
-  { value: 'report',    label: 'Report'    },
 ];
 const TAB_VALUES = TABS.map(t => t.value);
 
