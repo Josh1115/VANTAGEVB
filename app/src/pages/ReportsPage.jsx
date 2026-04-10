@@ -781,7 +781,7 @@ export function ReportsPage() {
                 })()}
 
                 {/* Timeout Effectiveness */}
-                {stats.timeoutEffect && (stats.timeoutEffect.us.count > 0 || stats.timeoutEffect.them.count > 0) && (
+                {stats.timeoutEffect && (
                   <div className="bg-surface rounded-xl p-3 space-y-2">
                     <SectionHeader>Timeout Effectiveness</SectionHeader>
                     <p className="text-[11px] text-slate-500 -mt-1 mb-2">Win % in the 3 rallies immediately following each timeout</p>
