@@ -269,7 +269,10 @@ export function LiveMatchPage() {
             year:          players[i]?.year ?? '',
           }))
           .sort((a, b) => a.position - b.position);
-        setLineup(lineup);
+        const so1Row = lineupRows.find(r => r.serve_order === 1);
+        const sz = so1Row?.position ?? 1;
+        const initialRotNum = ((1 - sz + 6) % 6) + 1;
+        setLineup(lineup, initialRotNum);
       }
 
       // Resolve libero: explicit set designation → full-roster 'L' scan → nothing

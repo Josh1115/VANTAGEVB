@@ -63,13 +63,23 @@ export function HomePage() {
     return `${day} · ${month} ${d.getDate()}`;
   }, []);
 
+  const defaultTeamId   = useMemo(() => getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID),   []);
+  const defaultSeasonId = useMemo(() => getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID), []);
+
   const recentMatches = useLiveQuery(async () => {
     let matches;
     if (matchView === 'recent') {
-      matches = await db.matches.orderBy('date').reverse().limit(5).toArray();
+      if (defaultSeasonId) {
+        const arr = await db.matches.where('season_id').equals(defaultSeasonId).sortBy('date');
+        matches = arr.reverse().slice(0, 5);
+      } else {
+        matches = await db.matches.orderBy('date').reverse().limit(5).toArray();
+      }
     } else {
       const now = Date.now();
-      const all = await db.matches.toArray();
+      const all = defaultSeasonId
+        ? await db.matches.where('season_id').equals(defaultSeasonId).toArray()
+        : await db.matches.toArray();
       matches = all
         .sort((a, b) => Math.abs(new Date(a.date) - now) - Math.abs(new Date(b.date) - now))
         .slice(0, 5)
@@ -109,7 +119,7 @@ export function HomePage() {
     }
 
     return enriched;
-  }, [matchView]);
+  }, [matchView, defaultSeasonId]);
 
   const allTimeRecord = useLiveQuery(async () => {
     const all = await db.matches.where('status').equals(MATCH_STATUS.COMPLETE)
@@ -117,9 +127,6 @@ export function HomePage() {
     const wins = all.filter((m) => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
     return { wins, losses: all.length - wins, total: all.length };
   }, []);
-
-  const defaultTeamId   = useMemo(() => getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID),   []);
-  const defaultSeasonId = useMemo(() => getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID), []);
 
   const seasonRecord = useLiveQuery(async () => {
     if (!defaultTeamId || !defaultSeasonId) return null;
@@ -151,6 +158,22 @@ export function HomePage() {
       matchProgress: { completed: matches.length, total: allSeasonMatches.length },
     };
   }, [defaultTeamId, defaultSeasonId]);
+
+  const nextMatch = useLiveQuery(async () => {
+    if (!defaultSeasonId) return null;
+    const all = await db.matches.where('season_id').equals(defaultSeasonId).toArray();
+    const upcoming = all
+      .filter(m => m.status === MATCH_STATUS.SCHEDULED || m.status === MATCH_STATUS.SETUP)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    if (!upcoming.length) return null;
+    const m = upcoming[0];
+    let opponentName = m.opponent_name;
+    if (!opponentName && m.opponent_id) {
+      const opp = await db.opponents.get(m.opponent_id);
+      opponentName = opp?.name ?? null;
+    }
+    return { ...m, opponent_name: opponentName };
+  }, [defaultSeasonId]);
 
   const seasonLeaders = useLiveQuery(async () => {
     if (!defaultTeamId || !defaultSeasonId) return null;
@@ -626,19 +649,50 @@ export function HomePage() {
           <span className="text-slate-500 text-lg">›</span>
         </button>
 
-        {/* ── Tools ── */}
-        <button
-          onClick={() => navigate('/tools')}
-          className="group w-full card-top-glow bg-surface rounded-xl p-4 text-left flex items-center gap-4 hover:bg-slate-700 active:scale-[0.97] transition-[transform,background-color] duration-75 animate-slide-up-fade"
-          style={{ animationDelay: '200ms' }}
-        >
-          <span className="text-3xl inline-block transition-transform duration-75 group-active:-translate-y-1.5 group-active:scale-125">🛠️</span>
-          <div className="flex-1">
-            <div className="font-semibold text-sm">Tools</div>
-            <div className="text-xs text-slate-400">Practice utilities for coaches</div>
-          </div>
-          <span className="text-slate-500 text-lg">›</span>
-        </button>
+        {/* ── Next Match ── */}
+        {nextMatch ? (
+          <button
+            onClick={() => navigate(`/matches/${nextMatch.id}/setup`)}
+            className="group w-full card-top-glow bg-surface rounded-xl p-4 text-left flex items-center gap-4 hover:bg-slate-700 active:scale-[0.97] transition-[transform,background-color] duration-75 animate-slide-up-fade"
+            style={{ animationDelay: '200ms' }}
+          >
+            {(() => {
+              const d = nextMatch.date ? new Date(nextMatch.date) : null;
+              const mon = d ? d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase() : '—';
+              const day = d ? d.getDate() : '—';
+              return (
+                <div className="flex-shrink-0 w-11 h-11 rounded-lg overflow-hidden border border-slate-600 flex flex-col transition-transform duration-75 group-active:-translate-y-1.5 group-active:scale-125">
+                  <div className="bg-primary text-white text-[9px] font-black tracking-widest text-center leading-none py-1">{mon}</div>
+                  <div className="flex-1 bg-slate-800 flex items-center justify-center text-lg font-black text-white leading-none tabular-nums">{day}</div>
+                </div>
+              );
+            })()}
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 mb-0.5">Next Match</div>
+              <div className="font-semibold text-sm truncate">{nextMatch.opponent_name ?? 'TBD'}</div>
+              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                {nextMatch.location && (
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                    nextMatch.location === 'home'    ? 'bg-emerald-900/50 text-emerald-400' :
+                    nextMatch.location === 'away'    ? 'bg-red-900/50 text-red-400' :
+                                                       'bg-slate-700 text-slate-400'
+                  }`}>
+                    {nextMatch.location === 'home' ? 'HOME' : nextMatch.location === 'away' ? 'AWAY' : 'NEUT'}
+                  </span>
+                )}
+                {nextMatch.conference && (
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                    nextMatch.conference === 'conference' ? 'bg-blue-900/50 text-blue-400' : 'bg-slate-700 text-slate-400'
+                  }`}>
+                    {nextMatch.conference === 'conference' ? 'CON' : 'NC'}
+                  </span>
+                )}
+                <span className="text-xs text-slate-400">{fmtDate(nextMatch.date)}</span>
+              </div>
+            </div>
+            <span className="text-slate-500 text-lg">›</span>
+          </button>
+        ) : null}
 
         <NetDivider />
 
@@ -714,11 +768,11 @@ export function HomePage() {
             />
           )}
 
-          {displayMatches.map((match, index) => (
+          {displayMatches.map((match, idx) => (
             <SwipeableMatchCard
               key={match.id}
               onDeleteConfirm={() => setConfirmDelete(match)}
-              animDelay={`${index * 40}ms`}
+              animDelay={`${idx * 40}ms`}
             >
               <button
                 onClick={() => navigate(
@@ -793,6 +847,22 @@ export function HomePage() {
             </SwipeableMatchCard>
           ))}
         </section>
+
+        <NetDivider />
+
+        {/* ── Tools ── */}
+        <button
+          onClick={() => navigate('/tools')}
+          className="group w-full card-top-glow bg-surface rounded-xl p-4 text-left flex items-center gap-4 hover:bg-slate-700 active:scale-[0.97] transition-[transform,background-color] duration-75 animate-slide-up-fade"
+          style={{ animationDelay: '200ms' }}
+        >
+          <span className="text-3xl inline-block transition-transform duration-75 group-active:-translate-y-1.5 group-active:scale-125">🛠️</span>
+          <div className="flex-1">
+            <div className="font-semibold text-sm">Tools</div>
+            <div className="text-xs text-slate-400">Practice utilities for coaches</div>
+          </div>
+          <span className="text-slate-500 text-lg">›</span>
+        </button>
       </div>
 
       {confirmDelete && (

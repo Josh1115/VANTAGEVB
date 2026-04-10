@@ -62,10 +62,12 @@ function classifyPoint(lastContact, pointWinner) {
 }
 
 export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout = null }) {
-  const [activeTab,   setActiveTab]   = useState('scoring');
-  const [serveView,   setServeView]   = useState('all');
-  const [passingView, setPassingView] = useState('passing');
-  const [trendsView,  setTrendsView]  = useState('trends');
+  const [activeTab,    setActiveTab]   = useState('scoring');
+  const [scope,        setScope]       = useState('set');
+  const [serveView,    setServeView]   = useState('all');
+  const [passingView,  setPassingView] = useState('passing');
+  const [trendsView,   setTrendsView]  = useState('trends');
+  const [attackView,   setAttackView]  = useState('players');
   const [secondsLeft, setSecondsLeft] = useState(60);
 
   const lineup            = useMatchStore((s) => s.lineup);
@@ -80,13 +82,17 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
   const serveSide         = useMatchStore((s) => s.serveSide);
 
   const setContacts = useMemo(
-    () => committedContacts.filter((c) => c.set_id === currentSetId),
-    [committedContacts, currentSetId]
+    () => scope === 'set'
+      ? committedContacts.filter((c) => c.set_id === currentSetId)
+      : committedContacts,
+    [committedContacts, currentSetId, scope]
   );
 
   const setRallies = useMemo(
-    () => committedRallies.filter((r) => r.set_id === currentSetId),
-    [committedRallies, currentSetId]
+    () => scope === 'set'
+      ? committedRallies.filter((r) => r.set_id === currentSetId)
+      : committedRallies,
+    [committedRallies, currentSetId, scope]
   );
 
   const timelineData = useMemo(() => {
@@ -107,6 +113,45 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
   const oppStats     = useMemo(() => computeOppDisplayStats(setContacts), [setContacts]);
 
   const rotationStats = useMemo(() => computeRotationStats(setRallies), [setRallies]);
+
+  const attackDistByPos = useMemo(() => {
+    const posMap = {};
+    for (const sl of lineup) {
+      if (sl.playerId) posMap[sl.playerId] = sl.positionLabel ?? '';
+    }
+    const normalize = (lbl) => {
+      if (!lbl) return null;
+      const u = lbl.toUpperCase();
+      if (u === 'OH' || u === 'DS') return 'OUTSIDE';
+      if (u === 'MB')               return 'MIDDLE';
+      if (u === 'OPP' || u === 'RS') return 'OPPOSITE';
+      if (u === 'S')                return 'SETTER';
+      return null;
+    };
+    const groups = {};
+    for (const c of setContacts) {
+      if (c.action !== 'attack' || c.opponent_contact) continue;
+      const cat = normalize(posMap[c.player_id]);
+      if (!cat) continue;
+      if (!groups[cat]) groups[cat] = { ta: 0, k: 0, ae: 0 };
+      groups[cat].ta++;
+      if (c.result === 'kill')  groups[cat].k++;
+      if (c.result === 'error') groups[cat].ae++;
+    }
+    const totalTA = Object.values(groups).reduce((s, g) => s + g.ta, 0);
+    return ['OUTSIDE', 'MIDDLE', 'OPPOSITE', 'SETTER'].map((cat) => {
+      const g = groups[cat] ?? { ta: 0, k: 0, ae: 0 };
+      return {
+        cat,
+        ta:      g.ta,
+        k:       g.k,
+        ae:      g.ae,
+        pct:     totalTA > 0 ? g.ta / totalTA : null,
+        k_pct:   g.ta > 0 ? g.k / g.ta : null,
+        hit_pct: g.ta > 0 ? (g.k - g.ae) / g.ta : null,
+      };
+    });
+  }, [setContacts, lineup]);
 
   const rotationRows = useMemo(() => {
     if (!rotationStats?.rotations) return [];
@@ -238,6 +283,26 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
           );
         })()}
 
+        {/* SET / MATCH scope toggle */}
+        <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-700 shrink-0 bg-slate-900/40">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mr-1">Scope</span>
+          <div className="flex bg-slate-800 rounded-lg p-0.5">
+            {[['set', `SET ${setNumber}`], ['match', 'MATCH']].map(([val, label]) => (
+              <button
+                key={val}
+                onPointerDown={(e) => { e.preventDefault(); setScope(val); }}
+                className={`px-4 py-1 rounded-md text-xs font-black tracking-wider transition-colors ${
+                  scope === val
+                    ? 'bg-primary text-white'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Scrollable tab bar */}
         <div className="flex overflow-x-auto border-b border-slate-700 shrink-0" style={{ scrollbarWidth: 'none' }}>
           {TABS.map(({ value, label }) => (
@@ -322,7 +387,78 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
           )}
 
           {activeTab === 'attacking' && (
-            <StatTable columns={TAB_COLUMNS['attacking']} rows={playerRows} totalsRow={totalsRow} />
+            <>
+              <SubToggle
+                options={[['players', 'PLAYERS'], ['position', 'BY POSITION']]}
+                value={attackView}
+                onChange={setAttackView}
+              />
+              {attackView === 'players' && (
+                <StatTable columns={TAB_COLUMNS['attacking']} rows={playerRows} totalsRow={totalsRow} />
+              )}
+              {attackView === 'position' && (
+                <div className="space-y-1">
+                  {/* Header */}
+                  <div className="grid grid-cols-7 gap-1 px-1 pb-1 border-b border-slate-700">
+                    {['POS', '%', 'TA', 'K', 'AE', 'K%', 'HIT%'].map((h) => (
+                      <div key={h} className="text-[10px] font-bold uppercase tracking-wider text-slate-500 text-center">{h}</div>
+                    ))}
+                  </div>
+                  {/* Rows */}
+                  {attackDistByPos.map(({ cat, ta, k, ae, pct, k_pct, hit_pct }) => (
+                    <div
+                      key={cat}
+                      className={`grid grid-cols-7 gap-1 px-1 py-2 rounded-lg ${ta > 0 ? 'bg-slate-800/60' : 'opacity-40'}`}
+                    >
+                      <div className="text-xs font-black text-primary text-center leading-tight">{cat}</div>
+                      <div className="text-xs font-bold text-slate-200 text-center tabular-nums">
+                        {pct != null ? Math.round(pct * 100) + '%' : '—'}
+                      </div>
+                      <div className="text-xs font-bold text-slate-200 text-center tabular-nums">{ta || '—'}</div>
+                      <div className="text-xs font-bold text-emerald-400 text-center tabular-nums">{ta > 0 ? k : '—'}</div>
+                      <div className="text-xs font-bold text-red-400 text-center tabular-nums">{ta > 0 ? ae : '—'}</div>
+                      <div className="text-xs font-bold text-slate-200 text-center tabular-nums">
+                        {k_pct != null ? Math.round(k_pct * 100) + '%' : '—'}
+                      </div>
+                      <div className={`text-xs font-bold text-center tabular-nums ${
+                        hit_pct == null ? 'text-slate-500' :
+                        hit_pct >= 0.3  ? 'text-emerald-400' :
+                        hit_pct >= 0.1  ? 'text-yellow-400' : 'text-red-400'
+                      }`}>
+                        {hit_pct != null ? fmtHitting(hit_pct) : '—'}
+                      </div>
+                    </div>
+                  ))}
+                  {/* Totals */}
+                  {(() => {
+                    const tot = attackDistByPos.reduce((s, r) => ({
+                      ta: s.ta + r.ta, k: s.k + r.k, ae: s.ae + r.ae,
+                    }), { ta: 0, k: 0, ae: 0 });
+                    const hit = tot.ta > 0 ? (tot.k - tot.ae) / tot.ta : null;
+                    const kp  = tot.ta > 0 ? tot.k / tot.ta : null;
+                    return (
+                      <div className="grid grid-cols-7 gap-1 px-1 py-2 border-t border-slate-700 mt-1">
+                        <div className="text-[10px] font-black text-slate-400 text-center">TOTAL</div>
+                        <div className="text-xs font-bold text-slate-400 text-center">100%</div>
+                        <div className="text-xs font-bold text-slate-300 text-center tabular-nums">{tot.ta || '—'}</div>
+                        <div className="text-xs font-bold text-emerald-400 text-center tabular-nums">{tot.ta > 0 ? tot.k : '—'}</div>
+                        <div className="text-xs font-bold text-red-400 text-center tabular-nums">{tot.ta > 0 ? tot.ae : '—'}</div>
+                        <div className="text-xs font-bold text-slate-300 text-center tabular-nums">
+                          {kp != null ? Math.round(kp * 100) + '%' : '—'}
+                        </div>
+                        <div className={`text-xs font-bold text-center tabular-nums ${
+                          hit == null ? 'text-slate-500' :
+                          hit >= 0.3  ? 'text-emerald-400' :
+                          hit >= 0.1  ? 'text-yellow-400' : 'text-red-400'
+                        }`}>
+                          {hit != null ? fmtHitting(hit) : '—'}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </>
           )}
 
           {activeTab === 'blocking' && (
@@ -368,7 +504,7 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
         {/* Score timeline for current set */}
         {timelineData.length > 1 && (
           <div className="shrink-0 border-t border-slate-700 px-3 pt-2 pb-1">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Set {setNumber} Timeline</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">{scope === 'set' ? `Set ${setNumber}` : 'Match'} Timeline</p>
             <ResponsiveContainer width="100%" height={90}>
               <LineChart data={timelineData} margin={{ top: 2, right: 6, left: -28, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />

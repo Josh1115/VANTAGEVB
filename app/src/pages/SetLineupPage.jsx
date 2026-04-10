@@ -164,7 +164,8 @@ export function SetLineupPage() {
         })
         .sort((a, b) => a.position - b.position);
 
-      setLineup(storeLineup);
+      const initialRotNum = ((1 - startZone + 6) % 6) + 1;
+      setLineup(storeLineup, initialRotNum);
       if (liberoId) setLibero(Number(liberoId));
       useMatchStore.setState({ serveSide: servingSide });
 

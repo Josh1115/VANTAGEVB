@@ -179,6 +179,23 @@ export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions,
           serveOrder={lineup}
           players={players}
         />
+        {(() => {
+          const rotNum = ((1 - startZone + 6) % 6) + 1;
+          const isServing = startZone === 1;
+          return (
+            <div className="mt-2 flex items-center gap-2">
+              <span
+                className="text-xs font-black tracking-widest px-2.5 py-1 rounded-lg bg-primary/20 text-primary border border-primary/30"
+                style={{ fontFamily: "'Orbitron', sans-serif" }}
+              >
+                ROT {rotNum} START
+              </span>
+              <span className="text-[11px] text-slate-500">
+                {isServing ? 'Serving to start' : `Receiving to start — Player I serves first in ROT 1`}
+              </span>
+            </div>
+          );
+        })()}
       </div>
 
     </div>

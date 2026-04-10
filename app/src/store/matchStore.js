@@ -229,7 +229,7 @@ export const useMatchStore = create((set, get) => ({
     set({ matchId, currentSetId: setId, teamId, format, lastSetScore: lastSetScore ?? 15, maxSubsPerSet });
   },
   resetMatch: () => set(INITIAL_STATE),
-  setLineup:          (lineup) => set({ lineup }),
+  setLineup:          (lineup, rotationNum) => set({ lineup, ...(rotationNum !== undefined ? { rotationNum } : {}) }),
   setPlayerNicknames: (map)    => set({ playerNicknames: map }),
   setLibero:  (liberoId) => set({ liberoId }),
 
@@ -809,6 +809,7 @@ export const useMatchStore = create((set, get) => ({
           ? { ...sl, playerId: inPlayer.id, playerName: inPlayer.name, jersey: inPlayer.jersey_number, positionLabel: inPositionLabel }
           : sl
       ),
+      playerNicknames:    { ...s.playerNicknames, [inPlayer.id]: inPlayer.nickname ?? '' },
       subsUsed:           s.subsUsed + 1,
       subPairs:           newSubPairs,
       exhaustedPlayerIds: newExhausted,
