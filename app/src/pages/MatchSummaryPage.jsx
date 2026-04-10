@@ -193,8 +193,24 @@ const TABS = [
   { value: 'ver',       label: 'VER'       },
   { value: 'compare',   label: 'Compare'   },
   { value: 'opponent',  label: 'Opp'       },
+  { value: 'report',    label: 'Report'    },
 ];
 const TAB_VALUES = TABS.map(t => t.value);
+
+// ── Report card helpers ───────────────────────────────────────────────────────
+
+function letterGrade(value, thresholds) {
+  // thresholds: [A_min, B_min, C_min, D_min] — descending
+  if (value == null) return { grade: '—', color: 'text-slate-500' };
+  const [a, b, c, d] = thresholds;
+  if (value >= a) return { grade: 'A', color: 'text-emerald-400' };
+  if (value >= b) return { grade: 'B', color: 'text-lime-400'    };
+  if (value >= c) return { grade: 'C', color: 'text-yellow-400'  };
+  if (value >= d) return { grade: 'D', color: 'text-orange-400'  };
+  return              { grade: 'F', color: 'text-red-400'       };
+}
+
+const GRADE_COLOR = { A: 'bg-emerald-900/40 border-emerald-700/40', B: 'bg-lime-900/40 border-lime-700/40', C: 'bg-yellow-900/40 border-yellow-700/40', D: 'bg-orange-900/40 border-orange-700/40', F: 'bg-red-900/40 border-red-700/40', '—': 'bg-slate-800 border-slate-700' };
 
 // ── Match Notes ──────────────────────────────────────────────────────────────
 
@@ -553,6 +569,30 @@ export function MatchSummaryPage() {
     () => db.contacts.where('match_id').equals(id).filter((c) => c.source === 'video_correction').toArray(),
     [id]
   );
+
+  // Season averages (all completed non-exhibition matches in the same season, excluding this one)
+  const seasonAvgs = useLiveQuery(async () => {
+    if (!match?.season_id) return null;
+    const seasonMatches = await db.matches
+      .where('season_id').equals(match.season_id)
+      .filter(m => m.status === 'complete' && m.match_type !== 'exhibition' && m.id !== id)
+      .toArray();
+    if (!seasonMatches.length) return null;
+    const matchIds = seasonMatches.map(m => m.id);
+    const contacts = await db.contacts.where('match_id').anyOf(matchIds).toArray();
+    if (!contacts.length) return null;
+    const ts = computeTeamStats(contacts);
+    const numSets = seasonMatches.reduce((s, m) => s + ((m.our_sets_won ?? 0) + (m.opp_sets_won ?? 0)), 0) || 1;
+    return {
+      hit_pct: ts.hit_pct,
+      si_pct:  ts.si_pct,
+      apr:     ts.apr,
+      ace_pct: ts.ace_pct,
+      dig_ps:  (ts.dig ?? 0) / numSets,
+      k_ps:    (ts.k   ?? 0) / numSets,
+      n:       seasonMatches.length,
+    };
+  }, [match?.season_id, id]);
 
   // Players keyed by id for name lookup (match → season → team)
   const players = useLiveQuery(async () => {
@@ -1400,6 +1440,163 @@ export function MatchSummaryPage() {
                 </div>
               </div>
             )}
+
+            {tab === 'report' && displayStats && (() => {
+              const t = displayStats.team;
+              const numSets = (sets ?? []).filter(s => s.status === 'complete').length || 1;
+              const blkPerSet = ((t.bs ?? 0) + (t.ba ?? 0) * 0.5) / numSets;
+              const digPerSet = (t.dig ?? 0) / numSets;
+
+              const categories = [
+                {
+                  label: 'Serving',
+                  icon: '🏐',
+                  ...letterGrade(t.si_pct, [0.80, 0.72, 0.63, 0.55]),
+                  stats: [
+                    { label: 'Srv In%',  val: fmtPct(t.si_pct)      },
+                    { label: 'Ace%',     val: fmtPct(t.ace_pct)     },
+                    { label: 'Aces',     val: t.ace ?? 0             },
+                    { label: 'Errors',   val: t.se  ?? 0             },
+                  ],
+                  note: t.si_pct >= 0.80 ? 'Elite serving pressure' : t.si_pct >= 0.63 ? 'Acceptable in-play rate' : 'Too many serve errors',
+                },
+                {
+                  label: 'Passing',
+                  icon: '🤲',
+                  ...letterGrade(t.apr, [2.4, 2.1, 1.8, 1.5]),
+                  stats: [
+                    { label: 'APR',      val: t.apr != null ? t.apr.toFixed(2) : '—' },
+                    { label: '3-Opt%',   val: fmtPct(t.pp_pct)     },
+                    { label: 'Passes',   val: t.pa  ?? 0             },
+                    { label: 'Errors',   val: t.pe  ?? 0             },
+                  ],
+                  note: (t.apr ?? 0) >= 2.4 ? 'Excellent ball control' : (t.apr ?? 0) >= 1.8 ? 'Serviceable passing' : 'Passing broke down',
+                },
+                {
+                  label: 'Attacking',
+                  icon: '⚡',
+                  ...letterGrade(t.hit_pct, [0.300, 0.200, 0.100, 0.000]),
+                  stats: [
+                    { label: 'HIT%',     val: fmtHitting(t.hit_pct) },
+                    { label: 'K%',       val: fmtPct(t.k_pct)       },
+                    { label: 'Kills',    val: t.k   ?? 0             },
+                    { label: 'Errors',   val: t.ae  ?? 0             },
+                  ],
+                  note: (t.hit_pct ?? 0) >= 0.300 ? 'Dominant offense' : (t.hit_pct ?? 0) >= 0.100 ? 'Solid first-ball offense' : 'Offense struggled to convert',
+                },
+                {
+                  label: 'Blocking',
+                  icon: '🛡',
+                  ...letterGrade(blkPerSet, [2.5, 1.8, 1.2, 0.6]),
+                  stats: [
+                    { label: 'BS',       val: t.bs  ?? 0             },
+                    { label: 'BA',       val: t.ba  ?? 0             },
+                    { label: 'Blk/Set',  val: blkPerSet.toFixed(1)   },
+                    { label: 'Errors',   val: t.be  ?? 0             },
+                  ],
+                  note: blkPerSet >= 2.5 ? 'Strong net presence' : blkPerSet >= 1.2 ? 'Adequate blocking' : 'Net game needs work',
+                },
+                {
+                  label: 'Defense',
+                  icon: '🔒',
+                  ...letterGrade(digPerSet, [15, 12, 9, 6]),
+                  stats: [
+                    { label: 'Digs',     val: t.dig ?? 0             },
+                    { label: 'Dig/Set',  val: digPerSet.toFixed(1)   },
+                    { label: 'Errors',   val: t.de  ?? 0             },
+                    { label: 'FBR',      val: t.fbr ?? 0             },
+                  ],
+                  note: digPerSet >= 15 ? 'Outstanding floor defense' : digPerSet >= 9 ? 'Solid defensive effort' : 'Defense gave up too much',
+                },
+              ];
+
+              const gradePoints = { A: 4, B: 3, C: 2, D: 1, F: 0, '—': null };
+              const validGrades = categories.map(c => gradePoints[c.grade]).filter(g => g != null);
+              const gpa = validGrades.length ? validGrades.reduce((s, g) => s + g, 0) / validGrades.length : null;
+              const overallGrade = gpa == null ? '—' :
+                gpa >= 3.7 ? 'A' : gpa >= 3.3 ? 'A-' : gpa >= 3.0 ? 'B+' :
+                gpa >= 2.7 ? 'B' : gpa >= 2.3 ? 'B-' : gpa >= 2.0 ? 'C+' :
+                gpa >= 1.7 ? 'C' : gpa >= 1.3 ? 'C-' : gpa >= 1.0 ? 'D' : 'F';
+              const overallColor = gpa == null ? 'text-slate-500' : gpa >= 3.0 ? 'text-emerald-400' : gpa >= 2.0 ? 'text-yellow-400' : 'text-red-400';
+
+              return (
+                <div className="space-y-4">
+                  {/* Season comparison strip */}
+                  {seasonAvgs && (() => {
+                    const t = displayStats.team;
+                    const numSets = (sets ?? []).filter(s => s.status === 'complete').length || 1;
+                    const comparisons = [
+                      { label: 'HIT%',    today: t.hit_pct,             avg: seasonAvgs.hit_pct,  fmt: fmtHitting, higherBetter: true  },
+                      { label: 'SRV%',    today: t.si_pct,              avg: seasonAvgs.si_pct,   fmt: fmtPct,     higherBetter: true  },
+                      { label: 'APR',     today: t.apr,                 avg: seasonAvgs.apr,      fmt: v => v != null ? v.toFixed(2) : '—', higherBetter: true },
+                      { label: 'ACE%',    today: t.ace_pct,             avg: seasonAvgs.ace_pct,  fmt: fmtPct,     higherBetter: true  },
+                      { label: 'DIG/S',   today: (t.dig ?? 0) / numSets, avg: seasonAvgs.dig_ps,  fmt: v => v != null ? v.toFixed(1) : '—', higherBetter: true },
+                      { label: 'K/S',     today: (t.k ?? 0) / numSets,  avg: seasonAvgs.k_ps,    fmt: v => v != null ? v.toFixed(1) : '—', higherBetter: true },
+                    ];
+                    return (
+                      <div className="bg-surface rounded-xl overflow-hidden">
+                        <div className="px-3 py-2 border-b border-slate-700/60">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">vs Season Avg</span>
+                          <span className="text-[10px] text-slate-600 ml-1">({seasonAvgs.n} prior matches)</span>
+                        </div>
+                        <div className="grid grid-cols-6 divide-x divide-slate-700/40">
+                          {comparisons.map(({ label, today, avg, fmt, higherBetter }) => {
+                            const delta = today != null && avg != null ? (today - avg) * (higherBetter ? 1 : -1) : null;
+                            const up   = delta != null && delta > 0.005;
+                            const down = delta != null && delta < -0.005;
+                            return (
+                              <div key={label} className="p-2 text-center">
+                                <div className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1">{label}</div>
+                                <div className="text-sm font-black text-slate-200 tabular-nums leading-none">{fmt(today)}</div>
+                                <div className={`text-[10px] font-bold tabular-nums mt-0.5 ${up ? 'text-emerald-400' : down ? 'text-red-400' : 'text-slate-500'}`}>
+                                  {up ? '▲' : down ? '▼' : '—'} {avg != null ? fmt(avg) : '—'}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Overall GPA */}
+                  <div className="bg-surface rounded-2xl p-4 flex items-center gap-4">
+                    <div className="text-center shrink-0">
+                      <div className={`text-5xl font-black leading-none ${overallColor}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>{overallGrade}</div>
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">Overall</div>
+                    </div>
+                    <div className="flex-1 flex gap-2 flex-wrap">
+                      {categories.map(c => (
+                        <div key={c.label} className="flex items-center gap-1.5">
+                          <span className={`text-sm font-black ${c.color}`}>{c.grade}</span>
+                          <span className="text-xs text-slate-500">{c.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Category cards */}
+                  {categories.map(({ label, icon, grade, color, stats, note }) => (
+                    <div key={label} className={`rounded-xl border overflow-hidden ${GRADE_COLOR[grade] ?? 'bg-slate-800 border-slate-700'}`}>
+                      <div className="flex items-center gap-3 px-4 py-2.5 border-b border-white/5">
+                        <span className="text-lg">{icon}</span>
+                        <span className="font-bold text-sm text-white flex-1">{label}</span>
+                        <span className={`text-2xl font-black ${color}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>{grade}</span>
+                      </div>
+                      <div className="grid grid-cols-4 divide-x divide-white/5 px-0 py-2">
+                        {stats.map(({ label: sl, val }) => (
+                          <div key={sl} className="text-center px-2">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{sl}</div>
+                            <div className="text-base font-black text-slate-200 tabular-nums">{val}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="px-4 pb-2.5 text-[11px] text-slate-400 italic">{note}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
             <div className="pt-6">
               <Button size="lg" className="w-full" onClick={() => navigate('/')}>

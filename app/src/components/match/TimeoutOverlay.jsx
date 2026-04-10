@@ -4,7 +4,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useMatchStore } from '../../store/matchStore';
 import {
   computePlayerStats, computeTeamStats, computeRotationStats,
-  computePointQuality, computeOppDisplayStats,
+  computePointQuality, computeOppDisplayStats, computeXKByPassRating,
 } from '../../stats/engine';
 import { TAB_COLUMNS, SERVING_COLS, ROTATION_COLS } from '../../stats/columns';
 import { StatTable } from '../stats/StatTable';
@@ -113,6 +113,28 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
   const oppStats     = useMemo(() => computeOppDisplayStats(setContacts), [setContacts]);
 
   const rotationStats = useMemo(() => computeRotationStats(setRallies), [setRallies]);
+
+  const xkByPass = useMemo(() => {
+    const raw = computeXKByPassRating(setContacts);
+    const agg = { '1': { ta:0, k:0, ae:0 }, '2': { ta:0, k:0, ae:0 }, '3': { ta:0, k:0, ae:0 } };
+    for (const ps of Object.values(raw)) {
+      for (const r of ['1','2','3']) {
+        agg[r].ta += ps[`xk${r}_ta`] ?? 0;
+        agg[r].k  += ps[`xk${r}_k`]  ?? 0;
+        agg[r].ae += ps[`xk${r}_ae`] ?? 0;
+      }
+    }
+    return ['3','2','1'].map((r) => ({
+      rating:  r,
+      label:   r === '3' ? 'PASS 3' : r === '2' ? 'PASS 2' : 'PASS 1',
+      sub:     r === '3' ? 'Perfect' : r === '2' ? 'Good' : 'Poor',
+      ta:      agg[r].ta,
+      k:       agg[r].k,
+      ae:      agg[r].ae,
+      k_pct:   agg[r].ta > 0 ? agg[r].k / agg[r].ta : null,
+      hit_pct: agg[r].ta > 0 ? (agg[r].k - agg[r].ae) / agg[r].ta : null,
+    }));
+  }, [setContacts]);
 
   const attackDistByPos = useMemo(() => {
     const posMap = {};
@@ -389,7 +411,7 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
           {activeTab === 'attacking' && (
             <>
               <SubToggle
-                options={[['players', 'PLAYERS'], ['position', 'BY POSITION']]}
+                options={[['players', 'PLAYERS'], ['position', 'BY POSITION'], ['pass', 'BY PASS']]}
                 value={attackView}
                 onChange={setAttackView}
               />
@@ -456,6 +478,65 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
                       </div>
                     );
                   })()}
+                </div>
+              )}
+              {attackView === 'pass' && (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">First-ball attack after serve receive</p>
+                  {/* Header */}
+                  <div className="grid grid-cols-6 gap-1 px-1 pb-1 border-b border-slate-700">
+                    {['PASS', 'TA', 'K', 'AE', 'K%', 'HIT%'].map((h) => (
+                      <div key={h} className="text-[10px] font-bold uppercase tracking-wider text-slate-500 text-center">{h}</div>
+                    ))}
+                  </div>
+                  {xkByPass.map(({ rating, label, sub, ta, k, ae, k_pct, hit_pct }) => (
+                    <div
+                      key={rating}
+                      className={`grid grid-cols-6 gap-1 px-1 py-2.5 rounded-lg ${ta > 0 ? 'bg-slate-800/60' : 'opacity-40'}`}
+                    >
+                      <div className="text-center">
+                        <div className="text-xs font-black text-primary leading-none">{label}</div>
+                        <div className="text-[9px] text-slate-500 leading-none mt-0.5">{sub}</div>
+                      </div>
+                      <div className="text-xs font-bold text-slate-200 text-center tabular-nums self-center">{ta || '—'}</div>
+                      <div className="text-xs font-bold text-emerald-400 text-center tabular-nums self-center">{ta > 0 ? k : '—'}</div>
+                      <div className="text-xs font-bold text-red-400 text-center tabular-nums self-center">{ta > 0 ? ae : '—'}</div>
+                      <div className="text-xs font-bold text-slate-200 text-center tabular-nums self-center">
+                        {k_pct != null ? Math.round(k_pct * 100) + '%' : '—'}
+                      </div>
+                      <div className={`text-xs font-bold text-center tabular-nums self-center ${
+                        hit_pct == null ? 'text-slate-500' :
+                        hit_pct >= 0.3  ? 'text-emerald-400' :
+                        hit_pct >= 0.1  ? 'text-yellow-400' : 'text-red-400'
+                      }`}>
+                        {hit_pct != null ? fmtHitting(hit_pct) : '—'}
+                      </div>
+                    </div>
+                  ))}
+                  {/* K% bar chart */}
+                  {xkByPass.some(r => r.ta > 0) && (
+                    <div className="mt-2 space-y-1.5">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">K% by pass quality</p>
+                      {xkByPass.map(({ label, k_pct }) => (
+                        <div key={label} className="flex items-center gap-2">
+                          <span className="text-[10px] font-black text-slate-400 w-14 shrink-0">{label}</span>
+                          <div className="flex-1 h-3 bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: k_pct != null ? `${Math.round(k_pct * 100)}%` : '0%',
+                                background: k_pct == null ? 'transparent' :
+                                  k_pct >= 0.5 ? '#4ade80' : k_pct >= 0.35 ? '#facc15' : '#f87171',
+                              }}
+                            />
+                          </div>
+                          <span className="text-[10px] font-black text-slate-300 w-8 text-right tabular-nums">
+                            {k_pct != null ? Math.round(k_pct * 100) + '%' : '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </>
