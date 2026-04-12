@@ -18,7 +18,7 @@ function spawnParticle(width) {
   };
 }
 
-export function Confetti({ matchWin = false, teamName = '', onDone }) {
+export function Confetti({ matchWin = false, teamName = '', winMessage = '', onDone }) {
   const rainMs  = matchWin ? 15000 : 5000;
   const canvasRef = useRef(null);
 
@@ -85,11 +85,11 @@ export function Confetti({ matchWin = false, teamName = '', onDone }) {
       <canvas ref={canvasRef} className="absolute inset-0" />
       {matchWin && (
         <p className="relative text-center font-black uppercase tracking-widest leading-tight
-          text-white animate-win-flash
+          text-white animate-win-flash whitespace-pre-line
           drop-shadow-[0_0_24px_rgba(249,115,22,0.9)]"
           style={{ fontSize: 'clamp(2rem, 8vmin, 5rem)' }}
         >
-          {teamName || 'HOME'}<br />WINS
+          {winMessage.trim() || `${teamName || 'HOME'}\nWIN MATCH`}
         </p>
       )}
     </div>

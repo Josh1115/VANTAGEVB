@@ -3,8 +3,6 @@ import {
   PolarRadiusAxis, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 
-const fmtPct = (v) => v != null ? `${(v * 100).toFixed(0)}%` : '—';
-
 /**
  * rotationStats: { rotations: { 1..6: { so_pct, bp_pct } } }
  */

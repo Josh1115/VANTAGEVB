@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis,
@@ -174,8 +174,10 @@ function withoutNameCol(cols) {
 
 export function PlayerStatsPage() {
   const { teamId, playerId } = useParams();
+  const [searchParams] = useSearchParams();
   const pid = Number(playerId);
   const tid = Number(teamId);
+  const seasonParam = searchParams.get('season');
 
   const [mainTab,   setMainTab]   = useState('season');
   const [statTab,   setStatTab]   = useState('serving');
@@ -192,13 +194,20 @@ export function PlayerStatsPage() {
 
   const season = useMemo(() => {
     if (!seasons?.length) return null;
+    if (seasonParam) {
+      const found = seasons.find(s => String(s.id) === seasonParam);
+      if (found) return found;
+    }
     return [...seasons].sort((a, b) => b.id - a.id)[0];
-  }, [seasons]);
+  }, [seasons, seasonParam]);
 
+  // Exclude exhibition matches — they don't count toward season stats
   const matches = useLiveQuery(
     () =>
       season
-        ? db.matches.where('season_id').equals(season.id).sortBy('date')
+        ? db.matches.where('season_id').equals(season.id)
+            .filter(m => m.match_type !== 'exhibition')
+            .sortBy('date')
         : Promise.resolve([]),
     [season?.id]
   );

@@ -595,7 +595,7 @@ export function HomePage() {
                   return (
                     <button
                       key={key}
-                      onClick={() => canNav && navigate(`/teams/${defaultTeamId}/players/${leader.id}`)}
+                      onClick={() => canNav && navigate(`/teams/${defaultTeamId}/players/${leader.id}?season=${defaultSeasonId}`)}
                       disabled={!canNav}
                       className="bg-surface rounded-xl p-2 text-center flex flex-col items-center gap-1 animate-slide-up-fade active:scale-95 transition-transform disabled:active:scale-100"
                       style={{ animationDelay: `${260 + i * 45}ms` }}

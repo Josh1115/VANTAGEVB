@@ -189,6 +189,7 @@ const TABS = [
   { value: 'serving',   label: 'Serving'   },
   { value: 'passing',   label: 'Passing'   },
   { value: 'attacking', label: 'Attacking' },
+  { value: 'setting',   label: 'Setting'   },
   { value: 'blocking',  label: 'Blocking'  },
   { value: 'defense',   label: 'Defense'   },
   { value: 'ver',       label: 'VER'       },
@@ -603,6 +604,17 @@ export function MatchSummaryPage() {
     return Object.fromEntries(list.map(p => [p.id, p]));
   }, [match?.season_id]);
 
+  // Derive team_id from the loaded players (used for player page navigation)
+  const matchTeamId = useMemo(
+    () => Object.values(players ?? {})[0]?.team_id ?? null,
+    [players]
+  );
+
+  const handlePlayerClick = useCallback((row) => {
+    if (!matchTeamId || !match?.season_id || row.id === '__totals__') return;
+    navigate(`/teams/${matchTeamId}/players/${row.id}?season=${match.season_id}`);
+  }, [navigate, matchTeamId, match?.season_id]);
+
   // Preload html2canvas so share-card handler has no cold-start delay
   useEffect(() => { import('html2canvas').then((m) => { html2canvasRef.current = m.default; }); }, []);
 
@@ -731,7 +743,7 @@ export function MatchSummaryPage() {
     // Passing & setting
     const pa = sum('pa'), p0 = sum('p0'), p1 = sum('p1'),
           p2 = sum('p2'), p3 = sum('p3');
-    const ast = sum('ast'), bhe = sum('bhe');
+    const ast = sum('ast'), bhe = sum('bhe'), lift = sum('lift'), dbl = sum('dbl');
 
     // Attacking & blocking
     const ta = sum('ta'), k = sum('k'), ae = sum('ae');
@@ -770,7 +782,7 @@ export function MatchSummaryPage() {
         pp_pct: pa > 0 ? p3 / pa : null,
       },
       setting: {
-        name: 'TOTAL', sp, mp, ast, bhe,
+        name: 'TOTAL', sp, mp, set_att: ast + bhe, ast, bhe, lift, dbl,
         aps: sp > 0 ? ast / sp : null,
       },
       // Attacking views
@@ -1185,6 +1197,7 @@ export function MatchSummaryPage() {
                   totalsRow={statTotals?.[serveView]}
                   onRowClick={(row) => setSelectedServingPlayerId(id => String(id) === String(row.id) ? null : row.id)}
                   selectedRowId={selectedServingPlayerId}
+                  onNameClick={handlePlayerClick}
                 />
                 {selectedServingPlayerId && displayStats?.contacts && (() => {
                   const player = playerRows.find(r => String(r.id) === String(selectedServingPlayerId));
@@ -1212,13 +1225,13 @@ export function MatchSummaryPage() {
                   value={passingView}
                   onChange={setPassingView}
                 />
-                <StatTable columns={TAB_COLUMNS[passingView]} rows={playerRows} totalsRow={statTotals?.[passingView]} />
+                <StatTable columns={TAB_COLUMNS[passingView]} rows={playerRows} totalsRow={statTotals?.[passingView]} onNameClick={handlePlayerClick} />
               </>
             )}
 
             {tab === 'attacking' && (
               <div className="space-y-4">
-                <StatTable columns={TAB_COLUMNS['attacking']} rows={playerRows} totalsRow={statTotals?.attacking} />
+                <StatTable columns={TAB_COLUMNS['attacking']} rows={playerRows} totalsRow={statTotals?.attacking} onNameClick={handlePlayerClick} />
 
                 {/* Set Distribution by Position */}
                 {(() => {
@@ -1403,16 +1416,20 @@ export function MatchSummaryPage() {
               </div>
             )}
 
+            {tab === 'setting' && (
+              <StatTable columns={TAB_COLUMNS['setting']} rows={playerRows} totalsRow={statTotals?.setting} onNameClick={handlePlayerClick} />
+            )}
+
             {tab === 'blocking' && (
-              <StatTable columns={TAB_COLUMNS['blocking']} rows={playerRows} totalsRow={statTotals?.blocking} />
+              <StatTable columns={TAB_COLUMNS['blocking']} rows={playerRows} totalsRow={statTotals?.blocking} onNameClick={handlePlayerClick} />
             )}
 
             {tab === 'defense' && (
-              <StatTable columns={TAB_COLUMNS['defense']} rows={playerRows} totalsRow={statTotals?.defense} />
+              <StatTable columns={TAB_COLUMNS['defense']} rows={playerRows} totalsRow={statTotals?.defense} onNameClick={handlePlayerClick} />
             )}
 
             {tab === 'ver' && (
-              <StatTable columns={TAB_COLUMNS['ver']} rows={playerRows} totalsRow={statTotals?.ver} />
+              <StatTable columns={TAB_COLUMNS['ver']} rows={playerRows} totalsRow={statTotals?.ver} onNameClick={handlePlayerClick} />
             )}
 
             {tab === 'compare' && (

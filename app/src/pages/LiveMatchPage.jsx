@@ -11,7 +11,7 @@ import { useMatchStats } from '../hooks/useMatchStats';
 import { useRecordAlerts } from '../hooks/useRecordAlerts';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { haptic } from '../utils/haptic';
-import { STORAGE_KEYS, getBoolStorage, setBoolStorage } from '../utils/storage';
+import { STORAGE_KEYS, getBoolStorage, setBoolStorage, getStorageItem } from '../utils/storage';
 import { ScoreHeader } from '../components/match/ScoreHeader';
 import { CourtGrid } from '../components/court/CourtGrid';
 import { ActionBar } from '../components/match/ActionBar';
@@ -452,6 +452,7 @@ export function LiveMatchPage() {
         <Confetti
           matchWin={confettiNav.matchWin}
           teamName={teamName}
+          winMessage={getStorageItem(STORAGE_KEYS.WIN_MESSAGE, '')}
           onDone={() => { const p = confettiNav.path; setConfettiNav(null); navigate(p); }}
         />
       )}

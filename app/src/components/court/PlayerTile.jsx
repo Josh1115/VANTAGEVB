@@ -58,21 +58,6 @@ const PassBtn = memo(function PassBtn({ rating, label, onTap, cls }) {
   );
 });
 
-// Serve chord button — shows serve-type tag above outcome label in a single tap
-const ServeBtn = memo(function ServeBtn({ typeLabel, outcomeLabel, onTap, cls }) {
-  const ref = useRef(null);
-  return (
-    <button
-      ref={ref}
-      onPointerDown={(e) => { e.preventDefault(); onTap?.(); flashEl(ref.current); }}
-      className={`flex-1 flex flex-col items-center justify-center leading-none select-none
-        rounded-md active:brightness-75 transition-none gap-px ${cls}`}
-    >
-      <span className="text-[1.7vmin] opacity-60 font-semibold">{typeLabel}</span>
-      <span className="text-[2.5vmin] font-bold">{outcomeLabel}</span>
-    </button>
-  );
-});
 
 const JERSEY_HEX = {
   'black': '#111827',
@@ -215,6 +200,40 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
       ? 'mine'      // this player tapped first — waiting for partner
       : 'partner';  // another player tapped — tap here to complete
 
+  const nameFormat = useMemo(
+    () => getStorageItem(STORAGE_KEYS.PLAYER_NAME_FORMAT, 'initial_last'),
+    []
+  );
+
+  const tileStats = useMemo(() => {
+    const s = stats;
+    if (!s) return { k: 0, ace: 0, se: 0, dig: 0, blk: 0, ae: 0, apr: null };
+    return {
+      k: s.k, ace: s.ace, se: s.se, dig: s.dig,
+      blk: s.bs + s.ba,
+      ae: s.ae,
+      apr: s.apr != null ? s.apr.toFixed(1) : null,
+    };
+  }, [stats]);
+
+  const topZoneStr = useMemo(() => {
+    if (!zoneHints) return null;
+    const sorted = Object.entries(zoneHints).sort((a, b) => b[1] - a[1]).slice(0, 2);
+    if (!sorted.length) return null;
+    return sorted.map(([z]) => `Z${z}`).join(' · ');
+  }, [zoneHints]);
+
+  // Libero tile overlay — memoized so new object isn't created on every render
+  const tileStyle = useMemo(() => isLibero ? {
+    backgroundColor: `${jerseyHex}26`,
+    borderColor:     `${jerseyHex}80`,
+    boxShadow:       `inset 0 0 14px ${jerseyHex}1a`,
+  } : undefined, [isLibero, jerseyHex]);
+
+  // Libero "L" badge dot style — memoized for same reason
+  const lBadgeStyle  = useMemo(() => ({ width: '2.1vmin', height: '2.1vmin', backgroundColor: jerseyHex }), [jerseyHex]);
+  const lNumberStyle = useMemo(() => ({ fontSize: '1.1vmin', color: numberColor }), [numberColor]);
+
   if (!slot?.playerId) {
     return (
       <div className="flex flex-col h-full w-full items-center justify-center bg-slate-900/40 border border-slate-800/60">
@@ -240,34 +259,11 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   };
   const posBorderColor = POS_BORDER[slot?.positionLabel] ?? null;
 
-  const nameFormat = useMemo(
-    () => getStorageItem(STORAGE_KEYS.PLAYER_NAME_FORMAT, 'initial_last'),
-    []
-  );
-
-  const tileStats = useMemo(() => {
-    const s = stats;
-    if (!s) return { k: 0, ace: 0, se: 0, dig: 0, blk: 0, ae: 0, apr: null };
-    return {
-      k: s.k, ace: s.ace, se: s.se, dig: s.dig,
-      blk: s.bs + s.ba,
-      ae: s.ae,
-      apr: s.apr != null ? s.apr.toFixed(1) : null,
-    };
-  }, [stats]);
-
   const passRingClass = passRing === 0 ? 'pass-ring-0'
     : passRing === 1 ? 'pass-ring-1'
     : passRing === 2 ? 'pass-ring-2'
     : passRing === 3 ? 'pass-ring-3'
     : '';
-
-  const topZoneStr = useMemo(() => {
-    if (!zoneHints) return null;
-    const sorted = Object.entries(zoneHints).sort((a, b) => b[1] - a[1]).slice(0, 2);
-    if (!sorted.length) return null;
-    return sorted.map(([z]) => `Z${z}`).join(' · ');
-  }, [zoneHints]);
 
   const tileBg = isServer ? 'bg-orange-950/30' : 'bg-slate-900';
   const tileBorder = isLibero
@@ -278,16 +274,6 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   const tileShadow = !isLibero && tileHeat === 'hot'  ? 'shadow-[inset_0_0_12px_rgba(251,146,60,0.08)]'
     : !isLibero && tileHeat === 'cold' ? 'shadow-[inset_0_0_12px_rgba(96,165,250,0.06)]'
     : '';
-  // Libero tile overlay — memoized so new object isn't created on every render
-  const tileStyle = useMemo(() => isLibero ? {
-    backgroundColor: `${jerseyHex}26`,
-    borderColor:     `${jerseyHex}80`,
-    boxShadow:       `inset 0 0 14px ${jerseyHex}1a`,
-  } : undefined, [isLibero, jerseyHex]);
-
-  // Libero "L" badge dot style — memoized for same reason
-  const lBadgeStyle  = useMemo(() => ({ width: '2.1vmin', height: '2.1vmin', backgroundColor: jerseyHex }), [jerseyHex]);
-  const lNumberStyle = useMemo(() => ({ fontSize: '1.1vmin', color: numberColor }), [numberColor]);
 
   return (
     <div className={`relative flex flex-col h-full w-full overflow-hidden border

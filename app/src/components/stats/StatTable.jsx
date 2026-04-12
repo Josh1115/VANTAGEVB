@@ -7,7 +7,7 @@ import clsx from 'clsx';
  * columns: [{ key, label, fmt?, defaultDesc? }]
  * rows:    [{ id, name, ...statValues }]
  */
-export function StatTable({ columns, rows, totalsRow, onRowClick, selectedRowId }) {
+export function StatTable({ columns, rows, totalsRow, onRowClick, onNameClick, selectedRowId }) {
   const [sortKey, setSortKey] = useState(columns[1]?.key ?? columns[0].key);
   const [desc, setDesc] = useState(true);
 
@@ -65,9 +65,11 @@ export function StatTable({ columns, rows, totalsRow, onRowClick, selectedRowId 
               {columns.map((col) => (
                 <td
                   key={col.key}
+                  onClick={col.key === 'name' && onNameClick ? (e) => { e.stopPropagation(); onNameClick(row); } : undefined}
                   className={clsx(
                     'px-2 py-2 tabular-nums',
                     col.key === 'name' ? 'text-left font-medium' : 'text-right text-slate-300',
+                    col.key === 'name' && onNameClick && 'cursor-pointer hover:text-primary transition-colors',
                     col.cellClass?.(row[col.key], row)
                   )}
                 >

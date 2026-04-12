@@ -69,6 +69,15 @@ function OrgFormModal({ onClose, org }) {
   );
 }
 
+const LEVEL_LABELS = {
+  varsity:    'Varsity',
+  jv:         'JV',
+  jv2:        'JV2',
+  frosh_soph: 'Frosh/Soph',
+  frosh:      'Freshman',
+  club:       'Club',
+};
+
 const JERSEY_COLORS = [
   { id: 'black',  label: 'Black',  bg: '#111827', border: '#374151' },
   { id: 'white',  label: 'White',  bg: '#f8fafc', border: '#94a3b8' },
@@ -193,6 +202,8 @@ function TeamFormModal({ onClose, orgId, team }) {
             >
               <option value="varsity">Varsity</option>
               <option value="jv">JV</option>
+              <option value="jv2">JV2</option>
+              <option value="frosh_soph">Frosh/Soph</option>
               <option value="frosh">Freshman</option>
               <option value="club">Club</option>
             </select>
@@ -397,7 +408,7 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
             >
               <div className="font-medium">{team.name}</div>
               <div className="flex items-center gap-2">
-                <Badge color="gray">{team.level}</Badge>
+                <Badge color="gray">{LEVEL_LABELS[team.level] ?? team.level}</Badge>
                 <span className="text-slate-400">→</span>
               </div>
             </button>

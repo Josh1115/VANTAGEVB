@@ -2,20 +2,41 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
+import { getIntStorage, setStorageItem, STORAGE_KEYS } from '../utils/storage';
 import { PageHeader } from '../components/layout/PageHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Button } from '../components/ui/Button';
+
+const selectClass = 'bg-surface border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary';
 
 export function OpponentListPage() {
   const navigate = useNavigate();
   const [addOpen, setAddOpen]   = useState(false);
   const [newName, setNewName]   = useState('');
   const [saving,  setSaving]    = useState(false);
+  const [selectedTeamId, setSelectedTeamId] = useState(() => getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID, null));
 
   const opponents = useLiveQuery(() => db.opponents.toArray(), []);
+  const teams     = useLiveQuery(() => db.teams.toArray(), []);
+
+  // Seasons for the selected team — used to constrain match lookup
+  const teamSeasons = useLiveQuery(
+    () => selectedTeamId ? db.seasons.where('team_id').equals(selectedTeamId).toArray() : Promise.resolve(null),
+    [selectedTeamId]
+  );
+  const teamSeasonIds = useMemo(
+    () => teamSeasons ? new Set(teamSeasons.map(s => s.id)) : null,
+    [teamSeasons]
+  );
 
   // For each opponent, pull most-recent match date + W/L record
   const matches = useLiveQuery(() => db.matches.toArray(), []);
+
+  function handleTeamChange(e) {
+    const id = e.target.value ? Number(e.target.value) : null;
+    setSelectedTeamId(id);
+    setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, id);
+  }
 
   const oppStats = useMemo(() => {
     if (!opponents || !matches) return {};
@@ -23,10 +44,13 @@ export function OpponentListPage() {
     for (const opp of opponents) {
       // Match by opponent_id (new) OR opponent_name (legacy)
       const nameLower = (opp.name ?? '').toLowerCase();
-      const played = matches.filter(match =>
-        match.opponent_id === opp.id ||
-        (!match.opponent_id && (match.opponent_name ?? '').toLowerCase() === nameLower)
-      );
+      const played = matches.filter(match => {
+        const matchesOpp = match.opponent_id === opp.id ||
+          (!match.opponent_id && (match.opponent_name ?? '').toLowerCase() === nameLower);
+        if (!matchesOpp) return false;
+        if (teamSeasonIds && !teamSeasonIds.has(match.season_id)) return false;
+        return true;
+      });
       const complete = played.filter(match => match.status === 'complete');
       const wins   = complete.filter(match => (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0)).length;
       const losses = complete.filter(match => (match.opp_sets_won ?? 0) > (match.our_sets_won ?? 0)).length;
@@ -37,7 +61,7 @@ export function OpponentListPage() {
       m[opp.id] = { wins, losses, total: played.length, latest };
     }
     return m;
-  }, [opponents, matches]);
+  }, [opponents, matches, teamSeasonIds]);
 
   // Sort by most-recently-played first, then alphabetical
   const sorted = [...(opponents ?? [])].sort((a, b) => {
@@ -68,6 +92,18 @@ export function OpponentListPage() {
         backTo="/"
         action={<Button size="sm" onClick={() => setAddOpen(v => !v)}>+ Opponent</Button>}
       />
+
+      {/* Team filter */}
+      {(teams ?? []).length > 0 && (
+        <div className="px-4 pt-3 pb-1">
+          <select className={selectClass} value={selectedTeamId ?? ''} onChange={handleTeamChange}>
+            <option value="">All Teams</option>
+            {(teams ?? []).map(t => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {addOpen && (
         <div className="mx-4 mt-2 flex gap-2">

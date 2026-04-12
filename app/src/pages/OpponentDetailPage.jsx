@@ -3,11 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { MATCH_STATUS } from '../constants';
+import { getIntStorage, setStorageItem, STORAGE_KEYS } from '../utils/storage';
 import { PageHeader } from '../components/layout/PageHeader';
 import { TabBar } from '../components/ui/Tab';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Spinner } from '../components/ui/Spinner';
+
+const selectClass = 'bg-surface border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary';
 
 // ── Tendency types ───────────────────────────────────────────────────────────
 const TENDENCY_TYPES = [
@@ -21,18 +24,24 @@ const TENDENCY_TYPES = [
 ];
 
 // ── History tab ──────────────────────────────────────────────────────────────
-function HistoryTab({ oppId, oppName }) {
+function HistoryTab({ oppId, oppName, selectedTeamId }) {
   const navigate = useNavigate();
 
   // Matches linked by opponent_id (new) OR opponent_name (legacy, pre-scouting).
-  // Must union both since old matches only have opponent_name.
+  // When a team is selected, only show matches from that team's seasons.
   const matches = useLiveQuery(async () => {
     const nameLower = (oppName ?? '').toLowerCase();
     const all = await db.matches.toArray();
-    return all
-      .filter(m => m.opponent_id === oppId || (m.opponent_name ?? '').toLowerCase() === nameLower)
-      .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
-  }, [oppId, oppName]);
+    let filtered = all.filter(m =>
+      m.opponent_id === oppId || (m.opponent_name ?? '').toLowerCase() === nameLower
+    );
+    if (selectedTeamId) {
+      const seasons = await db.seasons.where('team_id').equals(selectedTeamId).toArray();
+      const sIds = new Set(seasons.map(s => s.id));
+      filtered = filtered.filter(m => sIds.has(m.season_id));
+    }
+    return filtered.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
+  }, [oppId, oppName, selectedTeamId]);
 
   if (!matches) return <div className="flex justify-center p-8"><Spinner /></div>;
 
@@ -89,23 +98,44 @@ function HistoryTab({ oppId, oppName }) {
 }
 
 // ── Tendencies tab ───────────────────────────────────────────────────────────
-function TendenciesTab({ oppId }) {
+function TendenciesTab({ oppId, selectedTeamId }) {
   const [addType, setAddType]     = useState(null);
   const [addValue, setAddValue]   = useState('');
   const [saving, setSaving]       = useState(false);
   const [deleting, setDeleting]   = useState(null);
 
-  const tendencies = useLiveQuery(
-    () => db.opp_tendencies.where('opp_id').equals(oppId).toArray(),
-    [oppId]
-  );
+  // Fetch tendencies filtered by team: include entries tied to this team's matches,
+  // plus any general entries (match_id = null) that were saved for this team or with no team.
+  const tendencies = useLiveQuery(async () => {
+    const all = await db.opp_tendencies.where('opp_id').equals(oppId).toArray();
+    if (!selectedTeamId) return all;
+
+    const seasons = await db.seasons.where('team_id').equals(selectedTeamId).toArray();
+    const sIds = new Set(seasons.map(s => s.id));
+    const matches = await db.matches.filter(m => sIds.has(m.season_id)).toArray();
+    const mIds = new Set(matches.map(m => m.id));
+
+    return all.filter(t =>
+      // General note saved for this team, or no team specified (legacy/shared)
+      (!t.match_id && (!t.team_id || t.team_id === selectedTeamId)) ||
+      // Note tied to a specific match from this team's seasons
+      (t.match_id && mIds.has(t.match_id))
+    );
+  }, [oppId, selectedTeamId]);
 
   async function handleAdd() {
     const value = addValue.trim();
     if (!value || !addType) return;
     setSaving(true);
     try {
-      await db.opp_tendencies.add({ opp_id: oppId, match_id: null, type: addType, value, created_at: new Date().toISOString() });
+      await db.opp_tendencies.add({
+        opp_id: oppId,
+        team_id: selectedTeamId ?? null,
+        match_id: null,
+        type: addType,
+        value,
+        created_at: new Date().toISOString(),
+      });
       setAddValue('');
       setAddType(null);
     } finally {
@@ -264,8 +294,16 @@ export function OpponentDetailPage() {
   const { oppId } = useParams();
   const oid = Number(oppId);
   const [tab, setTab] = useState('history');
+  const [selectedTeamId, setSelectedTeamId] = useState(() => getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID, null));
 
-  const opp = useLiveQuery(() => db.opponents.get(oid), [oid]);
+  const opp   = useLiveQuery(() => db.opponents.get(oid), [oid]);
+  const teams = useLiveQuery(() => db.teams.toArray(), []);
+
+  function handleTeamChange(e) {
+    const id = e.target.value ? Number(e.target.value) : null;
+    setSelectedTeamId(id);
+    setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, id);
+  }
 
   if (!opp) {
     return <div className="flex items-center justify-center h-48"><Spinner /></div>;
@@ -274,6 +312,18 @@ export function OpponentDetailPage() {
   return (
     <div>
       <PageHeader title={opp.name} backTo="/opponents" />
+
+      {/* Team filter */}
+      {(teams ?? []).length > 0 && (
+        <div className="px-4 pt-3 pb-1">
+          <select className={selectClass} value={selectedTeamId ?? ''} onChange={handleTeamChange}>
+            <option value="">All Teams</option>
+            {(teams ?? []).map(t => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <TabBar
         tabs={[
@@ -285,8 +335,8 @@ export function OpponentDetailPage() {
         onChange={setTab}
       />
 
-      {tab === 'history'    && <HistoryTab    oppId={oid} oppName={opp.name} />}
-      {tab === 'tendencies' && <TendenciesTab oppId={oid} />}
+      {tab === 'history'    && <HistoryTab    oppId={oid} oppName={opp.name} selectedTeamId={selectedTeamId} />}
+      {tab === 'tendencies' && <TendenciesTab oppId={oid} selectedTeamId={selectedTeamId} />}
       {tab === 'notes'      && <NotesTab      opp={opp}   />}
     </div>
   );

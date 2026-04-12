@@ -18,6 +18,7 @@ export const STORAGE_KEYS = {
   FLIP_LAYOUT:        'vbstat_flip_layout',
   LAST_SET_SCORE:     'vbstat_last_set_score',
   MAXPREPS_TEAM_ID:   'vbstat_maxpreps_id',
+  WIN_MESSAGE:        'vbstat_win_message',
 };
 
 export function getStorageItem(key, defaultValue = null) {

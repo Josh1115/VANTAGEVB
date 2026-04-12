@@ -157,6 +157,12 @@ function useMaxPrepsId() {
   return [id, save];
 }
 
+function useWinMessage() {
+  const [msg, setMsg] = useState(() => getStorageItem(STORAGE_KEYS.WIN_MESSAGE, ''));
+  const save = (val) => { setStorageItem(STORAGE_KEYS.WIN_MESSAGE, val.trimEnd() || null); setMsg(val); };
+  return [msg, save];
+}
+
 export function SettingsPage() {
   const showToast    = useUiStore((s) => s.showToast);
   const fileInputRef = useRef(null);
@@ -178,6 +184,7 @@ export function SettingsPage() {
     [defaultTeamId]
   );
   const [maxPrepsId,  saveMaxPrepsId]  = useMaxPrepsId();
+  const [winMessage,  saveWinMessage]  = useWinMessage();
   const [wakeLock,    saveWakeLock]    = useToggleSetting('vbstat_wake_lock');
   const [hapticOn,    saveHaptic]      = useToggleSetting('vbstat_haptic');
   const [flipLayout,  saveFlipLayout]  = useToggleSetting('vbstat_flip_layout');
@@ -306,6 +313,22 @@ export function SettingsPage() {
                 placeholder="SHUA"
                 maxLength={20}
                 className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
+              />
+            </div>
+
+            {/* Win message */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Win Message</label>
+              <div className="text-xs text-slate-400 mb-2">
+                Shown on the confetti screen after winning a match. Leave blank to use team abbreviation + WIN MATCH.
+              </div>
+              <textarea
+                rows={2}
+                value={winMessage}
+                onChange={(e) => saveWinMessage(e.target.value)}
+                placeholder={'WILDCATS\nWIN MATCH'}
+                maxLength={60}
+                className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary placeholder:text-slate-600 resize-none"
               />
             </div>
 

@@ -25,6 +25,8 @@ function mkAccum() {
     ta: 0, k: 0, ae: 0,
     // set
     ast: 0, bhe: 0,
+    // error actions (L/DBL tap on PlayerTile)
+    lift: 0, dbl: 0,
     // block
     bs: 0, ba: 0, be: 0,
     // dig
@@ -81,6 +83,9 @@ function accumContact(p, { action, result, serve_type, error_type, count = 1 }) 
     else                              p.fbr += n;
   } else if (action === 'freeball_send') {
     p.fbs += n;
+  } else if (action === 'error') {
+    if (result === 'lift')   p.lift += n;
+    if (result === 'double') p.dbl  += n;
   }
 }
 
@@ -118,7 +123,8 @@ function deriveStats(p, sp, posLabel = null) {
     kps:     div(p.k,  sp),
 
     // Setting
-    ast: p.ast, bhe: p.bhe,
+    ast: p.ast, bhe: p.bhe, lift: p.lift, dbl: p.dbl,
+    set_att: p.ast + p.bhe,
     aps: div(p.ast, sp),
 
     // Blocking

@@ -117,11 +117,14 @@ export const TAB_COLUMNS = {
     { key: 'fbe',   label: 'FBE',   fmt: fmtCount },
   ],
   setting: [
-    { key: 'name',  label: 'Player' },
+    { key: 'name',    label: 'Player' },
     ...SP_MP_COLS,
-    { key: 'ast',   label: 'AST',   fmt: fmtCount },
-    { key: 'bhe',   label: 'BHE',   fmt: fmtCount },
-    { key: 'aps',   label: 'APS',   fmt: fmtRate },
+    { key: 'set_att', label: 'ATT', fmt: fmtCount },
+    { key: 'ast',     label: 'AST', fmt: fmtCount },
+    { key: 'bhe',     label: 'BHE', fmt: fmtCount },
+    { key: 'lift',    label: 'L',   fmt: fmtCount },
+    { key: 'dbl',     label: 'DBL', fmt: fmtCount },
+    { key: 'aps',     label: 'APS', fmt: fmtRate  },
   ],
 };
 

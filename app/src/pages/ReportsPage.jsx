@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSwipe } from '../hooks/useSwipe';
 import { buildPlayerMaps } from '../utils/players';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -244,6 +245,7 @@ const chipClass = (active) =>
   active ? `${CHIP} bg-primary text-white` : `${CHIP} bg-surface text-slate-400 hover:text-white`;
 
 export function ReportsPage() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState('team');
   const onSwipeLeft  = useCallback(() => setTab(t => { const i = TAB_VALUES.indexOf(t); return i < TAB_VALUES.length - 1 ? TAB_VALUES[i + 1] : t; }), []);
   const onSwipeRight = useCallback(() => setTab(t => { const i = TAB_VALUES.indexOf(t); return i > 0 ? TAB_VALUES[i - 1] : t; }), []);
@@ -362,6 +364,11 @@ export function ReportsPage() {
       : [],
     [stats, playerNames]
   );
+
+  const handlePlayerClick = useCallback((row) => {
+    if (!selectedTeamId || !selectedSeasonId || row.id === '__totals__') return;
+    navigate(`/teams/${selectedTeamId}/players/${row.id}?season=${selectedSeasonId}`);
+  }, [navigate, selectedTeamId, selectedSeasonId]);
 
   const xkTeam = useMemo(() => aggregateXKTeamStats(playerRows), [playerRows]);
 
@@ -835,6 +842,7 @@ export function ReportsPage() {
                     { value: 'serving',   label: 'Serving'   },
                     { value: 'passing',   label: 'Passing'   },
                     { value: 'attacking', label: 'Attacking' },
+                    { value: 'setting',   label: 'Setting'   },
                     { value: 'blocking',  label: 'Blocking'  },
                     { value: 'defense',   label: 'Defense'   },
                     { value: 'ver',       label: 'VER'       },
@@ -877,6 +885,7 @@ export function ReportsPage() {
                       totalsRow={playerTotalsRow}
                       onRowClick={(row) => setSelectedServingPlayerId(id => String(id) === String(row.id) ? null : row.id)}
                       selectedRowId={selectedServingPlayerId}
+                      onNameClick={handlePlayerClick}
                     />
                     {selectedServingPlayerId && contacts.length > 0 && (() => {
                       const player = playerRows.find(r => String(r.id) === String(selectedServingPlayerId));
@@ -892,11 +901,11 @@ export function ReportsPage() {
                   </>
                 )}
                 {playerStatView === 'passing' && (
-                  <StatTable columns={TAB_COLUMNS.passing} rows={playerRows} totalsRow={playerTotalsRow} />
+                  <StatTable columns={TAB_COLUMNS.passing} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} />
                 )}
                 {playerStatView === 'attacking' && (
                   <>
-                    <StatTable columns={TAB_COLUMNS.attacking} rows={playerRows} totalsRow={playerTotalsRow} />
+                    <StatTable columns={TAB_COLUMNS.attacking} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} />
                     {(() => {
                       const POS_ORDER  = ['OH', 'MB', 'OPP', 'S'];
                       const POS_LABELS = { OH: 'Outside', MB: 'Middle', OPP: 'Opposite/RS', S: 'Setter' };
@@ -986,14 +995,17 @@ export function ReportsPage() {
                     })()}
                   </>
                 )}
+                {playerStatView === 'setting' && (
+                  <StatTable columns={TAB_COLUMNS.setting} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} />
+                )}
                 {playerStatView === 'blocking' && (
-                  <StatTable columns={TAB_COLUMNS.blocking} rows={playerRows} totalsRow={playerTotalsRow} />
+                  <StatTable columns={TAB_COLUMNS.blocking} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} />
                 )}
                 {playerStatView === 'defense' && (
-                  <StatTable columns={TAB_COLUMNS.defense} rows={playerRows} totalsRow={playerTotalsRow} />
+                  <StatTable columns={TAB_COLUMNS.defense} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} />
                 )}
                 {playerStatView === 'ver' && (
-                  <StatTable columns={TAB_COLUMNS.ver} rows={playerRows} totalsRow={playerTotalsRow} />
+                  <StatTable columns={TAB_COLUMNS.ver} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} />
                 )}
               </>
             )}
