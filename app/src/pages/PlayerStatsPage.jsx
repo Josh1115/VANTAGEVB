@@ -20,6 +20,7 @@ import { StatTable } from '../components/stats/StatTable';
 import { Spinner } from '../components/ui/Spinner';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Badge } from '../components/ui/Badge';
+import { VER_TIERS } from '../components/stats/VERBadge';
 
 const POS_COLOR = { S: 'blue', OH: 'orange', OPP: 'orange', MB: 'green', L: 'gray', DS: 'gray', RS: 'orange' };
 
@@ -87,6 +88,8 @@ function PlayerReportCard({ row }) {
     : row.ver >= -1  ? 'text-yellow-400'
     : 'text-red-400';
 
+  const verTier = row.ver != null ? VER_TIERS.find(t => row.ver >= t.min) : null;
+
   const radarData = tiles.map(t => ({ dim: t.label, score: Math.round(t.radar) }));
 
   return (
@@ -97,6 +100,11 @@ function PlayerReportCard({ row }) {
         <div className={`text-5xl font-black ${verColor}`}>
           {row.ver != null ? fmtVER(row.ver) : '—'}
         </div>
+        {verTier && (
+          <div className={`inline-flex items-center px-2.5 py-0.5 rounded border text-xs font-bold mt-2 ${verTier.cls}`}>
+            {verTier.label}
+          </div>
+        )}
         <div className="text-xs text-slate-500 mt-1">{row.sp ?? 0} sets played · {row.mp ?? 0} matches</div>
       </div>
 
@@ -124,7 +132,7 @@ function PlayerReportCard({ row }) {
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Skill Profile</p>
           <ResponsiveContainer width="100%" height={240}>
             <RadarChart data={radarData} margin={{ top: 8, right: 28, left: 28, bottom: 8 }}>
-              <PolarGrid stroke="#1e293b" />
+              <PolarGrid stroke="#334155" />
               <PolarAngleAxis dataKey="dim" tick={{ fill: '#94a3b8', fontSize: 11 }} />
               <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
               <Radar dataKey="score" stroke="#f97316" fill="#f97316" fillOpacity={0.25} dot={{ r: 3, fill: '#f97316' }} />
@@ -151,6 +159,7 @@ const STAT_TABS = [
   { value: 'passing',   label: 'Passing'   },
   { value: 'attacking', label: 'Attacking' },
   { value: 'blocking',  label: 'Blocking'  },
+  { value: 'setting',   label: 'Setting'   },
   { value: 'defense',   label: 'Defense'   },
   { value: 'ver',       label: 'VER'       },
 ];
@@ -158,12 +167,15 @@ const STAT_TABS = [
 const BY_GAME_COLS = [
   { key: 'date',    label: 'Date'  },
   { key: 'opp',    label: 'Opp'   },
-  { key: 'sp',     label: 'SP',   fmt: fmtCount     },
-  { key: 'k',      label: 'K',    fmt: fmtCount     },
+  { key: 'si_pct', label: 'S%',   fmt: fmtPct      },
   { key: 'ace',    label: 'ACE',  fmt: fmtCount     },
-  { key: 'dig',    label: 'DIG',  fmt: fmtCount     },
+  { key: 'se',     label: 'SE',   fmt: fmtCount     },
+  { key: 'k',      label: 'K',    fmt: fmtCount     },
+  { key: 'ae',     label: 'AE',   fmt: fmtCount     },
   { key: 'hit_pct',label: 'HIT%', fmt: fmtHitting   },
-  { key: 'apr',    label: 'APR',  fmt: fmtPassRating },
+  { key: 'blks',   label: 'BLKS', fmt: fmtCount     },
+  { key: 'dig',    label: 'DIG',  fmt: fmtCount     },
+  { key: 'ast',    label: 'AST',  fmt: fmtCount     },
   { key: 'ver',    label: 'VER',  fmt: fmtVER       },
 ];
 
@@ -201,12 +213,12 @@ export function PlayerStatsPage() {
     return [...seasons].sort((a, b) => b.id - a.id)[0];
   }, [seasons, seasonParam]);
 
-  // Exclude exhibition matches — they don't count toward season stats
+  // Exclude exhibition and scheduled (future) matches — they don't count toward season stats
   const matches = useLiveQuery(
     () =>
       season
         ? db.matches.where('season_id').equals(season.id)
-            .filter(m => m.match_type !== 'exhibition')
+            .filter(m => m.match_type !== 'exhibition' && m.status !== 'scheduled')
             .sortBy('date')
         : Promise.resolve([]),
     [season?.id]
@@ -249,8 +261,8 @@ export function PlayerStatsPage() {
       const d   = m.date ? new Date(m.date) : null;
       const dateStr = d ? `${d.getMonth() + 1}/${d.getDate()}` : '—';
       const opp     = m.opponentName || '—';
-      if (!row) return { _key: m.id, date: dateStr, opp, sp: null, k: null, ace: null, dig: null, hit_pct: null, apr: null, ver: null };
-      return { _key: m.id, date: dateStr, opp, ...row };
+      if (!row) return { _key: m.id, date: dateStr, opp, si_pct: null, ace: null, se: null, k: null, ae: null, hit_pct: null, blks: null, dig: null, ast: null, ver: null };
+      return { _key: m.id, date: dateStr, opp, ...row, blks: (row.bs ?? 0) + (row.ba ?? 0) };
     });
   }, [stats, pid]);
 
@@ -273,9 +285,12 @@ export function PlayerStatsPage() {
   }
 
   const headerTitle = (
-    <span>
-      <span className="font-mono text-primary mr-2">#{player.jersey_number}</span>
+    <span className="flex items-baseline gap-2">
+      <span className="font-mono text-primary mr-1">#{player.jersey_number}</span>
       {player.name}
+      {player.year && (
+        <span className="text-sm font-normal text-slate-400">{player.year}</span>
+      )}
     </span>
   );
 

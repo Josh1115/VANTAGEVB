@@ -8,9 +8,9 @@ export function Modal({ title, children, onClose, footer }) {
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-backdrop-in" onClick={onClose} />
-      <div className="relative bg-surface w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl p-6 max-h-[90vh] overflow-y-auto animate-modal-up">
+      <div className="relative bg-surface w-full max-w-lg rounded-2xl p-6 max-h-[90vh] overflow-y-auto animate-modal-up">
         {title && (
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold">{title}</h2>

@@ -73,6 +73,7 @@ const LEVEL_LABELS = {
   varsity:    'Varsity',
   jv:         'JV',
   jv2:        'JV2',
+  soph:       'Sophomore',
   frosh_soph: 'Frosh/Soph',
   frosh:      'Freshman',
   club:       'Club',
@@ -203,9 +204,9 @@ function TeamFormModal({ onClose, orgId, team }) {
               <option value="varsity">Varsity</option>
               <option value="jv">JV</option>
               <option value="jv2">JV2</option>
+              <option value="soph">Sophomore</option>
               <option value="frosh_soph">Frosh/Soph</option>
               <option value="frosh">Freshman</option>
-              <option value="club">Club</option>
             </select>
           </div>
           <div>

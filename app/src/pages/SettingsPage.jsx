@@ -86,12 +86,6 @@ function useAccentColor() {
   return [accent, save];
 }
 
-function useCoachName() {
-  const [name, setName] = useState(() => getStorageItem(STORAGE_KEYS.COACH_NAME, ''));
-  const save = (val) => { setStorageItem(STORAGE_KEYS.COACH_NAME, val); setName(val); };
-  return [name, save];
-}
-
 const PLAYER_NAME_FORMATS = [
   { id: 'initial_last', label: 'Initial + Last',   example: 'J. Smith'   },
   { id: 'last',         label: 'Last Name',         example: 'Smith'      },
@@ -172,7 +166,6 @@ export function SettingsPage() {
 
   const [amoled,      saveAmoled]      = useAmoledMode();
   const [accent,      saveAccent]      = useAccentColor();
-  const [coachName,     saveCoachName]     = useCoachName();
   const [defaultTeamId,    saveDefaultTeam]    = useDefaultTeam();
   const [defaultSeasonId,  saveDefaultSeason]  = useDefaultSeason();
   const [scoreDetail,      saveScoreDetail]    = useScoreDetail();
@@ -301,20 +294,6 @@ export function SettingsPage() {
             <h2 className="font-semibold">Personalization</h2>
           </div>
           <div className="p-4 space-y-5">
-
-            {/* Coach / program name */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Coach / Program Name</label>
-              <div className="text-xs text-slate-400 mb-2">Shown on the home screen header ("by ___")</div>
-              <input
-                type="text"
-                value={coachName}
-                onChange={(e) => saveCoachName(e.target.value)}
-                placeholder="SHUA"
-                maxLength={20}
-                className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
-              />
-            </div>
 
             {/* Win message */}
             <div>

@@ -2,16 +2,17 @@ import { fmtCount, fmtPct, fmtHitting, fmtPassRating } from '../../stats/formatt
 
 // oppKey = field name on the opp object (from computeOppDisplayStats), or null if not tracked
 // lowerBetter = true for error stats where lower is the winning side
+// isRate = true for percentages/ratings that should not be divided in avg views
 const TEAM_COMPARE_STATS = [
   { key: 'k',       oppKey: 'k',   label: 'Kills',        fmt: fmtCount,       lowerBetter: false },
   { key: 'ae',      oppKey: 'ae',  label: 'Atk Errors',   fmt: fmtCount,       lowerBetter: true  },
-  { key: 'hit_pct', oppKey: null,  label: 'HIT%',         fmt: fmtHitting,     lowerBetter: false },
+  { key: 'hit_pct', oppKey: null,  label: 'HIT%',         fmt: fmtHitting,     lowerBetter: false, isRate: true },
   { key: 'ace',     oppKey: 'ace', label: 'Aces',         fmt: fmtCount,       lowerBetter: false },
   { key: 'se',      oppKey: 'se',  label: 'Serve Errors', fmt: fmtCount,       lowerBetter: true  },
-  { key: 'ace_pct', oppKey: null,  label: 'ACE%',         fmt: fmtPct,         lowerBetter: false },
+  { key: 'ace_pct', oppKey: null,  label: 'ACE%',         fmt: fmtPct,         lowerBetter: false, isRate: true },
   { key: 'dig',     oppKey: null,  label: 'Digs',         fmt: fmtCount,       lowerBetter: false },
   { key: 'pa',      oppKey: null,  label: 'Receptions',   fmt: fmtCount,       lowerBetter: false },
-  { key: 'apr',     oppKey: null,  label: 'APR',          fmt: fmtPassRating,  lowerBetter: false },
+  { key: 'apr',     oppKey: null,  label: 'APR',          fmt: fmtPassRating,  lowerBetter: false, isRate: true },
   { key: 'bs',      oppKey: 'blk', label: 'Blocks',       fmt: fmtCount,       lowerBetter: false },
 ];
 
@@ -30,7 +31,9 @@ function StatBar({ v1, v2 }) {
   );
 }
 
-export function TeamComparison({ team, opp, teamName = 'Us', oppName = 'Opponent' }) {
+const fmtAvg1 = (v) => v == null ? '—' : v.toFixed(1);
+
+export function TeamComparison({ team, opp, teamName = 'Us', oppName = 'Opponent', divisor = 1 }) {
   if (!team || !opp) return null;
 
   return (
@@ -46,11 +49,14 @@ export function TeamComparison({ team, opp, teamName = 'Us', oppName = 'Opponent
       </div>
 
       <div className="bg-surface rounded-xl overflow-hidden">
-        {TEAM_COMPARE_STATS.map(({ key, oppKey, label, fmt, lowerBetter }) => {
-          const v1 = team[key];
-          const v2 = oppKey != null ? opp[oppKey] : null;
-          const f1 = fmt(v1);
-          const f2 = v2 != null ? fmt(v2) : '—';
+        {TEAM_COMPARE_STATS.map(({ key, oppKey, label, fmt, lowerBetter, isRate }) => {
+          const raw1 = team[key];
+          const raw2 = oppKey != null ? opp[oppKey] : null;
+          const v1 = (!isRate && divisor > 1 && raw1 != null) ? raw1 / divisor : raw1;
+          const v2 = (!isRate && divisor > 1 && raw2 != null) ? raw2 / divisor : raw2;
+          const useFmt = (!isRate && divisor > 1) ? fmtAvg1 : fmt;
+          const f1 = useFmt(v1);
+          const f2 = v2 != null ? useFmt(v2) : '—';
           if (f1 === '—' && f2 === '—') return null;
           const n1 = v1 ?? 0;
           const n2 = v2 ?? 0;

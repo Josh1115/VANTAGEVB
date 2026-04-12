@@ -921,7 +921,12 @@ export function MatchSummaryPage() {
           {/* Match header */}
           <div className="px-4 pt-4 pb-2">
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold">vs. {match.opponent_name ?? 'Opponent'}</h2>
+              <h2 className="text-xl font-bold">
+                vs. {match.opponent_name ?? 'Opponent'}
+                {match.opponent_record && (
+                  <span className="text-sm font-normal text-slate-400 ml-2">({match.opponent_record})</span>
+                )}
+              </h2>
               <button
                 onClick={openEditModal}
                 title="Edit match details"

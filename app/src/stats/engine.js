@@ -4,7 +4,7 @@ import {
   getPlayerPositionsForMatches, getBatchSetsPlayedCount, getOppScoredForMatches,
   getTimeoutsForMatches,
 } from './queries';
-import { POSITION_MULTIPLIERS } from '../constants';
+import { POSITION_MULTIPLIERS, MATCH_STATUS } from '../constants';
 
 // ── Internal helpers ────────────────────────────────────────────────────────
 
@@ -773,10 +773,14 @@ export async function computeSeasonStats(seasonId, filters = {}) {
   if (!matches.length) return { empty: true, totalMatchCount };
 
   const matchIds = matches.map(m => m.id);
+  // Exclude scheduled (future) matches from denominators — they have no sets/data yet.
+  const playedMatchIds = matches
+    .filter(m => m.status !== MATCH_STATUS.SCHEDULED)
+    .map(m => m.id);
   const [contacts, rallies, setsPerMatch, playerPositions, oppScored, timeouts] = await Promise.all([
     getContactsForMatches(matchIds),
     getRalliesForMatches(matchIds),
-    getBatchSetsPlayedCount(matchIds),
+    getBatchSetsPlayedCount(playedMatchIds),
     getPlayerPositionsForMatches(matchIds),
     getOppScoredForMatches(matchIds),
     getTimeoutsForMatches(matchIds),
@@ -801,9 +805,9 @@ export async function computeSeasonStats(seasonId, filters = {}) {
     runs:             computeRunsByRotation(rallies),
     pointQuality:     computePointQuality(contacts),
     timeoutEffect:    computeTimeoutEffectiveness(timeouts, rallies),
-    trends:           computePlayerTrends(matches, contacts, setsPerMatch, playerPositions),
+    trends:           computePlayerTrends(matches.filter(m => m.status !== MATCH_STATUS.SCHEDULED), contacts, setsPerMatch, playerPositions),
     setsPlayed,
-    matchCount:       matchIds.length,
+    matchCount:       playedMatchIds.length,
     totalMatchCount,
     oppScored,
     contacts,

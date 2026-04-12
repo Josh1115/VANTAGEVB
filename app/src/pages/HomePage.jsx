@@ -400,7 +400,7 @@ export function HomePage() {
             VBSTAT
           </span>
           <span className="text-slate-400 font-normal text-lg">
-            by {getStorageItem(STORAGE_KEYS.COACH_NAME) || 'SHUA'}
+            by Shua
           </span>
         </h1>
         <div

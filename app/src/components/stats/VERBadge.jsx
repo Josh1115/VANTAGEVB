@@ -1,4 +1,4 @@
-const VER_TIERS = [
+export const VER_TIERS = [
   { min: 28,        label: 'ELITE+', cls: 'bg-orange-500/20 text-orange-400 border-orange-500/40' },
   { min: 22,        label: 'ELITE',  cls: 'bg-cyan-500/20   text-cyan-400   border-cyan-500/40'   },
   { min: 15,        label: 'GOOD',   cls: 'bg-green-500/20  text-green-400  border-green-500/40'  },

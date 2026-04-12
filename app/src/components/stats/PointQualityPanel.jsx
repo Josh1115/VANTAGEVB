@@ -6,8 +6,9 @@ const SLICE_COLORS = {
   Given:  '#f87171',
 };
 
-function PointsPieChart({ earned, free, given }) {
-  const total = earned + free + given;
+function PointsPieChart({ earned, free, given, divisor = 1 }) {
+  const fmtN = (v) => v == null ? '0' : divisor === 1 ? String(Math.round(v)) : v.toFixed(1);
+  const total = (earned ?? 0) + (free ?? 0) + (given ?? 0);
   if (total === 0) return null;
 
   const data = [
@@ -39,7 +40,7 @@ function PointsPieChart({ earned, free, given }) {
           {data.map((entry) => (
             <div key={entry.name} className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: SLICE_COLORS[entry.name] }} />
-              <span className="text-sm text-slate-400">{entry.name} <span className="font-bold text-slate-200">{entry.value}</span></span>
+              <span className="text-sm text-slate-400">{entry.name} <span className="font-bold text-slate-200">{fmtN(entry.value)}</span></span>
             </div>
           ))}
         </div>
@@ -71,20 +72,21 @@ function PointsPieChart({ earned, free, given }) {
   );
 }
 
-function Section({ title, total, color, items }) {
+function Section({ title, total, color, items, divisor = 1 }) {
+  const fmtN = (v) => v == null ? '—' : divisor === 1 ? String(Math.round(v)) : v.toFixed(1);
   return (
     <div className={`rounded-xl p-3 ${color}`}>
       <div className="text-xs font-bold uppercase tracking-wide opacity-70 mb-3">{title}</div>
       <div className="flex flex-wrap justify-center items-start gap-x-5 gap-y-2">
-        {items.map(([label, val]) => val > 0 && (
+        {items.map(([label, val]) => val != null && val > 0 && (
           <div key={label} className="flex flex-col items-center min-w-[2rem]">
-            <span className="text-xl font-black leading-none">{val}</span>
+            <span className="text-xl font-black leading-none">{fmtN(val)}</span>
             <span className="text-[10px] font-semibold uppercase tracking-wide opacity-60 mt-0.5">{label}</span>
           </div>
         ))}
         <span className="text-xl font-black leading-none opacity-40">=</span>
         <div className="flex flex-col items-center min-w-[2rem]">
-          <span className="text-xl font-black leading-none">{total}</span>
+          <span className="text-xl font-black leading-none">{fmtN(total)}</span>
           <span className="text-[10px] font-semibold uppercase tracking-wide opacity-60 mt-0.5">Total</span>
         </div>
       </div>
@@ -92,8 +94,9 @@ function Section({ title, total, color, items }) {
   );
 }
 
-function EarnedVsGiven({ earned, given }) {
-  if (earned + given === 0) return null;
+function EarnedVsGiven({ earned, given, divisor = 1 }) {
+  if (!earned && !given) return null;
+  const fmtN = (v) => v == null ? '0' : divisor === 1 ? String(Math.round(v)) : v.toFixed(1);
 
   const ratio = given > 0 ? earned / given : Infinity;
 
@@ -119,9 +122,9 @@ function EarnedVsGiven({ earned, given }) {
     <div className="bg-surface rounded-xl p-4 flex flex-col items-center text-center">
       <span className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">Earned vs Given</span>
       <div className="flex items-baseline gap-3 mb-1">
-        <span className="text-4xl font-black text-emerald-400 tabular-nums">{earned}</span>
+        <span className="text-4xl font-black text-emerald-400 tabular-nums">{fmtN(earned)}</span>
         <span className="text-slate-500 font-bold text-2xl">:</span>
-        <span className="text-4xl font-black text-red-400 tabular-nums">{given}</span>
+        <span className="text-4xl font-black text-red-400 tabular-nums">{fmtN(given)}</span>
       </div>
       <span className="text-base font-bold text-slate-300 tabular-nums mb-3">{ratioStr}</span>
       <div className="w-full h-2 rounded-full bg-red-900/40 overflow-hidden mb-1">
@@ -139,10 +142,26 @@ function EarnedVsGiven({ earned, given }) {
   );
 }
 
-export function PointQualityPanel({ pq, oppScored }) {
-  const diff = oppScored != null ? pq.scored - oppScored : null;
-  const diffLabel = diff == null ? '—' : diff > 0 ? `+${diff}` : String(diff);
+export function PointQualityPanel({ pq, oppScored, divisor = 1 }) {
+  const sc  = (v) => (v == null ? null : divisor === 1 ? v : v / divisor);
+  const fmt = (v) => {
+    if (v == null) return '—';
+    const n = divisor === 1 ? v : v / divisor;
+    return divisor === 1 ? String(Math.round(n)) : n.toFixed(1);
+  };
+  const fmtDiff = (v) => {
+    if (v == null) return '—';
+    const n = divisor === 1 ? v : v / divisor;
+    const s = divisor === 1 ? String(Math.round(n)) : Math.abs(n).toFixed(1);
+    return n > 0 ? `+${s}` : n < 0 ? `-${s}` : s;
+  };
+
+  const scored    = sc(pq.scored);
+  const opp       = sc(oppScored);
+  const diff      = scored != null && opp != null ? scored - opp : null;
   const diffColor = diff == null || diff === 0 ? 'text-slate-400' : diff > 0 ? 'text-emerald-400' : 'text-red-400';
+
+  const scItems = (items) => items.map(([label, val]) => [label, sc(val)]);
 
   return (
     <div className="space-y-3">
@@ -150,46 +169,50 @@ export function PointQualityPanel({ pq, oppScored }) {
         <div className="flex justify-around">
           <div className="flex flex-col items-center">
             <div className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Points Scored</div>
-            <div className="text-3xl font-black text-white">{pq.scored}</div>
+            <div className="text-3xl font-black text-white">{fmt(pq.scored)}</div>
           </div>
           <div className="w-px bg-slate-700 self-stretch" />
           <div className="flex flex-col items-center">
             <div className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Pts Diff</div>
-            <div className={`text-3xl font-black ${diffColor}`}>{diffLabel}</div>
+            <div className={`text-3xl font-black ${diffColor}`}>{fmtDiff(oppScored != null ? pq.scored - oppScored : null)}</div>
           </div>
           <div className="w-px bg-slate-700 self-stretch" />
           <div className="flex flex-col items-center">
             <div className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Opp Points</div>
-            <div className="text-3xl font-black text-slate-400">{oppScored ?? '—'}</div>
+            <div className="text-3xl font-black text-slate-400">{oppScored != null ? fmt(oppScored) : '—'}</div>
           </div>
         </div>
       </div>
 
-      <EarnedVsGiven earned={pq.earned.total} given={pq.given.total} />
+      <EarnedVsGiven earned={sc(pq.earned.total)} given={sc(pq.given.total)} divisor={divisor} />
 
       <PointsPieChart
-        earned={pq.earned.total}
-        free={pq.free.total}
-        given={pq.given.total}
+        earned={sc(pq.earned.total)}
+        free={sc(pq.free.total)}
+        given={sc(pq.given.total)}
+        divisor={divisor}
       />
 
       <Section
         title="Earned — we scored"
-        total={pq.earned.total}
+        total={sc(pq.earned.total)}
         color="bg-emerald-900/40 text-emerald-100"
-        items={[['ACE', pq.earned.ace], ['K', pq.earned.k], ['SBLK', pq.earned.sblk], ['HBLK', pq.earned.hblk]]}
+        items={scItems([['ACE', pq.earned.ace], ['K', pq.earned.k], ['SBLK', pq.earned.sblk], ['HBLK', pq.earned.hblk]])}
+        divisor={divisor}
       />
       <Section
         title="Free — opp error"
-        total={pq.free.total}
+        total={sc(pq.free.total)}
         color="bg-sky-900/40 text-sky-100"
-        items={[['SE', pq.free.se], ['AE', pq.free.ae], ['BHE', pq.free.bhe], ['NET', pq.free.net]]}
+        items={scItems([['SE', pq.free.se], ['AE', pq.free.ae], ['BHE', pq.free.bhe], ['NET', pq.free.net]])}
+        divisor={divisor}
       />
       <Section
         title="Given — our error"
-        total={pq.given.total}
+        total={sc(pq.given.total)}
         color="bg-red-900/40 text-red-100"
-        items={[['SE', pq.given.se], ['AE', pq.given.ae], ['P0', pq.given.p0], ['LIFT', pq.given.lift], ['DBL', pq.given.dbl], ['NET', pq.given.net], ['ROT', pq.given.rot]]}
+        items={scItems([['SE', pq.given.se], ['AE', pq.given.ae], ['P0', pq.given.p0], ['LIFT', pq.given.lift], ['DBL', pq.given.dbl], ['NET', pq.given.net], ['ROT', pq.given.rot]])}
+        divisor={divisor}
       />
     </div>
   );

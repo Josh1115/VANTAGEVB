@@ -62,8 +62,8 @@ const TEAM_STAT_SECTIONS = [
   {
     label: 'Serving',
     items: [
-      { label: 'Serve %',   key: 'si_pct',  fmt: fmtPct        },
-      { label: 'Ace %',     key: 'ace_pct', fmt: fmtPct        },
+      { label: 'Serve %',   key: 'si_pct',  fmt: fmtPct,        isRate: true },
+      { label: 'Ace %',     key: 'ace_pct', fmt: fmtPct,        isRate: true },
       { label: 'Serve Att', key: 'sa',      fmt: fmtCount      },
       { label: 'Aces',      key: 'ace',     fmt: fmtCount      },
       { label: 'Net Miss',  key: 'se_net',  fmt: fmtCount      },
@@ -73,12 +73,12 @@ const TEAM_STAT_SECTIONS = [
   {
     label: 'Attacking',
     items: [
-      { label: 'Hit%',      key: 'hit_pct', fmt: fmtHitting    },
-      { label: 'K%',        key: 'k_pct',   fmt: fmtPct        },
+      { label: 'Hit%',      key: 'hit_pct', fmt: fmtHitting,    isRate: true },
+      { label: 'K%',        key: 'k_pct',   fmt: fmtPct,        isRate: true },
       { label: 'Atk Att',   key: 'ta',      fmt: fmtCount      },
       { label: 'Kills',     key: 'k',       fmt: fmtCount      },
       { label: 'AE',        key: 'ae',      fmt: fmtCount      },
-      { label: 'K:AE',      get: (s) => { const ae = s.team.ae ?? 0; return ae > 0 ? (s.team.k ?? 0) / ae : null; }, fmt: fmtRatio },
+      { label: 'K:AE',      get: (s) => { const ae = s.team.ae ?? 0; return ae > 0 ? (s.team.k ?? 0) / ae : null; }, fmt: fmtRatio, isRate: true },
     ],
   },
   {
@@ -87,12 +87,22 @@ const TEAM_STAT_SECTIONS = [
       { label: 'Blocks', get: (s) => { const b = (s.team.bs ?? 0) + (s.team.ba ?? 0) * 0.5; return b; }, fmt: fmtBlocks },
       { label: 'Digs',   key: 'dig',  fmt: fmtCount      },
       { label: 'RECs',   key: 'pa',   fmt: fmtCount      },
-      { label: 'APR',    key: 'apr',  fmt: fmtPassRating },
+      { label: 'APR',    key: 'apr',  fmt: fmtPassRating, isRate: true },
       { label: 'Aced',   key: 'p0',   fmt: fmtCount      },
       { label: 'BHE',    get: (s) => (s.pointQuality?.given?.lift ?? 0) + (s.pointQuality?.given?.dbl ?? 0) + (s.team.bhe ?? 0) + (s.team.fbe ?? 0), fmt: fmtCount },
     ],
   },
 ];
+
+const fmtAvg1 = (v) => v == null ? '—' : v.toFixed(1);
+
+function getTeamStatDisplay(item, stats, view) {
+  const raw = item.key ? stats.team[item.key] : item.get(stats);
+  if (item.isRate || view === 'totals') return item.fmt(raw);
+  const divisor = view === 'per_set' ? (stats.setsPlayed || 1) : (stats.matchCount || 1);
+  const avg = raw != null ? raw / divisor : null;
+  return item.fmt === fmtCount ? fmtAvg1(avg) : item.fmt(avg);
+}
 
 // Sortable table for rotation breakdowns — total row always pinned at bottom
 function MiniTable({ cols, rows }) {
@@ -250,6 +260,7 @@ export function ReportsPage() {
   const onSwipeLeft  = useCallback(() => setTab(t => { const i = TAB_VALUES.indexOf(t); return i < TAB_VALUES.length - 1 ? TAB_VALUES[i + 1] : t; }), []);
   const onSwipeRight = useCallback(() => setTab(t => { const i = TAB_VALUES.indexOf(t); return i > 0 ? TAB_VALUES[i - 1] : t; }), []);
   const swipeHandlers = useSwipe({ onSwipeLeft, onSwipeRight });
+  const [teamView,              setTeamView]              = useState('totals');
   const [playerStatView,        setPlayerStatView]        = useState('serving');
   const [playerServeView,       setPlayerServeView]       = useState('all');
   const [selectedServingPlayerId, setSelectedServingPlayerId] = useState(null);
@@ -371,6 +382,11 @@ export function ReportsPage() {
   }, [navigate, selectedTeamId, selectedSeasonId]);
 
   const xkTeam = useMemo(() => aggregateXKTeamStats(playerRows), [playerRows]);
+
+  const teamViewDivisor = useMemo(() => {
+    if (!stats || teamView === 'totals') return 1;
+    return teamView === 'per_set' ? (stats.setsPlayed || 1) : (stats.matchCount || 1);
+  }, [stats, teamView]);
 
   const playerTotalsRow = useMemo(() => {
     if (!stats?.team) return null;
@@ -610,7 +626,7 @@ export function ReportsPage() {
       {!loading && stats && !stats.empty && (
         <>
           {/* Summary strip */}
-          <div className="mx-4 mb-1 bg-surface rounded-xl p-3 grid grid-cols-4 gap-2 text-center text-sm">
+          <div className="mx-4 mb-1 bg-surface rounded-xl p-3 grid grid-cols-2 gap-2 text-center text-sm">
             <div>
               <div className="text-xs text-slate-400">Matches</div>
               <div className="font-bold text-primary">
@@ -623,14 +639,6 @@ export function ReportsPage() {
               <div className="text-xs text-slate-400">Sets</div>
               <div className="font-bold">{stats.setsPlayed}</div>
             </div>
-            <div>
-              <div className="text-xs text-slate-400">SO%</div>
-              <div className="font-bold text-primary">{fmtPct(stats.rotation.so_pct)}</div>
-            </div>
-            <div>
-              <div className="text-xs text-slate-400">HIT%</div>
-              <div className="font-bold">{fmtHitting(stats.team.hit_pct)}</div>
-            </div>
           </div>
 
           <TabBar tabs={TABS} active={tab} onChange={setTab} />
@@ -640,17 +648,30 @@ export function ReportsPage() {
             {/* ── Team Stats ──────────────────────────────────────────── */}
             {tab === 'team' && (
               <>
+                {/* View toggle */}
+                <div className="flex gap-2">
+                  {[
+                    { value: 'totals',    label: 'Totals'      },
+                    { value: 'per_set',   label: 'Avg / Set'   },
+                    { value: 'per_match', label: 'Avg / Match' },
+                  ].map(({ value, label }) => (
+                    <button key={value} onClick={() => setTeamView(value)} className={chipClass(teamView === value)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
                 {/* Stat grid */}
                 <div className="space-y-2">
                   {TEAM_STAT_SECTIONS.map(({ label: sectionLabel, items }) => (
                     <div key={sectionLabel}>
                       <SectionHeader>{sectionLabel}</SectionHeader>
                       <div className="grid grid-cols-3 gap-1.5">
-                        {items.map(({ label, key, get: getVal, fmt }) => (
-                          <div key={label} className="bg-surface rounded-lg px-1 py-1 text-center">
-                            <div className="text-[10px] text-slate-400 leading-none">{label}</div>
+                        {items.map((item) => (
+                          <div key={item.label} className="bg-surface rounded-lg px-1 py-1 text-center">
+                            <div className="text-[10px] text-slate-400 leading-none">{item.label}</div>
                             <div className="text-base font-bold text-primary mt-0.5 leading-none">
-                              {fmt(key ? stats.team[key] : getVal(stats))}
+                              {getTeamStatDisplay(item, stats, teamView)}
                             </div>
                           </div>
                         ))}
@@ -686,7 +707,9 @@ export function ReportsPage() {
                       ].map(({ label, val }) => (
                         <div key={label} className="text-center">
                           <div className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide">{label}</div>
-                          <div className="text-sm font-bold text-slate-400">{val}</div>
+                          <div className="text-sm font-bold text-slate-400">
+                            {teamViewDivisor === 1 ? val : (val / teamViewDivisor).toFixed(1)}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -695,7 +718,11 @@ export function ReportsPage() {
 
                 {/* Point Quality — mirrors the Scoring tab in Match Summary */}
                 {stats.pointQuality && (
-                  <PointQualityPanel pq={stats.pointQuality} oppScored={stats.oppScored} />
+                  <PointQualityPanel
+                    pq={stats.pointQuality}
+                    oppScored={stats.oppScored}
+                    divisor={teamView === 'totals' ? 1 : (stats.setsPlayed || 1)}
+                  />
                 )}
 
                 {/* In System vs Out of System */}
@@ -703,16 +730,20 @@ export function ReportsPage() {
                   <div className="bg-surface rounded-xl p-3 space-y-2">
                     <SectionHeader>In System vs Out of System</SectionHeader>
                     <div className="grid grid-cols-2 gap-3">
-                      {[
-                        { label: 'IS ATK',   val: fmtCount(stats.isOos.total.is.ta)                  },
-                        { label: 'IS Win%',  val: fmtPct(stats.isOos.total.is.win_pct)               },
-                        { label: 'IS K%',    val: fmtPct(stats.isOos.total.is.k_pct)                 },
-                        { label: 'IS HIT%',  val: fmtHitting(stats.isOos.total.is.hit_pct)           },
-                        { label: 'OOS ATK',  val: fmtCount(stats.isOos.total.oos.ta)                 },
-                        { label: 'OOS Win%', val: fmtPct(stats.isOos.total.oos.win_pct)              },
-                        { label: 'OOS K%',   val: fmtPct(stats.isOos.total.oos.k_pct)               },
-                        { label: 'OOS HIT%', val: fmtHitting(stats.isOos.total.oos.hit_pct)         },
-                      ].map(({ label, val }) => (
+                      {(() => {
+                        const d = teamViewDivisor;
+                        const sc = (v) => d === 1 ? fmtCount(v) : v != null ? (v / d).toFixed(1) : '—';
+                        return [
+                          { label: 'IS ATK',   val: sc(stats.isOos.total.is.ta)                  },
+                          { label: 'IS Win%',  val: fmtPct(stats.isOos.total.is.win_pct)               },
+                          { label: 'IS K%',    val: fmtPct(stats.isOos.total.is.k_pct)                 },
+                          { label: 'IS HIT%',  val: fmtHitting(stats.isOos.total.is.hit_pct)           },
+                          { label: 'OOS ATK',  val: sc(stats.isOos.total.oos.ta)                 },
+                          { label: 'OOS Win%', val: fmtPct(stats.isOos.total.oos.win_pct)              },
+                          { label: 'OOS K%',   val: fmtPct(stats.isOos.total.oos.k_pct)               },
+                          { label: 'OOS HIT%', val: fmtHitting(stats.isOos.total.oos.hit_pct)         },
+                        ];
+                      })().map(({ label, val }) => (
                         <div key={label}>
                           <div className="text-xs text-slate-400">{label}</div>
                           <div className="text-lg font-bold text-primary">{val}</div>
@@ -727,16 +758,20 @@ export function ReportsPage() {
                   <div className="bg-surface rounded-xl p-3 space-y-2">
                     <SectionHeader>Transition &amp; Free Ball Offense</SectionHeader>
                     <div className="grid grid-cols-2 gap-3">
-                      {[
-                        { label: 'FB ATK',    val: fmtCount(stats.transitionAttack.free.total.ta)            },
-                        { label: 'FB Win%',   val: fmtPct(stats.transitionAttack.free.total.win_pct)         },
-                        { label: 'FB K%',     val: fmtPct(stats.transitionAttack.free.total.k_pct)           },
-                        { label: 'FB HIT%',   val: fmtHitting(stats.transitionAttack.free.total.hit_pct)     },
-                        { label: 'TR ATK',    val: fmtCount(stats.transitionAttack.transition.total.ta)       },
-                        { label: 'TR Win%',   val: fmtPct(stats.transitionAttack.transition.total.win_pct)   },
-                        { label: 'TR K%',     val: fmtPct(stats.transitionAttack.transition.total.k_pct)     },
-                        { label: 'TR HIT%',   val: fmtHitting(stats.transitionAttack.transition.total.hit_pct) },
-                      ].map(({ label, val }) => (
+                      {(() => {
+                        const d = teamViewDivisor;
+                        const sc = (v) => d === 1 ? fmtCount(v) : v != null ? (v / d).toFixed(1) : '—';
+                        return [
+                          { label: 'FB ATK',    val: sc(stats.transitionAttack.free.total.ta)            },
+                          { label: 'FB Win%',   val: fmtPct(stats.transitionAttack.free.total.win_pct)         },
+                          { label: 'FB K%',     val: fmtPct(stats.transitionAttack.free.total.k_pct)           },
+                          { label: 'FB HIT%',   val: fmtHitting(stats.transitionAttack.free.total.hit_pct)     },
+                          { label: 'TR ATK',    val: sc(stats.transitionAttack.transition.total.ta)       },
+                          { label: 'TR Win%',   val: fmtPct(stats.transitionAttack.transition.total.win_pct)   },
+                          { label: 'TR K%',     val: fmtPct(stats.transitionAttack.transition.total.k_pct)     },
+                          { label: 'TR HIT%',   val: fmtHitting(stats.transitionAttack.transition.total.hit_pct) },
+                        ];
+                      })().map(({ label, val }) => (
                         <div key={label}>
                           <div className="text-xs text-slate-400">{label}</div>
                           <div className="text-lg font-bold text-primary">{val}</div>
@@ -827,6 +862,7 @@ export function ReportsPage() {
                       opp={stats.opp}
                       teamName={teams?.find(t => t.id === Number(selectedTeamId))?.name ?? 'Us'}
                       oppName="Opponents"
+                      divisor={teamViewDivisor}
                     />
                   </div>
                 )}
