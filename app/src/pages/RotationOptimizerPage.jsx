@@ -296,7 +296,7 @@ export function RotationOptimizerPage() {
           onClick={() => setPickerCell(null)}
         >
           <div
-            className="bg-bg rounded-t-2xl max-h-[65vh] flex flex-col"
+            className="bg-bg rounded-t-2xl max-h-[65dvh] flex flex-col"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-slate-800 shrink-0">

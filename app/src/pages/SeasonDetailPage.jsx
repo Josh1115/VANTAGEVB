@@ -262,8 +262,9 @@ export function SeasonDetailPage() {
 
       {/* Schedule Game Modal */}
       {schedOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-bg w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm">
+          <div className="flex min-h-full items-center justify-center p-4">
+          <div className="bg-bg w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl">
             <h2 className="text-lg font-bold">{editMatchId ? 'Edit Scheduled Game' : 'Schedule Game'}</h2>
 
             {/* Opponent */}
@@ -376,6 +377,7 @@ export function SeasonDetailPage() {
                 {schedSaving ? 'Saving…' : 'Save Game'}
               </Button>
             </div>
+          </div>
           </div>
         </div>
       )}
