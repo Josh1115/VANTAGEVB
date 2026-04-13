@@ -274,6 +274,7 @@ export function ReportsPage() {
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showAllMatches, setShowAllMatches] = useState(false);
+  const [prodSort, setProdSort] = useState({ key: 'ptPct', dir: 'desc' });
   const statsDebounceRef = useRef(null);
 
   // Filter data
@@ -789,6 +790,81 @@ export function ReportsPage() {
                   </div>
                 )}
 
+                {/* Offensive Production */}
+                {playerRows.length > 0 && stats.ourScored > 0 && (() => {
+                  const teamPts = stats.ourScored ?? 0;
+                  const oppPts  = stats.oppScored  ?? 0;
+                  const toggleSort = (key) => setProdSort(s =>
+                    s.key === key ? { key, dir: s.dir === 'desc' ? 'asc' : 'desc' } : { key, dir: key === 'name' ? 'asc' : 'desc' }
+                  );
+                  const sortArrow = (key) => prodSort.key === key ? (prodSort.dir === 'desc' ? ' ↓' : ' ↑') : '';
+                  const rows = playerRows
+                    .filter(r => (r.sp ?? 0) > 0)
+                    .map(r => {
+                      const pPts   = (r.k ?? 0) + (r.ace ?? 0) + (r.bs ?? 0) + (r.ba ?? 0);
+                      const pFault = (r.se ?? 0) + (r.ae ?? 0) + (r.net ?? 0) + (r.lift ?? 0)
+                                   + (r.bhe ?? 0) + (r.fbe ?? 0) + (r.p0 ?? 0);
+                      return {
+                        id: r.id, name: r.name,
+                        pPts, pFault,
+                        ptPct:    teamPts > 0 ? (pPts   / teamPts) * 100 : null,
+                        faultPct: oppPts  > 0 ? (pFault / oppPts)  * 100 : null,
+                      };
+                    })
+                    .sort((a, b) => {
+                      const { key, dir } = prodSort;
+                      const mul = dir === 'desc' ? -1 : 1;
+                      if (key === 'name') return mul * a.name.localeCompare(b.name);
+                      return mul * ((a[key] ?? -1) - (b[key] ?? -1));
+                    });
+                  const hdrCls = (key) =>
+                    `cursor-pointer select-none transition-colors ${prodSort.key === key ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`;
+                  return (
+                    <div className="bg-surface rounded-xl p-3 space-y-2">
+                      <SectionHeader>Offensive Production</SectionHeader>
+                      <div className="flex items-center gap-2 px-1 text-[10px] font-semibold uppercase tracking-wide mb-0.5">
+                        <button className={`flex-1 text-left ${hdrCls('name')}`} onClick={() => toggleSort('name')}>
+                          Player{sortArrow('name')}
+                        </button>
+                        <div className="grid grid-cols-2 gap-2 shrink-0 w-[180px]">
+                          <button className={`text-right ${hdrCls('ptPct')}`} onClick={() => toggleSort('ptPct')}>
+                            % Team Pts{sortArrow('ptPct')}
+                          </button>
+                          <button className={`text-right ${hdrCls('faultPct')}`} onClick={() => toggleSort('faultPct')}>
+                            % Opp Pts{sortArrow('faultPct')}
+                          </button>
+                        </div>
+                      </div>
+                      {rows.map(r => (
+                        <div key={r.id} className="flex items-center gap-2 px-1">
+                          <span className="flex-1 text-xs text-slate-300 truncate">{r.name}</span>
+                          <div className="grid grid-cols-2 gap-2 shrink-0 w-[180px]">
+                            <div className="text-right">
+                              <span className="text-xs font-bold text-emerald-400">
+                                {r.ptPct != null ? r.ptPct.toFixed(1) + '%' : '—'}
+                              </span>
+                              <span className="text-[10px] text-slate-500 ml-1 tabular-nums">
+                                {r.pPts}/{teamPts}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-xs font-bold text-red-400">
+                                {r.faultPct != null ? r.faultPct.toFixed(1) + '%' : '—'}
+                              </span>
+                              <span className="text-[10px] text-slate-500 ml-1 tabular-nums">
+                                {r.pFault}/{oppPts}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <p className="text-[10px] text-slate-600 text-center pt-1">
+                        Team Pts: K+ACE+BLK &nbsp;·&nbsp; Opp Pts: SE+AE+NET+L+BHE+FBE+P0
+                      </p>
+                    </div>
+                  );
+                })()}
+
                 {/* Win Probability */}
                 {stats.rallies?.length > 0 && (() => {
                   const { p, q } = computePQ(stats.rallies);
@@ -922,6 +998,7 @@ export function ReportsPage() {
                       onRowClick={(row) => setSelectedServingPlayerId(id => String(id) === String(row.id) ? null : row.id)}
                       selectedRowId={selectedServingPlayerId}
                       onNameClick={handlePlayerClick}
+                      showGlossary
                     />
                     {selectedServingPlayerId && contacts.length > 0 && (() => {
                       const player = playerRows.find(r => String(r.id) === String(selectedServingPlayerId));
@@ -1041,7 +1118,7 @@ export function ReportsPage() {
                   <StatTable columns={TAB_COLUMNS.defense} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} />
                 )}
                 {playerStatView === 'ver' && (
-                  <StatTable columns={TAB_COLUMNS.ver} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} />
+                  <StatTable columns={TAB_COLUMNS.ver} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} showGlossary />
                 )}
               </>
             )}

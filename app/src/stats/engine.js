@@ -2,15 +2,13 @@ import {
   getContactsForMatch, getRalliesForMatch, getSetsPlayedCount,
   getContactsForMatches, getMatchesForSeason, getRalliesForMatches,
   getPlayerPositionsForMatches, getBatchSetsPlayedCount, getOppScoredForMatches,
-  getTimeoutsForMatches,
+  getOurScoredForMatches, getTimeoutsForMatches,
 } from './queries';
 import { POSITION_MULTIPLIERS, MATCH_STATUS } from '../constants';
 
 // ── Internal helpers ────────────────────────────────────────────────────────
 
 const div = (n, d) => (d > 0 ? n / d : null);
-
-// POSITION_MULTIPLIERS imported from constants/index.js
 
 function mkAccum() {
   return {
@@ -25,8 +23,8 @@ function mkAccum() {
     ta: 0, k: 0, ae: 0,
     // set
     ast: 0, bhe: 0,
-    // error actions (L/DBL tap on PlayerTile)
-    lift: 0, dbl: 0,
+    // error actions (L/DBL/NET tap on PlayerTile)
+    lift: 0, dbl: 0, net: 0,
     // block
     bs: 0, ba: 0, be: 0,
     // dig
@@ -86,6 +84,7 @@ function accumContact(p, { action, result, serve_type, error_type, count = 1 }) 
   } else if (action === 'error') {
     if (result === 'lift')   p.lift += n;
     if (result === 'double') p.dbl  += n;
+    if (result === 'net')    p.net  += n;
   }
 }
 
@@ -122,8 +121,8 @@ function deriveStats(p, sp, posLabel = null) {
     k_pct:   div(p.k,  p.ta),
     kps:     div(p.k,  sp),
 
-    // Setting
-    ast: p.ast, bhe: p.bhe, lift: p.lift, dbl: p.dbl,
+    // Setting / penalty errors
+    ast: p.ast, bhe: p.bhe, lift: p.lift, dbl: p.dbl, net: p.net,
     set_att: p.ast + p.bhe,
     aps: div(p.ast, sp),
 
@@ -140,19 +139,21 @@ function deriveStats(p, sp, posLabel = null) {
     fbr: p.fbr, fbs: p.fbs, fbe: p.fbe,
 
     // Volleyball Efficiency Rating (position-adjusted)
-    // VER = posMult × (1/sp) × [4K + 4ACE + 3.5BS + 1.75BA + 1.5AST + 1DIG − 2.5AE − 2.5SE − 1.5BHE − 1.5FBE]
+    // VER = posMult × (1/sp) × [4K + 4ACE + 3.5BS + 1.75BA + 1.5AST + 1.25DIG − 2.5AE − 2.5SE − 1.5BHE − 1.5FBE − 1.5L − 1.5NET]
     ver: sp > 0
       ? posMult * (1 / sp) * (
-          4.0  * p.k   +
-          4.0  * p.ace +
-          3.5  * p.bs  +
-          1.75 * p.ba  +
-          1.5  * p.ast +
-          1.0  * p.dig -
-          2.5  * p.ae  -
-          2.5  * p.se  -
-          1.5  * p.bhe -
-          1.5  * p.fbe
+          4.0  * p.k    +
+          4.0  * p.ace  +
+          3.5  * p.bs   +
+          1.75 * p.ba   +
+          1.5  * p.ast  +
+          1.25 * p.dig  -
+          2.5  * p.ae   -
+          2.5  * p.se   -
+          1.5  * p.bhe  -
+          1.5  * p.fbe  -
+          1.5  * p.lift -
+          1.5  * p.net
         )
       : null,
     pos_label: posLabel ?? null,
@@ -308,20 +309,29 @@ export function buildRallyMap(rallies) {
   return new Map(rallies.map((r) => [`${r.set_id}_${r.rally_number}`, r]));
 }
 
+// Group our (non-opponent) contacts by rally key. Pass sorted=true to sort
+// each bucket by timestamp ascending (needed for sequence-dependent functions).
+function groupContactsByRally(contacts, sorted = false) {
+  const map = new Map();
+  for (const c of contacts) {
+    if (c.opponent_contact) continue;
+    const key = `${c.set_id}_${c.rally_number}`;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(c);
+  }
+  if (sorted) {
+    for (const arr of map.values()) arr.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+  }
+  return map;
+}
+
 export function computeISvsOOS(contacts, rallies, rallyMap = buildRallyMap(rallies)) {
   const mkSlot = () => ({ ta: 0, k: 0, ae: 0, win: 0 });
   const byRotation = {};
   for (let r = 1; r <= 6; r++) byRotation[r] = { is: mkSlot(), oos: mkSlot() };
   const total = { is: mkSlot(), oos: mkSlot() };
 
-  // Group our contacts by rally key
-  const contactsByRally = new Map();
-  for (const c of contacts) {
-    if (c.opponent_contact) continue;
-    const key = `${c.set_id}_${c.rally_number}`;
-    if (!contactsByRally.has(key)) contactsByRally.set(key, []);
-    contactsByRally.get(key).push(c);
-  }
+  const contactsByRally = groupContactsByRally(contacts);
 
   for (const [key, rallyContacts] of contactsByRally) {
     const rally = rallyMap.get(key);
@@ -407,18 +417,7 @@ export function computeISvsOOS(contacts, rallies, rallyMap = buildRallyMap(ralli
  * }
  */
 export function computeTransitionAttack(contacts, rallies, rallyMap = buildRallyMap(rallies)) {
-
-  // Group our contacts by rally key, sorted by timestamp
-  const contactsByRally = new Map();
-  for (const c of contacts) {
-    if (c.opponent_contact) continue;
-    const key = `${c.set_id}_${c.rally_number}`;
-    if (!contactsByRally.has(key)) contactsByRally.set(key, []);
-    contactsByRally.get(key).push(c);
-  }
-  for (const arr of contactsByRally.values()) {
-    arr.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
-  }
+  const contactsByRally = groupContactsByRally(contacts, true);
 
   const mkSlot  = () => ({ ta: 0, k: 0, ae: 0, win: 0 });
   const mkGroup = () => ({
@@ -777,12 +776,13 @@ export async function computeSeasonStats(seasonId, filters = {}) {
   const playedMatchIds = matches
     .filter(m => m.status !== MATCH_STATUS.SCHEDULED)
     .map(m => m.id);
-  const [contacts, rallies, setsPerMatch, playerPositions, oppScored, timeouts] = await Promise.all([
+  const [contacts, rallies, setsPerMatch, playerPositions, oppScored, ourScored, timeouts] = await Promise.all([
     getContactsForMatches(matchIds),
     getRalliesForMatches(matchIds),
     getBatchSetsPlayedCount(playedMatchIds),
     getPlayerPositionsForMatches(matchIds),
     getOppScoredForMatches(matchIds),
+    getOurScoredForMatches(matchIds),
     getTimeoutsForMatches(matchIds),
   ]);
   const setsPlayed = Object.values(setsPerMatch).reduce((a, b) => a + b, 0);
@@ -810,6 +810,7 @@ export async function computeSeasonStats(seasonId, filters = {}) {
     matchCount:       playedMatchIds.length,
     totalMatchCount,
     oppScored,
+    ourScored,
     contacts,
     rallies,
   };

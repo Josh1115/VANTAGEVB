@@ -8,17 +8,34 @@ import { useMatchStore } from '../../store/matchStore';
 import { db } from '../../db/schema';
 import { SIDE } from '../../constants';
 
+const JERSEY_COLORS = [
+  { id: 'black',  label: 'Black',  bg: '#111827', border: '#374151' },
+  { id: 'white',  label: 'White',  bg: '#f8fafc', border: '#94a3b8' },
+  { id: 'gray',   label: 'Gray',   bg: '#94a3b8', border: '#64748b' },
+  { id: 'red',    label: 'Red',    bg: '#dc2626', border: '#ef4444' },
+  { id: 'orange', label: 'Orange', bg: '#ea580c', border: '#f97316' },
+  { id: 'yellow', label: 'Yellow', bg: '#ca8a04', border: '#eab308' },
+  { id: 'green',  label: 'Green',  bg: '#16a34a', border: '#22c55e' },
+  { id: 'blue',   label: 'Blue',   bg: '#1d4ed8', border: '#3b82f6' },
+  { id: 'purple', label: 'Purple', bg: '#7c3aed', border: '#a855f7' },
+  { id: 'pink',   label: 'Pink',   bg: '#db2777', border: '#ec4899' },
+];
+
 export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName, opponentName }) {
-  const matchId         = useMatchStore((s) => s.matchId);
-  const currentSetId    = useMatchStore((s) => s.currentSetId);
-  const ourScore        = useMatchStore((s) => s.ourScore);
-  const oppScore        = useMatchStore((s) => s.oppScore);
-  const fudgeScore      = useMatchStore((s) => s.fudgeScore);
-  const endSet          = useMatchStore((s) => s.endSet);
-  const endMatch        = useMatchStore((s) => s.endMatch);
-  const resetCurrentSet  = useMatchStore((s) => s.resetCurrentSet);
-  const resetToRotation  = useMatchStore((s) => s.resetToRotation);
-  const navigate         = useNavigate();
+  const matchId              = useMatchStore((s) => s.matchId);
+  const currentSetId         = useMatchStore((s) => s.currentSetId);
+  const ourScore             = useMatchStore((s) => s.ourScore);
+  const oppScore             = useMatchStore((s) => s.oppScore);
+  const fudgeScore           = useMatchStore((s) => s.fudgeScore);
+  const endSet               = useMatchStore((s) => s.endSet);
+  const endMatch             = useMatchStore((s) => s.endMatch);
+  const resetCurrentSet      = useMatchStore((s) => s.resetCurrentSet);
+  const resetToRotation      = useMatchStore((s) => s.resetToRotation);
+  const teamJerseyColor      = useMatchStore((s) => s.teamJerseyColor);
+  const liberoJerseyColor    = useMatchStore((s) => s.liberoJerseyColor);
+  const setTeamJerseyColor   = useMatchStore((s) => s.setTeamJerseyColor);
+  const setLiberoJerseyColor = useMatchStore((s) => s.setLiberoJerseyColor);
+  const navigate             = useNavigate();
 
   const [confirmReset,        setConfirmReset]        = useState(false);
   const [confirmMatchSetup,   setConfirmMatchSetup]   = useState(false);
@@ -90,6 +107,35 @@ export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName
                   onPointerDown={(e) => { e.preventDefault(); fudgeScore(side, +1); }}
                   className="w-8 h-8 rounded-lg bg-slate-700 text-white text-lg font-bold flex items-center justify-center active:brightness-75 select-none"
                 >+</button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Jersey Colors ── */}
+        <div className="mb-3 pb-3 border-b border-slate-700">
+          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Jersey Colors</div>
+          {[
+            { label: 'Team Jersey', value: teamJerseyColor, onChange: setTeamJerseyColor },
+            { label: 'Libero Jersey', value: liberoJerseyColor, onChange: setLiberoJerseyColor },
+          ].map(({ label, value, onChange }) => (
+            <div key={label} className="mb-3">
+              <div className="text-xs text-slate-400 mb-1.5">{label}</div>
+              <div className="flex flex-wrap gap-2">
+                {JERSEY_COLORS.map((c) => (
+                  <button
+                    key={c.id}
+                    onPointerDown={(e) => { e.preventDefault(); onChange(c.id); }}
+                    title={c.label}
+                    style={{
+                      backgroundColor: c.bg,
+                      borderColor: value === c.id ? '#f97316' : c.border,
+                    }}
+                    className={`w-7 h-7 rounded-full border-2 transition-transform ${
+                      value === c.id ? 'scale-125 ring-2 ring-primary ring-offset-1 ring-offset-slate-900' : 'hover:scale-110'
+                    }`}
+                  />
+                ))}
               </div>
             </div>
           ))}

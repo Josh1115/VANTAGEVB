@@ -73,8 +73,6 @@ function autoSwapLibero(s, newLineup) {
   return { lineup, liberoOnCourt, liberoReplacedPlayerId, liberoReplacedName, liberoReplacedJersey, liberoReplacedPositionLabel };
 }
 
-// Common per-set reset fields shared between resetCurrentSet() and endSet().
-// Returns a fresh object each call so callers get their own {} and [] references.
 // Replace one element in an array by id without cloning every element.
 // Returns a new array with only the matching item replaced.
 function replaceOneContact(arr, id, patch) {
@@ -83,6 +81,8 @@ function replaceOneContact(arr, id, patch) {
   return [...arr.slice(0, idx), { ...arr[idx], ...patch }, ...arr.slice(idx + 1)];
 }
 
+// Common per-set reset fields shared between resetCurrentSet() and endSet().
+// Returns a fresh object each call so callers get their own {} and [] references.
 const makeSetResetState = () => ({
   ourScore:                    0,
   oppScore:                    0,
@@ -231,6 +231,8 @@ export const useMatchStore = create((set, get) => ({
   resetMatch: () => set(INITIAL_STATE),
   setLineup:          (lineup, rotationNum) => set({ lineup, ...(rotationNum !== undefined ? { rotationNum } : {}) }),
   setPlayerNicknames: (map)    => set({ playerNicknames: map }),
+  setTeamJerseyColor:   (color) => set({ teamJerseyColor: color }),
+  setLiberoJerseyColor: (color) => set({ liberoJerseyColor: color }),
   setLibero:  (liberoId) => set({ liberoId }),
 
   rotateForward:  () => set((s) => ({ lineup: rotateFwd(s.lineup) })),
@@ -1168,9 +1170,9 @@ export const useMatchStore = create((set, get) => ({
     // Recount set wins from remaining sets and restore match to complete if warranted
     if (setRow?.match_id) {
       const remaining = await db.sets.where('match_id').equals(setRow.match_id).toArray();
-      const usWins  = remaining.filter(s => s.winner === 'us').length;
-      const oppWins = remaining.filter(s => s.winner === 'opp').length;
-      const winner  = usWins > oppWins ? 'us' : oppWins > usWins ? 'opp' : null;
+      const usWins  = remaining.filter(s => s.winner === SIDE.US).length;
+      const oppWins = remaining.filter(s => s.winner === SIDE.THEM).length;
+      const winner  = usWins > oppWins ? SIDE.US : oppWins > usWins ? SIDE.THEM : null;
       await db.matches.update(setRow.match_id, {
         status: winner ? MATCH_STATUS.COMPLETE : MATCH_STATUS.IN_PROGRESS,
         winner,

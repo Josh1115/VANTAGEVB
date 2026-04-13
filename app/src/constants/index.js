@@ -119,6 +119,7 @@ export const ACCENT_COLORS = [
   { id: 'green',  label: 'Green',  hex: '#22c55e', rgb: '34 197 94'  },
   { id: 'red',    label: 'Red',    hex: '#ef4444', rgb: '239 68 68'  },
   { id: 'purple', label: 'Purple', hex: '#a855f7', rgb: '168 85 247' },
+  { id: 'yellow', label: 'Yellow', hex: '#eab308', rgb: '234 179 8'  },
 ];
 
 // NFHS rules

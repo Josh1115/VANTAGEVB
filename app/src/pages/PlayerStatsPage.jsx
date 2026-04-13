@@ -6,11 +6,13 @@ import {
   PolarRadiusAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { db } from '../db/schema';
-import { computePlayerStats, computePlayerTrends } from '../stats/engine';
+import { computePlayerStats, computePlayerTrends, computeTeamStats } from '../stats/engine';
 import {
   getContactsForMatches,
   getBatchSetsPlayedCount,
   getPlayerPositionsForMatches,
+  getOurScoredForMatches,
+  getOppScoredForMatches,
 } from '../stats/queries';
 import { TAB_COLUMNS, SERVING_COLS } from '../stats/columns';
 import { fmtCount, fmtHitting, fmtPassRating, fmtPct, fmtVER } from '../stats/formatters';
@@ -36,7 +38,31 @@ function gradeScore(score) {
   return                  { letter: 'F', color: 'text-red-400'     };
 }
 
-function PlayerReportCard({ row }) {
+// rank: 1 = best. higher value = better rank (used for VER and ptShare).
+// lower value = better rank (used for faultShare — fewer faults is better).
+function rankAmong(value, allValues, higherIsBetter = true) {
+  if (value == null) return null;
+  const valid = allValues.filter(v => v != null);
+  if (!valid.length) return null;
+  const rank = valid.filter(v => higherIsBetter ? v > value : v < value).length + 1;
+  return { rank, total: valid.length };
+}
+
+function PlayerReportCard({ row, allRows = [], teamPoints = 0, oppPoints = 0 }) {
+  // Offensive production share
+  const playerPts   = (row.k ?? 0) + (row.ace ?? 0) + (row.bs ?? 0) + (row.ba ?? 0);
+  const playerFault = (row.se ?? 0) + (row.ae ?? 0) + (row.net ?? 0) + (row.lift ?? 0)
+                    + (row.bhe ?? 0) + (row.fbe ?? 0) + (row.p0 ?? 0);
+  const ptSharePct    = teamPoints > 0 ? (playerPts / teamPoints) * 100 : null;
+  const faultSharePct = oppPoints  > 0 ? (playerFault / oppPoints) * 100 : null;
+
+  // Rankings among teammates (players with sp > 0)
+  const verRank      = rankAmong(row.ver, allRows.map(r => r.ver), true);
+  const ptRank       = rankAmong(playerPts, allRows.map(r =>
+    (r.k ?? 0) + (r.ace ?? 0) + (r.bs ?? 0) + (r.ba ?? 0)), true);
+  const faultRank    = rankAmong(playerFault, allRows.map(r =>
+    (r.se ?? 0) + (r.ae ?? 0) + (r.net ?? 0) + (r.lift ?? 0) +
+    (r.bhe ?? 0) + (r.fbe ?? 0) + (r.p0 ?? 0)), false);
   const tiles = [
     row.sa > 0 && {
       label: 'Serving',
@@ -106,6 +132,11 @@ function PlayerReportCard({ row }) {
           </div>
         )}
         <div className="text-xs text-slate-500 mt-1">{row.sp ?? 0} sets played · {row.mp ?? 0} matches</div>
+        {verRank && (
+          <div className="text-xs text-slate-500 mt-0.5">
+            Ranked <span className="text-white font-semibold">{verRank.rank}</span> of {verRank.total} on team
+          </div>
+        )}
       </div>
 
       {/* Stat tiles */}
@@ -123,6 +154,41 @@ function PlayerReportCard({ row }) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Offensive Production */}
+      {(ptSharePct !== null || faultSharePct !== null) && (
+        <div className="bg-surface rounded-xl p-4">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Offensive Production</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="text-center">
+              <div className="text-3xl font-black text-emerald-400">
+                {ptSharePct !== null ? ptSharePct.toFixed(1) + '%' : '—'}
+              </div>
+              <div className="text-xs text-slate-400 mt-1">of Team Points</div>
+              <div className="text-[10px] text-slate-500 mt-0.5 tabular-nums">{playerPts} / {teamPoints} pts</div>
+              <div className="text-[10px] text-slate-600 mt-0.5">K + ACE + BLK</div>
+              {ptRank && (
+                <div className="text-[10px] text-slate-500 mt-1">
+                  <span className="text-slate-300 font-semibold">{ptRank.rank}</span> of {ptRank.total} on team
+                </div>
+              )}
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-black text-red-400">
+                {faultSharePct !== null ? faultSharePct.toFixed(1) + '%' : '—'}
+              </div>
+              <div className="text-xs text-slate-400 mt-1">of Opp Points</div>
+              <div className="text-[10px] text-slate-500 mt-0.5 tabular-nums">{playerFault} / {oppPoints} pts</div>
+              <div className="text-[10px] text-slate-600 mt-0.5">SE + AE + NET + L + BHE + FBE + P0</div>
+              {faultRank && (
+                <div className="text-[10px] text-slate-500 mt-1">
+                  <span className="text-slate-300 font-semibold">{faultRank.rank}</span> of {faultRank.total} on team
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -235,12 +301,16 @@ export function PlayerStatsPage() {
       getContactsForMatches(matchIds),
       getBatchSetsPlayedCount(matchIds),
       getPlayerPositionsForMatches(matchIds),
+      getOurScoredForMatches(matchIds),
+      getOppScoredForMatches(matchIds),
     ])
-      .then(([contacts, setsPerMatch, playerPositions]) => {
+      .then(([contacts, setsPerMatch, playerPositions, teamPoints, oppPoints]) => {
         const allStats  = computePlayerStats(contacts, 1, playerPositions);
         const playerRow = allStats[pid] ?? null;
+        const allRows   = Object.values(allStats).filter(r => (r.sp ?? 0) > 0);
         const trends    = computePlayerTrends(matches, contacts, setsPerMatch, playerPositions);
-        setStats({ playerRow, trends });
+        const teamRow   = computeTeamStats(contacts, 1);
+        setStats({ playerRow, allRows, trends, teamPoints, oppPoints, teamRow });
       })
       .finally(() => setLoading(false));
   }, [matches, pid]); // eslint-disable-line react-hooks/exhaustive-deps -- intentional: recompute only when source data or player changes, not on internal setter references
@@ -342,7 +412,12 @@ export function PlayerStatsPage() {
         !stats?.playerRow ? (
           <EmptyState title="No stats yet" description="Record a match to see the report card." />
         ) : (
-          <PlayerReportCard row={stats.playerRow} />
+          <PlayerReportCard
+            row={stats.playerRow}
+            allRows={stats.allRows ?? []}
+            teamPoints={stats.teamPoints ?? 0}
+            oppPoints={stats.oppPoints ?? 0}
+          />
         )
       ) : (
         // By Game tab

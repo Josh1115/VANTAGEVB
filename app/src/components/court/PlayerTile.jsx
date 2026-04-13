@@ -60,11 +60,20 @@ const PassBtn = memo(function PassBtn({ rating, label, onTap, cls }) {
 
 
 const JERSEY_HEX = {
-  'black': '#111827',
-  'white': '#f8fafc',
-  'blue':  '#1d4ed8',
-  'gray':  '#94a3b8',
+  'black':  '#111827',
+  'white':  '#f8fafc',
+  'gray':   '#94a3b8',
+  'red':    '#dc2626',
+  'orange': '#ea580c',
+  'yellow': '#ca8a04',
+  'green':  '#16a34a',
+  'blue':   '#1d4ed8',
+  'purple': '#7c3aed',
+  'pink':   '#db2777',
 };
+
+// Colors light enough that jersey number needs a dark ink
+const LIGHT_JERSEYS = new Set(['white', 'gray', 'yellow']);
 
 export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, heat, stats, zoneHints, isSubIn = false, isDimmed = false }) {
   const {
@@ -93,7 +102,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   const isLibero     = slot?.playerId && slot.playerId === liberoId;
   const jerseyColor  = isLibero ? liberoJerseyColor : teamJerseyColor;
   const jerseyHex    = JERSEY_HEX[jerseyColor] ?? JERSEY_HEX['black'];
-  const numberColor  = (jerseyColor === 'gray' || jerseyColor === 'white') ? '#1e293b' : '#f1f5f9';
+  const numberColor  = LIGHT_JERSEYS.has(jerseyColor) ? '#1e293b' : '#f1f5f9';
   const jerseyRef   = useRef(null);
   const [serveType,     setServeType]     = useState(null);
   const [serveRecorded, setServeRecorded] = useState(false);

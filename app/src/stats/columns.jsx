@@ -97,6 +97,8 @@ export const TAB_COLUMNS = {
     { key: 'se',        label: 'SE',    fmt: fmtCount   },
     { key: 'bhe',       label: 'BHE',   fmt: fmtCount   },
     { key: 'fbe',       label: 'FBE',   fmt: fmtCount   },
+    { key: 'lift',      label: 'L',     fmt: fmtCount   },
+    { key: 'net',       label: 'NET',   fmt: fmtCount   },
   ],
   blocking: [
     { key: 'name',  label: 'Player' },

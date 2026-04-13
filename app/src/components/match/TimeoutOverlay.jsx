@@ -18,6 +18,7 @@ import { RotationBarChart } from '../charts/RotationBarChart';
 import { RotationRadarChart } from '../charts/RotationRadarChart';
 import { CourtHeatMap } from '../charts/CourtHeatMap';
 import { RecordAlertPanel } from './RecordAlertPanel';
+import { CourtWhiteboard } from './CourtWhiteboard';
 import { fmtCount, fmtPct, fmtHitting, fmtPassRating } from '../../stats/formatters';
 
 const TABS = [
@@ -62,13 +63,14 @@ function classifyPoint(lastContact, pointWinner) {
 }
 
 export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout = null }) {
-  const [activeTab,    setActiveTab]   = useState('scoring');
-  const [scope,        setScope]       = useState('set');
-  const [serveView,    setServeView]   = useState('all');
-  const [passingView,  setPassingView] = useState('passing');
-  const [trendsView,   setTrendsView]  = useState('trends');
-  const [attackView,   setAttackView]  = useState('players');
-  const [secondsLeft, setSecondsLeft] = useState(60);
+  const [activeTab,      setActiveTab]      = useState('scoring');
+  const [scope,          setScope]          = useState('set');
+  const [serveView,      setServeView]      = useState('all');
+  const [passingView,    setPassingView]    = useState('passing');
+  const [trendsView,     setTrendsView]     = useState('trends');
+  const [attackView,     setAttackView]     = useState('players');
+  const [secondsLeft,    setSecondsLeft]    = useState(60);
+  const [showWhiteboard, setShowWhiteboard] = useState(false);
 
   const lineup            = useMatchStore((s) => s.lineup);
   const setNumber         = useMatchStore((s) => s.setNumber);
@@ -270,10 +272,16 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
 
       {/* Left panel: tabbed stat table */}
       <div className="flex flex-col w-[65%] border-r border-slate-700">
-        <div className="flex items-center px-4 py-3 border-b border-slate-700 shrink-0">
+        <div className="flex items-center px-4 py-3 border-b border-slate-700 shrink-0 gap-4">
           <span className="text-white font-bold text-lg tracking-wide">
             TIMEOUT · Set {setNumber}
           </span>
+          <button
+            onPointerDown={(e) => { e.preventDefault(); setShowWhiteboard(true); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold"
+          >
+            ✏ Court White Board
+          </button>
         </div>
 
         {/* Team summary strip */}
@@ -755,6 +763,10 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
           Resume
         </button>
       </div>
+
+      {showWhiteboard && (
+        <CourtWhiteboard onClose={() => setShowWhiteboard(false)} secondsLeft={secondsLeft} />
+      )}
     </div>
   );
 }

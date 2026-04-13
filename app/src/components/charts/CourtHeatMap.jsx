@@ -1,23 +1,19 @@
 import { useState, useMemo } from 'react';
 import clsx from 'clsx';
 
-// Zone layout (FIVB, opponent court, viewed from our bench):
-//   [4][3][2]  ← front row (near net)
-//   [5][6][1]  ← back row
+// Zone layout:
+//   [1][6][5]  ← back row (top)
+//   [2][3][4]  ← front row (near net, bottom)
 //
-// SVG: top = net side, bottom = back
+// SVG: top = back, bottom = net side
 
 const ZONE_GRID = [
-  [4, 3, 2],
-  [5, 6, 1],
+  [1, 6, 5],
+  [2, 3, 4],
 ];
 
 const TOGGLE_OPTIONS = [
-  { key: 'attack_kill',   label: 'Attack Kills',   action: 'attack',           result: 'kill'    },
-  { key: 'attack_error',  label: 'Attack Errors',  action: 'attack',           result: 'error'   },
-  { key: 'serve_ace',     label: 'Serve Aces',     action: 'serve',            result: 'ace'     },
-  { key: 'serve_error',   label: 'Serve Errors',   action: 'serve',            result: 'error'   },
-  { key: 'dig',           label: 'Digs',           action: 'dig',              result: 'success' },
+  { key: 'serve_ace', label: 'Serve Aces', action: 'serve', result: 'ace' },
 ];
 
 function zoneCounts(contacts, action, result) {
@@ -37,12 +33,14 @@ function countToOpacity(count, max) {
 }
 
 const W = 270;
-const H = 180;
+const COURT_H = 180;
+const NET_ZONE = 16;
+const H = COURT_H + NET_ZONE;
 const COL_W = W / 3;
-const ROW_H = H / 2;
+const ROW_H = COURT_H / 2;
 
 export function CourtHeatMap({ contacts = [] }) {
-  const [activeKey, setActiveKey] = useState('attack_kill');
+  const [activeKey, setActiveKey] = useState('serve_ace');
 
   const option = TOGGLE_OPTIONS.find(o => o.key === activeKey);
 
@@ -129,10 +127,10 @@ export function CourtHeatMap({ contacts = [] }) {
           )}
 
           {/* Net line */}
-          <line x1={0} y1={H / 2} x2={W} y2={H / 2} stroke="#f97316" strokeWidth={2} strokeDasharray="6 3" opacity={0.6} />
+          <line x1={0} y1={COURT_H} x2={W} y2={COURT_H} stroke="#f97316" strokeWidth={2} strokeDasharray="6 3" opacity={0.6} />
 
           {/* Net label */}
-          <text x={W - 6} y={H / 2 - 4} textAnchor="end" fill="#f97316" fontSize={9} opacity={0.7}>NET</text>
+          <text x={W - 6} y={COURT_H + 11} textAnchor="end" fill="#f97316" fontSize={9} opacity={0.7}>NET</text>
         </svg>
       </div>
 

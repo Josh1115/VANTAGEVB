@@ -59,6 +59,15 @@ export const getOppScoredForMatches = async (matchIds) => {
     .reduce((sum, s) => sum + (s.opp_score ?? 0), 0);
 };
 
+// Sum of our_score across all complete sets for the given matches
+export const getOurScoredForMatches = async (matchIds) => {
+  if (!matchIds.length) return 0;
+  const sets = await db.sets.where('match_id').anyOf(matchIds).toArray();
+  return sets
+    .filter(s => s.status === 'complete')
+    .reduce((sum, s) => sum + (s.our_score ?? 0), 0);
+};
+
 // Timeouts for multiple matches
 export const getTimeoutsForMatches = async (matchIds) => {
   if (!matchIds.length) return [];
