@@ -150,6 +150,10 @@ function getStatLabel(action, result, lastName) {
       if (result === 'double') return `${lastName} Dbl`;
       if (result === 'net')    return `${lastName} Net`;
       return `${lastName} Error`;
+    case 'freeball_receive':
+      if (result === 'free_ball_error') return `${lastName} Free Err`;
+      return `${lastName} FB Rec`;
+    case 'freeball_send':     return `${lastName} FB Send`;
     default:       return `${lastName} ${action}`;
   }
 }

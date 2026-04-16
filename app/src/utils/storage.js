@@ -6,6 +6,8 @@ export const STORAGE_KEYS = {
   AMOLED:             'vbstat_amoled',
   ACCENT:             'vbstat_accent',
   COACH_NAME:         'vbstat_coach_name',
+  PROGRAM_NAME:       'vbstat_program_name',
+  SOUNDS:             'vbstat_sounds',
   MAX_SUBS:           'vbstat_max_subs',
   DEFAULT_FORMAT:     'vbstat_default_format',
   PLAYER_NAME_FORMAT: 'vbstat_player_name_format',

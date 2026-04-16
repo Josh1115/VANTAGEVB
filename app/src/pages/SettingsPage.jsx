@@ -157,6 +157,18 @@ function useWinMessage() {
   return [msg, save];
 }
 
+function useProgramName() {
+  const [val, setVal] = useState(() => getStorageItem(STORAGE_KEYS.PROGRAM_NAME, ''));
+  const save = (v) => { setStorageItem(STORAGE_KEYS.PROGRAM_NAME, v.trimEnd() || null); setVal(v); };
+  return [val, save];
+}
+
+function useCoachName() {
+  const [val, setVal] = useState(() => getStorageItem(STORAGE_KEYS.COACH_NAME, ''));
+  const save = (v) => { setStorageItem(STORAGE_KEYS.COACH_NAME, v.trimEnd() || null); setVal(v); };
+  return [val, save];
+}
+
 export function SettingsPage() {
   const showToast    = useUiStore((s) => s.showToast);
   const fileInputRef = useRef(null);
@@ -177,10 +189,13 @@ export function SettingsPage() {
     [defaultTeamId]
   );
   const [maxPrepsId,  saveMaxPrepsId]  = useMaxPrepsId();
-  const [winMessage,  saveWinMessage]  = useWinMessage();
-  const [wakeLock,    saveWakeLock]    = useToggleSetting('vbstat_wake_lock');
-  const [hapticOn,    saveHaptic]      = useToggleSetting('vbstat_haptic');
-  const [flipLayout,  saveFlipLayout]  = useToggleSetting('vbstat_flip_layout');
+  const [winMessage,   saveWinMessage]  = useWinMessage();
+  const [programName,  saveProgramName] = useProgramName();
+  const [coachName,    saveCoachName]   = useCoachName();
+  const [wakeLock,     saveWakeLock]    = useToggleSetting('vbstat_wake_lock');
+  const [hapticOn,     saveHaptic]      = useToggleSetting('vbstat_haptic');
+  const [soundsOn,     saveSounds]      = useToggleSetting(STORAGE_KEYS.SOUNDS);
+  const [flipLayout,   saveFlipLayout]  = useToggleSetting('vbstat_flip_layout');
   const [confirmClear,   setConfirmClear]   = useState(false);
   const [confirmImport,  setConfirmImport]  = useState(false);
   const [pendingFile,    setPendingFile]    = useState(null);
@@ -294,6 +309,38 @@ export function SettingsPage() {
             <h2 className="font-semibold">Personalization</h2>
           </div>
           <div className="p-4 space-y-5">
+
+            {/* Program name */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Program Name</label>
+              <div className="text-xs text-slate-400 mb-2">
+                Used in PDF report headers and export filenames (e.g. "Lincoln Wildcats").
+              </div>
+              <input
+                type="text"
+                value={programName}
+                onChange={(e) => saveProgramName(e.target.value)}
+                placeholder="e.g. Lincoln Wildcats"
+                maxLength={60}
+                className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
+              />
+            </div>
+
+            {/* Coach name */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Coach Name</label>
+              <div className="text-xs text-slate-400 mb-2">
+                Appears on PDF reports and CSV exports.
+              </div>
+              <input
+                type="text"
+                value={coachName}
+                onChange={(e) => saveCoachName(e.target.value)}
+                placeholder="e.g. Coach Johnson"
+                maxLength={60}
+                className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
+              />
+            </div>
 
             {/* Win message */}
             <div>
@@ -489,6 +536,22 @@ export function SettingsPage() {
                 role="switch"
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${hapticOn ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+
+            {/* Sound Effects */}
+            <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+              <div>
+                <div className="text-sm font-medium">Sound Effects</div>
+                <div className="text-xs text-slate-400 mt-0.5">Audio cues for aces, kills, and blocks</div>
+              </div>
+              <button
+                onClick={() => saveSounds(!soundsOn)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${soundsOn ? 'bg-primary' : 'bg-slate-600'}`}
+                aria-checked={soundsOn}
+                role="switch"
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${soundsOn ? 'translate-x-5' : ''}`} />
               </button>
             </div>
 

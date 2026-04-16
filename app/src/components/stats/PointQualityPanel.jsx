@@ -152,7 +152,7 @@ export function PointQualityPanel({ pq, oppScored, divisor = 1 }) {
   const fmtDiff = (v) => {
     if (v == null) return '—';
     const n = divisor === 1 ? v : v / divisor;
-    const s = divisor === 1 ? String(Math.round(n)) : Math.abs(n).toFixed(1);
+    const s = divisor === 1 ? String(Math.abs(Math.round(n))) : Math.abs(n).toFixed(1);
     return n > 0 ? `+${s}` : n < 0 ? `-${s}` : s;
   };
 

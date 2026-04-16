@@ -18,6 +18,7 @@ import { ServeReticlePlot, PlayerServePlacementCard } from '../components/stats/
 import { RotationSpotlight } from '../components/stats/RotationSpotlight';
 import { PointQualityPanel } from '../components/stats/PointQualityPanel';
 import { HittingBarChart } from '../components/charts/HittingBarChart';
+import { PassDistributionChart } from '../components/charts/PassDistributionChart';
 import { RotationRadarChart } from '../components/charts/RotationRadarChart';
 import { SideoutPieChart } from '../components/charts/SideoutPieChart';
 import { CourtHeatMap } from '../components/charts/CourtHeatMap';
@@ -898,36 +899,45 @@ export function ReportsPage() {
                   );
                 })()}
 
-                {/* Timeout Effectiveness */}
-                {stats.timeoutEffect && (
-                  <div className="bg-surface rounded-xl p-3 space-y-2">
-                    <SectionHeader>Timeout Effectiveness</SectionHeader>
-                    <p className="text-[11px] text-slate-500 -mt-1 mb-2">Win % in the 3 rallies immediately following each timeout</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      {[
-                        { label: 'Our Timeouts', d: stats.timeoutEffect.us   },
-                        { label: 'Opp Timeouts', d: stats.timeoutEffect.them },
-                      ].map(({ label, d }) => {
-                        const pct  = d.win_pct != null ? Math.round(d.win_pct * 100) : null;
-                        const color = pct == null ? 'text-slate-400'
-                          : pct >= 55 ? 'text-emerald-400'
-                          : pct >= 40 ? 'text-yellow-400'
-                          : 'text-red-400';
-                        return (
-                          <div key={label} className="bg-slate-800/60 rounded-lg p-3 text-center">
-                            <div className="text-[11px] text-slate-400 mb-1">{label}</div>
-                            <div className={`text-2xl font-black ${color}`}>
-                              {pct != null ? `${pct}%` : '—'}
-                            </div>
-                            <div className="text-[10px] text-slate-500 mt-1">
-                              {d.win3}/{d.total3} pts · {d.count} TO{d.count !== 1 ? 's' : ''}
-                            </div>
-                          </div>
-                        );
-                      })}
+                {/* Timeout Effectiveness — always shown; falls back to zeros when no TO data in selection */}
+                {(() => {
+                  const EMPTY = { count: 0, win3: 0, total3: 0, win_pct: null };
+                  const te = stats.timeoutEffect ?? { us: EMPTY, them: EMPTY };
+                  const noData = te.us.count === 0 && te.them.count === 0;
+                  return (
+                    <div className="bg-surface rounded-xl p-3 space-y-2">
+                      <SectionHeader>Timeout Effectiveness</SectionHeader>
+                      <p className="text-[11px] text-slate-500 -mt-1 mb-2">Win % in the 3 rallies immediately following each timeout</p>
+                      {noData ? (
+                        <p className="text-xs text-slate-500 text-center py-2">No timeout data in selected matches</p>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-3">
+                          {[
+                            { label: 'Our Timeouts', d: te.us   },
+                            { label: 'Opp Timeouts', d: te.them },
+                          ].map(({ label, d }) => {
+                            const pct   = d.win_pct != null ? Math.round(d.win_pct * 100) : null;
+                            const color = pct == null ? 'text-slate-400'
+                              : pct >= 55 ? 'text-emerald-400'
+                              : pct >= 40 ? 'text-yellow-400'
+                              : 'text-red-400';
+                            return (
+                              <div key={label} className="bg-slate-800/60 rounded-lg p-3 text-center">
+                                <div className="text-[11px] text-slate-400 mb-1">{label}</div>
+                                <div className={`text-2xl font-black ${color}`}>
+                                  {pct != null ? `${pct}%` : '—'}
+                                </div>
+                                <div className="text-[10px] text-slate-500 mt-1">
+                                  {d.win3}/{d.total3} pts · {d.count} TO{d.count !== 1 ? 's' : ''}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Team vs Opponents comparison */}
                 {stats.opp && (
@@ -1014,7 +1024,10 @@ export function ReportsPage() {
                   </>
                 )}
                 {playerStatView === 'passing' && (
-                  <StatTable columns={TAB_COLUMNS.passing} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} />
+                  <>
+                    <StatTable columns={TAB_COLUMNS.passing} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} />
+                    <PassDistributionChart totals={playerTotalsRow} />
+                  </>
                 )}
                 {playerStatView === 'attacking' && (
                   <>

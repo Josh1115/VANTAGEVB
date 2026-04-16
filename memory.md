@@ -376,6 +376,37 @@ Libero rule update: libero CAN serve (S1) — no position restriction
 
 **Build:** Clean ✓ — 117/117 tests passing
 
+### 2026-04-16 — Match Setup Contextual Fields + Settings Enhancements
+
+**MatchSetupPage (`src/pages/MatchSetupPage.jsx`):**
+- Added `tournamentName` state — optional text input that conditionally renders below the Match Type buttons when "Tourney" is selected; saved as `tournament_name` on match record (null for non-tourney types)
+- Added `tournamentRound` state — required Pool Play / Bracket/Playoffs toggle that also appears under Tourney; saved as `tournament_round`; defaults to `'pool'`
+- Added `playoffRound` state — optional text input that renders when "IHSA Playoffs" is selected; saved as `playoff_round`; placeholder text suggests Regional / Sectional / Super-Sectional / State
+- All three new fields included in both `db.matches.add()` and `db.matches.update()` paths; all three prefill from `scheduledMatch` in the prefill useEffect
+- No Dexie schema migration needed — all three fields are unindexed
+
+**Storage keys (`src/utils/storage.js`):**
+- Added `PROGRAM_NAME: 'vbstat_program_name'`
+- Added `SOUNDS: 'vbstat_sounds'`
+- (`COACH_NAME` was already present in STORAGE_KEYS but had no UI — added UI today)
+
+**Sound utility (`src/utils/sound.js`) — new file:**
+- Web Audio API synthesized sounds — no audio asset files
+- `playSound(type)` accepts `'ace'` / `'kill'` / `'block'`; no-ops if `vbstat_sounds` is false or AudioContext unavailable
+- Ace: two ascending bright sine tones; Kill: punchy descending sawtooth pair; Block: low square+sine thump
+- Lazy AudioContext via `window._vbAudioCtx`; auto-resumes if suspended after tab background
+
+**PlayerTile (`src/components/court/PlayerTile.jsx`):**
+- Imported `playSound` from `../../utils/sound`
+- `tapAndScore`: `playSound('kill')` / `playSound('ace')` / `playSound('block')` called alongside existing vibrate patterns
+
+**SettingsPage (`src/pages/SettingsPage.jsx`):**
+- Added `useProgramName` hook (reads/writes `STORAGE_KEYS.PROGRAM_NAME`)
+- Added `useCoachName` hook (reads/writes `STORAGE_KEYS.COACH_NAME`)
+- Program Name text input added to Personalization section (first field) — used in PDF headers and export filenames
+- Coach Name text input added to Personalization section (second field) — used on PDF reports and CSV exports
+- Sound Effects toggle added to Live Match section (between Haptic Feedback and Player Name Format)
+
 ## Weekly Summaries
 
 ## Monthly Summaries

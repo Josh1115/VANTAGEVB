@@ -532,7 +532,6 @@ export function MatchSummaryPage() {
   const [serveView,     setServeView]     = useState('all');
   const [selectedServingPlayerId, setSelectedServingPlayerId] = useState(null);
   const [trendsView,    setTrendsView]    = useState('trends');
-  const [passingView,   setPassingView]   = useState('passing');
   const [scoringView,   setScoringView]   = useState('scoring');
   const [stats, setStats] = useState(null);
   const [contacts, setContacts] = useState([]);
@@ -747,6 +746,7 @@ export function MatchSummaryPage() {
 
     // Attacking & blocking
     const ta = sum('ta'), k = sum('k'), ae = sum('ae');
+    const ae_ob = sum('ae_ob'), ae_net = sum('ae_net'), ae_blk = sum('ae_blk');
     const bs = sum('bs'), ba = sum('ba'), be = sum('be');
 
     // Defense
@@ -787,7 +787,7 @@ export function MatchSummaryPage() {
       },
       // Attacking views
       attacking: {
-        name: 'TOTAL', sp, mp, ta, k, ae,
+        name: 'TOTAL', sp, mp, ta, k, ae, ae_ob, ae_net, ae_blk,
         hit_pct:   ta > 0 ? (k - ae) / ta : null,
         k_pct:     ta > 0 ? k / ta : null,
         kps:       sp > 0 ? k / sp : null,
@@ -1203,6 +1203,7 @@ export function MatchSummaryPage() {
                   onRowClick={(row) => setSelectedServingPlayerId(id => String(id) === String(row.id) ? null : row.id)}
                   selectedRowId={selectedServingPlayerId}
                   onNameClick={handlePlayerClick}
+                  showGlossary
                 />
                 {selectedServingPlayerId && displayStats?.contacts && (() => {
                   const player = playerRows.find(r => String(r.id) === String(selectedServingPlayerId));
@@ -1224,14 +1225,7 @@ export function MatchSummaryPage() {
             )}
 
             {tab === 'passing' && (
-              <>
-                <SubToggle
-                  options={[['passing', 'PASSING'], ['setting', 'SETTING']]}
-                  value={passingView}
-                  onChange={setPassingView}
-                />
-                <StatTable columns={TAB_COLUMNS[passingView]} rows={playerRows} totalsRow={statTotals?.[passingView]} onNameClick={handlePlayerClick} />
-              </>
+              <StatTable columns={TAB_COLUMNS['passing']} rows={playerRows} totalsRow={statTotals?.passing} onNameClick={handlePlayerClick} />
             )}
 
             {tab === 'attacking' && (
@@ -1434,7 +1428,7 @@ export function MatchSummaryPage() {
             )}
 
             {tab === 'ver' && (
-              <StatTable columns={TAB_COLUMNS['ver']} rows={playerRows} totalsRow={statTotals?.ver} onNameClick={handlePlayerClick} />
+              <StatTable columns={TAB_COLUMNS['ver']} rows={playerRows} totalsRow={statTotals?.ver} onNameClick={handlePlayerClick} showGlossary />
             )}
 
             {tab === 'compare' && (

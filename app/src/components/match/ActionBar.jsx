@@ -1,4 +1,5 @@
 import { memo, useRef, useState } from 'react';
+import { HoldProgressRing } from '../ui/HoldProgressRing';
 import { useNavigate } from 'react-router-dom';
 import { useMatchStore } from '../../store/matchStore';
 import { useUiStore } from '../../store/uiStore';
@@ -85,9 +86,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         className={`${btnBase} hover:bg-slate-700 relative overflow-hidden
           ${backHold.held ? 'bg-slate-600 text-orange-300' : 'bg-slate-800 text-slate-300'}`}
       >
-        {backHold.held && (
-          <span className="absolute inset-0 bg-orange-500/40 animate-[grow_450ms_linear_forwards] origin-left" />
-        )}
+        <HoldProgressRing active={backHold.held} durationMs={HOLD_MS} />
         <span className={`text-[1.53vmin] leading-none ${backHold.held ? 'text-orange-400' : 'text-slate-500'}`}>ROT BACK</span>
       </button>
 
@@ -99,9 +98,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         className={`${btnBase} hover:bg-slate-700 relative overflow-hidden
           ${fwdHold.held ? 'bg-slate-600 text-orange-300' : 'bg-slate-800 text-slate-300'}`}
       >
-        {fwdHold.held && (
-          <span className="absolute inset-0 bg-orange-500/40 animate-[grow_450ms_linear_forwards] origin-left" />
-        )}
+        <HoldProgressRing active={fwdHold.held} durationMs={HOLD_MS} />
         <span className={`text-[1.53vmin] leading-none ${fwdHold.held ? 'text-orange-400' : 'text-slate-500'}`}>ROT FWD</span>
       </button>
 

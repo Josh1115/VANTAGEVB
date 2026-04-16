@@ -5,6 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { ACTION, RESULT, SERVE_TYPE, SIDE } from '../../constants';
 import { getStorageItem, STORAGE_KEYS } from '../../utils/storage';
 import { fmtPlayerName } from '../../stats/formatters';
+import { playSound } from '../../utils/sound';
 
 // ── Module-level style constants — defined once, never re-created on render ──
 const JERSEY_SVG_STYLE = { width: '121%', height: '3.025vmin', top: '50%', left: '-10.5%', transform: 'translateY(-50%)' };
@@ -12,6 +13,7 @@ const NAME_STYLE       = { fontSize: '3.15vmin', letterSpacing: '0.06em', fontFa
 const BADGE_POS_STYLE  = { bottom: '36%', left: '50%' };
 const DELAY_50         = { animationDelay: '50ms' };
 const DELAY_100        = { animationDelay: '100ms' };
+const DELAY_150        = { animationDelay: '150ms' };
 
 // Pre-built pass badge text styles (one per rating) — avoids recreating every render
 const PASS_BADGE_STYLES = [
@@ -149,9 +151,9 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
 
   const tapAndScore = async (action, result, extra = {}) => {
     flashJersey();
-    if (action === ACTION.ATTACK && result === RESULT.KILL)  vibrate(30);
-    else if (action === ACTION.SERVE  && result === RESULT.ACE)  vibrate([18, 25, 45]);
-    else if (action === ACTION.BLOCK  && result === RESULT.SOLO) vibrate(45);
+    if (action === ACTION.ATTACK && result === RESULT.KILL)  { vibrate(30);          playSound('kill');  }
+    else if (action === ACTION.SERVE  && result === RESULT.ACE)  { vibrate([18, 25, 45]); playSound('ace');   }
+    else if (action === ACTION.BLOCK  && result === RESULT.SOLO) { vibrate(45);           playSound('block'); }
     // Read fresh state at tap time (not stale render-time value) so the contact
     // lands in the correct rally bucket even if state changed since last render.
     const currentRally = useMatchStore.getState().rallyCount;
@@ -444,7 +446,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
         {/* Row 2 — Attack: ATT K AE (or AE reason sub-panel: OB / NET / BLK) */}
         <div className="px-[7.5%]">
           <span className={`text-[1.3vmin] font-bold uppercase tracking-wide leading-none ${aePending ? 'text-red-300' : 'text-slate-500'}`}>
-            {aePending ? 'Attack Error — OB, NET, or Blocked?' : 'Hitting'}
+            {aePending ? 'Attack Error — OB, NET, BLK, or BRA?' : 'Hitting'}
           </span>
         </div>
         <div className="flex flex-none h-[3.837vmin] py-0 px-[7.5%] gap-[0.5vmin] border-b border-black/30">
@@ -464,6 +466,10 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
                 onTap={() => { handleAeBlocked(); setAePending(false); }}
                 cls="bg-blue-900/80 text-blue-200 hover:bg-blue-800/90 serve-unlock-btn"
                 style={DELAY_100} />
+              <Btn label="BRA"
+                onTap={() => { tapAndScoreThem(ACTION.ATTACK, RESULT.ERROR, { error_type: 'bra' }); setAePending(false); }}
+                cls="bg-red-950/80 text-red-300 hover:bg-red-900/80 serve-unlock-btn"
+                style={DELAY_150} />
             </>
           ) : (
             <>

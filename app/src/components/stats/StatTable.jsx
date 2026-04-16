@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import clsx from 'clsx';
+import { StatGlossaryDrawer } from './StatGlossaryDrawer';
 
 /**
  * Sortable stat table.
@@ -7,9 +8,10 @@ import clsx from 'clsx';
  * columns: [{ key, label, fmt?, defaultDesc? }]
  * rows:    [{ id, name, ...statValues }]
  */
-export function StatTable({ columns, rows, totalsRow, onRowClick, onNameClick, selectedRowId }) {
-  const [sortKey, setSortKey] = useState(columns[1]?.key ?? columns[0].key);
-  const [desc, setDesc] = useState(true);
+export function StatTable({ columns, rows, totalsRow, onRowClick, onNameClick, selectedRowId, showGlossary = false }) {
+  const [sortKey,      setSortKey]      = useState(columns[1]?.key ?? columns[0].key);
+  const [desc,         setDesc]         = useState(true);
+  const [glossaryOpen, setGlossaryOpen] = useState(false);
 
   function handleSort(key) {
     if (sortKey === key) {
@@ -27,6 +29,21 @@ export function StatTable({ columns, rows, totalsRow, onRowClick, onNameClick, s
   }), [rows, sortKey, desc]);
 
   return (
+    <div>
+      {showGlossary && (
+        <div className="flex justify-end mb-1">
+          <button
+            onClick={() => setGlossaryOpen(true)}
+            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+          >
+            <span className="border border-slate-600 rounded px-1.5 py-px font-mono text-[10px] leading-none">?</span>
+            <span>Glossary</span>
+          </button>
+        </div>
+      )}
+      {glossaryOpen && (
+        <StatGlossaryDrawer columns={columns} onClose={() => setGlossaryOpen(false)} />
+      )}
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
@@ -104,6 +121,7 @@ export function StatTable({ columns, rows, totalsRow, onRowClick, onNameClick, s
           </tfoot>
         )}
       </table>
+    </div>
     </div>
   );
 }
