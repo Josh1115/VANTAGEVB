@@ -880,7 +880,12 @@ export function HomePage() {
               {match.status === MATCH_STATUS.SCHEDULED ? (
                 <div className="w-full bg-surface rounded-xl px-4 py-3 flex items-center justify-between border-l-4 border-transparent">
                   <div>
-                    <div className="font-semibold">{match.opponent_name ?? 'vs. Unknown'}</div>
+                    <div className="font-semibold flex items-center gap-1.5 flex-wrap">
+                      {match.opponent_name ?? 'vs. Unknown'}
+                      {match.match_type === 'tourney' && match.tournament_name && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide">{match.tournament_name}</span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       {match.location && (
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
