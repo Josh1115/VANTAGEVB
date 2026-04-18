@@ -644,10 +644,15 @@ export function HomePage() {
               { label: 'SRV%', val: fmtPct(seasonLeaders.teamStats.si_pct)      },
               { label: 'ACE%', val: fmtPct(seasonLeaders.teamStats.ace_pct)     },
             ].map(({ label, val }) => (
-              <div key={label} className="bg-surface rounded-xl p-3 text-center">
+              <button
+                key={label}
+                onClick={() => defaultSeasonId && navigate(`/seasons/${defaultSeasonId}/team`)}
+                disabled={!defaultSeasonId}
+                className="bg-surface rounded-xl p-3 text-center active:scale-95 transition-transform disabled:active:scale-100"
+              >
                 <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</div>
                 <div className="text-xl font-black text-primary tabular-nums mt-0.5">{val}</div>
-              </div>
+              </button>
             ))}
           </div>
         )}
