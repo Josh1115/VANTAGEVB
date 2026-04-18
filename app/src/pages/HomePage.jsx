@@ -13,6 +13,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { NetDivider } from '../components/ui/NetDivider';
 import { SwipeableMatchCard } from '../components/ui/SwipeableMatchCard';
 import { VBPlayerScene } from '../components/ui/VBPlayerScene';
+import { CourtWhiteboard } from '../components/match/CourtWhiteboard';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -53,6 +54,7 @@ function SetPips({ ourSets, oppSets }) {
 export function HomePage() {
   const navigate = useNavigate();
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [matchView, setMatchView] = useState(() => getStorageItem(STORAGE_KEYS.MATCH_VIEW_DEFAULT, 'recent'));
   const scoreDetail = getStorageItem(STORAGE_KEYS.SCORE_DETAIL, 'sets');
 
@@ -982,19 +984,32 @@ export function HomePage() {
 
         <NetDivider />
 
-        {/* ── Tools ── */}
-        <button
-          onClick={() => navigate('/tools')}
-          className="group w-full card-top-glow bg-surface rounded-xl p-4 text-left flex items-center gap-4 hover:bg-slate-700 active:scale-[0.97] transition-[transform,background-color] duration-75 animate-slide-up-fade"
-          style={{ animationDelay: '200ms' }}
-        >
-          <span className="text-3xl inline-block transition-transform duration-75 group-active:-translate-y-1.5 group-active:scale-125">🛠️</span>
-          <div className="flex-1">
-            <div className="font-semibold text-sm">Tools</div>
-            <div className="text-xs text-slate-400">Practice utilities for coaches</div>
-          </div>
-          <span className="text-slate-500 text-lg">›</span>
-        </button>
+        {/* ── Tools + Whiteboard (side by side) ── */}
+        <div className="flex gap-2 animate-slide-up-fade" style={{ animationDelay: '200ms' }}>
+          <button
+            onClick={() => navigate('/tools')}
+            className="group flex-1 card-top-glow bg-surface rounded-xl p-3 text-left flex items-center gap-2.5 hover:bg-slate-700 active:scale-[0.97] transition-[transform,background-color] duration-75"
+          >
+            <span className="text-2xl inline-block transition-transform duration-75 group-active:-translate-y-1 group-active:scale-125">🛠️</span>
+            <div className="min-w-0">
+              <div className="font-semibold text-sm">Tools</div>
+              <div className="text-[11px] text-slate-400 truncate">Practice utilities</div>
+            </div>
+            <span className="text-slate-500 ml-auto">›</span>
+          </button>
+
+          <button
+            onClick={() => setShowWhiteboard(true)}
+            className="group flex-1 card-top-glow bg-surface rounded-xl p-3 text-left flex items-center gap-2.5 hover:bg-slate-700 active:scale-[0.97] transition-[transform,background-color] duration-75"
+          >
+            <span className="text-2xl inline-block transition-transform duration-75 group-active:-translate-y-1 group-active:scale-125">📋</span>
+            <div className="min-w-0">
+              <div className="font-semibold text-sm">Whiteboard</div>
+              <div className="text-[11px] text-slate-400 truncate">Timeout draw & diagram</div>
+            </div>
+            <span className="text-slate-500 ml-auto">›</span>
+          </button>
+        </div>
 
         <div
           className="text-[11px] font-semibold tracking-[0.18em] text-slate-600 text-center pt-2 pb-1"
@@ -1003,6 +1018,10 @@ export function HomePage() {
           {todayDisplay}
         </div>
       </div>
+
+      {showWhiteboard && (
+        <CourtWhiteboard onClose={() => setShowWhiteboard(false)} />
+      )}
 
       {confirmDelete && (
         <ConfirmDialog
