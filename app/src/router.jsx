@@ -19,7 +19,8 @@ const LiveMatchPage    = lazy(() => import('./pages/LiveMatchPage').then(m => ({
 const SetLineupPage    = lazy(() => import('./pages/SetLineupPage').then(m => ({ default: m.SetLineupPage })));
 const MatchSummaryPage = lazy(() => import('./pages/MatchSummaryPage').then(m => ({ default: m.MatchSummaryPage })));
 const SeasonsPage      = lazy(() => import('./pages/SeasonsPage').then(m => ({ default: m.SeasonsPage })));
-const SeasonDetailPage = lazy(() => import('./pages/SeasonDetailPage').then(m => ({ default: m.SeasonDetailPage })));
+const SeasonDetailPage  = lazy(() => import('./pages/SeasonDetailPage').then(m => ({ default: m.SeasonDetailPage })));
+const TeamSeasonPage    = lazy(() => import('./pages/TeamSeasonPage').then(m => ({ default: m.TeamSeasonPage })));
 const ReportsPage      = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const SettingsPage     = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const ToolsPage        = lazy(() => import('./pages/ToolsPage').then(m => ({ default: m.ToolsPage })));
@@ -52,7 +53,8 @@ export const router = createBrowserRouter([
       { path: 'opponents',                      element: <S><OpponentListPage /></S> },
       { path: 'opponents/:oppId',               element: <S><OpponentDetailPage /></S> },
       { path: 'seasons',                     element: <S><SeasonsPage /></S> },
-      { path: 'seasons/:seasonId',           element: <S><SeasonDetailPage /></S> },
+      { path: 'seasons/:seasonId',            element: <S><SeasonDetailPage /></S> },
+      { path: 'seasons/:seasonId/team',      element: <S><TeamSeasonPage /></S> },
       { path: 'matches/new',                 element: <S><MatchSetupPage /></S> },
       { path: 'matches/:matchId/live',        element: <S><LiveMatchPage /></S> },
       { path: 'matches/:matchId/set-lineup', element: <S><SetLineupPage /></S> },

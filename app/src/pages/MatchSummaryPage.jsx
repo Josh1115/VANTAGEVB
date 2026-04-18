@@ -553,7 +553,10 @@ export function MatchSummaryPage() {
   const [editDate,      setEditDate]      = useState('');
   const [editLoc,       setEditLoc]       = useState('home');
   const [editConf,      setEditConf]      = useState('non-con');
-  const [editMatchType, setEditMatchType] = useState('reg-season');
+  const [editMatchType,    setEditMatchType]    = useState('reg-season');
+  const [editTourneyName,  setEditTourneyName]  = useState('');
+  const [editTourneyRound, setEditTourneyRound] = useState('pool');
+  const [editPlayoffRound, setEditPlayoffRound] = useState('');
   const [editSaving,    setEditSaving]    = useState(false);
 
   // Scouting auto-populate
@@ -826,6 +829,9 @@ export function MatchSummaryPage() {
     setEditLoc(match.location ?? 'home');
     setEditConf(match.conference ?? 'non-con');
     setEditMatchType(match.match_type ?? 'reg-season');
+    setEditTourneyName(match.tournament_name ?? '');
+    setEditTourneyRound(match.tournament_round ?? 'pool');
+    setEditPlayoffRound(match.playoff_round ?? '');
     setEditOpen(true);
   }
 
@@ -840,7 +846,10 @@ export function MatchSummaryPage() {
         date:            editDate ? new Date(editDate + 'T12:00:00').toISOString() : match.date,
         location:        editLoc,
         conference:      editConf,
-        match_type:      editMatchType,
+        match_type:       editMatchType,
+        tournament_name:  editMatchType === 'tourney' ? editTourneyName.trim() || null : null,
+        tournament_round: editMatchType === 'tourney' ? editTourneyRound : null,
+        playoff_round:    editMatchType === 'ihsa-playoffs' ? editPlayoffRound.trim() || null : null,
       });
       setEditOpen(false);
     } finally {
@@ -1716,6 +1725,53 @@ export function MatchSummaryPage() {
                 ))}
               </div>
             </div>
+
+            {/* Tournament Name + Round */}
+            {editMatchType === 'tourney' && (
+              <>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+                    Tournament Name <span className="text-slate-500 normal-case font-normal">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editTourneyName}
+                    onChange={(e) => setEditTourneyName(e.target.value)}
+                    placeholder="e.g. Holiday Classic, IHSA Sectional…"
+                    className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Round</label>
+                  <div className="flex gap-2">
+                    {[['pool', 'Pool Play'], ['bracket', 'Bracket / Playoffs']].map(([val, label]) => (
+                      <button
+                        key={val}
+                        onClick={() => setEditTourneyRound(val)}
+                        className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors
+                          ${editTourneyRound === val ? 'bg-primary text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Playoff Round */}
+            {editMatchType === 'ihsa-playoffs' && (
+              <div>
+                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Playoff Round</label>
+                <input
+                  type="text"
+                  value={editPlayoffRound}
+                  onChange={(e) => setEditPlayoffRound(e.target.value)}
+                  placeholder="e.g. Regional, Sectional, Super-Sectional, State…"
+                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
+                />
+              </div>
+            )}
           </div>
         </Modal>
       )}

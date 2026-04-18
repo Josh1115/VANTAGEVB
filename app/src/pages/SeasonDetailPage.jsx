@@ -54,7 +54,10 @@ export function SeasonDetailPage() {
   const [schedDate,      setSchedDate]      = useState(() => new Date().toISOString().slice(0, 10));
   const [schedLoc,       setSchedLoc]       = useState('home');
   const [schedConf,      setSchedConf]      = useState('non-con');
-  const [schedMatchType, setSchedMatchType] = useState('reg-season');
+  const [schedMatchType,    setSchedMatchType]    = useState('reg-season');
+  const [schedTourneyName,  setSchedTourneyName]  = useState('');
+  const [schedTourneyRound, setSchedTourneyRound] = useState('pool');
+  const [schedPlayoffRound, setSchedPlayoffRound] = useState('');
   const [schedSaving,    setSchedSaving]    = useState(false);
 
   if (!data) return null;
@@ -75,6 +78,9 @@ export function SeasonDetailPage() {
     setSchedLoc('home');
     setSchedConf('non-con');
     setSchedMatchType('reg-season');
+    setSchedTourneyName('');
+    setSchedTourneyRound('pool');
+    setSchedPlayoffRound('');
     setSchedOpen(false);
   }
 
@@ -86,6 +92,9 @@ export function SeasonDetailPage() {
     setSchedLoc(match.location ?? 'home');
     setSchedConf(match.conference ?? 'non-con');
     setSchedMatchType(match.match_type ?? 'reg-season');
+    setSchedTourneyName(match.tournament_name ?? '');
+    setSchedTourneyRound(match.tournament_round ?? 'pool');
+    setSchedPlayoffRound(match.playoff_round ?? '');
     setSchedOpen(true);
   }
 
@@ -105,7 +114,10 @@ export function SeasonDetailPage() {
         date:          schedDate ? new Date(schedDate + 'T12:00:00').toISOString() : new Date().toISOString(),
         location:      schedLoc,
         conference:    schedConf,
-        match_type:    schedMatchType,
+        match_type:       schedMatchType,
+        tournament_name:  schedMatchType === 'tourney' ? schedTourneyName.trim() || null : null,
+        tournament_round: schedMatchType === 'tourney' ? schedTourneyRound : null,
+        playoff_round:    schedMatchType === 'ihsa-playoffs' ? schedPlayoffRound.trim() || null : null,
       };
       if (editMatchId) {
         await db.matches.update(editMatchId, fields);
@@ -362,6 +374,56 @@ export function SeasonDetailPage() {
                 ))}
               </div>
             </div>
+
+            {/* Tournament Name + Round */}
+            {schedMatchType === 'tourney' && (
+              <>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+                    Tournament Name <span className="text-slate-500 normal-case font-normal">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={schedTourneyName}
+                    onChange={(e) => setSchedTourneyName(e.target.value)}
+                    placeholder="e.g. Holiday Classic, IHSA Sectional…"
+                    className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Round</label>
+                  <div className="flex gap-2">
+                    {[['pool', 'Pool Play'], ['bracket', 'Bracket / Playoffs']].map(([val, label]) => (
+                      <button
+                        key={val}
+                        onClick={() => setSchedTourneyRound(val)}
+                        className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors
+                          ${schedTourneyRound === val
+                            ? 'bg-primary text-white border-primary'
+                            : 'bg-surface text-slate-300 border-slate-600 hover:border-slate-400'
+                          }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Playoff Round */}
+            {schedMatchType === 'ihsa-playoffs' && (
+              <div>
+                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Playoff Round</label>
+                <input
+                  type="text"
+                  value={schedPlayoffRound}
+                  onChange={(e) => setSchedPlayoffRound(e.target.value)}
+                  placeholder="e.g. Regional, Sectional, Super-Sectional, State…"
+                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
+                />
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex gap-3 pt-2">
