@@ -164,8 +164,10 @@ export function HomePage() {
     const awayL  = matches.filter(m => m.location === 'away'    && !isWin(m)).length;
     const neutW  = matches.filter(m => m.location === 'neutral' &&  isWin(m)).length;
     const neutL  = matches.filter(m => m.location === 'neutral' && !isWin(m)).length;
-    const confW  = matches.filter(m => m.conference === 'conference' &&  isWin(m)).length;
-    const confL  = matches.filter(m => m.conference === 'conference' && !isWin(m)).length;
+    const confW   = matches.filter(m => m.conference === 'conference' &&  isWin(m)).length;
+    const confL   = matches.filter(m => m.conference === 'conference' && !isWin(m)).length;
+    const tourneyW = matches.filter(m => m.match_type === 'tourney' &&  isWin(m)).length;
+    const tourneyL = matches.filter(m => m.match_type === 'tourney' && !isWin(m)).length;
     const last5  = [...matches].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
     const last5W = last5.filter(isWin).length;
     const last5L = last5.length - last5W;
@@ -174,7 +176,7 @@ export function HomePage() {
       seasonName: season.name ?? String(season.year),
       wins, losses, total: matches.length,
       winPct:  matches.length ? wins / matches.length : null,
-      homeW, homeL, awayW, awayL, neutW, neutL, confW, confL, last5W, last5L, last5Count: last5.length,
+      homeW, homeL, awayW, awayL, neutW, neutL, confW, confL, tourneyW, tourneyL, last5W, last5L, last5Count: last5.length,
       hasLocData: (homeW + homeL + awayW + awayL + neutW + neutL) > 0,
       matchProgress: { completed: matches.length, total: allSeasonMatches.length },
     };
@@ -474,13 +476,13 @@ export function HomePage() {
             onPointerUp={handleLogoPointerUp}
             onPointerLeave={handleLogoPointerUp}
           >
-            VBSTAT
+            VANTAGE
           </span>
           <span className="text-slate-400 font-normal text-sm tracking-wide italic">
-            powered by Shua Stat Engine
+            powered by the Shua Stat Engine
           </span>
         </h1>
-        <div className="text-[12px] font-semibold tracking-[0.22em] text-slate-600 uppercase mt-1">
+        <div className="text-base font-semibold tracking-[0.22em] text-slate-600 uppercase mt-1">
           Precision Sideline Analytics
         </div>
       </header>
@@ -572,7 +574,7 @@ export function HomePage() {
                   <span className="font-black text-primary">
                     {Math.round(seasonRecord.winPct * 100)}% WIN
                   </span>
-                  {seasonRecord.hasLocData && <span className="text-slate-700">·</span>}
+                  {seasonRecord.hasLocData && <span className="text-slate-400 font-black">·</span>}
                 </>
               )}
               {seasonRecord.hasLocData && (
@@ -584,7 +586,7 @@ export function HomePage() {
                   )}
                   {(seasonRecord.awayW + seasonRecord.awayL) > 0 && (
                     <>
-                      <span className="text-slate-700">·</span>
+                      <span className="text-slate-400 font-black">·</span>
                       <span className="text-slate-400 font-semibold">
                         {seasonRecord.awayW}–{seasonRecord.awayL} <span className="text-slate-500">AWAY</span>
                       </span>
@@ -592,7 +594,7 @@ export function HomePage() {
                   )}
                   {(seasonRecord.neutW + seasonRecord.neutL) > 0 && (
                     <>
-                      <span className="text-slate-700">·</span>
+                      <span className="text-slate-400 font-black">·</span>
                       <span className="text-slate-400 font-semibold">
                         {seasonRecord.neutW}–{seasonRecord.neutL} <span className="text-slate-500">NEUT</span>
                       </span>
@@ -600,15 +602,23 @@ export function HomePage() {
                   )}
                   {(seasonRecord.confW + seasonRecord.confL) > 0 && (
                     <>
-                      <span className="text-slate-700">·</span>
+                      <span className="text-slate-400 font-black">·</span>
                       <span className="text-slate-400 font-semibold">
                         {seasonRecord.confW}–{seasonRecord.confL} <span className="text-slate-500">CONF</span>
                       </span>
                     </>
                   )}
+                  {(seasonRecord.tourneyW + seasonRecord.tourneyL) > 0 && (
+                    <>
+                      <span className="text-slate-400 font-black">·</span>
+                      <span className="text-slate-400 font-semibold">
+                        {seasonRecord.tourneyW}–{seasonRecord.tourneyL} <span className="text-slate-500">TOURN</span>
+                      </span>
+                    </>
+                  )}
                   {seasonRecord.last5Count > 0 && (
                     <>
-                      <span className="text-slate-700">·</span>
+                      <span className="text-slate-400 font-black">·</span>
                       <span className="text-slate-400 font-semibold">
                         {seasonRecord.last5W}–{seasonRecord.last5L} <span className="text-slate-500">L{seasonRecord.last5Count}</span>
                       </span>
@@ -622,7 +632,7 @@ export function HomePage() {
             {seasonRecord.matchProgress.total > 0 && (
               <div className="px-4 pt-2 pb-3 border-t border-slate-700/60">
                 <div className="flex justify-between text-[10px] font-bold tracking-[0.15em] text-slate-500 mb-1.5">
-                  <span>SEASON PROGRESS</span>
+                  <span>SEASON PROGRESS · {Math.round((seasonRecord.matchProgress.completed / seasonRecord.matchProgress.total) * 100)}%</span>
                   <span>{seasonRecord.matchProgress.completed} / {seasonRecord.matchProgress.total}</span>
                 </div>
                 <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">

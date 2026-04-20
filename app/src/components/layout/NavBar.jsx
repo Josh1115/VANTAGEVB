@@ -1,14 +1,11 @@
 import { memo } from 'react';
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../db/schema';
-import { MATCH_STATUS } from '../../constants';
+import { NavLink, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
 
 const TABS = [
   { to: '/',         label: 'Home',     icon: '🏠', end: true,  idleAnim: 'animate-home-pulse'   },
   { to: '/teams',    label: 'Teams',    icon: '👥', end: false, idleAnim: 'animate-teams-wobble' },
-  null, // FAB slot
+  { to: '/records',  label: 'Records',  icon: '🏆', end: false, idleAnim: 'animate-icon-bounce'  },
   { to: '/reports',  label: 'Reports',  icon: '📊', end: false, idleAnim: 'animate-chart-float'  },
   { to: '/settings', label: 'Settings', icon: '⚙️', end: false, idleAnim: 'animate-gear-spin'   },
 ];
@@ -18,12 +15,7 @@ const tabClass = (isActive) =>
     isActive ? 'text-primary' : 'text-slate-400');
 
 export const NavBar = memo(function NavBar() {
-  const navigate = useNavigate();
   const { pathname } = useLocation();
-  const hasActiveMatch = useLiveQuery(
-    () => db.matches.where('status').equals(MATCH_STATUS.IN_PROGRESS).count().then((c) => c > 0),
-    []
-  );
 
   const activeIdx = TABS.findIndex((tab) => {
     if (!tab) return false;
@@ -43,19 +35,6 @@ export const NavBar = memo(function NavBar() {
         )}
 
         {TABS.map((tab, i) => {
-          if (!tab) {
-            return (
-              <div key="fab" className="flex-1 flex justify-center">
-                <button
-                  onClick={() => navigate('/matches/new')}
-                  className={`relative w-14 h-14 -mt-4 rounded-full bg-primary text-white text-2xl flex items-center justify-center shadow-lg active:scale-95 group${hasActiveMatch === false ? ' fab-glow' : ''}`}
-                  aria-label="New Match"
-                >
-                  <span className="inline-block transition-transform duration-200 group-active:rotate-45">+</span>
-                </button>
-              </div>
-            );
-          }
           return (
             <NavLink
               key={tab.to}

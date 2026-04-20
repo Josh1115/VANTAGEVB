@@ -76,9 +76,9 @@ const CHARTS = [
   { key: 'earned',  label: 'Earned',      decimals: 0, isCount: true,  color: '#22c55e' },
   { key: 'free',    label: 'Free',        decimals: 0, isCount: true,  color: '#38bdf8' },
   { key: 'given',   label: 'Given',       decimals: 0, isCount: true,  color: '#f87171' },
-  { key: 'apr',     label: 'Pass Rating', decimals: 2, isCount: false, color: '#60a5fa', domain: [0, 3] },
-  { key: 'si_pct',  label: 'Serve%',      decimals: 1, isCount: false, color: '#2dd4bf', domain: [0, 100] },
-  { key: 'ace_pct', label: 'Ace%',        decimals: 1, isCount: false, color: '#67e8f9', domain: [0, 100] },
+  { key: 'apr',     label: 'Pass Rating', decimals: 2, isCount: false, color: '#60a5fa', domain: [1, 3] },
+  { key: 'si_pct',  label: 'Serve%',      decimals: 1, isCount: false, color: '#2dd4bf', domain: [50, 100] },
+  { key: 'ace_pct', label: 'Ace%',        decimals: 1, isCount: false, color: '#67e8f9', domain: [0, 30] },
   { key: 'hit_pct', label: 'Hit%',        decimals: 1, isCount: false, color: '#fb923c' },
   { key: 'k_pct',   label: 'K%',          decimals: 1, isCount: false, color: '#fde68a', domain: [0, 100] },
 ];

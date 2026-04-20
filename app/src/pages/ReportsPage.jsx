@@ -271,6 +271,7 @@ export function ReportsPage() {
   const [conference, setConference] = useState('');
   const [location,   setLocation]   = useState('');
   const [matchTypes, setMatchTypes] = useState([]);
+  const [result,     setResult]     = useState('');
   const [stats, setStats] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -342,6 +343,7 @@ export function ReportsPage() {
   if (showChipFilters && conference) activeFilters.conference = conference;
   if (showChipFilters && location)   activeFilters.location   = location;
   if (showChipFilters && matchTypes.length) activeFilters.matchType = matchTypes;
+  if (showChipFilters && result)     activeFilters.result     = result;
   const hasFilters = Object.keys(activeFilters).length > 0;
 
   // Short date label for match chips — "3/15"
@@ -363,7 +365,7 @@ export function ReportsPage() {
         .finally(() => setLoading(false));
     }, 150);
     return () => clearTimeout(statsDebounceRef.current);
-  }, [selectedSeasonId, selectedMatchIds, conference, location, matchTypes]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedSeasonId, selectedMatchIds, conference, location, matchTypes, result]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const playerRows = useMemo(() =>
     stats && !stats.empty
@@ -589,6 +591,12 @@ export function ReportsPage() {
               >{label}</button>
             ))}
           </div>
+          <div className="flex gap-1.5 flex-wrap items-center">
+            <span className="text-[10px] text-slate-500 uppercase tracking-wide mr-1">Result</span>
+            {[['', 'All'], ['win', 'Win'], ['loss', 'Loss']].map(([val, label]) => (
+              <button key={val} onClick={() => setResult(val)} className={chipClass(result === val)}>{label}</button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -615,7 +623,7 @@ export function ReportsPage() {
           description={`${stats.totalMatchCount} match${stats.totalMatchCount !== 1 ? 'es' : ''} in this season — none match the current filters`}
           action={
             <button
-              onClick={() => { setConference(''); setLocation(''); setMatchTypes([]); setSelectedMatchIds(null); }}
+              onClick={() => { setConference(''); setLocation(''); setMatchTypes([]); setResult(''); setSelectedMatchIds(null); }}
               className="mt-1 text-primary text-sm underline underline-offset-2"
             >
               Clear filters

@@ -756,7 +756,7 @@ export async function computeMatchStats(matchId) {
 
 /**
  * Fetches and aggregates all stats for an entire season.
- * Optional filters: { conference: 'conference'|'non-con', location: 'home'|'away'|'neutral', matchType: string }
+ * Optional filters: { conference: 'conference'|'non-con', location: 'home'|'away'|'neutral', matchType: string, result: 'win'|'loss' }
  * Returns { players, team, rotation, freeball, setsPlayed, matchCount, totalMatchCount }
  * or null if no matches exist, or { empty: true, totalMatchCount } if filters exclude all matches.
  */
@@ -766,13 +766,16 @@ export async function computeSeasonStats(seasonId, filters = {}) {
 
   const totalMatchCount = matches.length;
 
-  if (filters.matchIds?.length || filters.conference || filters.location || filters.matchType?.length) {
-    matches = matches.filter(m =>
-      (!filters.matchIds?.length    || filters.matchIds.includes(m.id)) &&
-      (!filters.conference          || m.conference === filters.conference) &&
-      (!filters.location            || m.location   === filters.location)  &&
-      (!filters.matchType?.length   || filters.matchType.includes(m.match_type ?? 'reg-season'))
-    );
+  if (filters.matchIds?.length || filters.conference || filters.location || filters.matchType?.length || filters.result) {
+    matches = matches.filter(m => {
+      if (filters.matchIds?.length  && !filters.matchIds.includes(m.id)) return false;
+      if (filters.conference        && m.conference !== filters.conference) return false;
+      if (filters.location          && m.location   !== filters.location)  return false;
+      if (filters.matchType?.length && !filters.matchType.includes(m.match_type ?? 'reg-season')) return false;
+      if (filters.result === 'win'  && !((m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0))) return false;
+      if (filters.result === 'loss' && !((m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0))) return false;
+      return true;
+    });
   }
 
   if (!matches.length) return { empty: true, totalMatchCount };
