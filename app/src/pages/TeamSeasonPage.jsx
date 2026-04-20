@@ -111,16 +111,39 @@ function StatTile({ label, value }) {
 
 // ── trend chart ───────────────────────────────────────────────────────────────
 
+function linearRegression(data, key) {
+  const pts = data.map((d, i) => [i, d[key]]).filter(([, y]) => y != null && !isNaN(y));
+  if (pts.length < 2) return null;
+  const n   = pts.length;
+  const sumX  = pts.reduce((a, [x]) => a + x, 0);
+  const sumY  = pts.reduce((a, [, y]) => a + y, 0);
+  const sumXY = pts.reduce((a, [x, y]) => a + x * y, 0);
+  const sumX2 = pts.reduce((a, [x]) => a + x * x, 0);
+  const denom = n * sumX2 - sumX * sumX;
+  if (denom === 0) return null;
+  const m = (n * sumXY - sumX * sumY) / denom;
+  const b = (sumY - m * sumX) / n;
+  return data.map((_, i) => m * i + b);
+}
+
 function TrendChart({ data, chartKey, label, decimals, color, domain }) {
   const tickFormatter = decimals > 0
     ? (v) => Number(v).toFixed(decimals)
     : (v) => String(Math.round(v));
 
+  const chartData = useMemo(() => {
+    const trend = linearRegression(data, chartKey);
+    if (!trend) return data;
+    return data.map((d, i) => ({ ...d, _trend: trend[i] }));
+  }, [data, chartKey]);
+
+  const hasTrend = chartData[0]?._trend != null;
+
   return (
     <div className="space-y-1">
       <p className="text-xs font-bold uppercase tracking-wider text-slate-400 px-1">{label}</p>
       <ResponsiveContainer width="100%" height={420}>
-        <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 24 }}>
+        <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 24 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
           <XAxis
             dataKey="opp"
@@ -140,6 +163,19 @@ function TrendChart({ data, chartKey, label, decimals, color, domain }) {
             domain={domain ?? ['auto', 'auto']}
           />
           <Tooltip content={<ChartTooltip decimals={decimals} />} />
+          {hasTrend && (
+            <Line
+              type="linear"
+              dataKey="_trend"
+              stroke="#64748b"
+              strokeWidth={1.5}
+              strokeDasharray="5 3"
+              dot={false}
+              activeDot={false}
+              legendType="none"
+              connectNulls
+            />
+          )}
           <Line
             type="monotone"
             dataKey={chartKey}
