@@ -61,6 +61,7 @@ function buildMatchStats(match, contacts, setsCount) {
     ace_pct: ts.ace_pct != null ? ts.ace_pct * 100 : null,
     hit_pct: ts.hit_pct != null ? ts.hit_pct * 100 : null,
     k_pct:   ts.k_pct   != null ? ts.k_pct   * 100 : null,
+    ver:     ts.ver     ?? null,
   };
 }
 
@@ -81,6 +82,7 @@ const CHARTS = [
   { key: 'ace_pct', label: 'Ace%',        decimals: 1, isCount: false, color: '#67e8f9', domain: [0, 30] },
   { key: 'hit_pct', label: 'Hit%',        decimals: 1, isCount: false, color: '#fb923c' },
   { key: 'k_pct',   label: 'K%',          decimals: 1, isCount: false, color: '#fde68a', domain: [0, 100] },
+  { key: 'ver',     label: 'Team VER',    decimals: 1, isCount: false, color: '#e879f9' },
 ];
 
 const COUNT_KEYS = ['k', 'ace', 'blk', 'dig', 'ast', 'rec', 'earned', 'free', 'given'];
@@ -316,12 +318,13 @@ export function TeamSeasonPage() {
               <StatTile label="DIG"  value={fmtVal(seasonTotals.dig)} />
               <StatTile label="AST"  value={fmtVal(seasonTotals.ast)} />
             </div>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-6 gap-2">
               <StatTile label="REC"  value={fmtVal(seasonTotals.pa)} />
               <StatTile label="APR"  value={fmtVal(seasonTotals.apr, 2)} />
               <StatTile label="HIT%" value={fmtHit(seasonTotals.hit_pct)} />
               <StatTile label="SI%"  value={fmtPct(seasonTotals.si_pct)} />
               <StatTile label="ACE%" value={fmtPct(seasonTotals.ace_pct)} />
+              <StatTile label="VER"  value={fmtVal(seasonTotals.ver, 1)} />
             </div>
           </div>
 
