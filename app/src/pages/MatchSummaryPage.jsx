@@ -584,8 +584,8 @@ export function MatchSummaryPage() {
     const matchIds = seasonMatches.map(m => m.id);
     const contacts = await db.contacts.where('match_id').anyOf(matchIds).toArray();
     if (!contacts.length) return null;
-    const ts = computeTeamStats(contacts);
     const numSets = seasonMatches.reduce((s, m) => s + ((m.our_sets_won ?? 0) + (m.opp_sets_won ?? 0)), 0) || 1;
+    const ts = computeTeamStats(contacts, numSets);
     return {
       hit_pct: ts.hit_pct,
       si_pct:  ts.si_pct,
@@ -593,6 +593,7 @@ export function MatchSummaryPage() {
       ace_pct: ts.ace_pct,
       dig_ps:  (ts.dig ?? 0) / numSets,
       k_ps:    (ts.k   ?? 0) / numSets,
+      ver_ps:  ts.ver,
       n:       seasonMatches.length,
     };
   }, [match?.season_id, id]);
@@ -1594,6 +1595,7 @@ export function MatchSummaryPage() {
                       { label: 'ACE%',    today: t.ace_pct,             avg: seasonAvgs.ace_pct,  fmt: fmtPct,     higherBetter: true  },
                       { label: 'DIG/S',   today: (t.dig ?? 0) / numSets, avg: seasonAvgs.dig_ps,  fmt: v => v != null ? v.toFixed(1) : '—', higherBetter: true },
                       { label: 'K/S',     today: (t.k ?? 0) / numSets,  avg: seasonAvgs.k_ps,    fmt: v => v != null ? v.toFixed(1) : '—', higherBetter: true },
+                      { label: 'VER/S',   today: teamVer,               avg: seasonAvgs.ver_ps,   fmt: v => v != null ? v.toFixed(1) : '—', higherBetter: true },
                     ];
                     return (
                       <div className="bg-surface rounded-xl overflow-hidden">
@@ -1601,7 +1603,7 @@ export function MatchSummaryPage() {
                           <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">vs Season Avg</span>
                           <span className="text-[10px] text-slate-600 ml-1">({seasonAvgs.n} prior matches)</span>
                         </div>
-                        <div className="grid grid-cols-6 divide-x divide-slate-700/40">
+                        <div className="grid grid-cols-7 divide-x divide-slate-700/40">
                           {comparisons.map(({ label, today, avg, fmt, higherBetter }) => {
                             const delta = today != null && avg != null ? (today - avg) * (higherBetter ? 1 : -1) : null;
                             const up   = delta != null && delta > 0.005;
