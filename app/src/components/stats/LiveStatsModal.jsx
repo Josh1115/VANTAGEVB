@@ -5,7 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMatchStore } from '../../store/matchStore';
 import { useMatchStats } from '../../hooks/useMatchStats';
 import { db } from '../../db/schema';
-import { computeTeamStats, computeOppDisplayStats, computeRotationStats, computeRotationContactStats, computeISvsOOS, computeFreeDigWin, computeTransitionAttack, computePlayerStats, computeXKByPassRating } from '../../stats/engine';
+import { computeTeamStats, computeOppDisplayStats, computeRotationStats, computeRotationContactStats, computeISvsOOS, computeFreeDigWin, computeTransitionAttack, computePlayerStats, computeXKByPassRating, computePointQuality } from '../../stats/engine';
 import { StatTable } from './StatTable';
 import { PointQualityPanel } from './PointQualityPanel';
 import { fmtCount, fmtPct, fmtHitting, fmtPassRating, fmtVER } from '../../stats/formatters';
@@ -157,6 +157,16 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
     [committedContacts]
   );
 
+  const matchPointQuality = useMemo(
+    () => computePointQuality(allMatchContacts ?? []),
+    [allMatchContacts]
+  );
+
+  const matchOppTotal = useMemo(
+    () => (allMatchSets ?? []).reduce((sum, s) => sum + (s.opp_score ?? 0), 0),
+    [allMatchSets]
+  );
+
   const nameMap = useMemo(
     () => Object.fromEntries((roster ?? []).map(p => [String(p.id), p.name])),
     [roster]
@@ -273,8 +283,12 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
   const rows = useMemo(() =>
     lineup
       .filter((sl) => sl.playerId)
-      .map((sl) => ({ id: sl.playerId, name: sl.playerName, ...(playerStats[sl.playerId] ?? {}) })),
-    [lineup, playerStats]
+      .map((sl) => ({
+        id:   sl.playerId,
+        name: sl.playerName,
+        ...((scope === 'set' ? playerStats : matchPlayerStats)[sl.playerId] ?? {}),
+      })),
+    [lineup, playerStats, matchPlayerStats, scope]
   );
 
   if (!open) return null;
@@ -429,6 +443,25 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
               ))}
             </div>
 
+            {/* Scope toggle — set vs match */}
+            {activeTab !== 'RECORDS' && (
+              <div className="flex gap-2 px-3 py-2 border-b border-slate-800 bg-black/20 flex-shrink-0">
+                {['set', 'match'].map((s) => (
+                  <button
+                    key={s}
+                    onPointerDown={(e) => { e.preventDefault(); setScope(s); }}
+                    className={`px-4 py-1 rounded text-xs font-bold transition-colors ${
+                      scope === s
+                        ? 'bg-slate-600 text-white'
+                        : 'bg-slate-800 text-slate-500 hover:bg-slate-700'
+                    }`}
+                  >
+                    {s === 'set' ? `SET ${setNumber}` : 'MATCH'}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Serve sub-toggle */}
             {activeTab === 'SERVING' && (
               <div className="flex gap-1 px-3 py-2 border-b border-slate-800 bg-black/20 flex-shrink-0">
@@ -451,8 +484,11 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
             {/* Detail content */}
             <div className="flex-1 overflow-y-auto">
               {activeTab === 'POINTS'
-                ? <div className="p-4 space-y-6">
-                    <PointQualityPanel pq={pointQuality} oppScored={oppScore} />
+                ? <div className="p-4 space-y-4">
+                    <PointQualityPanel
+                      pq={scope === 'set' ? pointQuality : matchPointQuality}
+                      oppScored={scope === 'set' ? oppScore : matchOppTotal}
+                    />
                     {scoreTimelineCharts.length > 0 && (
                       <div className="space-y-4">
                         <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Score Timeline</p>
@@ -466,7 +502,9 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
                             {opponentName || 'Opp'}
                           </span>
                         </div>
-                        {scoreTimelineCharts.map(({ set, pts, maxScore }) => (
+                        {scoreTimelineCharts
+                          .filter(c => scope === 'match' || c.set.set_number === setNumber)
+                          .map(({ set, pts, maxScore }) => (
                           <div key={set.id}>
                             <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Set {set.set_number}</p>
                             <ResponsiveContainer width="100%" height={130}>

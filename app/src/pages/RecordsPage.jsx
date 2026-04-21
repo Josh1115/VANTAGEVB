@@ -4,8 +4,9 @@ import { db } from '../db/schema';
 import { computeTeamStats, computePlayerStats } from '../stats/engine';
 import { getContactsForMatches, getBatchSetsPlayedCount } from '../stats/queries';
 import { buildPlayerMaps } from '../utils/players';
-import { fmtCount, fmtBlocks, fmtDateShort } from '../stats/formatters';
+import { fmtCount, fmtBlocks, fmtDate } from '../stats/formatters';
 import { MATCH_STATUS } from '../constants';
+import { STORAGE_KEYS, getIntStorage } from '../utils/storage';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Spinner } from '../components/ui/Spinner';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -55,11 +56,12 @@ function mergeAndRank(computed, historical) {
     .map((e, i) => ({ ...e, rank: i + 1 }));
 }
 
-async function computeLeaderboards(tab, teamId) {
+async function computeLeaderboards(tab, teamId, currentSeasonId) {
   const players = await db.players.where('team_id').equals(teamId).toArray();
   const { playerNames } = buildPlayerMaps(players);
   const positions = Object.fromEntries(players.map(p => [p.id, p.position]));
   const activePlayerIds = new Set(players.filter(p => p.is_active).map(p => p.id));
+  const playerYears = Object.fromEntries(players.filter(p => p.year).map(p => [p.id, p.year]));
 
   const historicalAll = await db.historical_records
     .where('team_id').equals(teamId)
@@ -123,10 +125,11 @@ async function computeLeaderboards(tab, teamId) {
     return Object.fromEntries(
       RECORD_STATS.map(({ key }) => {
         const computed = seasonRows.map(({ pid, stats, year }) => ({
-          name:   playerNames[pid] ?? '?',
-          val:    getStatValue(stats, key),
+          name:       playerNames[pid] ?? '?',
+          val:        getStatValue(stats, key),
           year,
-          active: activePlayerIds.has(Number(pid)),
+          class_year: playerYears[Number(pid)] ?? '',
+          active:     activePlayerIds.has(Number(pid)),
         }));
         return [key, mergeAndRank(computed, historicalRows(key))];
       })
@@ -153,7 +156,7 @@ async function computeLeaderboards(tab, teamId) {
         for (const { opp, date, ps } of perMatch) {
           for (const [pid, s] of Object.entries(ps)) {
             const val = getStatValue(s, key);
-            if (val != null) computed.push({ name: playerNames[pid] ?? '?', val, opp, date, active: activePlayerIds.has(Number(pid)) });
+            if (val != null) computed.push({ name: playerNames[pid] ?? '?', val, opp, date, class_year: playerYears[Number(pid)] ?? '', active: activePlayerIds.has(Number(pid)) });
           }
         }
         return [key, mergeAndRank(computed, historicalRows(key))];
@@ -163,15 +166,16 @@ async function computeLeaderboards(tab, teamId) {
 
   // team_match tab — best single-match team performance
   const perMatch = allMatches.map(m => ({
-    opp:  m.opponent_name ?? 'Unknown',
-    date: m.date,
-    ts:   computeTeamStats(byMatch.get(m.id) ?? [], setsMap[m.id] || 1),
+    opp:           m.opponent_name ?? 'Unknown',
+    date:          m.date,
+    currentSeason: currentSeasonId != null && m.season_id === currentSeasonId,
+    ts:            computeTeamStats(byMatch.get(m.id) ?? [], setsMap[m.id] || 1),
   }));
   return Object.fromEntries(
     RECORD_STATS.map(({ key }) => [
       key,
       mergeAndRank(
-        perMatch.map(({ opp, date, ts }) => ({ val: getStatValue(ts, key), opp, date })),
+        perMatch.map(({ opp, date, currentSeason, ts }) => ({ val: getStatValue(ts, key), opp, date, currentSeason })),
         historicalRows(key)
       ),
     ])
@@ -332,7 +336,9 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete }) {
 
   const bgCls = row.active
     ? 'bg-yellow-950'
-    : 'bg-slate-800';
+    : row.currentSeason
+      ? 'bg-yellow-950'
+      : 'bg-slate-800';
 
   const inner = (
     <div
@@ -352,31 +358,32 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete }) {
         {RANK_ICONS[row.rank] ?? <span className="text-xs font-bold text-slate-500">{row.rank}</span>}
       </span>
 
-      {showPlayer && (
-        <span className="flex-1 text-sm text-slate-200 truncate min-w-0">
-          {row.name}
-          {tab === 'season' && row.year && (
-            <span className="ml-1.5 text-xs text-slate-500">· {row.year}</span>
-          )}
-          {row.class_year && (
-            <span className="ml-1.5 text-xs text-slate-500">· {CLASS_YEAR_ABBR[row.class_year] ?? row.class_year}</span>
-          )}
-          {(row.career_year_start || row.career_year_end) && (
-            <span className="ml-1.5 text-xs text-slate-500">
-              · {row.career_year_start ?? '?'}–{row.career_year_end ?? '?'}
-            </span>
-          )}
+      <span className="flex-1 min-w-0 flex items-center gap-2">
+        {showPlayer && (
+          <span className="text-sm text-slate-200 truncate min-w-0">
+            {row.name}
+            {tab === 'season' && row.year && (
+              <span className="ml-1.5 text-xs text-slate-500">· {row.year}</span>
+            )}
+            {row.class_year && (
+              <span className="ml-1.5 text-xs text-slate-500">· {CLASS_YEAR_ABBR[row.class_year] ?? row.class_year}</span>
+            )}
+            {(row.career_year_start || row.career_year_end) && (
+              <span className="ml-1.5 text-xs text-slate-500">
+                · {row.career_year_start ?? '?'}–{row.career_year_end ?? '?'}
+              </span>
+            )}
+          </span>
+        )}
+        <span className="font-black tabular-nums text-primary text-base shrink-0">
+          {fmt(row.val)}
         </span>
-      )}
-
-      <span className={`font-black tabular-nums text-primary text-base ${!showPlayer && !row.historical ? 'flex-1' : ''}`}>
-        {fmt(row.val)}
       </span>
 
       {showRight && (
         <span className="text-right text-xs text-slate-500 shrink-0 leading-tight">
           <span className="block">{row.opp}</span>
-          <span className="block">{row.date ? fmtDateShort(row.date) : ''}</span>
+          <span className="block">{row.date ? fmtDate(row.date) : ''}</span>
         </span>
       )}
     </div>
@@ -384,7 +391,11 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete }) {
 
   if (!row.historical) return inner;
 
-  const borderCls = row.active ? 'border border-yellow-500/20' : 'border border-slate-700/50';
+  const borderCls = row.active
+    ? 'border border-yellow-500/20'
+    : row.currentSeason
+      ? 'border border-yellow-500/20'
+      : 'border border-slate-700/50';
 
   return (
     <div className={`relative overflow-hidden rounded-lg ${borderCls}`}>
@@ -473,7 +484,7 @@ export function RecordsPage() {
     if (!teamId) return;
     setLoading(true);
     setBoards(null);
-    computeLeaderboards(tab, teamId)
+    computeLeaderboards(tab, teamId, getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID))
       .then(setBoards)
       .catch(console.error)
       .finally(() => setLoading(false));
