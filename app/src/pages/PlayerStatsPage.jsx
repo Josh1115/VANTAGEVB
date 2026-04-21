@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis,
   PolarRadiusAxis, Tooltip, ResponsiveContainer,
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
 import { db } from '../db/schema';
 import { computePlayerStats, computePlayerTrends, computeTeamStats } from '../stats/engine';
@@ -25,6 +26,162 @@ import { Badge } from '../components/ui/Badge';
 import { VER_TIERS } from '../components/stats/VERBadge';
 
 const POS_COLOR = { S: 'blue', OH: 'orange', OPP: 'orange', MB: 'green', L: 'gray', DS: 'gray', RS: 'orange' };
+
+// ── Per-game trend chart ──────────────────────────────────────────────────────
+
+function calcLinearTrend(data, key) {
+  const pts = data.map((d, i) => [i, d[key]]).filter(([, y]) => y != null);
+  if (pts.length < 2) return null;
+  const n    = pts.length;
+  const sumX  = pts.reduce((s, [x])    => s + x,     0);
+  const sumY  = pts.reduce((s, [, y])  => s + y,     0);
+  const sumXY = pts.reduce((s, [x, y]) => s + x * y, 0);
+  const sumX2 = pts.reduce((s, [x])    => s + x * x, 0);
+  const denom = n * sumX2 - sumX * sumX;
+  if (!denom) return null;
+  const m = (n * sumXY - sumX * sumY) / denom;
+  const b = (sumY - m * sumX) / n;
+  return (i) => m * i + b;
+}
+
+const TREND_OPTS = {
+  serving: {
+    all:   [
+      { key: 'ace',     label: 'ACE',  color: '#22c55e' },
+      { key: 'se',      label: 'SE',   color: '#ef4444' },
+      { key: 'sa',      label: 'SA',   color: '#94a3b8' },
+      { key: 'ace_pct', label: 'ACE%', color: '#f97316', fmt: fmtPct },
+      { key: 'si_pct',  label: 'SI%',  color: '#38bdf8', fmt: fmtPct },
+    ],
+    float: [
+      { key: 'f_ace',     label: 'ACE',  color: '#22c55e' },
+      { key: 'f_se',      label: 'SE',   color: '#ef4444' },
+      { key: 'f_sa',      label: 'SA',   color: '#94a3b8' },
+      { key: 'f_ace_pct', label: 'ACE%', color: '#f97316', fmt: fmtPct },
+      { key: 'f_si_pct',  label: 'SI%',  color: '#38bdf8', fmt: fmtPct },
+    ],
+    top: [
+      { key: 't_ace',     label: 'ACE',  color: '#22c55e' },
+      { key: 't_se',      label: 'SE',   color: '#ef4444' },
+      { key: 't_sa',      label: 'SA',   color: '#94a3b8' },
+      { key: 't_ace_pct', label: 'ACE%', color: '#f97316', fmt: fmtPct },
+      { key: 't_si_pct',  label: 'SI%',  color: '#38bdf8', fmt: fmtPct },
+    ],
+  },
+  passing: [
+    { key: 'apr', label: 'APR',  color: '#f97316', fmt: v => Number(v).toFixed(2) },
+    { key: 'pa',  label: 'PA',   color: '#94a3b8' },
+    { key: 'p3',  label: 'P3',   color: '#22c55e' },
+    { key: 'p0',  label: 'P0',   color: '#ef4444' },
+  ],
+  attacking: [
+    { key: 'k',       label: 'K',    color: '#22c55e' },
+    { key: 'ae',      label: 'AE',   color: '#ef4444' },
+    { key: 'ta',      label: 'ATT',  color: '#94a3b8' },
+    { key: 'hit_pct', label: 'HIT%', color: '#f97316', fmt: fmtHitting },
+  ],
+  blocking: [
+    { key: 'blks', label: 'BLK',  color: '#a78bfa' },
+    { key: 'bs',   label: 'Solo', color: '#7c3aed' },
+    { key: 'ba',   label: 'Ast',  color: '#c4b5fd' },
+  ],
+  setting: [
+    { key: 'ast', label: 'AST', color: '#38bdf8' },
+    { key: 'bhe', label: 'BHE', color: '#ef4444' },
+  ],
+  defense: [
+    { key: 'dig', label: 'DIG', color: '#34d399' },
+    { key: 'de',  label: 'DE',  color: '#ef4444' },
+  ],
+  ver: [
+    { key: 'ver', label: 'VER', color: '#f97316', fmt: fmtVER },
+  ],
+};
+
+function PerGameTrendGraph({ rows, statTab, serveView }) {
+  const opts = statTab === 'serving'
+    ? (TREND_OPTS.serving[serveView] ?? TREND_OPTS.serving.all)
+    : (TREND_OPTS[statTab] ?? []);
+
+  const [selectedKey, setSelectedKey] = useState(opts[0]?.key ?? null);
+
+  if (!opts.length || !rows.length) return null;
+
+  const sel = opts.find(o => o.key === selectedKey) ?? opts[0];
+
+  const baseData = rows.map(r => ({
+    label: r.oppAbbr || r.date,
+    opp:   r.opp,
+    [sel.key]: r[sel.key] ?? null,
+  }));
+
+  const hasData = baseData.some(d => d[sel.key] != null && d[sel.key] !== 0);
+  if (!hasData) return null;
+
+  const trendFn  = calcLinearTrend(baseData, sel.key);
+  const chartData = trendFn
+    ? baseData.map((d, i) => ({ ...d, _trend: trendFn(i) }))
+    : baseData;
+
+  return (
+    <div className="mx-4 mb-3 bg-surface rounded-xl p-3">
+      <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Per Game Trend</p>
+      <div className="flex gap-1.5 flex-wrap mb-3">
+        {opts.map(o => (
+          <button
+            key={o.key}
+            onClick={() => setSelectedKey(o.key)}
+            className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+              sel.key === o.key ? 'text-white' : 'bg-slate-700 text-slate-400 hover:text-white'
+            }`}
+            style={sel.key === o.key ? { background: o.color } : undefined}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+          <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} axisLine={false} />
+          <YAxis domain={['auto', 'auto']} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
+          <Tooltip
+            contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }}
+            labelFormatter={(_, payload) => payload?.[0]?.payload?.opp ?? ''}
+            formatter={(v, name) => name === '_trend'
+              ? [sel.fmt ? sel.fmt(v) : Number(v).toFixed(2), 'Trend']
+              : [sel.fmt ? sel.fmt(v) : v, sel.label]
+            }
+          />
+          <Line
+            type="monotone"
+            dataKey={sel.key}
+            name={sel.label}
+            stroke={sel.color}
+            strokeWidth={2}
+            dot={{ r: 3, fill: sel.color, strokeWidth: 0 }}
+            activeDot={{ r: 5 }}
+            connectNulls={false}
+          />
+          {trendFn && (
+            <Line
+              type="linear"
+              dataKey="_trend"
+              name="_trend"
+              stroke={sel.color}
+              strokeWidth={1.5}
+              strokeDasharray="5 4"
+              strokeOpacity={0.45}
+              dot={false}
+              activeDot={false}
+              connectNulls
+            />
+          )}
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
 // ── Report Card ──────────────────────────────────────────────────────────────
 
@@ -331,8 +488,9 @@ export function PlayerStatsPage() {
       const d   = m.date ? new Date(m.date) : null;
       const dateStr = d ? `${d.getMonth() + 1}/${d.getDate()}` : '—';
       const opp     = m.opponentName || '—';
-      if (!row) return { _key: m.id, date: dateStr, opp, si_pct: null, ace: null, se: null, k: null, ae: null, hit_pct: null, blks: null, dig: null, ast: null, ver: null };
-      return { _key: m.id, date: dateStr, opp, ...row, blks: (row.bs ?? 0) + (row.ba ?? 0) };
+      const oppAbbr = m.opponentAbbr || m.opponentName?.slice(0, 4).toUpperCase() || dateStr;
+      if (!row) return { _key: m.id, date: dateStr, opp, oppAbbr, si_pct: null, ace: null, se: null, k: null, ae: null, hit_pct: null, blks: null, dig: null, ast: null, ver: null };
+      return { _key: m.id, date: dateStr, opp, oppAbbr, ...row, blks: (row.bs ?? 0) + (row.ba ?? 0) };
     });
   }, [stats, pid]);
 
@@ -406,6 +564,7 @@ export function PlayerStatsPage() {
             <div className="px-2 py-3">
               <StatTable columns={currentCols} rows={statRow} />
             </div>
+            <PerGameTrendGraph key={`${statTab}-${serveView}`} rows={byGameRows} statTab={statTab} serveView={serveView} />
           </div>
         )
       ) : mainTab === 'report_card' ? (

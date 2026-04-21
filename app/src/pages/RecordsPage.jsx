@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { computeTeamStats, computePlayerStats } from '../stats/engine';
 import { getContactsForMatches, getBatchSetsPlayedCount } from '../stats/queries';
 import { buildPlayerMaps } from '../utils/players';
-import { fmtCount, fmtDateShort } from '../stats/formatters';
+import { fmtCount, fmtBlocks, fmtDateShort } from '../stats/formatters';
 import { MATCH_STATUS } from '../constants';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Spinner } from '../components/ui/Spinner';
@@ -13,7 +13,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 const RECORD_STATS = [
   { key: 'k',   label: 'Kills',   fmt: fmtCount },
   { key: 'ace', label: 'Aces',    fmt: fmtCount },
-  { key: 'blk', label: 'Blocks',  fmt: fmtCount },
+  { key: 'blk', label: 'Blocks',  fmt: fmtBlocks },
   { key: 'ast', label: 'Assists', fmt: fmtCount },
   { key: 'dig', label: 'Digs',    fmt: fmtCount },
 ];
@@ -39,7 +39,7 @@ function groupByMatch(contacts) {
 }
 
 function getStatValue(stats, key) {
-  if (key === 'blk') return (stats.bs ?? 0) + (stats.ba ?? 0) || null;
+  if (key === 'blk') return (stats.bs ?? 0) + (stats.ba ?? 0) * 0.5 || null;
   return stats[key] ?? null;
 }
 
@@ -59,6 +59,7 @@ async function computeLeaderboards(tab, teamId) {
   const players = await db.players.where('team_id').equals(teamId).toArray();
   const { playerNames } = buildPlayerMaps(players);
   const positions = Object.fromEntries(players.map(p => [p.id, p.position]));
+  const activePlayerIds = new Set(players.filter(p => p.is_active).map(p => p.id));
 
   const historicalAll = await db.historical_records
     .where('team_id').equals(teamId)
@@ -69,11 +70,15 @@ async function computeLeaderboards(tab, teamId) {
     return historicalAll
       .filter(r => r.stat === statKey)
       .map(r => ({
-        name: r.player_name ?? '',
-        val:  r.value,
-        year: r.season_year ?? '',
-        opp:  r.opponent ?? '',
-        date: r.date ?? '',
+        id:                r.id,
+        name:              r.player_name ?? '',
+        val:               r.value,
+        year:              r.season_year ?? '',
+        opp:               r.opponent ?? '',
+        date:              r.date ?? '',
+        class_year:        r.class_year ?? '',
+        career_year_start: r.career_year_start ?? null,
+        career_year_end:   r.career_year_end   ?? null,
       }));
   }
 
@@ -118,27 +123,20 @@ async function computeLeaderboards(tab, teamId) {
     return Object.fromEntries(
       RECORD_STATS.map(({ key }) => {
         const computed = seasonRows.map(({ pid, stats, year }) => ({
-          name: playerNames[pid] ?? '?',
-          val:  getStatValue(stats, key),
+          name:   playerNames[pid] ?? '?',
+          val:    getStatValue(stats, key),
           year,
+          active: activePlayerIds.has(Number(pid)),
         }));
         return [key, mergeAndRank(computed, historicalRows(key))];
       })
     );
   }
 
-  // career tab — aggregate all seasons together
+  // career tab — manual entries only, no DB computation
   if (tab === 'career') {
-    const totalSets = Math.max(1, Object.values(setsMap).reduce((a, b) => a + b, 0));
-    const stats = computePlayerStats(contacts, totalSets, positions);
     return Object.fromEntries(
-      RECORD_STATS.map(({ key }) => {
-        const computed = Object.entries(stats).map(([pid, s]) => ({
-          name: playerNames[pid] ?? '?',
-          val:  getStatValue(s, key),
-        }));
-        return [key, mergeAndRank(computed, historicalRows(key))];
-      })
+      RECORD_STATS.map(({ key }) => [key, mergeAndRank([], historicalRows(key))])
     );
   }
 
@@ -155,7 +153,7 @@ async function computeLeaderboards(tab, teamId) {
         for (const { opp, date, ps } of perMatch) {
           for (const [pid, s] of Object.entries(ps)) {
             const val = getStatValue(s, key);
-            if (val != null) computed.push({ name: playerNames[pid] ?? '?', val, opp, date });
+            if (val != null) computed.push({ name: playerNames[pid] ?? '?', val, opp, date, active: activePlayerIds.has(Number(pid)) });
           }
         }
         return [key, mergeAndRank(computed, historicalRows(key))];
@@ -182,16 +180,21 @@ async function computeLeaderboards(tab, teamId) {
 
 // ── Add Record Modal ──────────────────────────────────────────────────────────
 
-const EMPTY_FORM = { player_name: '', value: '', opponent: '', date: '', season_year: '' };
+const CLASS_YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior'];
+const CLASS_YEAR_ABBR = { Freshman: 'Fr.', Sophomore: 'So.', Junior: 'Jr.', Senior: 'Sr.' };
 
-function AddRecordModal({ teamId, tab, statKey, onClose }) {
-  const [form, setForm] = useState(EMPTY_FORM);
+const EMPTY_FORM = { player_name: '', value: '', opponent: '', date: '', season_year: '', class_year: '', career_year_start: '', career_year_end: '' };
+
+function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }) {
+  const [form, setForm] = useState(initialData ?? EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const isIndividual  = tab !== 'team_match';
-  const needsOpponent = tab === 'match' || tab === 'team_match';
-  const needsSeason   = tab === 'season';
+  const isIndividual   = tab !== 'team_match';
+  const needsOpponent  = tab === 'match' || tab === 'team_match';
+  const needsSeason    = tab === 'season';
+  const needsClassYear  = isIndividual && (tab === 'season' || tab === 'match');
+  const needsCareerYears = tab === 'career';
 
   function set(field, val) {
     setForm(f => ({ ...f, [field]: val }));
@@ -206,17 +209,25 @@ function AddRecordModal({ teamId, tab, statKey, onClose }) {
     if (needsSeason   && !form.season_year.trim()) { setError('Season year is required.'); return; }
 
     setSaving(true);
+    const fields = {
+      team_id:           teamId,
+      category:          tab,
+      stat:              statKey,
+      player_name:       form.player_name.trim() || null,
+      value:             val,
+      opponent:          form.opponent.trim()    || null,
+      date:              form.date               || null,
+      season_year:       form.season_year.trim() || null,
+      class_year:        form.class_year                       || null,
+      career_year_start: form.career_year_start ? Number(form.career_year_start) : null,
+      career_year_end:   form.career_year_end   ? Number(form.career_year_end)   : null,
+    };
     try {
-      await db.historical_records.add({
-        team_id:     teamId,
-        category:    tab,
-        stat:        statKey,
-        player_name: form.player_name.trim() || null,
-        value:       val,
-        opponent:    form.opponent.trim()    || null,
-        date:        form.date               || null,
-        season_year: form.season_year.trim() || null,
-      });
+      if (recordId) {
+        await db.historical_records.update(recordId, fields);
+      } else {
+        await db.historical_records.add(fields);
+      }
       onClose();
     } catch {
       setError('Failed to save. Please try again.');
@@ -235,15 +246,39 @@ function AddRecordModal({ teamId, tab, statKey, onClose }) {
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-slate-100">Add Historical Record</h2>
+          <h2 className="text-base font-bold text-slate-100">{recordId ? 'Edit Record' : 'Add Historical Record'}</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
         </div>
 
         <div className="space-y-3">
           {isIndividual && (
-            <div>
-              <label className={labelCls}>Player Name</label>
-              <input className={inputCls} placeholder="Jane Smith" value={form.player_name} onChange={e => set('player_name', e.target.value)} />
+            <div className={needsClassYear ? 'grid grid-cols-2 gap-2' : ''}>
+              <div>
+                <label className={labelCls}>Player Name</label>
+                <input className={inputCls} placeholder="Jane Smith" value={form.player_name} onChange={e => set('player_name', e.target.value)} />
+              </div>
+              {needsClassYear && (
+                <div>
+                  <label className={labelCls}>Class Year</label>
+                  <select className={inputCls} value={form.class_year} onChange={e => set('class_year', e.target.value)}>
+                    <option value="">— optional —</option>
+                    {CLASS_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
+          {needsCareerYears && (
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className={labelCls}>Active From</label>
+                <input className={inputCls} type="number" placeholder="2019" min="1900" max="2100" value={form.career_year_start} onChange={e => set('career_year_start', e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>Active To</label>
+                <input className={inputCls} type="number" placeholder="2023" min="1900" max="2100" value={form.career_year_end} onChange={e => set('career_year_end', e.target.value)} />
+              </div>
             </div>
           )}
 
@@ -280,7 +315,7 @@ function AddRecordModal({ teamId, tab, statKey, onClose }) {
           disabled={saving}
           className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold active:scale-95 disabled:opacity-50"
         >
-          {saving ? 'Saving…' : 'Save Record'}
+          {saving ? 'Saving…' : recordId ? 'Save Changes' : 'Save Record'}
         </button>
       </div>
     </div>
@@ -289,11 +324,30 @@ function AddRecordModal({ teamId, tab, statKey, onClose }) {
 
 // ── LeaderboardRow ────────────────────────────────────────────────────────────
 
-function LeaderboardRow({ row, tab, fmt }) {
+function LeaderboardRow({ row, tab, fmt, onEdit, onDelete }) {
+  const [swiped, setSwiped] = useState(false);
+  const startX = useRef(0);
   const showPlayer = tab !== 'team_match';
   const showRight  = tab === 'match' || tab === 'team_match';
-  return (
-    <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${row.historical ? 'bg-slate-800/40 border border-slate-700/50' : 'bg-slate-800/60'}`}>
+
+  const bgCls = row.active
+    ? 'bg-yellow-950'
+    : 'bg-slate-800';
+
+  const inner = (
+    <div
+      className={`flex items-center gap-3 px-3 py-2.5 ${bgCls} ${
+        row.historical
+          ? `transition-transform duration-200 ${swiped ? '-translate-x-32' : 'translate-x-0'}`
+          : 'rounded-lg'
+      }`}
+      onTouchStart={row.historical ? e => { startX.current = e.touches[0].clientX; } : undefined}
+      onTouchEnd={row.historical ? e => {
+        const delta = e.changedTouches[0].clientX - startX.current;
+        if (delta < -40) setSwiped(true);
+        else if (delta > 20) setSwiped(false);
+      } : undefined}
+    >
       <span className="w-6 text-center text-sm shrink-0">
         {RANK_ICONS[row.rank] ?? <span className="text-xs font-bold text-slate-500">{row.rank}</span>}
       </span>
@@ -304,12 +358,15 @@ function LeaderboardRow({ row, tab, fmt }) {
           {tab === 'season' && row.year && (
             <span className="ml-1.5 text-xs text-slate-500">· {row.year}</span>
           )}
-          {row.historical && <span className="ml-1.5 text-[10px] font-bold text-slate-600 uppercase tracking-wide">pre-app</span>}
+          {row.class_year && (
+            <span className="ml-1.5 text-xs text-slate-500">· {CLASS_YEAR_ABBR[row.class_year] ?? row.class_year}</span>
+          )}
+          {(row.career_year_start || row.career_year_end) && (
+            <span className="ml-1.5 text-xs text-slate-500">
+              · {row.career_year_start ?? '?'}–{row.career_year_end ?? '?'}
+            </span>
+          )}
         </span>
-      )}
-
-      {!showPlayer && row.historical && (
-        <span className="flex-1 text-[10px] font-bold text-slate-600 uppercase tracking-wide">pre-app</span>
       )}
 
       <span className={`font-black tabular-nums text-primary text-base ${!showPlayer && !row.historical ? 'flex-1' : ''}`}>
@@ -324,6 +381,30 @@ function LeaderboardRow({ row, tab, fmt }) {
       )}
     </div>
   );
+
+  if (!row.historical) return inner;
+
+  const borderCls = row.active ? 'border border-yellow-500/20' : 'border border-slate-700/50';
+
+  return (
+    <div className={`relative overflow-hidden rounded-lg ${borderCls}`}>
+      <div className="absolute inset-y-0 right-0 flex">
+        <button
+          onClick={() => { setSwiped(false); onEdit(row); }}
+          className="w-16 flex items-center justify-center bg-blue-600 text-white text-xs font-bold"
+        >
+          Edit
+        </button>
+        <button
+          onClick={() => { setSwiped(false); onDelete(row.id); }}
+          className="w-16 flex items-center justify-center bg-red-600 text-white text-xs font-bold"
+        >
+          Delete
+        </button>
+      </div>
+      {inner}
+    </div>
+  );
 }
 
 // ── page ─────────────────────────────────────────────────────────────────────
@@ -334,9 +415,11 @@ export function RecordsPage() {
   const [teamId,  setTeamId]  = useState(null);
   const [tab,     setTab]     = useState('season');
   const [statKey, setStatKey] = useState('k');
-  const [boards,  setBoards]  = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [showAdd, setShowAdd] = useState(false);
+  const [boards,     setBoards]     = useState(null);
+  const [loading,    setLoading]    = useState(false);
+  const [showAdd,    setShowAdd]    = useState(false);
+  const [editRow,    setEditRow]    = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const orgs = useLiveQuery(
     () => db.organizations.toArray().then(o => o.sort((a, b) => a.name?.localeCompare(b.name))),
@@ -394,7 +477,11 @@ export function RecordsPage() {
       .then(setBoards)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [tab, teamId, historicalCount]);
+  }, [tab, teamId, historicalCount, refreshKey]);
+
+  async function handleDelete(id) {
+    await db.historical_records.delete(id);
+  }
 
   const statDef   = RECORD_STATS.find(s => s.key === statKey);
   const rows      = boards?.[statKey] ?? [];
@@ -502,7 +589,14 @@ export function RecordsPage() {
                       Top {rows.length} — {statDef?.label} · {tabDef?.label}
                     </p>
                     {rows.map(row => (
-                      <LeaderboardRow key={row.rank} row={row} tab={tab} fmt={statDef?.fmt ?? fmtCount} />
+                      <LeaderboardRow
+                        key={row.rank}
+                        row={row}
+                        tab={tab}
+                        fmt={statDef?.fmt ?? fmtCount}
+                        onEdit={setEditRow}
+                        onDelete={handleDelete}
+                      />
                     ))}
                   </div>
                 )}
@@ -514,6 +608,26 @@ export function RecordsPage() {
 
       {showAdd && teamId && (
         <AddRecordModal teamId={teamId} tab={tab} statKey={statKey} onClose={() => setShowAdd(false)} />
+      )}
+
+      {editRow && teamId && (
+        <AddRecordModal
+          teamId={teamId}
+          tab={tab}
+          statKey={statKey}
+          recordId={editRow.id}
+          initialData={{
+            player_name:       editRow.name ?? '',
+            value:             String(editRow.val ?? ''),
+            opponent:          editRow.opp  ?? '',
+            date:              editRow.date  ?? '',
+            season_year:       editRow.year  ?? '',
+            class_year:        editRow.class_year ?? '',
+            career_year_start: editRow.career_year_start != null ? String(editRow.career_year_start) : '',
+            career_year_end:   editRow.career_year_end   != null ? String(editRow.career_year_end)   : '',
+          }}
+          onClose={() => { setEditRow(null); setRefreshKey(k => k + 1); }}
+        />
       )}
     </div>
   );

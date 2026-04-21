@@ -224,17 +224,17 @@ export function HomePage() {
     };
     const ts = computeTeamStats(contacts);
     return {
-      kills:   findLeader(ps => ps.k   ?? 0),
-      aces:    findLeader(ps => ps.ace  ?? 0),
-      blocks:  findLeader(ps => (ps.bs ?? 0) + (ps.ba ?? 0)),
-      digs:    findLeader(ps => ps.dig  ?? 0),
-      assists: findLeader(ps => ps.ast  ?? 0),
-      rec:     findLeader(ps => (ps.pa ?? 0) >= 5 ? (ps.pa ?? 0) : 0),
-      apr:     findLeader(ps => (ps.pa ?? 0) >= 5 ? (ps.apr ?? 0) : 0),
+      kills:   findLeader(ps => (ps.ta  ?? 0) >= 10 ? (ps.k   ?? 0) : 0),
+      aces:    findLeader(ps => (ps.sa  ?? 0) >= 10 ? (ps.ace  ?? 0) : 0),
+      blocks:  findLeader(ps => (ps.bs ?? 0) + (ps.ba ?? 0) + (ps.be ?? 0) >= 10 ? (ps.bs ?? 0) + (ps.ba ?? 0) : 0),
+      digs:    findLeader(ps => (ps.dig ?? 0) >= 10 ? (ps.dig  ?? 0) : 0),
+      assists: findLeader(ps => (ps.ast ?? 0) + (ps.bhe ?? 0) >= 10 ? (ps.ast ?? 0) : 0),
+      rec:     findLeader(ps => (ps.pa  ?? 0) >= 10 ? (ps.pa   ?? 0) : 0),
+      apr:     findLeader(ps => (ps.pa  ?? 0) >= 10 ? (ps.apr  ?? 0) : 0),
       teamTotals: {
         k:   ts.k,
         ace: ts.ace,
-        blk: (ts.bs ?? 0) + (ts.ba ?? 0),
+        blk: ts.blk,
         dig: ts.dig,
         ast: ts.ast,
         rec: ts.pa,
@@ -683,7 +683,7 @@ export function HomePage() {
           const LEADERS = [
             { label: 'K',   key: 'kills',   ttKey: 'k'   },
             { label: 'ACE', key: 'aces',    ttKey: 'ace' },
-            { label: 'BLK', key: 'blocks',  ttKey: 'blk' },
+            { label: 'BLK', key: 'blocks',  ttKey: 'blk', fmt: v => Number(v) % 1 === 0 ? String(Math.round(v)) : Number(v).toFixed(1) },
             { label: 'DIG', key: 'digs',    ttKey: 'dig' },
             { label: 'AST', key: 'assists', ttKey: 'ast' },
             { label: 'REC', key: 'rec',     ttKey: 'rec' },
@@ -758,25 +758,22 @@ export function HomePage() {
           </button>
 
           {nextMatch ? (
-            <div className="group flex-1 card-top-glow bg-surface rounded-xl p-3 text-left flex items-center gap-2.5">
+            <div
+              className="group flex-1 card-top-glow bg-surface rounded-xl p-3 text-left flex items-center gap-2.5 cursor-pointer active:scale-[0.97] transition-transform"
+              onClick={() => navigate(`/matches/new?match=${nextMatch.id}`)}
+            >
               {(() => {
                 const d = nextMatch.date ? new Date(nextMatch.date) : null;
                 const mon = d ? d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase() : '—';
                 const day = d ? d.getDate() : '—';
                 return (
-                  <div
-                    className="flex-shrink-0 w-9 h-9 rounded-md overflow-hidden border border-slate-600 flex flex-col cursor-pointer"
-                    onClick={() => navigate(`/matches/${nextMatch.id}/setup`)}
-                  >
+                  <div className="flex-shrink-0 w-9 h-9 rounded-md overflow-hidden border border-slate-600 flex flex-col">
                     <div className="bg-primary text-white text-[8px] font-black tracking-wider text-center leading-none py-0.5">{mon}</div>
                     <div className="flex-1 bg-slate-800 flex items-center justify-center text-sm font-black text-white leading-none tabular-nums">{day}</div>
                   </div>
                 );
               })()}
-              <div
-                className="min-w-0 flex-1 cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={() => navigate(`/matches/${nextMatch.id}/setup`)}
-              >
+              <div className="min-w-0 flex-1">
                 <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 leading-none mb-0.5">Next</div>
                 <div className="font-semibold text-sm truncate">{nextMatch.opponent_name ?? 'TBD'}</div>
                 <div className="flex items-center gap-1 mt-0.5">
@@ -794,7 +791,7 @@ export function HomePage() {
               </div>
               {nextMatch.status === MATCH_STATUS.SCHEDULED ? (
                 <button
-                  onClick={() => openEditMatch(nextMatch)}
+                  onClick={(e) => { e.stopPropagation(); openEditMatch(nextMatch); }}
                   className="text-slate-400 hover:text-white px-1.5 py-1 rounded transition-colors text-base leading-none"
                   title="Edit match"
                 >
