@@ -598,6 +598,27 @@ export function MatchSummaryPage() {
     };
   }, [match?.season_id, id]);
 
+  // Per-player VER from past season matches (for report card comparison)
+  const playerSeasonVers = useLiveQuery(async () => {
+    if (!match?.season_id) return null;
+    const seasonMatches = await db.matches
+      .where('season_id').equals(match.season_id)
+      .filter(m => m.status === 'complete' && m.match_type !== 'exhibition' && m.id !== id)
+      .toArray();
+    if (!seasonMatches.length) return null;
+    const matchIds = seasonMatches.map(m => m.id);
+    const contacts = await db.contacts.where('match_id').anyOf(matchIds).toArray();
+    if (!contacts.length) return null;
+    const season = await db.seasons.get(match.season_id);
+    const posMap = {};
+    if (season?.team_id) {
+      const ps = await db.players.where('team_id').equals(season.team_id).toArray();
+      for (const p of ps) posMap[p.id] = p.position;
+    }
+    const playerStats = computePlayerStats(contacts, 1, posMap);
+    return Object.fromEntries(Object.entries(playerStats).map(([pid, s]) => [pid, s.ver]));
+  }, [match?.season_id, id]);
+
   // Players keyed by id for name lookup (match → season → team)
   const players = useLiveQuery(async () => {
     if (!match?.season_id) return {};
@@ -1559,18 +1580,6 @@ export function MatchSummaryPage() {
                   ],
                   note: digPerSet >= 15 ? 'Outstanding floor defense' : digPerSet >= 9 ? 'Solid defensive effort' : 'Defense gave up too much',
                 },
-                {
-                  label: 'Team VER',
-                  icon: '📊',
-                  ...letterGrade(teamVer, [90, 70, 50, 30]),
-                  stats: [
-                    { label: 'VER/Set',  val: teamVer != null ? teamVer.toFixed(1) : '—' },
-                    { label: 'Sets',     val: numSets                                     },
-                    { label: 'Total',    val: teamVer != null ? (teamVer * numSets).toFixed(0) : '—' },
-                    { label: 'Pos Adj',  val: 'No'                                        },
-                  ],
-                  note: teamVer == null ? 'No data' : teamVer >= 90 ? 'Elite overall efficiency' : teamVer >= 70 ? 'Strong performance' : teamVer >= 50 ? 'Average efficiency' : 'Efficiency needs improvement',
-                },
               ];
 
               const gradePoints = { A: 4, B: 3, C: 2, D: 1, F: 0, '—': null };
@@ -1658,6 +1667,49 @@ export function MatchSummaryPage() {
                       <div className="px-4 pb-2.5 text-[11px] text-slate-400 italic">{note}</div>
                     </div>
                   ))}
+
+                  {/* Player VER — this match vs season avg */}
+                  {(() => {
+                    const verRows = playerRows
+                      .filter(r => r.sp > 0 && r.ver != null)
+                      .map(r => ({
+                        name: r.name,
+                        id:   r.id,
+                        ver:  r.ver,
+                        avg:  playerSeasonVers?.[r.id] ?? null,
+                      }))
+                      .sort((a, b) => (b.ver ?? -999) - (a.ver ?? -999));
+                    if (!verRows.length) return null;
+                    return (
+                      <div className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700/50">
+                        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-700/60">
+                          <span className="text-lg">📊</span>
+                          <span className="font-bold text-sm text-white flex-1">Player VER</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">vs season avg</span>
+                        </div>
+                        <div className="divide-y divide-slate-700/30">
+                          {verRows.map(({ name, ver, avg }) => {
+                            const delta = ver != null && avg != null ? ver - avg : null;
+                            const up    = delta != null && delta > 0.5;
+                            const down  = delta != null && delta < -0.5;
+                            return (
+                              <div key={name} className="flex items-center gap-3 px-4 py-2.5">
+                                <span className="text-sm text-slate-300 flex-1 truncate">{name}</span>
+                                {avg != null && (
+                                  <span className="text-xs text-slate-500 tabular-nums">avg {avg.toFixed(1)}</span>
+                                )}
+                                <span className={`text-sm font-black tabular-nums w-16 text-right ${
+                                  up ? 'text-emerald-400' : down ? 'text-red-400' : 'text-slate-200'
+                                }`}>
+                                  {ver.toFixed(1)}{up ? ' ▲' : down ? ' ▼' : ''}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })()}
