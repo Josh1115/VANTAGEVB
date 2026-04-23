@@ -69,10 +69,11 @@ const TREND_OPTS = {
     ],
   },
   passing: [
-    { key: 'apr', label: 'APR',  color: '#f97316', fmt: v => Number(v).toFixed(2) },
-    { key: 'pa',  label: 'PA',   color: '#94a3b8' },
-    { key: 'p3',  label: 'P3',   color: '#22c55e' },
-    { key: 'p0',  label: 'P0',   color: '#ef4444' },
+    { key: 'apr',    label: 'APR',   color: '#f97316', fmt: v => Number(v).toFixed(2) },
+    { key: 'pp_pct', label: '3OPT%', color: '#22c55e', fmt: fmtPct },
+    { key: 'pa',     label: 'PA',    color: '#94a3b8' },
+    { key: 'p3',     label: 'P3',    color: '#22c55e' },
+    { key: 'p0',     label: 'P0',    color: '#ef4444' },
   ],
   attacking: [
     { key: 'k',       label: 'K',    color: '#22c55e' },
@@ -144,7 +145,7 @@ function PerGameTrendGraph({ rows, statTab, serveView }) {
         <LineChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
           <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} axisLine={false} />
-          <YAxis domain={['auto', 'auto']} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
+          <YAxis domain={sel.key === 'apr' ? [0, 3] : ['auto', 'auto']} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
           <Tooltip
             contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }}
             labelFormatter={(_, payload) => payload?.[0]?.payload?.opp ?? ''}
