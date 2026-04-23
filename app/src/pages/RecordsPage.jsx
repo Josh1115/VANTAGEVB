@@ -637,10 +637,10 @@ export function RecordsPage() {
               <EmptyState icon="📋" title={gender ? 'Select a team' : 'Select Girls or Boys'} description="" />
             ) : (
               <>
-                {seasonHistories?.length > 0 && (
+                {seasonHistories?.some(e => e.title) && (
                   <div className="space-y-1.5">
                     <p className="text-xs font-black uppercase tracking-widest text-slate-500">Season Titles</p>
-                    {seasonHistories.map(entry => (
+                    {seasonHistories.filter(e => e.title).map(entry => (
                       <SeasonTitleRow key={entry.id} entry={entry} />
                     ))}
                   </div>
