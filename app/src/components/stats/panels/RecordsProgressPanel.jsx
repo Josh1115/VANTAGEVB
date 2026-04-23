@@ -38,25 +38,25 @@ function RecordRow({ record, playerStats, teamStats }) {
     : null;
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          <span className="text-xs text-slate-400 truncate">{statDef.label}</span>
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <span className="text-base text-slate-200 truncate font-semibold">{statDef.label}</span>
           {badge && (
-            <span className={`flex-shrink-0 text-[9px] font-black px-1 py-0.5 rounded border ${badge.cls}`}>
+            <span className={`flex-shrink-0 text-xs font-black px-2 py-0.5 rounded border ${badge.cls}`}>
               {badge.icon} {badge.short}
             </span>
           )}
         </div>
-        <div className="flex-shrink-0 flex items-baseline gap-1">
-          <span className="font-black text-white tabular-nums">{displayCurr}</span>
-          <span className="text-slate-500 text-xs">/ {displayRec}</span>
+        <div className="flex-shrink-0 flex items-baseline gap-1.5">
+          <span className="text-lg font-black text-white tabular-nums">{displayCurr}</span>
+          <span className="text-slate-400 text-base">/ {displayRec}</span>
           {remaining !== null && remaining > 0 && (
-            <span className="text-slate-600 text-[10px]">−{remaining}</span>
+            <span className="text-slate-500 text-sm">−{remaining}</span>
           )}
         </div>
       </div>
-      <div className="h-1.5 bg-slate-700/80 rounded-full overflow-hidden">
+      <div className="h-5 bg-slate-700/80 rounded-full overflow-hidden">
         <div
           className={`h-full ${barCls} rounded-full transition-all duration-300`}
           style={{ width: `${Math.round(fillPct * 100)}%` }}

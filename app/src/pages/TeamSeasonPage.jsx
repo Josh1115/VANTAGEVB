@@ -87,6 +87,17 @@ const CHARTS = [
 
 const COUNT_KEYS = ['k', 'ace', 'blk', 'dig', 'ast', 'rec', 'earned', 'free', 'given'];
 
+const CHART_GROUPS = [
+  { label: 'Attack',  keys: ['k', 'hit_pct', 'k_pct'] },
+  { label: 'Serve',   keys: ['ace', 'si_pct', 'ace_pct'] },
+  { label: 'Pass',    keys: ['rec', 'apr'] },
+  { label: 'Set',     keys: ['ast'] },
+  { label: 'Block',   keys: ['blk'] },
+  { label: 'Defense', keys: ['dig'] },
+  { label: 'Points',  keys: ['earned', 'free', 'given'] },
+  { label: 'Overall', keys: ['ver'] },
+];
+
 // ── custom tooltip ────────────────────────────────────────────────────────────
 
 function ChartTooltip({ active, payload, label, decimals }) {
@@ -348,19 +359,30 @@ export function TeamSeasonPage() {
                 ))}
               </div>
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {CHARTS.map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setActiveStat(key)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wide transition-colors
-                    ${activeStat === key
-                      ? 'bg-primary text-white'
-                      : 'bg-surface text-slate-400 hover:text-slate-200'
-                    }`}
-                >
-                  {label}
-                </button>
+            <div className="flex flex-wrap gap-1.5 items-center">
+              {CHART_GROUPS.map(({ keys }, gi) => (
+                <>
+                  {gi > 0 && (
+                    <span key={`sep-${gi}`} className="w-px h-4 bg-slate-700 self-center mx-0.5" />
+                  )}
+                  {keys.map(key => {
+                    const chart = CHARTS.find(c => c.key === key);
+                    if (!chart) return null;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => setActiveStat(key)}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wide transition-colors
+                          ${activeStat === key
+                            ? 'bg-primary text-white'
+                            : 'bg-surface text-slate-400 hover:text-slate-200'
+                          }`}
+                      >
+                        {chart.label}
+                      </button>
+                    );
+                  })}
+                </>
               ))}
             </div>
             {(() => {

@@ -46,7 +46,7 @@ export function Layout() {
     <div className="min-h-screen bg-bg text-white">
       <UpdatePrompt />
       <main className={hideNav ? '' : 'pb-20'}>
-        <div className={hideNav ? '' : 'max-w-2xl mx-auto'}>
+        <div className={hideNav ? '' : 'max-w-2xl md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto'}>
           <ErrorBoundary key={pathname}>
             <div className="animate-page-enter">
               <Outlet />

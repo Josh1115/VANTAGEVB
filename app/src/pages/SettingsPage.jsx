@@ -87,6 +87,7 @@ function useAccentColor() {
   return [accent, save];
 }
 
+
 const PLAYER_NAME_FORMATS = [
   { id: 'initial_last', label: 'Initial + Last',   example: 'J. Smith'   },
   { id: 'last',         label: 'Last Name',         example: 'Smith'      },

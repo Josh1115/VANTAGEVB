@@ -22,6 +22,7 @@ const SeasonsPage      = lazy(() => import('./pages/SeasonsPage').then(m => ({ d
 const SeasonDetailPage  = lazy(() => import('./pages/SeasonDetailPage').then(m => ({ default: m.SeasonDetailPage })));
 const TeamSeasonPage    = lazy(() => import('./pages/TeamSeasonPage').then(m => ({ default: m.TeamSeasonPage })));
 const RecordsPage      = lazy(() => import('./pages/RecordsPage').then(m => ({ default: m.RecordsPage })));
+const HistoryPage      = lazy(() => import('./pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
 const ReportsPage      = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const SettingsPage     = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const ToolsPage        = lazy(() => import('./pages/ToolsPage').then(m => ({ default: m.ToolsPage })));
@@ -61,6 +62,7 @@ export const router = createBrowserRouter([
       { path: 'matches/:matchId/set-lineup', element: <S><SetLineupPage /></S> },
       { path: 'matches/:matchId/summary',    element: <S><MatchSummaryPage /></S> },
       { path: 'records',                     element: <S><RecordsPage /></S> },
+      { path: 'history',                     element: <S><HistoryPage /></S> },
       { path: 'reports',                     element: <S><ReportsPage /></S> },
       { path: 'settings',                    element: <S><SettingsPage /></S> },
       { path: 'tools',                       element: <S><ToolsPage /></S> },
