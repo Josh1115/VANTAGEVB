@@ -14,6 +14,7 @@ const BADGE_POS_STYLE  = { bottom: '36%', left: '50%' };
 const DELAY_50         = { animationDelay: '50ms' };
 const DELAY_100        = { animationDelay: '100ms' };
 const DELAY_150        = { animationDelay: '150ms' };
+const DELAY_200        = { animationDelay: '200ms' };
 
 // Pre-built pass badge text styles (one per rating) — avoids recreating every render
 const PASS_BADGE_STYLES = [
@@ -110,6 +111,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   const [serveRecorded, setServeRecorded] = useState(false);
   const [sePending,     setSePending]     = useState(false);
   const [aePending,     setAePending]     = useState(false);
+  const [kPending,      setKPending]      = useState(false);
   const [passRing,      setPassRing]      = useState(null); // null | 0|1|2|3
   const [passBadge,     setPassBadge]     = useState(null); // null | { rating, key }
   const passRingTimer  = useRef(null);
@@ -443,10 +445,10 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
           </div>
         )}
 
-        {/* Row 2 — Attack: ATT K AE (or AE reason sub-panel: OB / NET / BLK) */}
+        {/* Row 2 — Attack: ATT FREE K AE (or kill-type sub-panel, or AE reason sub-panel) */}
         <div className="px-[7.5%]">
-          <span className={`text-[1.3vmin] font-bold uppercase tracking-wide leading-none ${aePending ? 'text-red-300' : 'text-slate-500'}`}>
-            {aePending ? 'Attack Error — OB, NET, BLK, or BRA?' : 'Hitting'}
+          <span className={`text-[1.3vmin] font-bold uppercase tracking-wide leading-none ${aePending ? 'text-red-300' : kPending ? 'text-orange-300' : 'text-slate-500'}`}>
+            {aePending ? 'Attack Error — OB, NET, BLK, or BRA?' : kPending ? 'Kill Type' : 'Hitting'}
           </span>
         </div>
         <div className="flex flex-none h-[3.837vmin] py-0 px-[7.5%] gap-[0.5vmin] border-b border-black/30">
@@ -471,13 +473,41 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
                 cls="bg-red-950/80 text-red-300 hover:bg-red-900/80 serve-unlock-btn"
                 style={DELAY_150} />
             </>
+          ) : kPending ? (
+            <>
+              <Btn label="×"
+                onTap={() => setKPending(false)}
+                cls="bg-slate-700 text-slate-300 hover:bg-slate-600" />
+              <Btn label="PURE"
+                onTap={() => { tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'pure' }); setKPending(false); }}
+                cls="bg-orange-600/80 text-white hover:bg-orange-500/90 serve-unlock-btn" />
+              <Btn label="TOOL"
+                onTap={() => { tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'tool' }); setKPending(false); }}
+                cls="bg-amber-700/80 text-amber-100 hover:bg-amber-600/90 serve-unlock-btn"
+                style={DELAY_50} />
+              <Btn label="OVER"
+                onTap={() => { tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'over' }); setKPending(false); }}
+                cls="bg-yellow-800/80 text-yellow-200 hover:bg-yellow-700/90 serve-unlock-btn"
+                style={DELAY_100} />
+              <Btn label="TIP"
+                onTap={() => { tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'tip' }); setKPending(false); }}
+                cls="bg-lime-900/80 text-lime-300 hover:bg-lime-800/90 serve-unlock-btn"
+                style={DELAY_150} />
+              <Btn label="BK ROW"
+                onTap={() => { tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'bk' }); setKPending(false); }}
+                cls="bg-orange-900/80 text-orange-300 hover:bg-orange-800/90 serve-unlock-btn !text-[1.8vmin] whitespace-nowrap"
+                style={DELAY_200} />
+            </>
           ) : (
             <>
               <Btn label="ATT"
                 onTap={() => tap(ACTION.ATTACK, RESULT.ATTEMPT)}
                 cls="bg-orange-950/80 text-orange-200 hover:bg-orange-900/80" />
+              <Btn label="FREE"
+                onTap={() => tap(ACTION.FREEBALL_SEND, RESULT.SUCCESS)}
+                cls="bg-violet-950/80 text-violet-300 hover:bg-violet-900/80" />
               <Btn label="K"
-                onTap={() => tapAndScore(ACTION.ATTACK, RESULT.KILL)}
+                onTap={() => setKPending(true)}
                 cls="bg-orange-600/80 text-white hover:bg-orange-500/90" />
               <Btn label="AE"
                 onTap={() => setAePending(true)}

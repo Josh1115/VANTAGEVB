@@ -771,11 +771,13 @@ export function MatchSummaryPage() {
 
     // Attacking & blocking
     const ta = sum('ta'), k = sum('k'), ae = sum('ae');
-    const ae_ob = sum('ae_ob'), ae_net = sum('ae_net'), ae_blk = sum('ae_blk');
+    const ae_ob = sum('ae_ob'), ae_net = sum('ae_net'), ae_blk = sum('ae_blk'), ae_bra = sum('ae_bra');
+    const k_pure = sum('k_pure'), k_tool = sum('k_tool'), k_over = sum('k_over'),
+          k_tip  = sum('k_tip'),  k_bk   = sum('k_bk');
     const bs = sum('bs'), ba = sum('ba'), be = sum('be');
 
     // Defense
-    const dig = sum('dig'), de = sum('de'),
+    const dig = sum('dig'), fb_dig = sum('fb_dig'), de = sum('de'),
           fbr = sum('fbr'), fbs = sum('fbs'), fbe = sum('fbe');
 
     // Team VER — same formula as individual but no position multiplier (whole-team aggregate)
@@ -786,7 +788,7 @@ export function MatchSummaryPage() {
           3.5  * bs   +
           1.75 * ba   +
           1.5  * ast  +
-          1.25 * dig  -
+          1.25 * (dig + fb_dig) -
           2.5  * ae   -
           2.5  * se   -
           1.5  * bhe  -
@@ -830,7 +832,13 @@ export function MatchSummaryPage() {
       },
       // Attacking views
       attacking: {
-        name: 'TOTAL', sp, mp, ta, k, ae, ae_ob, ae_net, ae_blk,
+        name: 'TOTAL', sp, mp, ta, k,
+        k_pure, k_pure_pct: k > 0 ? k_pure / k : null,
+        k_tool, k_tool_pct: k > 0 ? k_tool / k : null,
+        k_over, k_over_pct: k > 0 ? k_over / k : null,
+        k_tip,  k_tip_pct:  k > 0 ? k_tip  / k : null,
+        k_bk,   k_bk_pct:   k > 0 ? k_bk   / k : null,
+        ae, ae_ob, ae_net, ae_blk, ae_bra,
         hit_pct:   ta > 0 ? (k - ae) / ta : null,
         k_pct:     ta > 0 ? k / ta : null,
         kps:       sp > 0 ? k / sp : null,
@@ -842,7 +850,7 @@ export function MatchSummaryPage() {
       },
       // Defense view
       defense: {
-        name: 'TOTAL', sp, mp, dig, de, fbr, fbs, fbe,
+        name: 'TOTAL', sp, mp, dig, fb_dig, de, fbr, fbs, fbe,
         dips: sp > 0 ? dig / sp : null,
       },
       // VER tab totals row
@@ -1573,10 +1581,11 @@ export function MatchSummaryPage() {
                   icon: '🔒',
                   ...letterGrade(digPerSet, [15, 12, 9, 6]),
                   stats: [
-                    { label: 'Digs',     val: t.dig ?? 0             },
+                    { label: 'Digs',     val: t.dig    ?? 0          },
+                    { label: 'Free',     val: t.fb_dig ?? 0          },
                     { label: 'Dig/Set',  val: digPerSet.toFixed(1)   },
-                    { label: 'Errors',   val: t.de  ?? 0             },
-                    { label: 'FBR',      val: t.fbr ?? 0             },
+                    { label: 'Errors',   val: t.de     ?? 0          },
+                    { label: 'FBR',      val: t.fbr    ?? 0          },
                   ],
                   note: digPerSet >= 15 ? 'Outstanding floor defense' : digPerSet >= 9 ? 'Solid defensive effort' : 'Defense gave up too much',
                 },

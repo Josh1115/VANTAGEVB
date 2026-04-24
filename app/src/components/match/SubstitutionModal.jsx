@@ -17,13 +17,15 @@ export function SubstitutionModal({ onClose }) {
   const subPairs            = useMatchStore((s) => s.subPairs);
   const exhaustedPlayerIds  = useMatchStore((s) => s.exhaustedPlayerIds);
   const substitutePlayer    = useMatchStore((s) => s.substitutePlayer);
+  const setPositionLabel    = useMatchStore((s) => s.setPositionLabel);
   const plannedSubs         = useMatchStore((s) => s.plannedSubs);
   const rotationNum         = useMatchStore((s) => s.rotationNum);
 
-  const [outPlayerId,   setOutPlayerId]   = useState(null);
-  const [inPlayerId,    setInPlayerId]    = useState(null);
-  const [roleOverride,  setRoleOverride]  = useState('');
-  const [error,         setError]         = useState('');
+  const [outPlayerId,        setOutPlayerId]        = useState(null);
+  const [inPlayerId,         setInPlayerId]         = useState(null);
+  const [roleOverride,       setRoleOverride]       = useState('');
+  const [error,              setError]              = useState('');
+  const [editingPosFor,      setEditingPosFor]      = useState(null);
 
   const roster = useLiveQuery(
     () => teamId ? db.players.where('team_id').equals(teamId).filter((p) => p.is_active).toArray() : [],
@@ -149,30 +151,77 @@ export function SubstitutionModal({ onClose }) {
               const isLibero    = sl.playerId === liberoId;
               const disabled    = isLibero || atMax;
               const selected    = outPlayerId === sl.playerId;
+              const editingPos  = editingPosFor === sl.playerId;
               return (
-                <button
-                  key={sl.playerId}
-                  onClick={() => {
-                    if (disabled) return;
-                    setOutPlayerId(sl.playerId);
-                    setInPlayerId(null);
-                    setError('');
-                  }}
-                  disabled={disabled}
-                  className={`px-2 py-1.5 rounded text-xs font-bold border transition-colors text-left relative
-                    ${selected
-                      ? 'bg-primary text-white border-primary'
+                <div key={sl.playerId} className={`rounded border transition-colors
+                  ${editingPos
+                    ? 'col-span-3 bg-slate-800 border-amber-500/60'
+                    : selected
+                      ? 'bg-primary border-primary'
                       : disabled
-                        ? 'bg-slate-800/40 text-slate-600 border-slate-800 cursor-not-allowed'
-                        : 'bg-slate-700 text-slate-200 border-slate-600 hover:bg-slate-600'
-                    }`}
+                        ? 'bg-slate-800/40 border-slate-800'
+                        : 'bg-slate-700 border-slate-600'
+                  }`}
                 >
-                  <span className="block text-[1.3vmin] text-slate-400">S{sl.position}</span>
-                  #{sl.jersey} {sl.playerName}
-                  {isExhausted && (
-                    <span className="block text-[10px] text-red-500 font-semibold mt-0.5">Sub used</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        if (disabled) return;
+                        setOutPlayerId(sl.playerId);
+                        setInPlayerId(null);
+                        setError('');
+                        setEditingPosFor(null);
+                      }}
+                      disabled={disabled}
+                      className={`flex-1 px-2 py-1.5 text-xs font-bold text-left
+                        ${disabled ? 'text-slate-600 cursor-not-allowed' : selected ? 'text-white' : 'text-slate-200'}`}
+                    >
+                      <span className={`block text-[1.3vmin] ${selected ? 'text-blue-200' : 'text-slate-400'}`}>
+                        S{sl.position}
+                        {sl.positionLabel && !editingPos && (
+                          <span className="ml-1 font-semibold">{sl.positionLabel}</span>
+                        )}
+                      </span>
+                      #{sl.jersey} {sl.playerName}
+                      {isExhausted && (
+                        <span className="block text-[10px] text-red-500 font-semibold mt-0.5">Sub used</span>
+                      )}
+                    </button>
+                    {/* Pencil — always visible, not gated on disabled */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingPosFor(editingPos ? null : sl.playerId);
+                      }}
+                      className="px-1.5 py-1.5 text-slate-500 hover:text-amber-400 transition-colors shrink-0"
+                      title="Edit position"
+                    >
+                      ✎
+                    </button>
+                  </div>
+
+                  {/* Inline position chips */}
+                  {editingPos && (
+                    <div className="flex flex-wrap gap-1 px-2 pb-2">
+                      {POSITION_OPTIONS.map((pos) => (
+                        <button
+                          key={pos}
+                          onClick={() => {
+                            setPositionLabel(sl.playerId, pos);
+                            setEditingPosFor(null);
+                          }}
+                          className={`px-2 py-0.5 rounded text-xs font-bold border transition-colors
+                            ${sl.positionLabel === pos
+                              ? 'bg-amber-500 text-black border-amber-400'
+                              : 'bg-slate-700 text-slate-300 border-slate-600 hover:border-amber-400'
+                            }`}
+                        >
+                          {pos}
+                        </button>
+                      ))}
+                    </div>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>

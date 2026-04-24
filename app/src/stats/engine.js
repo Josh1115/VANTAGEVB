@@ -21,6 +21,7 @@ function mkAccum() {
     pa: 0, p0: 0, p1: 0, p2: 0, p3: 0,
     // attack
     ta: 0, k: 0, ae: 0, ae_ob: 0, ae_net: 0, ae_blk: 0, ae_bra: 0,
+    k_pure: 0, k_tool: 0, k_over: 0, k_tip: 0, k_bk: 0,
     // set
     ast: 0, bhe: 0,
     // error actions (L/DBL/NET tap on PlayerTile)
@@ -35,7 +36,7 @@ function mkAccum() {
 }
 
 // count > 1 is used by synthetic box-score contacts to represent aggregate totals
-function accumContact(p, { action, result, serve_type, error_type, count = 1 }) {
+function accumContact(p, { action, result, serve_type, error_type, kill_type, count = 1 }) {
   const n = count;
   if (action === 'serve') {
     p.sa += n;
@@ -63,7 +64,14 @@ function accumContact(p, { action, result, serve_type, error_type, count = 1 }) 
     else if (result === '3') p.p3 += n;
   } else if (action === 'attack') {
     p.ta += n;
-    if (result === 'kill')  p.k  += n;
+    if (result === 'kill') {
+      p.k += n;
+      if (kill_type === 'pure') p.k_pure += n;
+      if (kill_type === 'tool') p.k_tool += n;
+      if (kill_type === 'over') p.k_over += n;
+      if (kill_type === 'tip')  p.k_tip  += n;
+      if (kill_type === 'bk')   p.k_bk   += n;
+    }
     if (result === 'error') {
       p.ae += n;
       if (error_type === 'ob')  p.ae_ob  += n;
@@ -79,9 +87,9 @@ function accumContact(p, { action, result, serve_type, error_type, count = 1 }) 
     if (result === 'assist') p.ba += n;
     if (result === 'error')  p.be += n;
   } else if (action === 'dig') {
-    if (result === 'success' || result === 'freeball') p.dig    += n;
-    if (result === 'freeball')                          p.fb_dig += n;
-    if (result === 'error')                             p.de     += n;
+    if (result === 'success')  p.dig    += n;
+    if (result === 'freeball') p.fb_dig += n;
+    if (result === 'error')    p.de     += n;
   } else if (action === 'freeball_receive') {
     if (result === 'free_ball_error') p.fbe += n;
     else                              p.fbr += n;
@@ -122,7 +130,13 @@ function deriveStats(p, sp, posLabel = null) {
     pp_pct: div(p.p3, p.pa),           // perfect-pass %
 
     // Attacking
-    ta: p.ta, k: p.k, ae: p.ae, ae_ob: p.ae_ob, ae_net: p.ae_net, ae_blk: p.ae_blk, ae_bra: p.ae_bra,
+    ta: p.ta, k: p.k,
+    k_pure: p.k_pure, k_pure_pct: div(p.k_pure, p.k),
+    k_tool: p.k_tool, k_tool_pct: div(p.k_tool, p.k),
+    k_over: p.k_over, k_over_pct: div(p.k_over, p.k),
+    k_tip:  p.k_tip,  k_tip_pct:  div(p.k_tip,  p.k),
+    k_bk:   p.k_bk,   k_bk_pct:   div(p.k_bk,   p.k),
+    ae: p.ae, ae_ob: p.ae_ob, ae_net: p.ae_net, ae_blk: p.ae_blk, ae_bra: p.ae_bra,
     hit_pct: div(p.k - p.ae, p.ta),
     k_pct:   div(p.k,  p.ta),
     kps:     div(p.k,  sp),
@@ -157,7 +171,7 @@ function deriveStats(p, sp, posLabel = null) {
           3.5  * p.bs   +
           1.75 * p.ba   +
           1.5  * p.ast  +
-          1.25 * p.dig  +
+          1.25 * (p.dig + p.fb_dig) +
           (p.p1 + p.p2 * 2 + p.p3 * 3 - p.pa * 2) -
           2.5  * p.ae   -
           2.5  * p.se   -
@@ -949,8 +963,8 @@ const WP_FALLBACK_P = 0.58;
 const WP_FALLBACK_Q = 0.42;
 const WP_MIN_SAMPLE = 10; // rallies per side before trusting observed rates
 
-export function computePQ(rallies) {
-  if (!rallies?.length) return { p: WP_FALLBACK_P, q: WP_FALLBACK_Q };
+export function computePQ(rallies, fallbackP = WP_FALLBACK_P, fallbackQ = WP_FALLBACK_Q) {
+  if (!rallies?.length) return { p: fallbackP, q: fallbackQ };
   let recvTotal = 0, recvWin = 0, servTotal = 0, servWin = 0;
   for (const r of rallies) {
     if (r.serve_side === 'them') {
@@ -961,8 +975,8 @@ export function computePQ(rallies) {
       if (r.point_winner === 'us') servWin++;
     }
   }
-  const p = recvTotal >= WP_MIN_SAMPLE ? recvWin / recvTotal : WP_FALLBACK_P;
-  const q = servTotal >= WP_MIN_SAMPLE ? servWin / servTotal : WP_FALLBACK_Q;
+  const p = recvTotal >= WP_MIN_SAMPLE ? recvWin / recvTotal : fallbackP;
+  const q = servTotal >= WP_MIN_SAMPLE ? servWin / servTotal : fallbackQ;
   return { p, q };
 }
 

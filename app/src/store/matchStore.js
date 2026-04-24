@@ -242,6 +242,12 @@ export const useMatchStore = create((set, get) => ({
   rotateForward:  () => set((s) => ({ lineup: rotateFwd(s.lineup) })),
   rotateBackward: () => set((s) => ({ lineup: rotateBwd(s.lineup) })),
 
+  setPositionLabel: (playerId, label) => set((s) => ({
+    lineup: s.lineup.map((sl) =>
+      sl.playerId === playerId ? { ...sl, positionLabel: label } : sl
+    ),
+  })),
+
   adjustScore: (side, delta) =>
     set((s) => {
       const key = side === SIDE.US ? 'ourScore' : 'oppScore';
