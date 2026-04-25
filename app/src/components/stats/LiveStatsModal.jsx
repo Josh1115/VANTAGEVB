@@ -5,7 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMatchStore } from '../../store/matchStore';
 import { useMatchStats } from '../../hooks/useMatchStats';
 import { db } from '../../db/schema';
-import { computeTeamStats, computeOppDisplayStats, computeRotationStats, computeRotationContactStats, computeISvsOOS, computeFreeDigWin, computeTransitionAttack, computePlayerStats, computeXKByPassRating, computePointQuality } from '../../stats/engine';
+import { computeTeamStats, computeOppDisplayStats, computeRotationStats, computeRotationContactStats, computeISvsOOS, computeFreeDigWin, computeTransitionAttack, computePlayerStats, computeXKByPassRating, computePointQuality, computeServingPoints } from '../../stats/engine';
 import { StatTable } from './StatTable';
 import { PointQualityPanel } from './PointQualityPanel';
 import { fmtCount, fmtPct, fmtHitting, fmtPassRating, fmtVER } from '../../stats/formatters';
@@ -279,17 +279,21 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
       .filter(Boolean);
   }, [allMatchRallies, allMatchSets]);
 
+  const setServingPoints   = useMemo(() => computeServingPoints(committedRallies),       [committedRallies]);
+  const matchServingPoints = useMemo(() => computeServingPoints(allMatchRallies ?? []),   [allMatchRallies]);
+
   // All hooks must be called before any early return
-  const rows = useMemo(() =>
-    lineup
+  const rows = useMemo(() => {
+    const srvPts = scope === 'set' ? setServingPoints : matchServingPoints;
+    return lineup
       .filter((sl) => sl.playerId)
       .map((sl) => ({
-        id:   sl.playerId,
-        name: sl.playerName,
+        id:     sl.playerId,
+        name:   sl.playerName,
         ...((scope === 'set' ? playerStats : matchPlayerStats)[sl.playerId] ?? {}),
-      })),
-    [lineup, playerStats, matchPlayerStats, scope]
-  );
+        srv_pt: srvPts[sl.playerId] ?? 0,
+      }));
+  }, [lineup, playerStats, matchPlayerStats, scope, setServingPoints, matchServingPoints]);
 
   if (!open) return null;
 

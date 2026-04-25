@@ -179,10 +179,10 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
 
   const tapAndScoreThem = async (action, result, extra = {}) => {
     flashJersey();
-    const currentRally = useMatchStore.getState().rallyCount;
+    const { rallyCount: currentRally, serveSide: currentServeSide } = useMatchStore.getState();
     addPoint(SIDE.THEM);
     try {
-      await recordContact({ player_id: slot.playerId, action, result, rally_number: currentRally, ...extra });
+      await recordContact({ player_id: slot.playerId, action, result, rally_number: currentRally, serve_side: currentServeSide, ...extra });
     } catch (err) {
       console.error('[VBStat] tapAndScoreThem recordContact failed:', err);
       showToast(`Stat not recorded: ${err?.message ?? err}`, 'error');
@@ -459,10 +459,10 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
                       : serveType === SERVE_TYPE.FLOAT ? 'bg-emerald-700/80 text-white hover:bg-emerald-600/90'
                       : 'bg-teal-600/80 text-white hover:bg-teal-500/90'}${serveType ? ' serve-unlock-btn' : ''}`}
                     style={serveType ? { animationDelay: '50ms' } : undefined} />
-                  <Btn key={`se-${!!serveType}`} label="SE"
-                    onTap={serveType ? () => setSePending(true) : undefined}
-                    cls={`${!serveType ? 'bg-slate-800/40 text-slate-700 cursor-not-allowed pointer-events-none' : 'bg-red-950/80 text-red-300 hover:bg-red-900/80'}${serveType ? ' serve-unlock-btn' : ''}`}
-                    style={serveType ? { animationDelay: '100ms' } : undefined} />
+                  <Btn label="SE"
+                    onTap={() => setSePending(true)}
+                    cls="bg-red-950/80 text-red-300 hover:bg-red-900/80 serve-unlock-btn"
+                    style={DELAY_100} />
                 </>
               )}
             </div>

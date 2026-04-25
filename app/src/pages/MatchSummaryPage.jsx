@@ -763,7 +763,7 @@ export function MatchSummaryPage() {
 
     // Serving
     const sa = sum('sa'), ace = sum('ace'), se = sum('se'),
-          se_ob = sum('se_ob'), se_net = sum('se_net');
+          se_ob = sum('se_ob'), se_net = sum('se_net'), se_foot = sum('se_foot');
     const f_sa = sum('f_sa'), f_ace = sum('f_ace'), f_se = sum('f_se');
     const t_sa = sum('t_sa'), t_ace = sum('t_ace'), t_se = sum('t_se');
 
@@ -804,7 +804,7 @@ export function MatchSummaryPage() {
     return {
       // Serving views
       all: {
-        name: 'TOTAL', sp, mp, sa, ace, srv_pt: sum('srv_pt'), se, se_ob, se_net,
+        name: 'TOTAL', sp, mp, sa, ace, srv_pt: sum('srv_pt'), se, se_ob, se_net, se_foot,
         ace_pct:  sa > 0 ? ace / sa : null,
         se_pct:   sa > 0 ? se / sa : null,
         si_pct:   sa > 0 ? (sa - se) / sa : null,
