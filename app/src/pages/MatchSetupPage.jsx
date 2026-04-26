@@ -29,6 +29,7 @@ export function MatchSetupPage() {
   const [matchType,     setMatchType]     = useState('reg-season');
   const [tournamentName, setTournamentName] = useState('');
   const [tournamentRound, setTournamentRound] = useState('pool');
+  const [tourneySet3, setTourneySet3] = useState(25);
   const [playoffRound, setPlayoffRound] = useState('');
   const [format,    setFormat]    = useState(() => {
     const saved = getStorageItem(STORAGE_KEYS.DEFAULT_FORMAT);
@@ -114,6 +115,7 @@ export function MatchSetupPage() {
       setMatchType(scheduledMatch.match_type ?? 'reg-season');
       setTournamentName(scheduledMatch.tournament_name ?? '');
       setTournamentRound(scheduledMatch.tournament_round ?? 'pool');
+      if (scheduledMatch.match_type === 'tourney') setTourneySet3(scheduledMatch.last_set_score ?? 25);
       setPlayoffRound(scheduledMatch.playoff_round ?? '');
       setPrefilled(true);
     }
@@ -176,7 +178,7 @@ export function MatchSetupPage() {
           opponent_maxpreps_rank: opponentMaxprepsRank !== '' ? parseInt(opponentMaxprepsRank, 10) : null,
           status:                MATCH_STATUS.IN_PROGRESS,
           format,
-          last_set_score:        lastSetScore,
+          last_set_score:        matchType === 'tourney' ? tourneySet3 : lastSetScore,
           location,
           conference,
           match_type:            matchType,
@@ -196,7 +198,7 @@ export function MatchSetupPage() {
           opponent_maxpreps_rank: opponentMaxprepsRank !== '' ? parseInt(opponentMaxprepsRank, 10) : null,
           status:                MATCH_STATUS.IN_PROGRESS,
           format,
-          last_set_score:        lastSetScore,
+          last_set_score:        matchType === 'tourney' ? tourneySet3 : lastSetScore,
           location,
           conference,
           match_type:            matchType,
@@ -460,6 +462,26 @@ export function MatchSetupPage() {
                       }`}
                   >
                     {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+                Set 3 Score To
+              </label>
+              <div className="flex gap-2">
+                {[25, 15].map((pts) => (
+                  <button
+                    key={pts}
+                    onClick={() => setTourneySet3(pts)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors
+                      ${tourneySet3 === pts
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-surface text-slate-300 border-slate-600 hover:border-slate-400'
+                      }`}
+                  >
+                    {pts}
                   </button>
                 ))}
               </div>
