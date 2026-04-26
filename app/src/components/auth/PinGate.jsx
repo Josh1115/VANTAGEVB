@@ -30,7 +30,7 @@ export function PinGate({ children }) {
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-6">
       <div className="flex flex-col items-center gap-6 w-full max-w-xs">
-        <h1 className="text-2xl font-bold text-white tracking-wide">VBSTAT</h1>
+        <h1 className="text-2xl font-bold text-white tracking-wide">VANTAGE</h1>
 
         <input
           type="password"
