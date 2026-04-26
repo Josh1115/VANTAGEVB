@@ -16,8 +16,15 @@ class ErrorBoundary extends Component {
 
   render() {
     if (this.state.error) {
-      const msg = this.state.error.message ?? '';
-      const isUpdateError = /MODULE_SCRIPT_FAILED|dynamically imported module|Failed to fetch|Loading chunk/i.test(msg);
+      const err = this.state.error;
+      const msg = err?.message ?? '';
+      // Module-load failures (PWA stale asset) are always TypeErrors.
+      // iOS Safari reports them as short "Load failed" TypeErrors with no stack detail.
+      const isTypeError = err instanceof TypeError;
+      const isUpdateError =
+        /MODULE_SCRIPT_FAILED|dynamically imported module|Failed to fetch|Load failed|Loading chunk|Unable to preload/i.test(msg) ||
+        (isTypeError && /load|fetch|import|module|chunk/i.test(msg)) ||
+        (isTypeError && msg.length < 40);
       if (isUpdateError) {
         return (
           <div className="min-h-screen bg-bg flex flex-col items-center justify-center gap-4 p-8 text-center">

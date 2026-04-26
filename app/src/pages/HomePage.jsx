@@ -52,7 +52,7 @@ function SetPips({ ourSets, oppSets }) {
 // ─── Schedule calendar ────────────────────────────────────────────────────────
 
 function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, openEditMatch }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = useMemo(() => new Date().toLocaleDateString('en-CA'), []); // YYYY-MM-DD local
 
   const availableMonths = useMemo(() => {
     const set = new Set();
@@ -60,11 +60,17 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
     return [...set].sort();
   }, [matches]);
 
-  const [calMonthKey, setCalMonthKey] = useState(() => {
-    if (!matches.length) return today.slice(0, 7);
+  // null = "use default derived from matches"; set by user navigation
+  const [calMonthOverride, setCalMonthOverride] = useState(null);
+
+  // Always resolve to a valid month in availableMonths.
+  // If override is set and still valid, use it; otherwise derive from matches.
+  const calMonthKey = useMemo(() => {
+    if (calMonthOverride && availableMonths.includes(calMonthOverride)) return calMonthOverride;
+    if (!availableMonths.length) return today.slice(0, 7);
     const upcoming = matches.find(m => m.date >= today && m.status !== MATCH_STATUS.COMPLETE);
-    return (upcoming ?? matches[0]).date.slice(0, 7);
-  });
+    return (upcoming ?? matches[matches.length - 1]).date.slice(0, 7);
+  }, [calMonthOverride, availableMonths, matches, today]);
 
   const [calSelected, setCalSelected] = useState(null);
 
@@ -86,7 +92,7 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
   const hasNext = curIdx < availableMonths.length - 1;
 
   function goMonth(dir) {
-    setCalMonthKey(availableMonths[curIdx + dir]);
+    setCalMonthOverride(availableMonths[curIdx + dir]);
     setCalSelected(null);
   }
 
