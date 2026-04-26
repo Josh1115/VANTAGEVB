@@ -21,8 +21,7 @@ export function LoginGate({ children }) {
 
   if (authed) return children;
 
-  function handleSubmit(e) {
-    e.preventDefault();
+  function handleSubmit() {
     if (checkCredentials(user, pass)) {
       try { sessionStorage.setItem(SESSION_KEY, '1'); } catch {}
       setAuthed(true);
@@ -38,7 +37,7 @@ export function LoginGate({ children }) {
         <h1 className="text-2xl font-bold text-white text-center mb-1 tracking-wide">VBSTAT</h1>
         <p className="text-slate-500 text-sm text-center mb-8">Enter your credentials to continue</p>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Username</label>
             <input
@@ -68,8 +67,9 @@ export function LoginGate({ children }) {
           )}
 
           <button
-            type="submit"
-            className="mt-1 bg-primary hover:brightness-110 text-white font-bold py-2.5 rounded text-sm transition-all"
+            type="button"
+            onPointerDown={(e) => { e.preventDefault(); handleSubmit(); }}
+            className="mt-2 bg-primary text-white font-bold py-4 rounded-xl text-base transition-all active:brightness-90 touch-manipulation"
           >
             Unlock
           </button>
