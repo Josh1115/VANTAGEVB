@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { useMatchStore } from '../../store/matchStore';
 import {
   computePlayerStats, computeTeamStats, computeRotationStats,
   computePointQuality, computeOppDisplayStats, computeXKByPassRating,
+  computePQ, computeSetWinProb, computeMatchWinProb,
 } from '../../stats/engine';
+import { FORMAT } from '../../constants';
 import { TAB_COLUMNS, SERVING_COLS, ROTATION_COLS } from '../../stats/columns';
 import { StatTable } from '../stats/StatTable';
 import { SubToggle } from '../stats/SubToggle';
@@ -82,6 +84,9 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
   const rotationNum       = useMatchStore((s) => s.rotationNum);
   const pointHistory      = useMatchStore((s) => s.pointHistory);
   const serveSide         = useMatchStore((s) => s.serveSide);
+  const ourSetsWon        = useMatchStore((s) => s.ourSetsWon);
+  const oppSetsWon        = useMatchStore((s) => s.oppSetsWon);
+  const format            = useMatchStore((s) => s.format);
 
   const setContacts = useMemo(
     () => scope === 'set'
@@ -115,6 +120,41 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
   const oppStats     = useMemo(() => computeOppDisplayStats(setContacts), [setContacts]);
 
   const rotationStats = useMemo(() => computeRotationStats(setRallies), [setRallies]);
+
+  const winProbHistory = useMemo(() => {
+    if (!committedRallies.length) return [];
+    const setsToWin = format === FORMAT.BEST_OF_5 ? 3 : 2;
+    const { p, q } = computePQ(committedRallies);
+    const pFutureSet = computeSetWinProb(p, q, 0, 0, 'them', false);
+
+    const sorted = [...committedRallies].sort((a, b) =>
+      a.set_number !== b.set_number ? a.set_number - b.set_number : a.rally_number - b.rally_number
+    );
+
+    let usScore = 0, themScore = 0, useSets = 0, oppSets = 0, side = serveSide;
+    const data = [];
+
+    for (const r of sorted) {
+      const isDecider = (useSets + oppSets + 1) >= setsToWin * 2 - 1;
+      const setWin = computeSetWinProb(p, q, usScore, themScore, side, isDecider);
+      const matchWin = computeMatchWinProb(setWin, pFutureSet, useSets, oppSets, setsToWin);
+      data.push({ x: data.length + 1, pct: Math.round(matchWin * 100) });
+
+      if (r.point_winner === 'us') {
+        usScore++;
+        side = 'us';
+      } else {
+        themScore++;
+        side = 'them';
+      }
+      const setTarget = isDecider ? 15 : 25;
+      if ((usScore >= setTarget || themScore >= setTarget) && Math.abs(usScore - themScore) >= 2) {
+        if (usScore > themScore) useSets++; else oppSets++;
+        usScore = 0; themScore = 0; side = useSets > oppSets ? 'them' : 'us';
+      }
+    }
+    return data;
+  }, [committedRallies, format, serveSide]);
 
   const xkByPass = useMemo(() => {
     const raw = computeXKByPassRating(setContacts);
@@ -664,6 +704,40 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
             </div>
           </div>
         )}
+
+        {/* Win probability graph */}
+        {winProbHistory.length > 1 && (() => {
+          const current = winProbHistory[winProbHistory.length - 1].pct;
+          const prev    = winProbHistory[winProbHistory.length - 2].pct;
+          const trend   = current > prev ? '↑' : current < prev ? '↓' : '→';
+          const color   = current >= 60 ? '#4ade80' : current <= 40 ? '#f87171' : '#94a3b8';
+          return (
+            <div className="w-full">
+              <div className="flex items-baseline justify-between mb-1 px-0.5">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Win Probability</span>
+                <span className="text-lg font-black tabular-nums" style={{ color }}>
+                  {current}% <span className="text-sm">{trend}</span>
+                </span>
+              </div>
+              <ResponsiveContainer width="100%" height={56}>
+                <LineChart data={winProbHistory} margin={{ top: 2, right: 2, left: -36, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                  <XAxis dataKey="x" hide />
+                  <YAxis domain={[0, 100]} hide />
+                  <ReferenceLine y={50} stroke="#334155" strokeDasharray="4 3" strokeWidth={1} />
+                  <Line
+                    type="monotone"
+                    dataKey="pct"
+                    stroke={color}
+                    strokeWidth={2}
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          );
+        })()}
 
         {/* Rotation SO%/BP% */}
         <div className="text-center w-full">

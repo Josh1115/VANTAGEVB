@@ -91,6 +91,11 @@ export function HomePage() {
       } else {
         matches = await db.matches.orderBy('date').reverse().limit(5).toArray();
       }
+    } else if (matchView === 'schedule') {
+      const all = defaultSeasonId
+        ? await db.matches.where('season_id').equals(defaultSeasonId).toArray()
+        : await db.matches.toArray();
+      matches = all.sort((a, b) => new Date(a.date) - new Date(b.date));
     } else {
       const now = Date.now();
       const all = defaultSeasonId
@@ -692,7 +697,9 @@ export function HomePage() {
           const tt = seasonLeaders?.teamTotals;
           return (
             <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 px-0.5 animate-slide-up-fade" style={{ animationDelay: '250ms' }}>Season Leaders</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 px-0.5 animate-slide-up-fade" style={{ animationDelay: '250ms' }}>
+                Season Leaders{seasonRecord?.seasonName ? <span className="ml-1.5 normal-case font-semibold tracking-normal text-slate-600">· {seasonRecord.seasonName}</span> : ''}
+              </p>
               <div className="grid grid-cols-7 gap-2">
                 {LEADERS.map(({ label, key, fmt }, i) => {
                   const leader = seasonLeaders?.[key];
@@ -833,7 +840,7 @@ export function HomePage() {
 
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">
-              {matchView === 'recent' ? 'Recent' : 'Closest'} Matches
+              {matchView === 'recent' ? 'Recent' : matchView === 'schedule' ? 'Schedule' : 'Closest'} Matches
               {displayMatches.length > 0 && (
                 <span className="ml-1.5 text-[10px] font-bold bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded-full">{displayMatches.length}</span>
               )}
@@ -851,6 +858,12 @@ export function HomePage() {
                   className={`text-[10px] font-semibold px-2 py-1 rounded-md transition-colors ${matchView === 'closest' ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
                 >
                   Closest
+                </button>
+                <button
+                  onClick={() => setMatchView('schedule')}
+                  className={`text-[10px] font-semibold px-2 py-1 rounded-md transition-colors ${matchView === 'schedule' ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  Schedule
                 </button>
               </div>
               {displayMatches.length > 0 && (
@@ -878,7 +891,129 @@ export function HomePage() {
             />
           )}
 
-          {displayMatches.map((match, idx) => (
+          {matchView === 'schedule' && (() => {
+            const today = new Date().toISOString().slice(0, 10);
+            const past     = displayMatches.filter(m => m.date < today || m.status === MATCH_STATUS.COMPLETE || m.status === MATCH_STATUS.IN_PROGRESS);
+            const upcoming = displayMatches.filter(m => m.date >= today && m.status !== MATCH_STATUS.COMPLETE && m.status !== MATCH_STATUS.IN_PROGRESS);
+            const renderCard = (match, idx) => (
+              <SwipeableMatchCard key={match.id} onDeleteConfirm={() => setConfirmDelete(match)} animDelay={`${idx * 30}ms`}>
+                {match.status === MATCH_STATUS.SCHEDULED ? (
+                  <div className="w-full bg-surface rounded-xl px-4 py-3 flex items-center justify-between border-l-4 border-transparent">
+                    <div>
+                      <div className="font-semibold flex items-center gap-1.5 flex-wrap">
+                        {match.opponent_name ?? 'vs. Unknown'}
+                        {match.match_type === 'tourney' && match.tournament_name && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide">{match.tournament_name}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {match.location && (
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${match.location === 'home' ? 'bg-emerald-900/50 text-emerald-400' : match.location === 'away' ? 'bg-red-900/50 text-red-400' : 'bg-slate-700 text-slate-400'}`}>
+                            {match.location === 'home' ? 'H' : match.location === 'away' ? 'A' : 'N'}
+                          </span>
+                        )}
+                        <span className="text-xs text-slate-400">{fmtDate(match.date)}</span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Scheduled</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => navigate(
+                      match.status === MATCH_STATUS.COMPLETE
+                        ? `/matches/${match.id}/summary`
+                        : `/matches/${match.id}/live`
+                    )}
+                    className={`w-full bg-surface p-4 text-left flex items-center justify-between hover:bg-slate-700 rounded-xl transition-colors border-l-4 ${
+                      match.status === MATCH_STATUS.COMPLETE
+                        ? (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0)
+                          ? 'border-emerald-600'
+                          : 'border-red-700'
+                        : match.status === MATCH_STATUS.IN_PROGRESS
+                        ? 'border-primary'
+                        : 'border-transparent'
+                    }`}
+                  >
+                    <div>
+                      <div className="font-semibold flex items-center gap-1.5 flex-wrap">
+                        <span>
+                          {match.opponent_name ?? 'vs. Unknown'}
+                          {match.opponent_maxpreps_rank != null && (
+                            <span className="text-slate-400 font-normal"> #{match.opponent_maxpreps_rank}</span>
+                          )}
+                        </span>
+                        {match.match_type === 'tourney' && match.tournament_name && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide">{match.tournament_name}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        {match.location && (
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                            match.location === 'home'    ? 'bg-emerald-900/50 text-emerald-400' :
+                            match.location === 'away'    ? 'bg-red-900/50 text-red-400' :
+                                                           'bg-slate-700 text-slate-400'
+                          }`}>
+                            {match.location === 'home' ? 'H' : match.location === 'away' ? 'A' : 'N'}
+                          </span>
+                        )}
+                        {match.conference && (
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                            match.conference === 'conference' ? 'bg-blue-900/50 text-blue-400' : 'bg-slate-700 text-slate-400'
+                          }`}>
+                            {match.conference === 'conference' ? 'CON' : 'NC'}
+                          </span>
+                        )}
+                        <span className="text-xs text-slate-400">{fmtDate(match.date)}</span>
+                      </div>
+                    </div>
+                    <div className="text-right flex flex-col items-end gap-1">
+                      <div className="flex items-center gap-1.5">
+                        {match.status === MATCH_STATUS.COMPLETE && (() => {
+                          const won = (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
+                          return (
+                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${won ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
+                              {won ? 'W' : 'L'}
+                            </span>
+                          );
+                        })()}
+                        {scoreDetail === 'scores' && match.sets?.length
+                          ? <span className="text-xs font-mono text-slate-300">{fmtSetScores(match.sets)}</span>
+                          : <SetPips ourSets={match.our_sets_won} oppSets={match.opp_sets_won} />
+                        }
+                      </div>
+                      <div className={`text-xs flex items-center gap-1 ${match.status === MATCH_STATUS.IN_PROGRESS ? 'text-primary' : 'text-slate-400'}`}>
+                        {match.status === MATCH_STATUS.IN_PROGRESS && (
+                          <span className="serve-pulse inline-block w-1.5 h-1.5 rounded-full bg-primary" />
+                        )}
+                        {match.status === MATCH_STATUS.IN_PROGRESS ? 'Live'
+                          : match.status === MATCH_STATUS.COMPLETE ? 'Final'
+                          : 'Setup'}
+                      </div>
+                    </div>
+                  </button>
+                )}
+              </SwipeableMatchCard>
+            );
+            return (
+              <>
+                {upcoming.length > 0 && (
+                  <>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-1">Upcoming — {upcoming.length}</p>
+                    {upcoming.map((m, i) => renderCard(m, i))}
+                  </>
+                )}
+                {past.length > 0 && upcoming.length > 0 && <div className="border-t border-slate-700/50 my-1" />}
+                {past.length > 0 && (
+                  <>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-1">Completed — {past.length}</p>
+                    {[...past].reverse().map((m, i) => renderCard(m, i))}
+                  </>
+                )}
+              </>
+            );
+          })()}
+
+          {matchView !== 'schedule' && displayMatches.map((match, idx) => (
             <SwipeableMatchCard
               key={match.id}
               onDeleteConfirm={() => setConfirmDelete(match)}
