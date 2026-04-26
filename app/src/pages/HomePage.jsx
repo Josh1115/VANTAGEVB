@@ -49,6 +49,243 @@ function SetPips({ ourSets, oppSets }) {
   );
 }
 
+// ─── Schedule calendar ────────────────────────────────────────────────────────
+
+function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, openEditMatch }) {
+  const today = new Date().toISOString().slice(0, 10);
+
+  const availableMonths = useMemo(() => {
+    const set = new Set();
+    for (const m of matches) { if (m.date) set.add(m.date.slice(0, 7)); }
+    return [...set].sort();
+  }, [matches]);
+
+  const [calMonthKey, setCalMonthKey] = useState(() => {
+    if (!matches.length) return today.slice(0, 7);
+    const upcoming = matches.find(m => m.date >= today && m.status !== MATCH_STATUS.COMPLETE);
+    return (upcoming ?? matches[0]).date.slice(0, 7);
+  });
+
+  const [calSelected, setCalSelected] = useState(null);
+
+  const year  = parseInt(calMonthKey.slice(0, 4), 10);
+  const month = parseInt(calMonthKey.slice(5, 7), 10) - 1;
+
+  const matchesByDate = useMemo(() => {
+    const map = {};
+    for (const m of matches) { if (m.date) (map[m.date] ??= []).push(m); }
+    return map;
+  }, [matches]);
+
+  const firstDay    = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthLabel  = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const curIdx  = availableMonths.indexOf(calMonthKey);
+  const hasPrev = curIdx > 0;
+  const hasNext = curIdx < availableMonths.length - 1;
+
+  function goMonth(dir) {
+    setCalMonthKey(availableMonths[curIdx + dir]);
+    setCalSelected(null);
+  }
+
+  function dotCls(match) {
+    if (match.status === MATCH_STATUS.COMPLETE)
+      return (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0) ? 'bg-emerald-500' : 'bg-red-500';
+    if (match.status === MATCH_STATUS.IN_PROGRESS) return 'bg-primary';
+    if (match.match_type === 'tourney') return 'bg-violet-400';
+    return 'bg-orange-400';
+  }
+
+  const selectedMatches = calSelected ? (matchesByDate[calSelected] ?? []) : [];
+  const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Month nav */}
+      <div className="flex items-center justify-between px-1">
+        <button
+          onClick={() => goMonth(-1)}
+          disabled={!hasPrev}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-25 disabled:pointer-events-none transition-colors"
+        >‹</button>
+        <span className="text-sm font-bold text-white tracking-wide">{monthLabel}</span>
+        <button
+          onClick={() => goMonth(1)}
+          disabled={!hasNext}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-25 disabled:pointer-events-none transition-colors"
+        >›</button>
+      </div>
+
+      {/* Day-of-week header */}
+      <div className="grid grid-cols-7 text-center">
+        {DAY_LABELS.map(d => (
+          <div key={d} className="text-[10px] font-bold text-slate-500 py-0.5">{d}</div>
+        ))}
+      </div>
+
+      {/* Day cells */}
+      <div className="grid grid-cols-7 gap-y-1">
+        {Array.from({ length: firstDay }).map((_, i) => <div key={`pad${i}`} />)}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day     = i + 1;
+          const dateStr = `${calMonthKey}-${String(day).padStart(2, '0')}`;
+          const dayMatches = matchesByDate[dateStr] ?? [];
+          const isToday    = dateStr === today;
+          const isSelected = calSelected === dateStr;
+          const hasMatch   = dayMatches.length > 0;
+          return (
+            <button
+              key={day}
+              onClick={() => hasMatch ? setCalSelected(isSelected ? null : dateStr) : undefined}
+              className={`flex flex-col items-center pt-1.5 pb-2 rounded-xl min-h-[46px] transition-colors
+                ${isSelected ? 'bg-slate-600' : hasMatch ? 'hover:bg-slate-700/60 active:bg-slate-700' : 'cursor-default'}
+                ${isToday && !isSelected ? 'ring-1 ring-inset ring-primary/50' : ''}
+              `}
+            >
+              <span className={`text-sm font-semibold leading-none
+                ${isSelected ? 'text-white' : isToday ? 'text-primary' : hasMatch ? 'text-slate-200' : 'text-slate-600'}
+              `}>{day}</span>
+              {hasMatch && (
+                <div className="flex gap-0.5 mt-1 flex-wrap justify-center">
+                  {dayMatches.slice(0, 4).map((m, di) => (
+                    <span key={di} className={`w-1.5 h-1.5 rounded-full ${dotCls(m)}`} />
+                  ))}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-3 px-1 flex-wrap">
+        <span className="flex items-center gap-1 text-[10px] text-slate-500"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />Win</span>
+        <span className="flex items-center gap-1 text-[10px] text-slate-500"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" />Loss</span>
+        <span className="flex items-center gap-1 text-[10px] text-slate-500"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />Upcoming</span>
+        <span className="flex items-center gap-1 text-[10px] text-slate-500"><span className="w-2 h-2 rounded-full bg-violet-400 inline-block" />Tourney</span>
+      </div>
+
+      {/* Selected day cards */}
+      {selectedMatches.length > 0 && (
+        <div className="flex flex-col gap-2 pt-3 border-t border-slate-700/50">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+            {new Date(calSelected + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          </p>
+          {selectedMatches.map(match => (
+            <SwipeableMatchCard key={match.id} onDeleteConfirm={() => onDeleteConfirm(match)}>
+              {match.status === MATCH_STATUS.SCHEDULED ? (
+                <div className="w-full bg-surface rounded-xl px-4 py-3 flex items-center justify-between border-l-4 border-transparent">
+                  <div>
+                    <div className="font-semibold flex items-center gap-1.5 flex-wrap">
+                      {match.opponent_name ?? 'vs. Unknown'}
+                      {match.match_type === 'tourney' && match.tournament_name && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide">{match.tournament_name}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      {match.location && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                          match.location === 'home' ? 'bg-emerald-900/50 text-emerald-400' :
+                          match.location === 'away' ? 'bg-red-900/50 text-red-400' :
+                                                      'bg-slate-700 text-slate-400'
+                        }`}>
+                          {match.location === 'home' ? 'H' : match.location === 'away' ? 'A' : 'N'}
+                        </span>
+                      )}
+                      <span className="text-xs text-slate-400">Scheduled</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openEditMatch(match)}
+                      className="text-xs font-semibold px-2.5 py-1 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => navigate(`/matches/new?season=${match.season_id}&match=${match.id}`)}
+                      className="text-xs font-semibold px-2.5 py-1 rounded bg-amber-900/40 text-amber-400 hover:bg-amber-900/60 transition-colors"
+                    >
+                      ▶ Start
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => navigate(
+                    match.status === MATCH_STATUS.COMPLETE
+                      ? `/matches/${match.id}/summary`
+                      : `/matches/${match.id}/live`
+                  )}
+                  className={`w-full bg-surface p-4 text-left flex items-center justify-between hover:bg-slate-700 rounded-xl transition-colors border-l-4 ${
+                    match.status === MATCH_STATUS.COMPLETE
+                      ? (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0) ? 'border-emerald-600' : 'border-red-700'
+                      : match.status === MATCH_STATUS.IN_PROGRESS ? 'border-primary' : 'border-transparent'
+                  }`}
+                >
+                  <div>
+                    <div className="font-semibold flex items-center gap-1.5 flex-wrap">
+                      {match.opponent_name ?? 'vs. Unknown'}
+                      {match.opponent_maxpreps_rank != null && (
+                        <span className="text-slate-400 font-normal"> #{match.opponent_maxpreps_rank}</span>
+                      )}
+                      {match.match_type === 'tourney' && match.tournament_name && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide">{match.tournament_name}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      {match.location && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                          match.location === 'home' ? 'bg-emerald-900/50 text-emerald-400' :
+                          match.location === 'away' ? 'bg-red-900/50 text-red-400' :
+                                                      'bg-slate-700 text-slate-400'
+                        }`}>
+                          {match.location === 'home' ? 'H' : match.location === 'away' ? 'A' : 'N'}
+                        </span>
+                      )}
+                      {match.conference && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                          match.conference === 'conference' ? 'bg-blue-900/50 text-blue-400' : 'bg-slate-700 text-slate-400'
+                        }`}>
+                          {match.conference === 'conference' ? 'CON' : 'NC'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-1.5">
+                      {match.status === MATCH_STATUS.COMPLETE && (() => {
+                        const won = (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
+                        return (
+                          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${won ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
+                            {won ? 'W' : 'L'}
+                          </span>
+                        );
+                      })()}
+                      {scoreDetail === 'scores' && match.sets?.length
+                        ? <span className="text-xs font-mono text-slate-300">{fmtSetScores(match.sets)}</span>
+                        : <SetPips ourSets={match.our_sets_won} oppSets={match.opp_sets_won} />
+                      }
+                    </div>
+                    <div className={`text-xs flex items-center gap-1 ${match.status === MATCH_STATUS.IN_PROGRESS ? 'text-primary' : 'text-slate-400'}`}>
+                      {match.status === MATCH_STATUS.IN_PROGRESS && (
+                        <span className="serve-pulse inline-block w-1.5 h-1.5 rounded-full bg-primary" />
+                      )}
+                      {match.status === MATCH_STATUS.IN_PROGRESS ? 'Live' : match.status === MATCH_STATUS.COMPLETE ? 'Final' : 'Setup'}
+                    </div>
+                  </div>
+                </button>
+              )}
+            </SwipeableMatchCard>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function HomePage() {
@@ -891,127 +1128,15 @@ export function HomePage() {
             />
           )}
 
-          {matchView === 'schedule' && (() => {
-            const today = new Date().toISOString().slice(0, 10);
-            const past     = displayMatches.filter(m => m.date < today || m.status === MATCH_STATUS.COMPLETE || m.status === MATCH_STATUS.IN_PROGRESS);
-            const upcoming = displayMatches.filter(m => m.date >= today && m.status !== MATCH_STATUS.COMPLETE && m.status !== MATCH_STATUS.IN_PROGRESS);
-            const renderCard = (match, idx) => (
-              <SwipeableMatchCard key={match.id} onDeleteConfirm={() => setConfirmDelete(match)} animDelay={`${idx * 30}ms`}>
-                {match.status === MATCH_STATUS.SCHEDULED ? (
-                  <div className="w-full bg-surface rounded-xl px-4 py-3 flex items-center justify-between border-l-4 border-transparent">
-                    <div>
-                      <div className="font-semibold flex items-center gap-1.5 flex-wrap">
-                        {match.opponent_name ?? 'vs. Unknown'}
-                        {match.match_type === 'tourney' && match.tournament_name && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide">{match.tournament_name}</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {match.location && (
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${match.location === 'home' ? 'bg-emerald-900/50 text-emerald-400' : match.location === 'away' ? 'bg-red-900/50 text-red-400' : 'bg-slate-700 text-slate-400'}`}>
-                            {match.location === 'home' ? 'H' : match.location === 'away' ? 'A' : 'N'}
-                          </span>
-                        )}
-                        <span className="text-xs text-slate-400">{fmtDate(match.date)}</span>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Scheduled</span>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => navigate(
-                      match.status === MATCH_STATUS.COMPLETE
-                        ? `/matches/${match.id}/summary`
-                        : `/matches/${match.id}/live`
-                    )}
-                    className={`w-full bg-surface p-4 text-left flex items-center justify-between hover:bg-slate-700 rounded-xl transition-colors border-l-4 ${
-                      match.status === MATCH_STATUS.COMPLETE
-                        ? (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0)
-                          ? 'border-emerald-600'
-                          : 'border-red-700'
-                        : match.status === MATCH_STATUS.IN_PROGRESS
-                        ? 'border-primary'
-                        : 'border-transparent'
-                    }`}
-                  >
-                    <div>
-                      <div className="font-semibold flex items-center gap-1.5 flex-wrap">
-                        <span>
-                          {match.opponent_name ?? 'vs. Unknown'}
-                          {match.opponent_maxpreps_rank != null && (
-                            <span className="text-slate-400 font-normal"> #{match.opponent_maxpreps_rank}</span>
-                          )}
-                        </span>
-                        {match.match_type === 'tourney' && match.tournament_name && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide">{match.tournament_name}</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        {match.location && (
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
-                            match.location === 'home'    ? 'bg-emerald-900/50 text-emerald-400' :
-                            match.location === 'away'    ? 'bg-red-900/50 text-red-400' :
-                                                           'bg-slate-700 text-slate-400'
-                          }`}>
-                            {match.location === 'home' ? 'H' : match.location === 'away' ? 'A' : 'N'}
-                          </span>
-                        )}
-                        {match.conference && (
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
-                            match.conference === 'conference' ? 'bg-blue-900/50 text-blue-400' : 'bg-slate-700 text-slate-400'
-                          }`}>
-                            {match.conference === 'conference' ? 'CON' : 'NC'}
-                          </span>
-                        )}
-                        <span className="text-xs text-slate-400">{fmtDate(match.date)}</span>
-                      </div>
-                    </div>
-                    <div className="text-right flex flex-col items-end gap-1">
-                      <div className="flex items-center gap-1.5">
-                        {match.status === MATCH_STATUS.COMPLETE && (() => {
-                          const won = (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
-                          return (
-                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${won ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
-                              {won ? 'W' : 'L'}
-                            </span>
-                          );
-                        })()}
-                        {scoreDetail === 'scores' && match.sets?.length
-                          ? <span className="text-xs font-mono text-slate-300">{fmtSetScores(match.sets)}</span>
-                          : <SetPips ourSets={match.our_sets_won} oppSets={match.opp_sets_won} />
-                        }
-                      </div>
-                      <div className={`text-xs flex items-center gap-1 ${match.status === MATCH_STATUS.IN_PROGRESS ? 'text-primary' : 'text-slate-400'}`}>
-                        {match.status === MATCH_STATUS.IN_PROGRESS && (
-                          <span className="serve-pulse inline-block w-1.5 h-1.5 rounded-full bg-primary" />
-                        )}
-                        {match.status === MATCH_STATUS.IN_PROGRESS ? 'Live'
-                          : match.status === MATCH_STATUS.COMPLETE ? 'Final'
-                          : 'Setup'}
-                      </div>
-                    </div>
-                  </button>
-                )}
-              </SwipeableMatchCard>
-            );
-            return (
-              <>
-                {upcoming.length > 0 && (
-                  <>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-1">Upcoming — {upcoming.length}</p>
-                    {upcoming.map((m, i) => renderCard(m, i))}
-                  </>
-                )}
-                {past.length > 0 && upcoming.length > 0 && <div className="border-t border-slate-700/50 my-1" />}
-                {past.length > 0 && (
-                  <>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-1">Completed — {past.length}</p>
-                    {[...past].reverse().map((m, i) => renderCard(m, i))}
-                  </>
-                )}
-              </>
-            );
-          })()}
+          {matchView === 'schedule' && displayMatches.length > 0 && (
+            <ScheduleCalendar
+              matches={displayMatches}
+              navigate={navigate}
+              scoreDetail={scoreDetail}
+              onDeleteConfirm={m => setConfirmDelete(m)}
+              openEditMatch={openEditMatch}
+            />
+          )}
 
           {matchView !== 'schedule' && displayMatches.map((match, idx) => (
             <SwipeableMatchCard
