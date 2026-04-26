@@ -68,7 +68,8 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
   const calMonthKey = useMemo(() => {
     if (calMonthOverride && availableMonths.includes(calMonthOverride)) return calMonthOverride;
     if (!availableMonths.length) return today.slice(0, 7);
-    const upcoming = matches.find(m => m.date >= today && m.status !== MATCH_STATUS.COMPLETE);
+    // Compare using first 10 chars (YYYY-MM-DD) so ISO timestamps work correctly
+    const upcoming = matches.find(m => m.date?.slice(0, 10) >= today && m.status !== MATCH_STATUS.COMPLETE);
     return (upcoming ?? matches[matches.length - 1]).date.slice(0, 7);
   }, [calMonthOverride, availableMonths, matches, today]);
 
@@ -79,7 +80,7 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
 
   const matchesByDate = useMemo(() => {
     const map = {};
-    for (const m of matches) { if (m.date) (map[m.date] ??= []).push(m); }
+    for (const m of matches) { if (m.date) (map[m.date.slice(0, 10)] ??= []).push(m); }
     return map;
   }, [matches]);
 
