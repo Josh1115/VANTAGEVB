@@ -1214,15 +1214,15 @@ describe('computeRunsByRotation', () => {
 describe('VER position multipliers', () => {
   const makeKill = (pid) => contact({ player_id: pid, action: 'attack', result: 'kill' });
 
-  it('applies L multiplier (1.20) vs OH multiplier (1.00)', () => {
+  it('applies L multiplier (1.65) vs OH multiplier (1.00)', () => {
     const contacts = [makeKill('libero'), makeKill('outside')];
     const positions = { libero: 'L', outside: 'OH' };
     const stats = computePlayerStats(contacts, 1, positions);
-    // VER_libero = 1.20 × (1/1) × (4×1) = 4.8
+    // VER_libero = 1.65 × (1/1) × (4×1) = 6.6
     // VER_outside = 1.00 × (1/1) × (4×1) = 4.0
-    expect(stats.libero.ver).toBeCloseTo(4.8);
+    expect(stats.libero.ver).toBeCloseTo(6.6);
     expect(stats.outside.ver).toBeCloseTo(4.0);
-    expect(stats.libero.pos_mult).toBe(1.20);
+    expect(stats.libero.pos_mult).toBe(1.65);
     expect(stats.outside.pos_mult).toBe(1.00);
   });
 

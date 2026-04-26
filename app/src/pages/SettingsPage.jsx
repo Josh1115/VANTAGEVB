@@ -96,78 +96,27 @@ const PLAYER_NAME_FORMATS = [
   { id: 'nickname',     label: 'Nickname',          example: 'Johnny'     },
 ];
 
-function usePlayerNameFormat() {
-  const [fmt, setFmt] = useState(() => getStorageItem(STORAGE_KEYS.PLAYER_NAME_FORMAT, 'initial_last'));
-  const save = (id) => { setStorageItem(STORAGE_KEYS.PLAYER_NAME_FORMAT, id); setFmt(id); };
-  return [fmt, save];
-}
-
-function useScoreDetail() {
-  const [val, setVal] = useState(() => getStorageItem(STORAGE_KEYS.SCORE_DETAIL, 'sets'));
-  const save = (v) => { setStorageItem(STORAGE_KEYS.SCORE_DETAIL, v); setVal(v); };
+function useStrSetting(key, dflt) {
+  const [val, setVal] = useState(() => getStorageItem(key, dflt));
+  const save = (v) => { setStorageItem(key, v); setVal(v); };
   return [val, save];
 }
 
-function useMatchViewDefault() {
-  const [val, setVal] = useState(() => getStorageItem(STORAGE_KEYS.MATCH_VIEW_DEFAULT, 'recent'));
-  const save = (v) => { setStorageItem(STORAGE_KEYS.MATCH_VIEW_DEFAULT, v); setVal(v); };
+function useTrimSetting(key) {
+  const [val, setVal] = useState(() => getStorageItem(key, ''));
+  const save = (v) => { setStorageItem(key, v.trim() || null); setVal(v); };
   return [val, save];
 }
 
-function useDefaultTeam() {
-  const [defaultTeamId, setDefaultTeamId] = useState(() => {
-    const saved = getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID);
-    return !isNaN(saved) ? saved : null;
-  });
-  const save = (id) => {
-    setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, id);
-    setDefaultTeamId(id);
-  };
-  return [defaultTeamId, save];
+function useNullableIntSetting(key) {
+  const [val, setVal] = useState(() => { const s = getIntStorage(key); return !isNaN(s) ? s : null; });
+  const save = (id) => { setStorageItem(key, id); setVal(id); };
+  return [val, save];
 }
 
 function useLastSetScore() {
   const [val, setVal] = useState(() => getIntStorage(STORAGE_KEYS.LAST_SET_SCORE, 15));
   const save = (n) => { setStorageItem(STORAGE_KEYS.LAST_SET_SCORE, n); setVal(n); };
-  return [val, save];
-}
-
-function useDefaultSeason() {
-  const [defaultSeasonId, setDefaultSeasonId] = useState(() => {
-    const saved = getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID);
-    return !isNaN(saved) ? saved : null;
-  });
-  const save = (id) => {
-    setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, id);
-    setDefaultSeasonId(id);
-  };
-  return [defaultSeasonId, save];
-}
-
-function useMaxPrepsId() {
-  const [id, setId] = useState(() => getStorageItem(STORAGE_KEYS.MAXPREPS_TEAM_ID, ''));
-  const save = (val) => {
-    setStorageItem(STORAGE_KEYS.MAXPREPS_TEAM_ID, val.trim() || null);
-    setId(val);
-  };
-  return [id, save];
-}
-
-function useWinMessage() {
-  const [msg, setMsg] = useState(() => getStorageItem(STORAGE_KEYS.WIN_MESSAGE, ''));
-  const save = (val) => { setStorageItem(STORAGE_KEYS.WIN_MESSAGE, val.trimEnd() || null); setMsg(val); };
-  return [msg, save];
-}
-
-function useProgramName() {
-  const [val, setVal] = useState(() => getStorageItem(STORAGE_KEYS.PROGRAM_NAME, ''));
-  const save = (v) => { setStorageItem(STORAGE_KEYS.PROGRAM_NAME, v.trimEnd() || null); setVal(v); };
-  return [val, save];
-}
-
-function useCoachName() {
-  const [val, setVal] = useState(() => getStorageItem(STORAGE_KEYS.COACH_NAME, ''));
-  const save = (v) => { setStorageItem(STORAGE_KEYS.COACH_NAME, v.trimEnd() || null); setVal(v); };
   return [val, save];
 }
 
@@ -180,20 +129,20 @@ export function SettingsPage() {
 
   const [amoled,      saveAmoled]      = useAmoledMode();
   const [accent,      saveAccent]      = useAccentColor();
-  const [defaultTeamId,    saveDefaultTeam]    = useDefaultTeam();
-  const [defaultSeasonId,  saveDefaultSeason]  = useDefaultSeason();
-  const [scoreDetail,      saveScoreDetail]    = useScoreDetail();
-  const [matchViewDefault, saveMatchViewDefault] = useMatchViewDefault();
-  const [playerNameFormat, savePlayerNameFormat] = usePlayerNameFormat();
+  const [defaultTeamId,    saveDefaultTeam]    = useNullableIntSetting(STORAGE_KEYS.DEFAULT_TEAM_ID);
+  const [defaultSeasonId,  saveDefaultSeason]  = useNullableIntSetting(STORAGE_KEYS.DEFAULT_SEASON_ID);
+  const [scoreDetail,      saveScoreDetail]    = useStrSetting(STORAGE_KEYS.SCORE_DETAIL, 'sets');
+  const [matchViewDefault, saveMatchViewDefault] = useStrSetting(STORAGE_KEYS.MATCH_VIEW_DEFAULT, 'recent');
+  const [playerNameFormat, savePlayerNameFormat] = useStrSetting(STORAGE_KEYS.PLAYER_NAME_FORMAT, 'initial_last');
   const teams = useLiveQuery(() => db.teams.orderBy('name').toArray(), []);
   const defaultTeamSeasons = useLiveQuery(
     () => defaultTeamId ? db.seasons.where('team_id').equals(defaultTeamId).sortBy('year') : Promise.resolve([]),
     [defaultTeamId]
   );
-  const [maxPrepsId,  saveMaxPrepsId]  = useMaxPrepsId();
-  const [winMessage,   saveWinMessage]  = useWinMessage();
-  const [programName,  saveProgramName] = useProgramName();
-  const [coachName,    saveCoachName]   = useCoachName();
+  const [maxPrepsId,  saveMaxPrepsId]  = useTrimSetting(STORAGE_KEYS.MAXPREPS_TEAM_ID);
+  const [winMessage,   saveWinMessage]  = useTrimSetting(STORAGE_KEYS.WIN_MESSAGE);
+  const [programName,  saveProgramName] = useTrimSetting(STORAGE_KEYS.PROGRAM_NAME);
+  const [coachName,    saveCoachName]   = useTrimSetting(STORAGE_KEYS.COACH_NAME);
   const [wakeLock,     saveWakeLock]    = useToggleSetting('vbstat_wake_lock');
   const [hapticOn,     saveHaptic]      = useToggleSetting('vbstat_haptic');
   const [soundsOn,     saveSounds]      = useToggleSetting(STORAGE_KEYS.SOUNDS);

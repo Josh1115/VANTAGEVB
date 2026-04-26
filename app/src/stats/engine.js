@@ -346,7 +346,7 @@ export function computeRotationContactStats(contacts) {
 // Build a rally lookup Map keyed by "set_id_rally_number".
 // Shared by computeISvsOOS, computeTransitionAttack, computeFreeDigWin, computeFreeballOutcomes
 // so the Map is only built once per stats computation rather than 4 separate times.
-export function buildRallyMap(rallies) {
+function buildRallyMap(rallies) {
   return new Map(rallies.map((r) => [`${r.set_id}_${r.rally_number}`, r]));
 }
 
@@ -1050,7 +1050,7 @@ export function computeMatchWinProb(pCurrentSet, pFutureSet, ourSets, oppSets, s
  * rallies:  array of { set_id, rally_number, point_winner }
  * Returns { us: { count, win3, total3, win_pct }, them: { count, win3, total3, win_pct } }
  */
-export function computeTimeoutEffectiveness(timeouts, rallies) {
+function computeTimeoutEffectiveness(timeouts, rallies) {
   // Index rallies by set_id → sorted array for fast range lookup
   const bySet = {};
   for (const r of rallies) {

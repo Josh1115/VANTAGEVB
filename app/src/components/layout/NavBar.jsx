@@ -80,13 +80,13 @@ function TeamsIcon({ active }) {
         <>
           <text key={`L${idx}`} x="7.5" y="17.5"
             className="jersey-num"
-            fontSize="3.8" fontWeight="bold" textAnchor="middle" dominantBaseline="central"
+            fontSize="5.5" fontWeight="bold" textAnchor="middle" dominantBaseline="central"
             fill="#ffffff">
             {leftNum}
           </text>
           <text key={`R${idx}`} x="16.5" y="17.5"
             className="jersey-num"
-            fontSize="3.8" fontWeight="bold" textAnchor="middle" dominantBaseline="central"
+            fontSize="5.5" fontWeight="bold" textAnchor="middle" dominantBaseline="central"
             fill="#60a5fa">
             {rightNum}
           </text>
@@ -125,13 +125,13 @@ function RecordBookIcon({ active }) {
 }
 
 const CONFETTI_PIECES = [
-  { offset:  -9, delay:   0, rot: 130, color: '#f97316' },
-  { offset:   7, delay: 180, rot: 210, color: '#22d3ee' },
-  { offset:  -3, delay: 360, rot: 160, color: '#a78bfa' },
-  { offset:  11, delay:  90, rot: 260, color: '#4ade80' },
-  { offset: -12, delay: 270, rot:  80, color: '#fb7185' },
-  { offset:   2, delay: 450, rot: 310, color: '#fbbf24' },
-  { offset:  -6, delay: 580, rot: 190, color: '#60a5fa' },
+  { offset:  -9, delay:   0, rot: 130, color: '#ffffff' },
+  { offset:   7, delay: 180, rot: 210, color: '#60a5fa' },
+  { offset:  -3, delay: 360, rot: 160, color: '#bfdbfe' },
+  { offset:  11, delay:  90, rot: 260, color: '#3b82f6' },
+  { offset: -12, delay: 270, rot:  80, color: '#ffffff' },
+  { offset:   2, delay: 450, rot: 310, color: '#93c5fd' },
+  { offset:  -6, delay: 580, rot: 190, color: '#2563eb' },
 ];
 
 function ConfettiTrophy({ active }) {

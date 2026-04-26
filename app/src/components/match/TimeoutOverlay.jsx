@@ -19,7 +19,7 @@ import { RotationRadarChart } from '../charts/RotationRadarChart';
 import { CourtHeatMap } from '../charts/CourtHeatMap';
 import { RecordAlertPanel } from './RecordAlertPanel';
 import { CourtWhiteboard } from './CourtWhiteboard';
-import { fmtCount, fmtPct, fmtHitting, fmtPassRating } from '../../stats/formatters';
+import { fmtPct, fmtHitting } from '../../stats/formatters';
 
 const TABS = [
   { value: 'scoring',   label: 'Scoring'   },

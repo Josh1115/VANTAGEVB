@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { createPortal } from 'react-dom';
 import { fmtPlayerName } from '../../stats/formatters';
 
 export const AssistPickerModal = memo(function AssistPickerModal({
@@ -21,12 +22,12 @@ export const AssistPickerModal = memo(function AssistPickerModal({
 
   const ordered = [setter, libero, ...others].filter(Boolean);
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[200] bg-black/75"
+      className="fixed inset-0 z-[200] bg-black/75 flex items-center justify-center"
       onPointerDown={(e) => { if (e.target === e.currentTarget) onDismiss(); }}
     >
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl w-72 overflow-hidden">
+      <div className="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl w-72 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-900/60">
           <div>
@@ -87,6 +88,7 @@ export const AssistPickerModal = memo(function AssistPickerModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 });
