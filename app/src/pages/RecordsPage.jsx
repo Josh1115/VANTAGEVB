@@ -4,7 +4,7 @@ import { db } from '../db/schema';
 import { computeTeamStats, computePlayerStats } from '../stats/engine';
 import { getContactsForMatches, getBatchSetsPlayedCount } from '../stats/queries';
 import { buildPlayerMaps } from '../utils/players';
-import { fmtCount, fmtBlocks, fmtDate } from '../stats/formatters';
+import { fmtCount, fmtBlocks, fmtDate, fmtPct, fmtHitting } from '../stats/formatters';
 import { MATCH_STATUS } from '../constants';
 import { STORAGE_KEYS, getIntStorage } from '../utils/storage';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -17,6 +17,14 @@ const RECORD_STATS = [
   { key: 'blk', label: 'Blocks',  fmt: fmtBlocks },
   { key: 'ast', label: 'Assists', fmt: fmtCount },
   { key: 'dig', label: 'Digs',    fmt: fmtCount },
+];
+
+const TEAM_SEASON_STATS = [
+  ...RECORD_STATS,
+  { key: 'k_pct',   label: 'K%',    fmt: fmtPct     },
+  { key: 'hit_pct', label: 'HIT%',  fmt: fmtHitting },
+  { key: 'si_pct',  label: 'SRV%',  fmt: fmtPct     },
+  { key: 'ace_pct', label: 'ACE%',  fmt: fmtPct     },
 ];
 
 const TABS = [
@@ -59,6 +67,8 @@ function mergeAndRank(computed, historical) {
 }
 
 async function computeLeaderboards(tab, teamId, currentSeasonId) {
+  const statsForTab = tab === 'team_season' ? TEAM_SEASON_STATS : RECORD_STATS;
+
   const players = await db.players.where('team_id').equals(teamId).toArray();
   const { playerNames } = buildPlayerMaps(players);
   const positions = Object.fromEntries(players.map(p => [p.id, p.position]));
@@ -88,14 +98,14 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
   }
 
   const seasons = await db.seasons.where('team_id').equals(teamId).toArray();
-  if (!seasons.length) return Object.fromEntries(RECORD_STATS.map(s => [s.key, mergeAndRank([], historicalRows(s.key))]));
+  if (!seasons.length) return Object.fromEntries(statsForTab.map(s => [s.key, mergeAndRank([], historicalRows(s.key))]));
 
   const allMatches = await db.matches
     .where('season_id').anyOf(seasons.map(s => s.id))
     .filter(m => m.status !== MATCH_STATUS.SCHEDULED && m.match_type !== 'exhibition')
     .toArray();
 
-  if (!allMatches.length) return Object.fromEntries(RECORD_STATS.map(s => [s.key, mergeAndRank([], historicalRows(s.key))]));
+  if (!allMatches.length) return Object.fromEntries(statsForTab.map(s => [s.key, mergeAndRank([], historicalRows(s.key))]));
 
   const matchIds = allMatches.map(m => m.id);
   const [contacts, setsMap] = await Promise.all([
@@ -158,7 +168,7 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
     }
 
     return Object.fromEntries(
-      RECORD_STATS.map(({ key }) => {
+      statsForTab.map(({ key }) => {
         const computed = seasonRows.map(({ ts, year, currentSeason }) => ({
           val: getStatValue(ts, key),
           year,
@@ -844,7 +854,8 @@ export function RecordsPage() {
     await db.historical_records.delete(id);
   }
 
-  const statDef   = RECORD_STATS.find(s => s.key === statKey);
+  const visibleStats = tab === 'team_season' ? TEAM_SEASON_STATS : RECORD_STATS;
+  const statDef      = visibleStats.find(s => s.key === statKey);
   const rows      = boards?.[statKey] ?? [];
   const tabDef    = TABS.find(t => t.value === tab);
   const multiTeam = gender ? (genderTeams[gender]?.length ?? 0) > 1 : false;
@@ -953,7 +964,7 @@ export function RecordsPage() {
                 ) : (
                   <>
                     <div className="flex gap-2 overflow-x-auto pb-1">
-                      {RECORD_STATS.map(s => (
+                      {visibleStats.map(s => (
                         <button
                           key={s.key}
                           onClick={() => setStatKey(s.key)}
