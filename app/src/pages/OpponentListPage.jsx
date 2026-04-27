@@ -18,46 +18,60 @@ const TENDENCY_TYPES = [
   { type: 'key_player',         label: 'Key Player',      icon: '⭐' },
   { type: 'note',               label: 'Note',            icon: '📝' },
 ];
-const TYPE_ICON = Object.fromEntries(TENDENCY_TYPES.map(t => [t.type, t.icon]));
 
-// ── Scouting report card ──────────────────────────────────────────────────────
+// ── Combined season scouting report ──────────────────────────────────────────
 
-function ScoutingCard({ opp, tendencies, navigate }) {
-  const count = tendencies?.length ?? 0;
-  const preview = (tendencies ?? []).slice(0, 4);
+function OppReportSection({ opp, tendencies, navigate }) {
+  const grouped = useMemo(() => {
+    const g = {};
+    for (const t of tendencies ?? []) {
+      (g[t.type] ??= []).push(t);
+    }
+    return g;
+  }, [tendencies]);
+
+  const hasContent = (tendencies?.length ?? 0) > 0 || opp.notes;
+  if (!hasContent) return null;
 
   return (
-    <button
-      onClick={() => navigate(`/opponents/${opp.id}`)}
-      className="w-full bg-surface rounded-xl px-4 py-3 text-left hover:bg-slate-700 active:scale-[0.98] transition-[transform,background-color] duration-75"
-    >
-      <div className="flex items-center justify-between mb-2">
+    <div className="bg-surface rounded-xl overflow-hidden border border-slate-700/50">
+      {/* Opponent header */}
+      <button
+        onClick={() => navigate(`/opponents/${opp.id}`)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-slate-700/40 hover:bg-slate-700/70 transition-colors"
+      >
         <span className="font-bold text-white">{opp.name}</span>
-        <div className="flex items-center gap-2">
-          {count > 0 && (
-            <span className="text-xs text-slate-500">{count} {count === 1 ? 'note' : 'notes'}</span>
-          )}
-          <span className="text-slate-600 text-lg">›</span>
-        </div>
+        <span className="text-slate-500 text-lg">›</span>
+      </button>
+
+      <div className="px-4 py-3 space-y-3">
+        {/* Tendencies grouped by type */}
+        {TENDENCY_TYPES.filter(t => grouped[t.type]?.length).map(({ type, label, icon }) => (
+          <div key={type}>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1.5 flex items-center gap-1">
+              <span>{icon}</span> {label}
+            </p>
+            <div className="space-y-1">
+              {grouped[type].map(item => (
+                <p key={item.id} className="text-sm text-slate-200 leading-snug pl-4 border-l border-slate-700">
+                  {item.value}
+                </p>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {/* Free-text notes */}
+        {opp.notes && (
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1.5 flex items-center gap-1">
+              <span>📝</span> Notes
+            </p>
+            <p className="text-sm text-slate-300 whitespace-pre-wrap pl-4 border-l border-slate-700">{opp.notes}</p>
+          </div>
+        )}
       </div>
-
-      {preview.map(t => (
-        <div key={t.id} className="flex items-start gap-1.5 mt-1">
-          <span className="text-sm shrink-0 mt-0.5">{TYPE_ICON[t.type] ?? '📝'}</span>
-          <p className="text-xs text-slate-300 line-clamp-1">{t.value}</p>
-        </div>
-      ))}
-      {count > 4 && (
-        <p className="text-xs text-slate-500 mt-1.5 ml-5">+{count - 4} more…</p>
-      )}
-
-      {opp.notes && !count && (
-        <p className="text-xs text-slate-400 line-clamp-2 mt-0.5">📝 {opp.notes}</p>
-      )}
-      {opp.notes && count > 0 && (
-        <p className="text-xs text-slate-500 mt-1.5 ml-5 italic">+ notes</p>
-      )}
-    </button>
+    </div>
   );
 }
 
@@ -84,6 +98,18 @@ export function OpponentListPage() {
     () => teamSeasons ? new Set(teamSeasons.map(s => s.id)) : null,
     [teamSeasons]
   );
+
+  // Most recent season for the selected team
+  const currentSeason = useMemo(() => {
+    if (!teamSeasons?.length) return null;
+    return [...teamSeasons].sort((a, b) => String(b.year).localeCompare(String(a.year)))[0];
+  }, [teamSeasons]);
+
+  // Match IDs in the current season
+  const currentSeasonMatchIds = useMemo(() => {
+    if (!currentSeason || !matches) return null;
+    return new Set(matches.filter(m => m.season_id === currentSeason.id).map(m => m.id));
+  }, [currentSeason, matches]);
 
   function handleTeamChange(e) {
     const id = e.target.value ? Number(e.target.value) : null;
@@ -116,7 +142,6 @@ export function OpponentListPage() {
     return m;
   }, [opponents, matches, teamSeasonIds]);
 
-  // Sort opponents by most-recently-played first, then alphabetical
   const sortedOpponents = useMemo(() => [...(opponents ?? [])].sort((a, b) => {
     const la = oppStats[a.id]?.latest ?? '';
     const lb = oppStats[b.id]?.latest ?? '';
@@ -124,23 +149,43 @@ export function OpponentListPage() {
     return (a.name ?? '').localeCompare(b.name ?? '');
   }), [opponents, oppStats]);
 
-  // Tendencies grouped by opp_id, filtered by selected team
-  const tendenciesByOpp = useMemo(() => {
+  // Tendencies for the scouting report:
+  // - match-linked tendencies from the current season's matches
+  // - general tendencies saved for the selected team (no match_id)
+  // - if no team selected: all tendencies
+  const reportTendenciesByOpp = useMemo(() => {
     const g = {};
     for (const t of allTendencies ?? []) {
-      if (selectedTeamId && t.team_id && t.team_id !== selectedTeamId) continue;
-      (g[t.opp_id] ??= []).push(t);
+      let include = false;
+      if (!selectedTeamId) {
+        include = true;
+      } else if (t.match_id) {
+        include = currentSeasonMatchIds?.has(t.match_id) ?? false;
+      } else {
+        include = !t.team_id || t.team_id === selectedTeamId;
+      }
+      if (include) (g[t.opp_id] ??= []).push(t);
     }
     return g;
-  }, [allTendencies, selectedTeamId]);
+  }, [allTendencies, selectedTeamId, currentSeasonMatchIds]);
 
-  // Opponents with any scouting data, sorted alphabetically
-  const scoutedOpps = useMemo(() =>
+  // Opponents with scouting data this season, sorted alphabetically
+  const reportOpps = useMemo(() =>
     (opponents ?? [])
-      .filter(opp => (tendenciesByOpp[opp.id]?.length > 0) || opp.notes)
+      .filter(opp => (reportTendenciesByOpp[opp.id]?.length > 0) || opp.notes)
       .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')),
-    [opponents, tendenciesByOpp]
+    [opponents, reportTendenciesByOpp]
   );
+
+  // Scouting count per opp (for opponent view badge)
+  const scoutCountByOpp = useMemo(() => {
+    const c = {};
+    for (const t of allTendencies ?? []) {
+      if (selectedTeamId && t.team_id && t.team_id !== selectedTeamId) continue;
+      c[t.opp_id] = (c[t.opp_id] ?? 0) + 1;
+    }
+    return c;
+  }, [allTendencies, selectedTeamId]);
 
   async function handleAdd() {
     const name = newName.trim();
@@ -166,6 +211,8 @@ export function OpponentListPage() {
       {label}
     </button>
   );
+
+  const seasonLabel = currentSeason?.year ?? null;
 
   return (
     <div className="pb-24">
@@ -210,19 +257,26 @@ export function OpponentListPage() {
 
       {/* ── Scouting Reports view ── */}
       {view === 'scouting' && (
-        <div className="p-4 space-y-3">
-          {scoutedOpps.length === 0 ? (
+        <div className="p-4 space-y-4">
+          {/* Season label */}
+          {seasonLabel && (
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {seasonLabel} Season · Combined Report
+            </p>
+          )}
+
+          {reportOpps.length === 0 ? (
             <EmptyState
               icon="🔭"
               title="No scouting reports yet"
               description="Add tendencies or notes from an opponent's profile to build your scouting library."
               action={<Button onClick={() => setView('opponents')}>View Opponents</Button>}
             />
-          ) : scoutedOpps.map(opp => (
-            <ScoutingCard
+          ) : reportOpps.map(opp => (
+            <OppReportSection
               key={opp.id}
               opp={opp}
-              tendencies={tendenciesByOpp[opp.id]}
+              tendencies={reportTendenciesByOpp[opp.id]}
               navigate={navigate}
             />
           ))}
@@ -245,7 +299,7 @@ export function OpponentListPage() {
             const lastDate = s.latest
               ? new Date(s.latest).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
               : null;
-            const scoutCount = tendenciesByOpp[opp.id]?.length ?? 0;
+            const scoutCount = scoutCountByOpp[opp.id] ?? 0;
             return (
               <button
                 key={opp.id}
