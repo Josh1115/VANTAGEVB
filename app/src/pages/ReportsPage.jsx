@@ -379,6 +379,7 @@ export function ReportsPage() {
           id: pid,
           name: playerNames[pid] ?? `#${pid}`,
           ...s,
+          srv_pt:   stats.servingPoints?.[pid] ?? 0,
           f_se_pct: s.f_sa > 0 ? s.f_se / s.f_sa : null,
           t_se_pct: s.t_sa > 0 ? s.t_se / s.t_sa : null,
         }))
@@ -405,6 +406,7 @@ export function ReportsPage() {
       id:        '__totals__',
       name:      'Totals',
       ...t,
+      srv_pt:    Object.values(stats.servingPoints ?? {}).reduce((a, b) => a + b, 0),
       f_se_pct:  t.f_sa > 0 ? t.f_se / t.f_sa : null,
       t_se_pct:  t.t_sa > 0 ? t.t_se / t.t_sa : null,
       sp:        stats.setsPlayed ?? null,

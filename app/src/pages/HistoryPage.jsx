@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
+import { COLLEGE_DIVISIONS } from '../constants';
 import { PageHeader } from '../components/layout/PageHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 
@@ -159,6 +160,134 @@ function HistoryModal({ teamId, onClose, editId, initialData }) {
   );
 }
 
+// ── College Commits ───────────────────────────────────────────────────────────
+
+const DIV_COLORS = {
+  'NCAA D1': 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+  'NCAA D2': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+  'NCAA D3': 'bg-slate-600/40 text-slate-300 border-slate-500/30',
+  'NAIA':    'bg-green-500/20 text-green-300 border-green-500/30',
+  'JUCO':    'bg-purple-500/20 text-purple-300 border-purple-500/30',
+  'Club':    'bg-slate-600/30 text-slate-400 border-slate-600/30',
+};
+
+const EMPTY_COMMIT = { player_name: '', grad_year: '', college: '', division: 'NCAA D1' };
+
+function CommitModal({ teamId, onClose, editId, initialData }) {
+  const [form, setForm] = useState(initialData ?? EMPTY_COMMIT);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  function set(field, val) { setForm(f => ({ ...f, [field]: val })); setError(''); }
+
+  async function handleSave() {
+    if (!form.player_name.trim()) { setError('Player name is required.'); return; }
+    if (!form.grad_year)          { setError('Graduation year is required.'); return; }
+    if (!form.college.trim())     { setError('College name is required.'); return; }
+    if (!form.division)           { setError('Division is required.'); return; }
+    setSaving(true);
+    const fields = {
+      team_id:     teamId,
+      player_name: form.player_name.trim(),
+      grad_year:   Number(form.grad_year),
+      college:     form.college.trim(),
+      division:    form.division,
+    };
+    try {
+      if (editId) { await db.player_commits.update(editId, fields); }
+      else        { await db.player_commits.add(fields); }
+      onClose();
+    } catch {
+      setError('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inp = 'w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-primary';
+  const lbl = 'block text-xs font-semibold text-slate-400 mb-1';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60" onClick={onClose}>
+      <div
+        className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl p-5 space-y-4 max-h-[88vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-slate-100">{editId ? 'Edit Commit' : 'Add Commit'}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className={lbl}>Player Name *</label>
+            <input className={inp} placeholder="Jane Smith" value={form.player_name} onChange={e => set('player_name', e.target.value)} />
+          </div>
+
+          <div>
+            <label className={lbl}>Graduation Year *</label>
+            <input className={inp} type="number" min="1990" max="2099" placeholder={String(new Date().getFullYear())} value={form.grad_year} onChange={e => set('grad_year', e.target.value)} />
+          </div>
+
+          <div>
+            <label className={lbl}>College / University *</label>
+            <input className={inp} placeholder="University of Michigan" value={form.college} onChange={e => set('college', e.target.value)} />
+          </div>
+
+          <div>
+            <label className={lbl}>Division *</label>
+            <select className={inp} value={form.division} onChange={e => set('division', e.target.value)}>
+              {COLLEGE_DIVISIONS.map(d => (
+                <option key={d.value} value={d.value}>{d.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {error && <p className="text-xs text-red-400">{error}</p>}
+
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold active:scale-95 disabled:opacity-50"
+        >
+          {saving ? 'Saving…' : editId ? 'Save Changes' : 'Add Commit'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CommitCard({ entry, onEdit, onDelete }) {
+  const divCls = DIV_COLORS[entry.division] ?? DIV_COLORS['Club'];
+  return (
+    <div className="bg-slate-800 rounded-xl px-4 py-3 border border-slate-700/50">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-bold text-slate-100 truncate">{entry.player_name}</span>
+          <span className="text-xs text-slate-500 shrink-0">'{String(entry.grad_year).slice(-2)}</span>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${divCls}`}>{entry.division}</span>
+          <button
+            onClick={() => onEdit(entry)}
+            className="text-xs text-primary font-semibold px-2 py-1 rounded-lg hover:bg-slate-600/50 transition-colors"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => onDelete(entry.id)}
+            className="text-xs text-red-400 font-semibold px-2 py-1 rounded-lg hover:bg-slate-600/50 transition-colors"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+      <p className="text-sm text-slate-400 mt-0.5">{entry.college}</p>
+    </div>
+  );
+}
+
 // ── Season Card ───────────────────────────────────────────────────────────────
 
 function SeasonCard({ entry, onEdit, onDelete }) {
@@ -282,6 +411,8 @@ export function HistoryPage() {
   const [teamId,  setTeamId]  = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [editEntry, setEditEntry] = useState(null);
+  const [showAddCommit, setShowAddCommit] = useState(false);
+  const [editCommit,    setEditCommit]    = useState(null);
 
   const orgs = useLiveQuery(
     () => db.organizations.toArray().then(o => o.sort((a, b) => a.name?.localeCompare(b.name))),
@@ -294,6 +425,12 @@ export function HistoryPage() {
   const history = useLiveQuery(
     () => teamId
       ? db.season_history.where('team_id').equals(teamId).toArray()
+      : Promise.resolve([]),
+    [teamId]
+  );
+  const commits = useLiveQuery(
+    () => teamId
+      ? db.player_commits.where('team_id').equals(teamId).toArray()
       : Promise.resolve([]),
     [teamId]
   );
@@ -332,9 +469,17 @@ export function HistoryPage() {
     () => [...(history ?? [])].sort((a, b) => String(b.year).localeCompare(String(a.year))),
     [history]
   );
+  const sortedCommits = useMemo(
+    () => [...(commits ?? [])].sort((a, b) => b.grad_year - a.grad_year),
+    [commits]
+  );
 
   async function handleDelete(id) {
     await db.season_history.delete(id);
+  }
+
+  async function handleDeleteCommit(id) {
+    await db.player_commits.delete(id);
   }
 
   const multiTeam = gender ? (genderTeams[gender]?.length ?? 0) > 1 : false;
@@ -368,7 +513,7 @@ export function HistoryPage() {
             onClick={() => setShowAdd(true)}
             className="px-3 py-1 rounded-lg bg-primary text-white text-sm font-bold"
           >
-            + Add
+            + Season
           </button>
         )}
       />
@@ -403,23 +548,55 @@ export function HistoryPage() {
 
             {!teamId ? (
               <EmptyState icon="📋" title={gender ? 'Select a team' : 'Select Girls or Boys'} description="" />
-            ) : sortedHistory.length === 0 ? (
-              <EmptyState
-                icon="📖"
-                title="No seasons recorded"
-                description="Tap + Add to start building your program's history"
-              />
             ) : (
-              <div className="space-y-3">
-                {sortedHistory.map(entry => (
-                  <SeasonCard
-                    key={entry.id}
-                    entry={entry}
-                    onEdit={setEditEntry}
-                    onDelete={handleDelete}
+              <>
+                {/* College Commits */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">College Commits</h3>
+                    <button
+                      onClick={() => setShowAddCommit(true)}
+                      className="text-xs text-primary font-semibold px-2 py-1 rounded-lg hover:bg-slate-700/50 transition-colors"
+                    >
+                      + Add
+                    </button>
+                  </div>
+                  {sortedCommits.length === 0 ? (
+                    <p className="text-xs text-slate-500 italic">No commits recorded yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {sortedCommits.map(c => (
+                        <CommitCard
+                          key={c.id}
+                          entry={c}
+                          onEdit={setEditCommit}
+                          onDelete={handleDeleteCommit}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Season History */}
+                {sortedHistory.length === 0 ? (
+                  <EmptyState
+                    icon="📖"
+                    title="No seasons recorded"
+                    description="Tap + Season to start building your program's history"
                   />
-                ))}
-              </div>
+                ) : (
+                  <div className="space-y-3">
+                    {sortedHistory.map(entry => (
+                      <SeasonCard
+                        key={entry.id}
+                        entry={entry}
+                        onEdit={setEditEntry}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
@@ -427,6 +604,24 @@ export function HistoryPage() {
 
       {showAdd && teamId && (
         <HistoryModal teamId={teamId} onClose={() => setShowAdd(false)} />
+      )}
+
+      {showAddCommit && teamId && (
+        <CommitModal teamId={teamId} onClose={() => setShowAddCommit(false)} />
+      )}
+
+      {editCommit && teamId && (
+        <CommitModal
+          teamId={teamId}
+          editId={editCommit.id}
+          initialData={{
+            player_name: editCommit.player_name ?? '',
+            grad_year:   editCommit.grad_year   != null ? String(editCommit.grad_year) : '',
+            college:     editCommit.college     ?? '',
+            division:    editCommit.division    ?? 'NCAA D1',
+          }}
+          onClose={() => setEditCommit(null)}
+        />
       )}
 
       {editEntry && teamId && (

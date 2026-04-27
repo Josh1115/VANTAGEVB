@@ -122,6 +122,15 @@ export const ACCENT_COLORS = [
   { id: 'yellow', label: 'Yellow', hex: '#eab308', rgb: '234 179 8'  },
 ];
 
+export const COLLEGE_DIVISIONS = [
+  { value: 'NCAA D1', label: 'NCAA D1' },
+  { value: 'NCAA D2', label: 'NCAA D2' },
+  { value: 'NCAA D3', label: 'NCAA D3' },
+  { value: 'NAIA',    label: 'NAIA'    },
+  { value: 'JUCO',    label: 'JUCO'    },
+  { value: 'Club',    label: 'Club'    },
+];
+
 // NFHS rules
 // MAX_SUBS_PER_SET: intentionally 18 (club/college rules) rather than NFHS's 12.
 // Overridable via localStorage key 'vbstat_max_subs'. Change to 12 for strict NFHS play.
