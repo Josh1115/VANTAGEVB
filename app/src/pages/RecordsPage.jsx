@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { computeTeamStats, computePlayerStats } from '../stats/engine';
@@ -143,6 +144,7 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
           year,
           class_year: playerYears[Number(pid)] ?? '',
           active:     activePlayerIds.has(Number(pid)),
+          player_id:  Number(pid),
         }));
         return [key, mergeAndRank(computed, historicalRows(key))];
       })
@@ -199,7 +201,7 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
         for (const { opp, date, ps } of perMatch) {
           for (const [pid, s] of Object.entries(ps)) {
             const val = getStatValue(s, key);
-            if (val != null) computed.push({ name: playerNames[pid] ?? '?', val, opp, date, class_year: playerYears[Number(pid)] ?? '', active: activePlayerIds.has(Number(pid)) });
+            if (val != null) computed.push({ name: playerNames[pid] ?? '?', val, opp, date, class_year: playerYears[Number(pid)] ?? '', active: activePlayerIds.has(Number(pid)), player_id: Number(pid) });
           }
         }
         return [key, mergeAndRank(computed, historicalRows(key))];
@@ -400,10 +402,12 @@ function SeasonTitleRow({ entry }) {
 
 // ── LeaderboardRow ────────────────────────────────────────────────────────────
 
-function LeaderboardRow({ row, tab, fmt, onEdit, onDelete }) {
+function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, teamId }) {
+  const navigate  = useNavigate();
   const [swiped, setSwiped] = useState(false);
   const startX = useRef(0);
   const showPlayer = tab !== 'team_match' && tab !== 'team_season';
+  const canLink = !!row.player_id && !!teamId;
   const showRight  = tab === 'match' || tab === 'team_match';
 
   const bgCls = row.rank === 1 ? 'bg-[#555232]'
@@ -434,8 +438,19 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete }) {
 
       <span className="flex-1 min-w-0 flex items-center gap-2">
         {showPlayer && (
-          <span className={`text-sm truncate min-w-0 ${row.rank <= 3 ? 'text-white font-bold' : 'text-slate-200'}`}>
-            {row.name}
+          <span className="truncate min-w-0 flex items-baseline gap-0">
+            {canLink ? (
+              <button
+                onClick={e => { e.stopPropagation(); navigate(`/teams/${teamId}/players/${row.player_id}`); }}
+                className={`text-sm font-bold underline decoration-dotted underline-offset-2 decoration-slate-500 hover:text-primary transition-colors ${row.rank <= 3 ? 'text-white' : 'text-slate-200'}`}
+              >
+                {row.name}
+              </button>
+            ) : (
+              <span className={`text-sm ${row.rank <= 3 ? 'text-white font-bold' : 'text-slate-200'}`}>
+                {row.name}
+              </span>
+            )}
             {tab === 'season' && row.year && (
               <span className="ml-1.5 text-xs text-slate-500">· {row.year}</span>
             )}
@@ -994,6 +1009,7 @@ export function RecordsPage() {
                             fmt={statDef?.fmt ?? fmtCount}
                             onEdit={setEditRow}
                             onDelete={handleDelete}
+                            teamId={teamId}
                           />
                         ))}
                       </div>
