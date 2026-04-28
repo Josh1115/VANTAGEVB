@@ -660,7 +660,7 @@ export function HomePage() {
   return (
     <div>
       {/* ── Header ── */}
-      <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 pt-3 pb-6 text-center relative">
+      <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 pt-safe pb-6 text-center relative">
 
         {/* Volleyball net watermark (mesh sways via .net-wave CSS) */}
         <svg

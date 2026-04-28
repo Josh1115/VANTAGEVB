@@ -364,7 +364,10 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
     <div className="flex-none flex flex-col">
 
       {/* ── Main header row ── */}
-      <div className="relative flex items-center h-[5.85vmin] bg-surface border-b border-slate-700 text-white overflow-hidden px-2 gap-1">
+      <div
+        className="relative flex items-center bg-surface border-b border-slate-700 text-white overflow-hidden px-2 gap-1"
+        style={{ height: 'calc(5.85vmin + env(safe-area-inset-top))', paddingTop: 'env(safe-area-inset-top)' }}
+      >
 
         {/* ── Far left: US sets won + our timeouts + sub counter  (swaps when flipped) ── */}
         <div className="flex items-center gap-1 shrink-0">
@@ -554,7 +557,8 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
             onPointerDown={(e) => { e.preventDefault(); setTimeoutConfirm(null); }}
           />
           <div
-            className="fixed top-[11.7vmin] left-1/2 -translate-x-1/2 z-50"
+            className="fixed left-1/2 -translate-x-1/2 z-50"
+            style={{ top: 'calc(11.7vmin + env(safe-area-inset-top))' }}
             onPointerDown={(e) => e.stopPropagation()}
           >
             <div className="animate-nudge-pop flex flex-col items-center gap-3 bg-slate-800 border border-slate-600 rounded-xl px-6 py-4 shadow-2xl">
@@ -593,7 +597,8 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
             onPointerDown={(e) => { e.preventDefault(); setSubWarnOpen(false); }}
           />
           <div
-            className="fixed top-[11.7vmin] left-1/2 -translate-x-1/2 z-50"
+            className="fixed left-1/2 -translate-x-1/2 z-50"
+            style={{ top: 'calc(11.7vmin + env(safe-area-inset-top))' }}
             onPointerDown={(e) => e.stopPropagation()}
           >
             <div className="animate-nudge-pop flex flex-col items-center gap-3 bg-red-950 border border-red-700 rounded-xl px-6 py-4 shadow-2xl">
@@ -625,7 +630,8 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
           />
           {/* Popup panel — outer div handles fixed position, inner div animates */}
           <div
-            className="fixed top-[11.7vmin] left-1/2 -translate-x-1/2 z-50"
+            className="fixed left-1/2 -translate-x-1/2 z-50"
+            style={{ top: 'calc(11.7vmin + env(safe-area-inset-top))' }}
             onPointerDown={(e) => e.stopPropagation()}
           >
             <div className="animate-nudge-pop flex flex-col items-center gap-2 bg-slate-800 border border-slate-600 rounded-xl px-6 py-3 shadow-2xl">

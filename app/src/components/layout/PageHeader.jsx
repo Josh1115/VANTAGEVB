@@ -4,7 +4,7 @@ export function PageHeader({ title, backTo, action }) {
   const navigate = useNavigate();
 
   return (
-    <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 py-3 flex items-center gap-3">
+    <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 pb-3 pt-safe flex items-center gap-3">
       {backTo !== undefined && (
         <button
           onClick={() => backTo ? navigate(backTo) : navigate(-1)}

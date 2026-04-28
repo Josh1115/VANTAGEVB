@@ -27,6 +27,8 @@
     margin: 0;
     -webkit-tap-highlight-color: transparent;
     -webkit-font-smoothing: antialiased;
+    /* Eliminate iOS double-tap zoom delay without disabling pinch-to-zoom */
+    touch-action: manipulation;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='35'%3E%3Cg fill='none' stroke='white' stroke-width='0.7' opacity='0.04'%3E%3Cpolygon points='50,0 40,-17 20,-17 10,0 20,17 40,17'/%3E%3Cpolygon points='20,17 10,0 -10,0 -20,17 -10,35 10,35'/%3E%3Cpolygon points='80,17 70,0 50,0 40,17 50,35 70,35'/%3E%3C/g%3E%3C/svg%3E");
     background-size: 60px 35px;
   }
@@ -45,6 +47,9 @@
 @layer utilities {
   .pb-safe {
     padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+  }
+  .pt-safe {
+    padding-top: max(env(safe-area-inset-top), 0.75rem);
   }
 }
 
@@ -111,7 +116,7 @@
 }
 
 .animate-page-enter {
-  animation: page-enter var(--duration-base) var(--ease-out) both;
+  animation: page-enter var(--duration-base) var(--ease-out) backwards;
 }
 
 /* ── Item 3: CRT scan-line overlay ── */
