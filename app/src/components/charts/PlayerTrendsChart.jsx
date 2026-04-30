@@ -116,6 +116,9 @@ export function PlayerTrendsChart({ trends, playerNames }) {
               dot={{ r: 3, fill: COLORS[i % COLORS.length] }}
               activeDot={{ r: 5 }}
               connectNulls={false}
+              animationBegin={i * 60}
+              animationDuration={600}
+              animationEasing="ease-out"
             />
           ))}
         </LineChart>

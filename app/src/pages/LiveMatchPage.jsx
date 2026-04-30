@@ -12,6 +12,7 @@ import { useRecordAlerts } from '../hooks/useRecordAlerts';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { haptic } from '../utils/haptic';
 import { STORAGE_KEYS, getBoolStorage, setBoolStorage, getStorageItem } from '../utils/storage';
+import { autoSaveBackup, exportBackup } from '../stats/backup';
 import { ScoreHeader } from '../components/match/ScoreHeader';
 import { CourtGrid } from '../components/court/CourtGrid';
 import { ActionBar } from '../components/match/ActionBar';
@@ -49,6 +50,7 @@ export function LiveMatchPage() {
   const [liberoPlayer,        setLiberoPlayer]        = useState(null);
   const [confettiNav,         setConfettiNav]         = useState(null); // { path, matchWin } | null
   const [setSummaryData,      setSetSummaryData]      = useState(null); // { winner } | null
+  const [exportPromptNav,     setExportPromptNav]     = useState(null); // fn to call after export prompt
   const [teamName,            setTeamName]            = useState('');
   const [opponentName,        setOpponentName]        = useState('');
   const [liveStatsDefaultTab, setLiveStatsDefaultTab] = useState(null);
@@ -506,12 +508,16 @@ export function LiveMatchPage() {
                 navigate(`/matches/${matchIdParam}/summary`);
               } else if (isMatchOver) {
                 await endMatch(pendingSetWin);
+                autoSaveBackup('match_end').catch(() => {});
                 clearPendingSetWin();
-                if (pendingSetWin === SIDE.US) {
-                  setConfettiNav({ path: `/matches/${matchIdParam}/summary`, matchWin: true });
-                } else {
-                  navigate(`/matches/${matchIdParam}/summary`);
-                }
+                const winner = pendingSetWin;
+                setExportPromptNav(() => () => {
+                  if (winner === SIDE.US) {
+                    setConfettiNav({ path: `/matches/${matchIdParam}/summary`, matchWin: true });
+                  } else {
+                    navigate(`/matches/${matchIdParam}/summary`);
+                  }
+                });
               } else {
                 // Show set summary before transitioning to next set
                 const winner = pendingSetWin;
@@ -523,6 +529,26 @@ export function LiveMatchPage() {
           />
         );
       })()}
+
+      {exportPromptNav && (
+        <ConfirmDialog
+          title="Export Backup?"
+          message="Save a full JSON backup of all data to your device before leaving."
+          confirmLabel="Export"
+          cancelLabel="Skip"
+          onConfirm={async () => {
+            const nav = exportPromptNav;
+            setExportPromptNav(null);
+            try { await exportBackup(); } catch { /* ignore — user may have dismissed save dialog */ }
+            nav();
+          }}
+          onCancel={() => {
+            const nav = exportPromptNav;
+            setExportPromptNav(null);
+            nav();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -56,7 +56,9 @@ export function PassDistributionChart({ totals }) {
             width={28}
           />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#1e293b' }} />
-          <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={64}>
+          <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={64}
+            animationBegin={0} animationDuration={500} animationEasing="ease-out"
+          >
             {data.map((entry, i) => (
               <Cell key={i} fill={RATING_COLORS[i]} />
             ))}

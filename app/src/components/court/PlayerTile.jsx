@@ -505,15 +505,15 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
               <Btn label="PURE"
                 onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'pure' }); if (id) { setPendingKillId(id); setAssistPickerOpen(true); } }}
                 cls="bg-orange-600/80 text-white hover:bg-orange-500/90 serve-unlock-btn" />
+              <Btn label="TOUCH"
+                onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'touch' }); if (id) { setPendingKillId(id); setAssistPickerOpen(true); } }}
+                cls="bg-cyan-900/80 text-cyan-300 hover:bg-cyan-800/90 serve-unlock-btn"
+                style={DELAY_50} />
               <Btn label="TOOL"
                 onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'tool' }); if (id) { setPendingKillId(id); setAssistPickerOpen(true); } }}
                 cls="bg-amber-700/80 text-amber-100 hover:bg-amber-600/90 serve-unlock-btn"
-                style={DELAY_50} />
-              <Btn label="OVER"
-                onTap={() => { tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'over' }); setKPending(false); }}
-                cls="bg-yellow-800/80 text-yellow-200 hover:bg-yellow-700/90 serve-unlock-btn"
                 style={DELAY_100} />
-              <Btn label="TIP"
+              <Btn label="TIP/ROLL"
                 onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'tip' }); if (id) { setPendingKillId(id); setAssistPickerOpen(true); } }}
                 cls="bg-lime-900/80 text-lime-300 hover:bg-lime-800/90 serve-unlock-btn"
                 style={DELAY_150} />
@@ -521,6 +521,10 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
                 onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'bk' }); if (id) { setPendingKillId(id); setAssistPickerOpen(true); } }}
                 cls="bg-orange-900/80 text-orange-300 hover:bg-orange-800/90 serve-unlock-btn !text-[1.8vmin] whitespace-nowrap"
                 style={DELAY_200} />
+              <Btn label="OVER"
+                onTap={() => { tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'over' }); setKPending(false); }}
+                cls="bg-yellow-800/80 text-yellow-200 hover:bg-yellow-700/90 serve-unlock-btn"
+                style={{ animationDelay: '250ms' }} />
             </>
           ) : (
             <>

@@ -299,7 +299,10 @@ export function HomePage() {
   const navigate = useNavigate();
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
-  const [matchView, setMatchView] = useState(() => getStorageItem(STORAGE_KEYS.MATCH_VIEW_DEFAULT, 'recent'));
+  const [matchView, setMatchView] = useState(() => {
+    const v = getStorageItem(STORAGE_KEYS.MATCH_VIEW_DEFAULT, 'closest');
+    return v === 'recent' ? 'closest' : v;
+  });
   const scoreDetail = getStorageItem(STORAGE_KEYS.SCORE_DETAIL, 'sets');
 
   // ── Schedule-edit modal state ─────────────────────────────────────────────
@@ -328,14 +331,7 @@ export function HomePage() {
 
   const recentMatches = useLiveQuery(async () => {
     let matches;
-    if (matchView === 'recent') {
-      if (defaultSeasonId) {
-        const arr = await db.matches.where('season_id').equals(defaultSeasonId).sortBy('date');
-        matches = arr.reverse().slice(0, 5);
-      } else {
-        matches = await db.matches.orderBy('date').reverse().limit(5).toArray();
-      }
-    } else if (matchView === 'schedule') {
+    if (matchView === 'schedule') {
       const all = defaultSeasonId
         ? await db.matches.where('season_id').equals(defaultSeasonId).toArray()
         : await db.matches.toArray();
@@ -1084,19 +1080,13 @@ export function HomePage() {
 
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">
-              {matchView === 'recent' ? 'Recent' : matchView === 'schedule' ? 'Schedule' : 'Closest'} Matches
+              {matchView === 'schedule' ? 'Schedule' : 'Closest'} Matches
               {displayMatches.length > 0 && (
                 <span className="ml-1.5 text-[10px] font-bold bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded-full">{displayMatches.length}</span>
               )}
             </h2>
             <div className="flex items-center gap-2">
               <div className="flex bg-slate-800 rounded-lg p-0.5">
-                <button
-                  onClick={() => setMatchView('recent')}
-                  className={`text-[10px] font-semibold px-2 py-1 rounded-md transition-colors ${matchView === 'recent' ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  Recent
-                </button>
                 <button
                   onClick={() => setMatchView('closest')}
                   className={`text-[10px] font-semibold px-2 py-1 rounded-md transition-colors ${matchView === 'closest' ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}

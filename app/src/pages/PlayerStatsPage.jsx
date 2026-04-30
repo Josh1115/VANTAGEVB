@@ -125,7 +125,7 @@ function PerGameTrendGraph({ rows, statTab, serveView }) {
     : baseData;
 
   return (
-    <div className="mx-4 mb-3 bg-surface rounded-xl p-3">
+    <div className="mx-2 mb-3 bg-surface rounded-xl p-3">
       <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Per Game Trend</p>
       <div className="flex gap-1.5 flex-wrap mb-3">
         {opts.map(o => (
@@ -141,7 +141,7 @@ function PerGameTrendGraph({ rows, statTab, serveView }) {
           </button>
         ))}
       </div>
-      <ResponsiveContainer width="100%" height={300}>
+      <ResponsiveContainer width="100%" height={440}>
         <LineChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
           <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} axisLine={false} />

@@ -29,6 +29,9 @@ export function SideoutPieChart({ so_pct, label = 'Sideout' }) {
           dataKey="value"
           label={({ name, value }) => `${value}%`}
           labelLine={false}
+          animationBegin={0}
+          animationDuration={600}
+          animationEasing="ease-out"
         >
           <Cell fill="#f97316" />
           <Cell fill="#334155" />

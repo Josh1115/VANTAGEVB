@@ -22,8 +22,8 @@ export function RotationBarChart({ rotationRows }) {
             labelStyle={{ color: '#cbd5e1' }}
             formatter={(v) => `${v}%`}
           />
-          <Bar dataKey="SO%" fill="#f97316" radius={[3, 3, 0, 0]} />
-          <Bar dataKey="SP%" fill="#60a5fa" radius={[3, 3, 0, 0]} />
+          <Bar dataKey="SO%" fill="#f97316" radius={[3, 3, 0, 0]} animationBegin={0} animationDuration={500} animationEasing="ease-out" />
+          <Bar dataKey="SP%" fill="#60a5fa" radius={[3, 3, 0, 0]} animationBegin={80} animationDuration={500} animationEasing="ease-out" />
         </BarChart>
       </ResponsiveContainer>
     </div>

@@ -4,7 +4,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
-import { exportBackup, importBackup } from '../stats/backup';
+import { exportBackup, importBackup, restoreAutoBackup } from '../stats/backup';
 import { MergeBackupModal } from '../components/settings/MergeBackupModal';
 import { db } from '../db/schema';
 import { useUiStore } from '../store/uiStore';
@@ -88,6 +88,12 @@ function useAccentColor() {
 }
 
 
+const ROSTER_SORT_OPTIONS = [
+  { id: 'jersey',    label: 'Jersey #',    example: '#12'  },
+  { id: 'first',     label: 'First Name',  example: 'Alex' },
+  { id: 'last',      label: 'Last Name',   example: 'Smith'},
+];
+
 const PLAYER_NAME_FORMATS = [
   { id: 'initial_last', label: 'Initial + Last',   example: 'J. Smith'   },
   { id: 'last',         label: 'Last Name',         example: 'Smith'      },
@@ -134,6 +140,7 @@ export function SettingsPage() {
   const [scoreDetail,      saveScoreDetail]    = useStrSetting(STORAGE_KEYS.SCORE_DETAIL, 'sets');
   const [matchViewDefault, saveMatchViewDefault] = useStrSetting(STORAGE_KEYS.MATCH_VIEW_DEFAULT, 'recent');
   const [playerNameFormat, savePlayerNameFormat] = useStrSetting(STORAGE_KEYS.PLAYER_NAME_FORMAT, 'initial_last');
+  const [rosterSort,       saveRosterSort]       = useStrSetting(STORAGE_KEYS.ROSTER_SORT, 'jersey');
   const teams = useLiveQuery(() => db.teams.orderBy('name').toArray(), []);
   const defaultTeamSeasons = useLiveQuery(
     () => defaultTeamId ? db.seasons.where('team_id').equals(defaultTeamId).sortBy('year') : Promise.resolve([]),
@@ -152,6 +159,12 @@ export function SettingsPage() {
   const [pendingFile,    setPendingFile]    = useState(null);
   const [importing,      setImporting]      = useState(false);
   const [showMerge,      setShowMerge]      = useState(false);
+  const [restoringId,    setRestoringId]    = useState(null);
+
+  const autoBackups = useLiveQuery(
+    () => db.auto_backups.orderBy('created_at').reverse().limit(5).toArray(),
+    []
+  );
 
   const { canInstall, isIOS, isInstalled, promptInstall } = useInstallPrompt();
   const storage = useStorageEstimate();
@@ -176,6 +189,19 @@ export function SettingsPage() {
     setPendingFile(file);
     setConfirmImport(true);
     e.target.value = '';
+  }
+
+  async function handleRestoreAutoBackup(id) {
+    setRestoringId(id);
+    try {
+      await restoreAutoBackup(id);
+      showToast('Backup restored', 'success');
+      window.location.reload();
+    } catch (e) {
+      showToast(e.message ?? 'Restore failed', 'error');
+    } finally {
+      setRestoringId(null);
+    }
   }
 
   async function handleImportConfirm() {
@@ -531,6 +557,28 @@ export function SettingsPage() {
               </div>
             </div>
 
+            {/* Lineup roster sort */}
+            <div className="py-3 first:pt-0 last:pb-0">
+              <div className="text-sm font-medium mb-0.5">Lineup Roster Sort</div>
+              <div className="text-xs text-slate-400 mb-3">Order of players in the lineup builder dropdown</div>
+              <div className="flex gap-2">
+                {ROSTER_SORT_OPTIONS.map(({ id, label, example }) => (
+                  <button
+                    key={id}
+                    onClick={() => saveRosterSort(id)}
+                    className={`flex-1 flex flex-col items-center gap-0.5 px-2 py-2 rounded-lg border text-sm transition-colors ${
+                      rosterSort === id
+                        ? 'bg-primary/20 border-primary text-white'
+                        : 'bg-bg border-slate-700 text-slate-300 hover:border-slate-500'
+                    }`}
+                  >
+                    <span className="font-medium text-xs">{label}</span>
+                    <span className={`font-mono text-[10px] ${rosterSort === id ? 'text-primary' : 'text-slate-500'}`}>{example}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Flip team layout */}
             <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
               <div>
@@ -672,6 +720,33 @@ export function SettingsPage() {
             >
               Merge from Backup (JSON)
             </Button>
+
+            {autoBackups && autoBackups.length > 0 && (
+              <div>
+                <p className="text-sm font-medium mb-1.5">Auto-Saves</p>
+                <div className="flex flex-col gap-1.5">
+                  {autoBackups.map((b) => (
+                    <div key={b.id} className="flex items-center justify-between bg-bg rounded-lg px-3 py-2 border border-slate-700">
+                      <div>
+                        <span className="text-xs font-semibold text-slate-300">
+                          {b.label === 'match_end' ? 'Match End' : 'App Open'}
+                        </span>
+                        <span className="text-[10px] text-slate-500 ml-2">
+                          {new Date(b.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleRestoreAutoBackup(b.id)}
+                        disabled={restoringId === b.id}
+                        className="text-xs font-semibold text-primary hover:text-orange-300 transition-colors disabled:opacity-50"
+                      >
+                        {restoringId === b.id ? 'Restoring…' : 'Restore'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <Button className="w-full" variant="danger" onClick={() => setConfirmClear(true)}>
               Clear All Data

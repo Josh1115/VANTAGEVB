@@ -21,6 +21,7 @@ export const STORAGE_KEYS = {
   LAST_SET_SCORE:     'vbstat_last_set_score',
   MAXPREPS_TEAM_ID:   'vbstat_maxpreps_id',
   WIN_MESSAGE:        'vbstat_win_message',
+  ROSTER_SORT:        'vbstat_roster_sort',
 };
 
 export function getStorageItem(key, defaultValue = null) {

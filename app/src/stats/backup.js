@@ -59,6 +59,61 @@ export async function exportBackup() {
   URL.revokeObjectURL(url);
 }
 
+// ── Auto-save ─────────────────────────────────────────────────────────────────
+
+const MAX_AUTO_BACKUPS = 5;
+
+export async function autoSaveBackup(label = 'auto') {
+  const data = { version: BACKUP_VERSION, exportedAt: new Date().toISOString() };
+  for (const table of ALL_TABLES) {
+    data[table] = await db[table].toArray();
+  }
+  const settings = {};
+  for (const key of SETTINGS_KEYS) {
+    const v = localStorage.getItem(key);
+    if (v !== null) settings[key] = v;
+  }
+  data.settings = settings;
+
+  await db.auto_backups.add({ created_at: new Date().toISOString(), label, data });
+
+  const all = await db.auto_backups.orderBy('created_at').toArray();
+  if (all.length > MAX_AUTO_BACKUPS) {
+    const toDelete = all.slice(0, all.length - MAX_AUTO_BACKUPS).map((b) => b.id);
+    await db.auto_backups.bulkDelete(toDelete);
+  }
+}
+
+export async function restoreAutoBackup(backupId) {
+  const backup = await db.auto_backups.get(backupId);
+  if (!backup) throw new Error('Auto-backup not found.');
+  let data = migrateBackup({ ...backup.data });
+
+  const missingTables = REQUIRED_TABLES.filter((t) => !Array.isArray(data[t]));
+  if (missingTables.length > 0) {
+    throw new Error(`Backup is missing required tables: ${missingTables.join(', ')}`);
+  }
+
+  const tablesForTx = db.tables.filter((t) => t.name !== 'auto_backups');
+  await db.transaction('rw', tablesForTx, async () => {
+    for (const table of [...ALL_TABLES].reverse()) {
+      await db[table].clear();
+    }
+    for (const table of ALL_TABLES) {
+      const rows = data[table];
+      if (Array.isArray(rows) && rows.length > 0) {
+        await db[table].bulkAdd(rows);
+      }
+    }
+  });
+
+  if (data.settings && typeof data.settings === 'object') {
+    for (const [key, value] of Object.entries(data.settings)) {
+      if (typeof value === 'string') localStorage.setItem(key, value);
+    }
+  }
+}
+
 // ── Import ────────────────────────────────────────────────────────────────────
 
 export async function importBackup(file) {

@@ -21,7 +21,7 @@ function mkAccum() {
     pa: 0, p0: 0, p1: 0, p2: 0, p3: 0,
     // attack
     ta: 0, k: 0, ae: 0, ae_ob: 0, ae_net: 0, ae_blk: 0, ae_bra: 0,
-    k_pure: 0, k_tool: 0, k_over: 0, k_tip: 0, k_bk: 0,
+    k_pure: 0, k_tool: 0, k_over: 0, k_tip: 0, k_bk: 0, k_touch: 0,
     // set
     ast: 0, bhe: 0,
     // error actions (L/DBL/NET tap on PlayerTile)
@@ -69,8 +69,9 @@ function accumContact(p, { action, result, serve_type, error_type, kill_type, co
       if (kill_type === 'pure') p.k_pure += n;
       if (kill_type === 'tool') p.k_tool += n;
       if (kill_type === 'over') p.k_over += n;
-      if (kill_type === 'tip')  p.k_tip  += n;
-      if (kill_type === 'bk')   p.k_bk   += n;
+      if (kill_type === 'tip')   p.k_tip   += n;
+      if (kill_type === 'bk')    p.k_bk    += n;
+      if (kill_type === 'touch') p.k_touch += n;
     }
     if (result === 'error') {
       p.ae += n;
@@ -134,8 +135,9 @@ function deriveStats(p, sp, posLabel = null) {
     k_pure: p.k_pure, k_pure_pct: div(p.k_pure, p.k),
     k_tool: p.k_tool, k_tool_pct: div(p.k_tool, p.k),
     k_over: p.k_over, k_over_pct: div(p.k_over, p.k),
-    k_tip:  p.k_tip,  k_tip_pct:  div(p.k_tip,  p.k),
-    k_bk:   p.k_bk,   k_bk_pct:   div(p.k_bk,   p.k),
+    k_tip:   p.k_tip,   k_tip_pct:   div(p.k_tip,   p.k),
+    k_bk:    p.k_bk,    k_bk_pct:    div(p.k_bk,    p.k),
+    k_touch: p.k_touch, k_touch_pct: div(p.k_touch, p.k),
     ae: p.ae, ae_ob: p.ae_ob, ae_net: p.ae_net, ae_blk: p.ae_blk, ae_bra: p.ae_bra,
     hit_pct: div(p.k - p.ae, p.ta),
     k_pct:   div(p.k,  p.ta),

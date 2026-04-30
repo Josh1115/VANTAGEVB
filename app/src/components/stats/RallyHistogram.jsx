@@ -25,7 +25,9 @@ export function RallyHistogram({ contacts }) {
             labelStyle={{ color: '#cbd5e1' }}
             formatter={(v, _name, props) => [`${v} rallies (${props.payload.pct}%)`, 'Count']}
           />
-          <Bar dataKey="rallies" radius={[4, 4, 0, 0]}>
+          <Bar dataKey="rallies" radius={[4, 4, 0, 0]}
+            animationBegin={0} animationDuration={500} animationEasing="ease-out"
+          >
             {data.map((_, i) => (
               <Cell key={`cell-${i}`} fill={BAR_COLORS[i % BAR_COLORS.length]} />
             ))}

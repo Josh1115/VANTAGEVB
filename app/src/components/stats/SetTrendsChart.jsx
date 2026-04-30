@@ -43,7 +43,9 @@ export function SetTrendsChart({ contacts, sets }) {
             labelStyle={{ color: '#cbd5e1' }}
             itemStyle={{ color: curr?.color }}
           />
-          <Bar dataKey={metric} radius={[4, 4, 0, 0]} fill={curr?.color ?? '#f97316'} />
+          <Bar key={metric} dataKey={metric} radius={[4, 4, 0, 0]} fill={curr?.color ?? '#f97316'}
+            animationBegin={0} animationDuration={500} animationEasing="ease-out"
+          />
         </BarChart>
       </ResponsiveContainer>
 

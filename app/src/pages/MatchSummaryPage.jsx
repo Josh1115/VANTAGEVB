@@ -772,7 +772,7 @@ export function MatchSummaryPage() {
     const ta = sum('ta'), k = sum('k'), ae = sum('ae');
     const ae_ob = sum('ae_ob'), ae_net = sum('ae_net'), ae_blk = sum('ae_blk'), ae_bra = sum('ae_bra');
     const k_pure = sum('k_pure'), k_tool = sum('k_tool'), k_over = sum('k_over'),
-          k_tip  = sum('k_tip'),  k_bk   = sum('k_bk');
+          k_tip  = sum('k_tip'),  k_bk   = sum('k_bk'),   k_touch = sum('k_touch');
     const bs = sum('bs'), ba = sum('ba'), be = sum('be');
 
     // Defense
@@ -835,8 +835,9 @@ export function MatchSummaryPage() {
         k_pure, k_pure_pct: k > 0 ? k_pure / k : null,
         k_tool, k_tool_pct: k > 0 ? k_tool / k : null,
         k_over, k_over_pct: k > 0 ? k_over / k : null,
-        k_tip,  k_tip_pct:  k > 0 ? k_tip  / k : null,
-        k_bk,   k_bk_pct:   k > 0 ? k_bk   / k : null,
+        k_tip,   k_tip_pct:   k > 0 ? k_tip   / k : null,
+        k_bk,    k_bk_pct:    k > 0 ? k_bk    / k : null,
+        k_touch, k_touch_pct: k > 0 ? k_touch / k : null,
         ae, ae_ob, ae_net, ae_blk, ae_bra,
         hit_pct:   ta > 0 ? (k - ae) / ta : null,
         k_pct:     ta > 0 ? k / ta : null,

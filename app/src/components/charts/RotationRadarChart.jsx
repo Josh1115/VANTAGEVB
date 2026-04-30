@@ -24,8 +24,8 @@ export function RotationRadarChart({ rotationStats }) {
           tick={{ fill: '#64748b', fontSize: 9 }}
           tickFormatter={(v) => `${v}%`}
         />
-        <Radar name="SO%" dataKey="SO%" stroke="#f97316" fill="#f97316" fillOpacity={0.25} />
-        <Radar name="SP%" dataKey="SP%" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.15} />
+        <Radar name="SO%" dataKey="SO%" stroke="#f97316" fill="#f97316" fillOpacity={0.25} animationBegin={0} animationDuration={600} animationEasing="ease-out" />
+        <Radar name="SP%" dataKey="SP%" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.15} animationBegin={100} animationDuration={600} animationEasing="ease-out" />
         <Tooltip
           contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8 }}
           formatter={(v) => [`${v}%`]}

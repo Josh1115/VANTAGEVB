@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CourtZonePicker, ROMAN } from '../court/CourtZonePicker';
+import { getStorageItem, STORAGE_KEYS } from '../../utils/storage';
 
 const POSITION_OPTIONS = ['OH', 'OPP', 'MB', 'S', 'L', 'DS', 'RS'];
 
@@ -79,6 +80,13 @@ export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions,
     });
   };
 
+  const rosterSort = getStorageItem(STORAGE_KEYS.ROSTER_SORT, 'jersey');
+  const sortedPlayers = [...(players ?? [])].sort((a, b) => {
+    if (rosterSort === 'first') return a.name.split(' ')[0].localeCompare(b.name.split(' ')[0]);
+    if (rosterSort === 'last')  return a.name.split(' ').pop().localeCompare(b.name.split(' ').pop());
+    return (a.jersey_number ?? 0) - (b.jersey_number ?? 0);
+  });
+
   return (
     <div className="space-y-5">
 
@@ -117,7 +125,7 @@ export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions,
                 className="flex-1 bg-surface border border-slate-600 text-white rounded px-2 py-2 text-sm focus:outline-none focus:border-primary"
               >
                 <option value="">— pick player —</option>
-                {(players ?? []).map((p) => (
+                {sortedPlayers.map((p) => (
                   <option
                     key={p.id}
                     value={p.id}
@@ -156,7 +164,7 @@ export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions,
           className="w-full bg-surface border border-slate-600 text-white rounded px-2 py-2 text-sm focus:outline-none focus:border-primary"
         >
           <option value="">— No libero —</option>
-          {(players ?? []).map((p) => (
+          {sortedPlayers.map((p) => (
             <option key={p.id} value={p.id}>
               #{p.jersey_number} {p.name} ({p.position})
             </option>

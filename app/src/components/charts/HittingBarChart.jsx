@@ -41,7 +41,9 @@ export function HittingBarChart({ data }) {
           formatter={(v) => [fmt(v), 'HIT%']}
         />
         <ReferenceLine y={0} stroke="#475569" />
-        <Bar dataKey="hit_pct" radius={[3, 3, 0, 0]}>
+        <Bar dataKey="hit_pct" radius={[3, 3, 0, 0]}
+          animationBegin={0} animationDuration={500} animationEasing="ease-out"
+        >
           {data.map((entry, i) => (
             <Cell key={i} fill={hitColor(entry.hit_pct)} />
           ))}

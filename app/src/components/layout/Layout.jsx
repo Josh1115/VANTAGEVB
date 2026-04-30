@@ -1,8 +1,9 @@
-import { Component } from 'react';
+import { Component, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { NavBar } from './NavBar';
 import { UpdatePrompt } from './UpdatePrompt';
 import { useUiStore, selectToast } from '../../store/uiStore';
+import { autoSaveBackup } from '../../stats/backup';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -66,8 +67,14 @@ export function Layout() {
   const toast = useUiStore(selectToast);
   const hideNav = HIDE_NAV.some((p) => pathname.includes(p));
 
+  useEffect(() => {
+    if (sessionStorage.getItem('vbstat_auto_backup_done')) return;
+    sessionStorage.setItem('vbstat_auto_backup_done', '1');
+    autoSaveBackup('app_open').catch(() => {});
+  }, []);
+
   return (
-    <div className="min-h-screen bg-bg text-white">
+    <div className="min-h-screen bg-bg text-white" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <UpdatePrompt />
       <main className={hideNav ? '' : 'pb-20'}>
         <div className={hideNav ? '' : 'max-w-2xl md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto'}>

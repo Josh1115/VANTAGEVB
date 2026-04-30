@@ -156,6 +156,16 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
     return data;
   }, [committedRallies, format, serveSide]);
 
+  const currentWinProbs = useMemo(() => {
+    const setsToWin = format === FORMAT.BEST_OF_5 ? 3 : 2;
+    const isDecider = setNumber === (format === FORMAT.BEST_OF_5 ? 5 : 3);
+    const { p, q } = computePQ(committedRallies);
+    const setWinProb = computeSetWinProb(p, q, ourScore, oppScore, serveSide, isDecider);
+    const pFutureSet = computeSetWinProb(p, q, 0, 0, 'them', false);
+    const mwp = computeMatchWinProb(setWinProb, pFutureSet, ourSetsWon, oppSetsWon, setsToWin);
+    return { setWinProb, matchWinProb: mwp, p, q };
+  }, [committedRallies, ourScore, oppScore, serveSide, setNumber, format, ourSetsWon, oppSetsWon]);
+
   const xkByPass = useMemo(() => {
     const raw = computeXKByPassRating(setContacts);
     const agg = { '1': { ta:0, k:0, ae:0 }, '2': { ta:0, k:0, ae:0 }, '3': { ta:0, k:0, ae:0 } };
@@ -665,6 +675,36 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
           </div>
         </div>
 
+        {/* Set win probability */}
+        <div className="text-center w-full">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Set Win Probability</div>
+          <div className="flex justify-center items-center gap-4">
+            <div className="text-center">
+              <div className={`text-3xl font-black tabular-nums ${
+                currentWinProbs.setWinProb >= 0.60 ? 'text-emerald-400' :
+                currentWinProbs.setWinProb <= 0.40 ? 'text-red-400' : 'text-slate-200'
+              }`}>
+                {Math.round(currentWinProbs.setWinProb * 100)}%
+              </div>
+              <div className="text-[9px] text-slate-500 mt-0.5">THIS SET</div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-500 w-6">SO%</span>
+                <span className={`text-xs font-black ${soColor(currentWinProbs.p)}`}>
+                  {Math.round(currentWinProbs.p * 100)}%
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-500 w-6">SP%</span>
+                <span className={`text-xs font-black ${bpColor(currentWinProbs.q)}`}>
+                  {Math.round(currentWinProbs.q * 100)}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Score since last timeout */}
         {scoreAtLastTimeout !== null && (
           <div className="text-center">
@@ -763,6 +803,21 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
               {currentRotStat?.bp_opp > 0 && (
                 <div className="text-[9px] text-slate-600">{currentRotStat.bp_win}/{currentRotStat.bp_opp}</div>
               )}
+            </div>
+          </div>
+          <div className="flex gap-3 justify-center mt-1 pt-1 border-t border-slate-800">
+            <div className="text-center">
+              <div className="text-[10px] text-slate-600 mb-0.5">Match SO%</div>
+              <div className={`text-sm font-black ${soColor(currentWinProbs.p)}`}>
+                {Math.round(currentWinProbs.p * 100)}%
+              </div>
+            </div>
+            <div className="w-px bg-slate-800 self-stretch" />
+            <div className="text-center">
+              <div className="text-[10px] text-slate-600 mb-0.5">Match SP%</div>
+              <div className={`text-sm font-black ${bpColor(currentWinProbs.q)}`}>
+                {Math.round(currentWinProbs.q * 100)}%
+              </div>
             </div>
           </div>
         </div>
