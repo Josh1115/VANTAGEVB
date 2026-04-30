@@ -742,6 +742,7 @@ export function MatchSummaryPage() {
           name: `${playerNames[pid] ?? `#${pid}`}${correctedPlayerIds.has(Number(pid)) ? ' ✎' : ''}`,
           ...s,
           srv_pt:   displayStats.servingPoints?.[pid] ?? 0,
+          att_pt:   (() => { const sp = displayStats.servingPoints?.[pid] ?? 0; return sp > 0 ? s.sa / sp : null; })(),
           f_se_pct: s.f_sa > 0 ? s.f_se / s.f_sa : null,
           t_se_pct: s.t_sa > 0 ? s.t_se / s.t_sa : null,
         }))
@@ -800,7 +801,7 @@ export function MatchSummaryPage() {
     return {
       // Serving views
       all: {
-        name: 'TOTAL', sp, mp, sa, ace, srv_pt: sum('srv_pt'), se, se_ob, se_net, se_foot,
+        name: 'TOTAL', sp, mp, sa, ace, srv_pt: sum('srv_pt'), att_pt: sum('srv_pt') > 0 ? sa / sum('srv_pt') : null, se, se_ob, se_net, se_foot,
         ace_pct:  sa > 0 ? ace / sa : null,
         se_pct:   sa > 0 ? se / sa : null,
         si_pct:   sa > 0 ? (sa - se) / sa : null,

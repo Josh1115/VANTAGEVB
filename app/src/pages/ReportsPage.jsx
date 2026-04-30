@@ -380,6 +380,7 @@ export function ReportsPage() {
           name: playerNames[pid] ?? `#${pid}`,
           ...s,
           srv_pt:   stats.servingPoints?.[pid] ?? 0,
+          att_pt:   (() => { const sp = stats.servingPoints?.[pid] ?? 0; return sp > 0 ? s.sa / sp : null; })(),
           f_se_pct: s.f_sa > 0 ? s.f_se / s.f_sa : null,
           t_se_pct: s.t_sa > 0 ? s.t_se / s.t_sa : null,
         }))
@@ -407,6 +408,7 @@ export function ReportsPage() {
       name:      'Totals',
       ...t,
       srv_pt:    Object.values(stats.servingPoints ?? {}).reduce((a, b) => a + b, 0),
+      att_pt:    (() => { const totalSrvPt = Object.values(stats.servingPoints ?? {}).reduce((a, b) => a + b, 0); return totalSrvPt > 0 ? (t.sa / totalSrvPt) : null; })(),
       f_se_pct:  t.f_sa > 0 ? t.f_se / t.f_sa : null,
       t_se_pct:  t.t_sa > 0 ? t.t_se / t.t_sa : null,
       sp:        stats.setsPlayed ?? null,

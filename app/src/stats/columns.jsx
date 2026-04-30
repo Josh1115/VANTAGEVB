@@ -28,6 +28,7 @@ export const SERVING_COLS = {
     ...SP_MP_COLS,
     { key: 'sa',       label: 'SA',     fmt: fmtCount },
     { key: 'srv_pt',   label: 'SRV PT', fmt: fmtCount },
+    { key: 'att_pt',   label: 'ATT:PT', fmt: fmtRate  },
     { key: 'ace',      label: 'ACE',    fmt: fmtCount },
     { key: 'se',       label: 'SE',     fmt: fmtCount },
     { key: 'si_pct',   label: 'S%',     fmt: fmtPct   },
