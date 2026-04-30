@@ -71,7 +71,7 @@ export function PlayerTrendsChart({ trends, playerNames }) {
         ))}
       </div>
 
-      <ResponsiveContainer width="100%" height={280}>
+      <ResponsiveContainer width="100%" height={630}>
         <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 32 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
           <XAxis
