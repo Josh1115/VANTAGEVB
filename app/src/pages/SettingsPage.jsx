@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
@@ -759,6 +760,9 @@ export function SettingsPage() {
           <h2 className="font-semibold mb-1">About</h2>
           <p className="text-sm text-slate-400">VBAPPv.2 — Volleyball Stat Tracker</p>
           <p className="text-xs text-slate-500 mt-1">All data stored locally on this device. No account required.</p>
+          <Link to="/terms" className="inline-block mt-3 text-xs text-primary hover:text-orange-300 transition-colors underline underline-offset-2">
+            Terms &amp; Conditions
+          </Link>
         </section>
 
       </div>

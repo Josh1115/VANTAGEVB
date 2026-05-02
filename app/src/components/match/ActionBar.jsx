@@ -76,7 +76,8 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
   const btnBase = 'flex-1 h-full flex flex-col items-center justify-center font-bold rounded-none select-none transition-[transform,filter,background-color] duration-75 active:brightness-75 active:scale-y-90 active:scale-x-[0.97] border-r border-slate-700 last:border-r-0';
 
   return (
-    <div className="flex-none flex h-[3.65vmin] border-t border-slate-700 bg-surface">
+    <div className="flex-none flex-col border-t border-slate-700 bg-surface">
+    <div className="flex h-[3.65vmin]">
 
       {/* Rotate backward — hold to confirm */}
       <button
@@ -109,7 +110,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         className={`${btnBase} bg-slate-800 hover:bg-slate-700
           ${lastAction ? 'text-yellow-400' : 'text-slate-600'}`}
       >
-        <span className="text-[12px] font-bold leading-none">UNDO</span>
+        <span className="text-[1.53vmin] font-bold leading-none">UNDO</span>
         {undoLabel && (
           <span className="text-[1.45vmin] leading-none mt-0.5 text-yellow-300/70 truncate max-w-full px-1">
             {undoLabel}
@@ -157,7 +158,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
           onPointerDown={(e) => { e.preventDefault(); onStatsOpen(); }}
           className={`${btnBase} w-full bg-slate-800 text-slate-300 hover:bg-slate-700`}
         >
-          <span className={`text-[12px] leading-none ${alertCount > 0 ? 'text-orange-400' : 'text-slate-500'}`}>STATS</span>
+          <span className={`text-[1.53vmin] leading-none ${alertCount > 0 ? 'text-orange-400' : 'text-slate-500'}`}>STATS</span>
         </button>
         {alertCount > 0 && (
           <span className="pointer-events-none absolute top-1 right-1 h-2 w-2 rounded-full bg-orange-400 animate-pulse" />
@@ -169,7 +170,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         onPointerDown={(e) => { e.preventDefault(); onSummaryOpen(); }}
         className={`${btnBase} bg-slate-800 text-slate-300 hover:bg-slate-700`}
       >
-        <span className="text-[12px] text-slate-500 leading-none">SCORE</span>
+        <span className="text-[1.53vmin] text-slate-500 leading-none">SCORE</span>
       </button>
 
       {/* Home */}
@@ -177,8 +178,14 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         onPointerDown={(e) => { e.preventDefault(); navigate('/'); }}
         className={`${btnBase} bg-slate-800 text-slate-400 hover:bg-slate-700`}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-[1.7vmin] h-[1.7vmin]" viewBox="0 0 20 20" fill="currentColor">
-          <path d="M10.707 2.293a1 1 0 0 0-1.414 0l-7 7A1 1 0 0 0 3 11h1v6a1 1 0 0 0 1 1h4v-4h2v4h4a1 1 0 0 0 1-1v-6h1a1 1 0 0 0 .707-1.707l-7-7z" />
+        <svg className="w-[2.4vmin] h-[2.4vmin]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="1.5" y="4" width="21" height="16" rx="1.5" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="1.5" />
+          <rect x="1.5" y="4" width="21" height="4" rx="1.5" fill="currentColor" fillOpacity="0.35" />
+          <line x1="12" y1="8" x2="12" y2="20" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+          <rect x="4"    y="11" width="3.5" height="5" rx="0.5" fill="currentColor" fillOpacity="0.7" />
+          <rect x="8"    y="11" width="2"   height="5" rx="0.5" fill="currentColor" fillOpacity="0.7" />
+          <rect x="13.5" y="11" width="2"   height="5" rx="0.5" fill="currentColor" fillOpacity="0.7" />
+          <rect x="16.5" y="11" width="3.5" height="5" rx="0.5" fill="currentColor" fillOpacity="0.7" />
         </svg>
       </button>
 
@@ -187,10 +194,20 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         onPointerDown={(e) => { e.preventDefault(); onMenuOpen(); }}
         className={`${btnBase} bg-slate-800 text-slate-400 hover:bg-slate-700`}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-[1.7vmin] h-[1.7vmin]" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M3 5a1 1 0 0 1 1-1h12a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1zm0 5a1 1 0 0 1 1-1h12a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1zm0 5a1 1 0 0 1 1-1h12a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1z" clipRule="evenodd" />
+        <svg className="w-[2.4vmin] h-[2.4vmin]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            fillRule="evenodd"
+            fill="currentColor"
+            fillOpacity="0.25"
+            stroke="currentColor"
+            strokeWidth="1.1"
+            strokeLinejoin="round"
+            d="M10.0,4.8 L10.8,2.6 L13.2,2.6 L14.0,4.8 L15.7,5.5 L17.9,4.5 L19.5,6.2 L18.5,8.3 L19.2,10.0 L21.4,10.8 L21.4,13.2 L19.2,14.0 L18.5,15.7 L19.5,17.9 L17.9,19.5 L15.7,18.5 L14.0,19.2 L13.2,21.4 L10.8,21.4 L10.0,19.2 L8.3,18.5 L6.2,19.5 L4.5,17.9 L5.5,15.7 L4.8,14.0 L2.6,13.2 L2.6,10.8 L4.8,10.0 L5.5,8.3 L4.5,6.2 L6.2,4.5 L8.3,5.5 Z M12,8.5 A3.5,3.5 0 1 1 12,15.5 A3.5,3.5 0 1 1 12,8.5 Z"
+          />
         </svg>
       </button>
+    </div>
+    <div style={{ height: 'env(safe-area-inset-bottom)' }} />
     </div>
   );
 });

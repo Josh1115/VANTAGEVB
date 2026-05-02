@@ -475,74 +475,79 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
             {aePending ? 'Attack Error — OB, NET, BLK, or BRA?' : kPending ? 'Kill Type' : 'Hitting'}
           </span>
         </div>
-        <div className="flex flex-none h-[3.837vmin] py-0 px-[7.5%] gap-[0.5vmin] border-b border-black/30">
-          {aePending ? (
-            <>
-              <Btn label="×"
-                onTap={() => setAePending(false)}
-                cls="bg-slate-700 text-slate-300 hover:bg-slate-600" />
-              <Btn label="OB"
-                onTap={() => { tapAndScoreThem(ACTION.ATTACK, RESULT.ERROR, { error_type: 'ob' }); setAePending(false); }}
-                cls="bg-red-900/80 text-red-200 hover:bg-red-800/90 serve-unlock-btn" />
-              <Btn label="NET"
-                onTap={() => { tapAndScoreThem(ACTION.ATTACK, RESULT.ERROR, { error_type: 'net' }); setAePending(false); }}
-                cls="bg-rose-950/80 text-rose-300 hover:bg-rose-900/80 serve-unlock-btn"
-                style={DELAY_50} />
-              <Btn label="BLK"
-                onTap={() => { handleAeBlocked(); setAePending(false); }}
-                cls="bg-blue-900/80 text-blue-200 hover:bg-blue-800/90 serve-unlock-btn"
-                style={DELAY_100} />
-              <Btn label="BRA"
-                onTap={() => { tapAndScoreThem(ACTION.ATTACK, RESULT.ERROR, { error_type: 'bra' }); setAePending(false); }}
-                cls="bg-red-950/80 text-red-300 hover:bg-red-900/80 serve-unlock-btn"
-                style={DELAY_150} />
-            </>
-          ) : kPending ? (
-            <>
+        {kPending ? (
+          <>
+            <div className="flex flex-none h-[3.837vmin] py-0 px-[7.5%] gap-[0.5vmin]">
               <Btn label="×"
                 onTap={() => setKPending(false)}
                 cls="bg-slate-700 text-slate-300 hover:bg-slate-600" />
               <Btn label="PURE"
                 onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'pure' }); if (id) { setPendingKillId(id); setAssistPickerOpen(true); } }}
-                cls="bg-orange-600/80 text-white hover:bg-orange-500/90 serve-unlock-btn" />
+                cls="bg-orange-600/80 text-white hover:bg-orange-500/90 serve-unlock-btn !text-[2.2vmin]" />
               <Btn label="TOUCH"
                 onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'touch' }); if (id) { setPendingKillId(id); setAssistPickerOpen(true); } }}
-                cls="bg-cyan-900/80 text-cyan-300 hover:bg-cyan-800/90 serve-unlock-btn"
+                cls="bg-cyan-900/80 text-cyan-300 hover:bg-cyan-800/90 serve-unlock-btn !text-[2.2vmin]"
                 style={DELAY_50} />
               <Btn label="TOOL"
                 onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'tool' }); if (id) { setPendingKillId(id); setAssistPickerOpen(true); } }}
-                cls="bg-amber-700/80 text-amber-100 hover:bg-amber-600/90 serve-unlock-btn"
+                cls="bg-amber-700/80 text-amber-100 hover:bg-amber-600/90 serve-unlock-btn !text-[2.2vmin]"
                 style={DELAY_100} />
+            </div>
+            <div className="flex flex-none h-[3.837vmin] py-0 px-[7.5%] gap-[0.5vmin] border-b border-black/30">
               <Btn label="TIP/ROLL"
                 onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'tip' }); if (id) { setPendingKillId(id); setAssistPickerOpen(true); } }}
-                cls="bg-lime-900/80 text-lime-300 hover:bg-lime-800/90 serve-unlock-btn"
-                style={DELAY_150} />
+                cls="bg-lime-900/80 text-lime-300 hover:bg-lime-800/90 serve-unlock-btn !text-[2.2vmin]" />
               <Btn label="BK ROW"
                 onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'bk' }); if (id) { setPendingKillId(id); setAssistPickerOpen(true); } }}
-                cls="bg-orange-900/80 text-orange-300 hover:bg-orange-800/90 serve-unlock-btn !text-[1.8vmin] whitespace-nowrap"
-                style={DELAY_200} />
+                cls="bg-orange-900/80 text-orange-300 hover:bg-orange-800/90 serve-unlock-btn !text-[2.2vmin]"
+                style={DELAY_50} />
               <Btn label="OVER"
                 onTap={() => { tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'over' }); setKPending(false); }}
-                cls="bg-yellow-800/80 text-yellow-200 hover:bg-yellow-700/90 serve-unlock-btn"
-                style={{ animationDelay: '250ms' }} />
-            </>
-          ) : (
-            <>
-              <Btn label="ATT"
-                onTap={() => tap(ACTION.ATTACK, RESULT.ATTEMPT)}
-                cls="bg-orange-950/80 text-orange-200 hover:bg-orange-900/80" />
-              <Btn label="FREE"
-                onTap={() => tap(ACTION.FREEBALL_SEND, RESULT.SUCCESS)}
-                cls="bg-violet-950/80 text-violet-300 hover:bg-violet-900/80" />
-              <Btn label="K"
-                onTap={() => setKPending(true)}
-                cls="bg-orange-600/80 text-white hover:bg-orange-500/90" />
-              <Btn label="AE"
-                onTap={() => setAePending(true)}
-                cls="bg-red-950/80 text-red-300 hover:bg-red-900/80" />
-            </>
-          )}
-        </div>
+                cls="bg-yellow-800/80 text-yellow-200 hover:bg-yellow-700/90 serve-unlock-btn !text-[2.2vmin]"
+                style={DELAY_100} />
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-none h-[3.837vmin] py-0 px-[7.5%] gap-[0.5vmin] border-b border-black/30">
+            {aePending ? (
+              <>
+                <Btn label="×"
+                  onTap={() => setAePending(false)}
+                  cls="bg-slate-700 text-slate-300 hover:bg-slate-600" />
+                <Btn label="OB"
+                  onTap={() => { tapAndScoreThem(ACTION.ATTACK, RESULT.ERROR, { error_type: 'ob' }); setAePending(false); }}
+                  cls="bg-red-900/80 text-red-200 hover:bg-red-800/90 serve-unlock-btn" />
+                <Btn label="NET"
+                  onTap={() => { tapAndScoreThem(ACTION.ATTACK, RESULT.ERROR, { error_type: 'net' }); setAePending(false); }}
+                  cls="bg-rose-950/80 text-rose-300 hover:bg-rose-900/80 serve-unlock-btn"
+                  style={DELAY_50} />
+                <Btn label="BLK"
+                  onTap={() => { handleAeBlocked(); setAePending(false); }}
+                  cls="bg-blue-900/80 text-blue-200 hover:bg-blue-800/90 serve-unlock-btn"
+                  style={DELAY_100} />
+                <Btn label="BRA"
+                  onTap={() => { tapAndScoreThem(ACTION.ATTACK, RESULT.ERROR, { error_type: 'bra' }); setAePending(false); }}
+                  cls="bg-red-950/80 text-red-300 hover:bg-red-900/80 serve-unlock-btn"
+                  style={DELAY_150} />
+              </>
+            ) : (
+              <>
+                <Btn label="ATT"
+                  onTap={() => tap(ACTION.ATTACK, RESULT.ATTEMPT)}
+                  cls="bg-orange-950/80 text-orange-200 hover:bg-orange-900/80" />
+                <Btn label="FREE"
+                  onTap={() => tap(ACTION.FREEBALL_SEND, RESULT.SUCCESS)}
+                  cls="bg-violet-950/80 text-violet-300 hover:bg-violet-900/80" />
+                <Btn label="K"
+                  onTap={() => setKPending(true)}
+                  cls="bg-orange-600/80 text-white hover:bg-orange-500/90" />
+                <Btn label="AE"
+                  onTap={() => setAePending(true)}
+                  cls="bg-red-950/80 text-red-300 hover:bg-red-900/80" />
+              </>
+            )}
+          </div>
+        )}
 
         {/* Row 3 — Defense: DIG FREE SBLK HBLK */}
         <div className="px-[7.5%]"><span className="text-[1.3vmin] font-bold uppercase tracking-wide text-slate-500 leading-none">Defense</span></div>

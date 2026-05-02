@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useShallow } from 'zustand/react/shallow';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -24,7 +24,6 @@ const TABS = ['POINTS', 'SERVING', 'PASSING', 'ATTACKING', 'BLOCKING', 'DEFENSE'
 
 const SERVE_VIEWS = ['ALL', 'FLOAT', 'TOP'];
 
-// Live modal shows per-match serving data — strip season-only SP/MP/se_foot cols.
 const _liveKeys = new Set(['sp', 'mp', 'se_foot']);
 const _live = (cols) => cols.filter((c) => !_liveKeys.has(c.key));
 const SERVING_COLS = {
@@ -86,14 +85,10 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
   const [activeView, setActiveView] = useState('box');
   const [activeTab,  setActiveTab]  = useState('POINTS');
   const [serveView,  setServeView]  = useState('ALL');
-  const [scope,      setScope]      = useState('set');
+  // scope: a set number (1, 2, 3...) or 'match'
+  const [scope, setScope] = useState(1);
 
-  useEffect(() => {
-    if (open && defaultTab === 'RECORDS') {
-      setActiveView('stats');
-      setActiveTab('RECORDS');
-    }
-  }, [open, defaultTab]);
+  const prevOpenRef = useRef(false);
 
   const {
     ourScore, oppScore, ourSetsWon, oppSetsWon, setNumber, format,
@@ -115,7 +110,21 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
     committedRallies:  s.committedRallies,
   })));
 
-  const { teamStats, oppStats, playerStats, pointQuality } = useMatchStats();
+  // Reset scope to current set each time modal opens
+  useEffect(() => {
+    if (open && !prevOpenRef.current) setScope(setNumber);
+    prevOpenRef.current = open;
+  }, [open, setNumber]);
+
+  useEffect(() => {
+    if (open && defaultTab === 'RECORDS') {
+      setActiveView('stats');
+      setActiveTab('RECORDS');
+    }
+  }, [open, defaultTab]);
+
+  // Keep hook call for Zustand subscriptions even though we compute stats from scopedContacts
+  useMatchStats();
 
   const allMatchContacts = useLiveQuery(
     () => matchId ? db.contacts.where('match_id').equals(matchId).toArray() : [],
@@ -125,7 +134,6 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
     () => matchId ? db.sets.where('match_id').equals(matchId).toArray() : [],
     [matchId]
   );
-
   const allMatchRallies = useLiveQuery(
     () => allMatchSets?.length
       ? Promise.all(allMatchSets.map((s) => db.rallies.where('set_id').equals(s.id).toArray()))
@@ -138,121 +146,141 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
     [teamId]
   );
 
-  // Full position map covers starters + any subs who played
   const fullPositionMap = useMemo(() => {
     const map = {};
     for (const p of roster ?? []) map[p.id] = p.position;
-    // Lineup positionLabel overrides DB position for currently slotted players
     for (const sl of lineup) if (sl.playerId) map[sl.playerId] = sl.positionLabel ?? map[sl.playerId];
     return map;
   }, [roster, lineup]);
-
-  const matchPlayerStats = useMemo(
-    () => computePlayerStats(allMatchContacts ?? [], setNumber, fullPositionMap),
-    [allMatchContacts, setNumber, fullPositionMap]
-  );
-
-  const xkByPlayer = useMemo(
-    () => computeXKByPassRating(committedContacts),
-    [committedContacts]
-  );
-
-  const matchPointQuality = useMemo(
-    () => computePointQuality(allMatchContacts ?? []),
-    [allMatchContacts]
-  );
-
-  const matchOppTotal = useMemo(
-    () => (allMatchSets ?? []).reduce((sum, s) => sum + (s.opp_score ?? 0), 0),
-    [allMatchSets]
-  );
 
   const nameMap = useMemo(
     () => Object.fromEntries((roster ?? []).map(p => [String(p.id), p.name])),
     [roster]
   );
 
-  const matchTeamStats = useMemo(
-    () => computeTeamStats(allMatchContacts ?? [], setNumber),
-    [allMatchContacts, setNumber]
-  );
-  const matchOppStats = useMemo(
-    () => computeOppDisplayStats(allMatchContacts ?? []),
-    [allMatchContacts]
+  // Sets that have been started — used to render scope buttons
+  const availableSets = useMemo(
+    () => (allMatchSets ?? [])
+      .filter(s => s.status !== 'scheduled')
+      .sort((a, b) => a.set_number - b.set_number),
+    [allMatchSets]
   );
 
-  // Rotation point stats — wraps existing computeRotationStats into per-rotation shape
+  // ── Scoped contacts / rallies ─────────────────────────────────────────────
+  const scopedSetId = useMemo(() => {
+    if (scope === 'match') return null;
+    return (allMatchSets ?? []).find(s => s.set_number === scope)?.id ?? null;
+  }, [scope, allMatchSets]);
+
+  const scopedContacts = useMemo(() => {
+    if (scope === 'match') return allMatchContacts ?? [];
+    if (scopedSetId === currentSetId) return committedContacts;
+    if (!scopedSetId) return [];
+    return (allMatchContacts ?? []).filter(c => c.set_id === scopedSetId);
+  }, [scope, scopedSetId, currentSetId, allMatchContacts, committedContacts]);
+
+  const scopedRallies = useMemo(() => {
+    if (scope === 'match') return allMatchRallies ?? [];
+    if (scopedSetId === currentSetId) return committedRallies;
+    if (!scopedSetId) return [];
+    return (allMatchRallies ?? []).filter(r => r.set_id === scopedSetId);
+  }, [scope, scopedSetId, currentSetId, allMatchRallies, committedRallies]);
+
+  const scopedSetNum = scope === 'match' ? setNumber : scope;
+
+  // ── Scoped stats (all derived from scopedContacts / scopedRallies) ─────────
+  const scopedPlayerStats = useMemo(
+    () => computePlayerStats(scopedContacts, scopedSetNum, fullPositionMap),
+    [scopedContacts, scopedSetNum, fullPositionMap]
+  );
+  const scopedTeamStats = useMemo(
+    () => computeTeamStats(scopedContacts, scopedSetNum),
+    [scopedContacts, scopedSetNum]
+  );
+  const scopedOppStats = useMemo(
+    () => computeOppDisplayStats(scopedContacts),
+    [scopedContacts]
+  );
+  const scopedPointQuality = useMemo(
+    () => computePointQuality(scopedContacts),
+    [scopedContacts]
+  );
+
   function buildRotPts(rallies) {
     const raw = computeRotationStats(rallies ?? []);
     const result = {};
     for (let r = 1; r <= 6; r++) {
       const rot = raw.rotations[r] ?? {};
-      const ptsWon  = (rot.so_win  ?? 0) + (rot.bp_win  ?? 0);
-      const ptsLost = (rot.so_opp  ?? 0) - (rot.so_win  ?? 0) + (rot.bp_opp ?? 0) - (rot.bp_win ?? 0);
+      const ptsWon   = (rot.so_win ?? 0) + (rot.bp_win ?? 0);
+      const ptsLost  = (rot.so_opp ?? 0) - (rot.so_win ?? 0) + (rot.bp_opp ?? 0) - (rot.bp_win ?? 0);
       const ptsTotal = (rot.so_opp ?? 0) + (rot.bp_opp ?? 0);
       result[r] = {
-        pts_won:  ptsWon,
-        pts_lost: ptsLost,
+        pts_won:   ptsWon,
+        pts_lost:  ptsLost,
         pts_total: ptsTotal,
-        win_pct:  ptsTotal > 0 ? ptsWon / ptsTotal : null,
-        so_pct:   rot.so_pct ?? null,
-        bp_pct:   rot.bp_pct ?? null,
+        win_pct:   ptsTotal > 0 ? ptsWon / ptsTotal : null,
+        so_pct:    rot.so_pct ?? null,
+        bp_pct:    rot.bp_pct ?? null,
       };
     }
     return result;
   }
 
-  const setRotPts   = useMemo(() => buildRotPts(committedRallies),  [committedRallies]);
-  const matchRotPts = useMemo(() => buildRotPts(allMatchRallies),    [allMatchRallies]);
-
-  const setRotContacts   = useMemo(
-    () => computeRotationContactStats(committedContacts.filter((c) => c.set_id === currentSetId)),
-    [committedContacts, currentSetId]
+  const scopedRotPts = useMemo(() => buildRotPts(scopedRallies), [scopedRallies]);
+  const scopedRotContacts = useMemo(
+    () => computeRotationContactStats(scopedContacts),
+    [scopedContacts]
   );
-  const matchRotContacts = useMemo(
-    () => computeRotationContactStats(allMatchContacts ?? []),
-    [allMatchContacts]
+  const scopedISvsOOS = useMemo(
+    () => computeISvsOOS(scopedContacts, scopedRallies),
+    [scopedContacts, scopedRallies]
   );
-
-  const setISvsOOS = useMemo(
-    () => computeISvsOOS(
-      committedContacts.filter((c) => c.set_id === currentSetId),
-      committedRallies
-    ),
-    [committedContacts, currentSetId, committedRallies]
+  const scopedFreeDigWin = useMemo(
+    () => computeFreeDigWin(scopedContacts, scopedRallies),
+    [scopedContacts, scopedRallies]
   );
-  const matchISvsOOS = useMemo(
-    () => computeISvsOOS(allMatchContacts ?? [], allMatchRallies ?? []),
-    [allMatchContacts, allMatchRallies]
+  const scopedTransAtk = useMemo(
+    () => computeTransitionAttack(scopedContacts, scopedRallies),
+    [scopedContacts, scopedRallies]
   );
-
-  const setFreeDigWin = useMemo(
-    () => computeFreeDigWin(
-      committedContacts.filter((c) => c.set_id === currentSetId),
-      committedRallies
-    ),
-    [committedContacts, currentSetId, committedRallies]
+  const scopedServingPoints = useMemo(
+    () => computeServingPoints(scopedRallies),
+    [scopedRallies]
   );
-  const matchFreeDigWin = useMemo(
-    () => computeFreeDigWin(allMatchContacts ?? [], allMatchRallies ?? []),
-    [allMatchContacts, allMatchRallies]
+  const xkByPlayer = useMemo(
+    () => computeXKByPassRating(scopedContacts),
+    [scopedContacts]
   );
 
-  const setTransAtk = useMemo(
-    () => computeTransitionAttack(committedContacts.filter((c) => c.set_id === currentSetId), committedRallies),
-    [committedContacts, currentSetId, committedRallies]
+  // Full-match stats kept for RecordsProgressPanel and OffenseBalanceChart comparison
+  const matchPlayerStats = useMemo(
+    () => computePlayerStats(allMatchContacts ?? [], setNumber, fullPositionMap),
+    [allMatchContacts, setNumber, fullPositionMap]
   );
-  const matchTransAtk = useMemo(
-    () => computeTransitionAttack(allMatchContacts ?? [], allMatchRallies ?? []),
-    [allMatchContacts, allMatchRallies]
+  const matchTeamStats = useMemo(
+    () => computeTeamStats(allMatchContacts ?? [], setNumber),
+    [allMatchContacts, setNumber]
   );
 
-  const serveZoneContacts = useMemo(() => {
-    const src = scope === 'set'
-      ? committedContacts.filter(c => c.set_id === currentSetId)
-      : (allMatchContacts ?? []);
-    return src.filter(c => c.action === 'serve' && c.zone != null);
-  }, [scope, committedContacts, currentSetId, allMatchContacts]);
+  // Opponent total points for PointQualityPanel
+  const scopedOppTotal = useMemo(() => {
+    if (scope === 'match') return (allMatchSets ?? []).reduce((sum, s) => sum + (s.opp_score ?? 0), 0);
+    if (scope === setNumber) return oppScore;
+    return (allMatchSets ?? []).find(s => s.set_number === scope)?.opp_score ?? 0;
+  }, [scope, setNumber, oppScore, allMatchSets]);
+
+  const serveZoneContacts = useMemo(
+    () => scopedContacts.filter(c => c.action === 'serve' && c.zone != null),
+    [scopedContacts]
+  );
+
+  // Score to display in the box header
+  const boxScoreDisplay = useMemo(() => {
+    if (scope === 'match') return { us: ourSetsWon, them: oppSetsWon, subtitle: 'Sets Won' };
+    if (scope === setNumber) return { us: ourScore, them: oppScore, subtitle: `Set ${scope}` };
+    const s = (allMatchSets ?? []).find(set => set.set_number === scope);
+    return { us: s?.our_score ?? 0, them: s?.opp_score ?? 0, subtitle: `Set ${scope} Final` };
+  }, [scope, setNumber, ourScore, oppScore, ourSetsWon, oppSetsWon, allMatchSets]);
 
   const scoreTimelineCharts = useMemo(() => {
     const rallies = allMatchRallies ?? [];
@@ -279,34 +307,62 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
       .filter(Boolean);
   }, [allMatchRallies, allMatchSets]);
 
-  const setServingPoints   = useMemo(() => computeServingPoints(committedRallies),       [committedRallies]);
-  const matchServingPoints = useMemo(() => computeServingPoints(allMatchRallies ?? []),   [allMatchRallies]);
-
-  // All hooks must be called before any early return
   const rows = useMemo(() => {
-    const srvPts = scope === 'set' ? setServingPoints : matchServingPoints;
-    return lineup
-      .filter((sl) => sl.playerId)
-      .map((sl) => ({
-        id:     sl.playerId,
-        name:   sl.playerName,
-        ...((scope === 'set' ? playerStats : matchPlayerStats)[sl.playerId] ?? {}),
-        srv_pt: srvPts[sl.playerId] ?? 0,
-      }));
-  }, [lineup, playerStats, matchPlayerStats, scope, setServingPoints, matchServingPoints]);
+    const lineupMap = Object.fromEntries(
+      lineup.filter(sl => sl.playerId).map(sl => [sl.playerId, sl.playerName])
+    );
+    const allIds = new Set([
+      ...Object.keys(lineupMap).map(Number),
+      ...Object.keys(scopedPlayerStats).map(Number),
+    ]);
+    return [...allIds]
+      .map(pid => ({
+        id:     pid,
+        name:   lineupMap[pid] ?? nameMap[String(pid)] ?? `#${pid}`,
+        ...(scopedPlayerStats[pid] ?? {}),
+        srv_pt: scopedServingPoints[pid] ?? 0,
+      }))
+      .sort((a, b) => {
+        const aActive = !!lineupMap[a.id];
+        const bActive = !!lineupMap[b.id];
+        if (aActive !== bActive) return aActive ? -1 : 1;
+        return (a.name ?? '').localeCompare(b.name ?? '');
+      });
+  }, [lineup, scopedPlayerStats, scopedServingPoints, nameMap]);
 
   if (!open) return null;
 
-  const t           = scope === 'set' ? teamStats       : matchTeamStats;
-  const opp         = scope === 'set' ? oppStats        : matchOppStats;
-  const rotPts      = scope === 'set' ? setRotPts       : matchRotPts;
-  const rotContacts = scope === 'set' ? setRotContacts  : matchRotContacts;
-  const isvsoos     = scope === 'set' ? setISvsOOS      : matchISvsOOS;
-  const freeDigWin  = scope === 'set' ? setFreeDigWin   : matchFreeDigWin;
-  const transAtk    = scope === 'set' ? setTransAtk     : matchTransAtk;
-
   const activeColumns = activeTab === 'SERVING' ? SERVING_COLS[serveView] : COLUMNS[activeTab] ?? [];
   const maxSets = format === 'best_of_5' ? 5 : 3;
+
+  // Scope toggle — shared between box and stats views
+  const ScopeToggle = () => (
+    <div className="flex gap-2 px-3 py-2 border-b border-slate-800 bg-black/20 flex-shrink-0">
+      {availableSets.map(s => (
+        <button
+          key={s.set_number}
+          onPointerDown={(e) => { e.preventDefault(); setScope(s.set_number); }}
+          className={`px-3 py-1 rounded text-xs font-bold transition-colors ${
+            scope === s.set_number
+              ? 'bg-primary text-white'
+              : 'bg-slate-800 text-slate-500 hover:bg-slate-700'
+          }`}
+        >
+          S{s.set_number}
+        </button>
+      ))}
+      <button
+        onPointerDown={(e) => { e.preventDefault(); setScope('match'); }}
+        className={`px-3 py-1 rounded text-xs font-bold transition-colors ${
+          scope === 'match'
+            ? 'bg-primary text-white'
+            : 'bg-slate-800 text-slate-500 hover:bg-slate-700'
+        }`}
+      >
+        MATCH
+      </button>
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col">
@@ -346,22 +402,7 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
 
         {activeView === 'box' ? (
           <>
-            {/* Scope toggle */}
-            <div className="flex gap-2 px-4 py-3 border-b border-slate-800">
-              {['set', 'match'].map((s) => (
-                <button
-                  key={s}
-                  onPointerDown={(e) => { e.preventDefault(); setScope(s); }}
-                  className={`px-4 py-1 rounded text-xs font-bold transition-colors ${
-                    scope === s
-                      ? 'bg-slate-600 text-white'
-                      : 'bg-slate-800 text-slate-500 hover:bg-slate-700'
-                  }`}
-                >
-                  {s.toUpperCase()}
-                </button>
-              ))}
-            </div>
+            <ScopeToggle />
 
             {/* Score header */}
             <div className="flex items-center justify-center gap-6 px-4 py-4">
@@ -369,17 +410,17 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
                 <div className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">
                   {teamName || 'HOME'}
                 </div>
-                <div className="text-5xl font-black tabular-nums text-white">{ourScore}</div>
+                <div className="text-5xl font-black tabular-nums text-white">{boxScoreDisplay.us}</div>
               </div>
               <div className="text-center">
                 <div className="text-slate-400 text-base font-bold">{ourSetsWon} – {oppSetsWon}</div>
-                <div className="text-slate-600 text-xs mt-0.5">Set {setNumber} of {maxSets}</div>
+                <div className="text-slate-600 text-xs mt-0.5">{boxScoreDisplay.subtitle}</div>
               </div>
               <div className="text-center min-w-[4rem]">
                 <div className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">
                   {opponentName || 'AWAY'}
                 </div>
-                <div className="text-5xl font-black tabular-nums text-slate-300">{oppScore}</div>
+                <div className="text-5xl font-black tabular-nums text-slate-300">{boxScoreDisplay.them}</div>
               </div>
             </div>
 
@@ -393,27 +434,27 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
               />
             </div>
 
-            {/* Sparkline */}
+            {/* Sparkline — always shows current set momentum */}
             <div className="border-t border-slate-800 py-2">
               <BoxSparkline pointHistory={pointHistory} />
             </div>
 
             {/* Team stats */}
             <div className="border-t border-slate-800">
-              <TeamStatsTable t={t} opp={opp} />
+              <TeamStatsTable t={scopedTeamStats} opp={scopedOppStats} />
             </div>
 
             {/* Rotation analysis */}
             <div className="border-t border-slate-800">
-              <RotationTable rotPts={rotPts} rotContacts={rotContacts} />
+              <RotationTable rotPts={scopedRotPts} rotContacts={scopedRotContacts} />
             </div>
 
             {/* In-System / Out-of-System */}
             <div className="border-t border-slate-800">
               <ISvsOOSTable
-                data={isvsoos ?? EMPTY_ISVSOOS}
-                freeDigData={freeDigWin ?? EMPTY_FREEDIG}
-                transAtkData={transAtk ?? EMPTY_TRANSATK}
+                data={scopedISvsOOS ?? EMPTY_ISVSOOS}
+                freeDigData={scopedFreeDigWin ?? EMPTY_FREEDIG}
+                transAtkData={scopedTransAtk ?? EMPTY_TRANSATK}
               />
             </div>
           </>
@@ -447,24 +488,8 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
               ))}
             </div>
 
-            {/* Scope toggle — set vs match */}
-            {activeTab !== 'RECORDS' && (
-              <div className="flex gap-2 px-3 py-2 border-b border-slate-800 bg-black/20 flex-shrink-0">
-                {['set', 'match'].map((s) => (
-                  <button
-                    key={s}
-                    onPointerDown={(e) => { e.preventDefault(); setScope(s); }}
-                    className={`px-4 py-1 rounded text-xs font-bold transition-colors ${
-                      scope === s
-                        ? 'bg-slate-600 text-white'
-                        : 'bg-slate-800 text-slate-500 hover:bg-slate-700'
-                    }`}
-                  >
-                    {s === 'set' ? `SET ${setNumber}` : 'MATCH'}
-                  </button>
-                ))}
-              </div>
-            )}
+            {/* Scope toggle */}
+            {activeTab !== 'RECORDS' && <ScopeToggle />}
 
             {/* Serve sub-toggle */}
             {activeTab === 'SERVING' && (
@@ -490,8 +515,8 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
               {activeTab === 'POINTS'
                 ? <div className="p-4 space-y-4">
                     <PointQualityPanel
-                      pq={scope === 'set' ? pointQuality : matchPointQuality}
-                      oppScored={scope === 'set' ? oppScore : matchOppTotal}
+                      pq={scopedPointQuality}
+                      oppScored={scopedOppTotal}
                     />
                     {scoreTimelineCharts.length > 0 && (
                       <div className="space-y-4">
@@ -507,7 +532,7 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
                           </span>
                         </div>
                         {scoreTimelineCharts
-                          .filter(c => scope === 'match' || c.set.set_number === setNumber)
+                          .filter(c => scope === 'match' || c.set.set_number === scope)
                           .map(({ set, pts, maxScore }) => (
                           <div key={set.id}>
                             <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Set {set.set_number}</p>
@@ -548,7 +573,7 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
                     {activeTab === 'ATTACKING' && (
                       <div className="border-t border-slate-800">
                         <OffenseBalanceChart
-                          setPlayerStats={playerStats}
+                          setPlayerStats={scopedPlayerStats}
                           matchPlayerStats={matchPlayerStats}
                           positionMap={fullPositionMap}
                         />
