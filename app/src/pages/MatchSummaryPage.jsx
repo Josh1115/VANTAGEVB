@@ -9,7 +9,7 @@ import { computeMatchStats,
          computeServingPoints,
          computePQ, computeSetWinProb, computeMatchWinProb,
          aggregateXKTeamStats } from '../stats/engine';
-import { getRalliesForMatch } from '../stats/queries';
+import { getRalliesForMatch, getRalliesForMatches } from '../stats/queries';
 import { exportMatchCSV, exportMatchPDF, exportMaxPrepsCSV } from '../stats/export';
 import { fmtHitting, fmtPassRating, fmtPct, fmtCount, fmtDate } from '../stats/formatters';
 import { ROTATION_COLS, SERVING_COLS, TAB_COLUMNS } from '../stats/columns';
@@ -34,7 +34,7 @@ import { ReviseSetModal } from '../components/match/ReviseSetModal';
 import { BoxScoreEntryModal } from '../components/match/BoxScoreEntryModal';
 import { VideoCorrectionsModal } from '../components/match/VideoCorrectionsModal';
 import { Modal } from '../components/ui/Modal';
-import { FORMAT } from '../constants';
+import { FORMAT, MATCH_STATUS } from '../constants';
 import { getStorageItem, STORAGE_KEYS } from '../utils/storage';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
@@ -82,9 +82,9 @@ function ServeZoneGrid({ zones }) {
 
 // ── Win Probability Timeline ─────────────────────────────────────────────────
 
-function buildWinProbTimeline(rallies, sets, format) {
+function buildWinProbTimeline(rallies, sets, format, historicalPQ = null) {
   if (!rallies?.length || !sets?.length) return [];
-  const { p, q }    = computePQ(rallies);
+  const { p, q }    = computePQ(rallies, historicalPQ?.p, historicalPQ?.q);
   const setsToWin   = format === FORMAT.BEST_OF_3 ? 2 : 3;
   const decidingNum = format === FORMAT.BEST_OF_3 ? 3 : 5;
   // Average win prob for a regular future set (both possible serve starts)
@@ -135,10 +135,10 @@ function buildWinProbTimeline(rallies, sets, format) {
   return points;
 }
 
-function WinProbChart({ rawRallies, sets, format }) {
+function WinProbChart({ rawRallies, sets, format, historicalPQ }) {
   const data = useMemo(
-    () => buildWinProbTimeline(rawRallies, sets, format),
-    [rawRallies, sets, format]
+    () => buildWinProbTimeline(rawRallies, sets, format, historicalPQ),
+    [rawRallies, sets, format, historicalPQ]
   );
 
   if (data.length < 2) {
@@ -593,6 +593,19 @@ export function MatchSummaryPage() {
       ver_ps:  ts.ver,
       n:       seasonMatches.length,
     };
+  }, [match?.season_id, id]);
+
+  // Historical p/q prior — season rally win rates excluding this match, used to seed win prob model
+  const historicalPQ = useLiveQuery(async () => {
+    if (!match?.season_id) return null;
+    const seasonMatches = await db.matches
+      .where('season_id').equals(match.season_id)
+      .filter((m) => m.id !== id && m.status === MATCH_STATUS.COMPLETE)
+      .toArray();
+    if (!seasonMatches.length) return null;
+    const rallies = await getRalliesForMatches(seasonMatches.map((m) => m.id));
+    if (!rallies.length) return null;
+    return computePQ(rallies);
   }, [match?.season_id, id]);
 
   // Per-player VER from past season matches (for report card comparison)
@@ -1231,6 +1244,7 @@ export function MatchSummaryPage() {
                       rawRallies={rawRallies}
                       sets={sets ?? []}
                       format={match?.format ?? FORMAT.BEST_OF_5}
+                      historicalPQ={historicalPQ}
                     />
                   </div>
                 )}

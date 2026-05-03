@@ -374,28 +374,12 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
 // ── Season Title Panel ────────────────────────────────────────────────────────
 
 function SeasonTitleRow({ entry }) {
-  const [title, setTitle] = useState(entry.title ?? '');
-
-  useEffect(() => { setTitle(entry.title ?? ''); }, [entry.title]);
-
-  async function handleBlur() {
-    const t = title.trim();
-    if (t !== (entry.title ?? '')) {
-      await db.season_history.update(entry.id, { title: t || null });
-    }
-  }
-
   return (
     <div className="flex items-center gap-3 bg-slate-800 rounded-xl px-3 py-2">
       <span className="text-xs font-bold text-slate-400 shrink-0 w-16 tabular-nums">{entry.year}</span>
-      <input
-        className="flex-1 bg-transparent text-sm text-slate-100 placeholder-slate-600 focus:outline-none"
-        placeholder="Season title…"
-        value={title}
-        onChange={e => setTitle(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
-      />
+      <span className="flex-1 text-sm text-slate-100">
+        {entry.title || <span className="text-slate-600 italic">No title set</span>}
+      </span>
     </div>
   );
 }

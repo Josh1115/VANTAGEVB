@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { useMatchStore } from '../../store/matchStore';
+import { useHistoricalPQ } from '../../hooks/useWinProbability';
 import {
   computePlayerStats, computeTeamStats, computeRotationStats,
   computePointQuality, computeOppDisplayStats, computeXKByPassRating,
@@ -87,6 +88,9 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
   const ourSetsWon        = useMatchStore((s) => s.ourSetsWon);
   const oppSetsWon        = useMatchStore((s) => s.oppSetsWon);
   const format            = useMatchStore((s) => s.format);
+  const matchId           = useMatchStore((s) => s.matchId);
+
+  const historicalPQ = useHistoricalPQ(matchId);
 
   const setContacts = useMemo(
     () => scope === 'set'
@@ -124,7 +128,7 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
   const winProbHistory = useMemo(() => {
     if (!committedRallies.length) return [];
     const setsToWin = format === FORMAT.BEST_OF_5 ? 3 : 2;
-    const { p, q } = computePQ(committedRallies);
+    const { p, q } = computePQ(committedRallies, historicalPQ?.p, historicalPQ?.q);
     const pFutureSet = computeSetWinProb(p, q, 0, 0, 'them', false);
 
     const sorted = [...committedRallies].sort((a, b) =>
@@ -159,7 +163,7 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
   const currentWinProbs = useMemo(() => {
     const setsToWin = format === FORMAT.BEST_OF_5 ? 3 : 2;
     const isDecider = setNumber === (format === FORMAT.BEST_OF_5 ? 5 : 3);
-    const { p, q } = computePQ(committedRallies);
+    const { p, q } = computePQ(committedRallies, historicalPQ?.p, historicalPQ?.q);
     const setWinProb = computeSetWinProb(p, q, ourScore, oppScore, serveSide, isDecider);
     const pFutureSet = computeSetWinProb(p, q, 0, 0, 'them', false);
     const mwp = computeMatchWinProb(setWinProb, pFutureSet, ourSetsWon, oppSetsWon, setsToWin);

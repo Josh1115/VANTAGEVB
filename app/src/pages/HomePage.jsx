@@ -105,6 +105,13 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
     return 'bg-orange-400';
   }
 
+  function locLabel(match) {
+    if (match.location === 'home') return 'H';
+    if (match.location === 'away') return 'A';
+    if (match.location === 'neutral') return 'N';
+    return '';
+  }
+
   const selectedMatches = calSelected ? (matchesByDate[calSelected] ?? []) : [];
   const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
@@ -155,9 +162,14 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
                 ${isSelected ? 'text-white' : isToday ? 'text-primary' : hasMatch ? 'text-slate-200' : 'text-slate-600'}
               `}>{day}</span>
               {hasMatch && (
-                <div className="flex gap-0.5 mt-1 flex-wrap justify-center">
+                <div className="flex gap-1 mt-1 flex-wrap justify-center">
                   {dayMatches.slice(0, 4).map((m, di) => (
-                    <span key={di} className={`w-1.5 h-1.5 rounded-full ${dotCls(m)}`} />
+                    <span key={di} className="flex items-center gap-0.5">
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotCls(m)}`} />
+                      {locLabel(m) && (
+                        <span className="text-[8px] font-bold leading-none text-slate-400">{locLabel(m)}</span>
+                      )}
+                    </span>
                   ))}
                 </div>
               )}
@@ -445,11 +457,13 @@ export function HomePage() {
 
   const seasonLeaders = useLiveQuery(async () => {
     if (!defaultTeamId || !defaultSeasonId) return null;
-    const matches = await db.matches
+    const allMatches = await db.matches
       .where('season_id').equals(defaultSeasonId)
       .filter(m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition')
       .toArray();
-    if (!matches.length) return null;
+    if (!allMatches.length) return null;
+    const matches = [...allMatches].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const lastMatchId = matches[matches.length - 1].id;
     const matchIds = matches.map(m => m.id);
     const [contacts, players] = await Promise.all([
       db.contacts.where('match_id').anyOf(matchIds).toArray(),
@@ -468,7 +482,7 @@ export function HomePage() {
       return best;
     };
     const ts = computeTeamStats(contacts);
-    return {
+    const leaders = {
       kills:   findLeader(ps => (ps.ta  ?? 0) >= 10 ? (ps.k   ?? 0) : 0),
       aces:    findLeader(ps => (ps.sa  ?? 0) >= 10 ? (ps.ace  ?? 0) : 0),
       blocks:  findLeader(ps => (ps.bs ?? 0) + (ps.ba ?? 0) + (ps.be ?? 0) >= 10 ? (ps.bs ?? 0) + (ps.ba ?? 0) : 0),
@@ -476,6 +490,43 @@ export function HomePage() {
       assists: findLeader(ps => (ps.ast ?? 0) + (ps.bhe ?? 0) >= 10 ? (ps.ast ?? 0) : 0),
       rec:     findLeader(ps => (ps.pa  ?? 0) >= 10 ? (ps.pa   ?? 0) : 0),
       apr:     findLeader(ps => (ps.pa  ?? 0) >= 10 ? (ps.apr  ?? 0) : 0),
+    };
+
+    // Deltas: compare current totals against all-except-last-match
+    const hasMultiple = matches.length > 1;
+    let leaderDeltas = {};
+    let teamDeltas = null;
+    if (hasMultiple) {
+      const prevContacts = contacts.filter(c => c.match_id !== lastMatchId);
+      const prevStats = computePlayerStats(prevContacts);
+      const prevTs    = computeTeamStats(prevContacts);
+      const ld = (key, leaderId, getField) => {
+        if (!leaderId) return null;
+        return (leaders[key]?.val ?? 0) - (getField(prevStats[leaderId] ?? {}) ?? 0);
+      };
+      leaderDeltas = {
+        kills:   ld('kills',   leaders.kills?.id,   ps => ps.k   ?? 0),
+        aces:    ld('aces',    leaders.aces?.id,    ps => ps.ace  ?? 0),
+        blocks:  ld('blocks',  leaders.blocks?.id,  ps => (ps.bs ?? 0) + (ps.ba ?? 0)),
+        digs:    ld('digs',    leaders.digs?.id,    ps => ps.dig  ?? 0),
+        assists: ld('assists', leaders.assists?.id, ps => ps.ast  ?? 0),
+        rec:     ld('rec',     leaders.rec?.id,     ps => ps.pa   ?? 0),
+        apr:     ld('apr',     leaders.apr?.id,     ps => ps.apr  ?? 0),
+      };
+      teamDeltas = {
+        k:   (ts.k   ?? 0) - (prevTs.k   ?? 0),
+        ace: (ts.ace  ?? 0) - (prevTs.ace  ?? 0),
+        blk: (ts.blk  ?? 0) - (prevTs.blk  ?? 0),
+        dig: (ts.dig  ?? 0) - (prevTs.dig  ?? 0),
+        ast: (ts.ast  ?? 0) - (prevTs.ast  ?? 0),
+        rec: (ts.pa   ?? 0) - (prevTs.pa   ?? 0),
+        apr: (ts.apr != null && prevTs.apr != null) ? ts.apr - prevTs.apr : null,
+      };
+    }
+
+    return {
+      ...leaders,
+      leaderDeltas,
       teamTotals: {
         k:   ts.k,
         ace: ts.ace,
@@ -485,6 +536,7 @@ export function HomePage() {
         rec: ts.pa,
         apr: ts.apr,
       },
+      teamDeltas,
       teamStats: {
         hit_pct: ts.hit_pct,
         si_pct:  ts.si_pct,
@@ -934,7 +986,21 @@ export function HomePage() {
             { label: 'REC', key: 'rec',     ttKey: 'rec' },
             { label: 'APR', key: 'apr',     ttKey: 'apr', fmt: v => Number(v).toFixed(2) },
           ];
-          const tt = seasonLeaders?.teamTotals;
+          const tt  = seasonLeaders?.teamTotals;
+          const td  = seasonLeaders?.teamDeltas;
+          const ld  = seasonLeaders?.leaderDeltas;
+          const Delta = ({ val, fmt }) => {
+            if (val == null) return null;
+            if (val === 0) return (
+              <span className="text-[8px] font-bold leading-none text-yellow-400">—</span>
+            );
+            const pos = val > 0;
+            return (
+              <span className={`flex items-center gap-px text-[8px] font-bold leading-none tabular-nums ${pos ? 'text-emerald-400' : 'text-red-400'}`}>
+                {pos ? '▲' : '▼'}{fmt ? fmt(Math.abs(val)) : Math.abs(val)}
+              </span>
+            );
+          };
           return (
             <div className="space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 px-0.5 animate-slide-up-fade" style={{ animationDelay: '250ms' }}>
@@ -956,6 +1022,7 @@ export function HomePage() {
                       {leader ? (
                         <>
                           <span className="text-xl font-black text-primary tabular-nums leading-none">{fmt ? fmt(leader.val) : leader.val}</span>
+                          <Delta val={ld?.[key]} fmt={fmt} />
                           <span className="text-[10px] font-semibold text-slate-300 leading-tight text-center break-words w-full">{leader.name}</span>
                         </>
                       ) : (
@@ -982,6 +1049,7 @@ export function HomePage() {
                       <span className="text-xl font-black text-slate-300 tabular-nums leading-none">
                         {teamVal != null ? (fmt ? fmt(teamVal) : teamVal) : '—'}
                       </span>
+                      <Delta val={td?.[ttKey]} fmt={fmt} />
                     </button>
                   );
                 })}

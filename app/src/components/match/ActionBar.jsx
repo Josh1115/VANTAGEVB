@@ -178,7 +178,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         onPointerDown={(e) => { e.preventDefault(); navigate('/'); }}
         className={`${btnBase} bg-slate-800 text-slate-400 hover:bg-slate-700`}
       >
-        <svg className="w-[2.4vmin] h-[2.4vmin]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <svg className="w-[2.4vmin] h-[2.4vmin]" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#f97316' }}>
           <rect x="1.5" y="4" width="21" height="16" rx="1.5" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="1.5" />
           <rect x="1.5" y="4" width="21" height="4" rx="1.5" fill="currentColor" fillOpacity="0.35" />
           <line x1="12" y1="8" x2="12" y2="20" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -194,7 +194,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         onPointerDown={(e) => { e.preventDefault(); onMenuOpen(); }}
         className={`${btnBase} bg-slate-800 text-slate-400 hover:bg-slate-700`}
       >
-        <svg className="w-[2.4vmin] h-[2.4vmin]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <svg className="w-[2.4vmin] h-[2.4vmin]" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#f97316' }}>
           <path
             fillRule="evenodd"
             fill="currentColor"

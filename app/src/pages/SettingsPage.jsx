@@ -7,6 +7,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { exportBackup, importBackup, restoreAutoBackup } from '../stats/backup';
 import { MergeBackupModal } from '../components/settings/MergeBackupModal';
+import { TERMS_STORAGE_KEY } from '../components/auth/TermsGate';
 import { db } from '../db/schema';
 import { useUiStore } from '../store/uiStore';
 import { FORMAT, ACCENT_COLORS } from '../constants';
@@ -760,9 +761,22 @@ export function SettingsPage() {
           <h2 className="font-semibold mb-1">About</h2>
           <p className="text-sm text-slate-400">VBAPPv.2 — Volleyball Stat Tracker</p>
           <p className="text-xs text-slate-500 mt-1">All data stored locally on this device. No account required.</p>
-          <Link to="/terms" className="inline-block mt-3 text-xs text-primary hover:text-orange-300 transition-colors underline underline-offset-2">
-            Terms &amp; Conditions
-          </Link>
+          <div className="flex items-baseline gap-2 mt-3 flex-wrap">
+            <Link to="/terms" className="text-xs text-primary hover:text-orange-300 transition-colors underline underline-offset-2">
+              Terms &amp; Conditions
+            </Link>
+            {(() => {
+              try {
+                const raw = localStorage.getItem(TERMS_STORAGE_KEY);
+                if (!raw) return null;
+                let acceptedAt = null;
+                try { acceptedAt = JSON.parse(raw).acceptedAt ?? null; } catch { /* old plain-string format */ }
+                if (!acceptedAt) return <span className="text-xs text-slate-500">Agreed (date not recorded)</span>;
+                const fmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+                return <span className="text-xs text-slate-500">Agreed {fmt.format(new Date(acceptedAt))}</span>;
+              } catch { return null; }
+            })()}
+          </div>
         </section>
 
       </div>

@@ -299,8 +299,8 @@ const TABS = [
   { to: '/',         label: 'Home',    svg: HomeScoreboardIcon, end: true,  idleAnim: 'animate-home-pulse'      },
   { to: '/teams',    label: 'Teams',   svg: TeamsIcon, end: false, idleAnim: ''                        },
   { to: '/records',  label: 'Records', svg: ConfettiTrophy, end: false, idleAnim: 'animate-trophy-twinkle' },
-  { to: '/reports',  label: 'Reports', svg: ClipboardIcon, end: false, idleAnim: 'animate-chart-float' },
   { to: '/history',  label: 'History', svg: HistoryBookIcon, end: false, idleAnim: 'animate-book-open'  },
+  { to: '/reports',  label: 'Reports', svg: ClipboardIcon, end: false, idleAnim: 'animate-chart-float' },
   { to: '/settings', label: 'Settings', svg: SettingsGearIcon, end: false, idleAnim: 'animate-gear-spin' },
 ];
 

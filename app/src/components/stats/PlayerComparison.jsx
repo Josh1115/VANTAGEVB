@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { fmtCount, fmtPct, fmtHitting, fmtPassRating } from '../../stats/formatters';
+import { fmtCount, fmtPct, fmtHitting, fmtPassRating, fmtBlocks } from '../../stats/formatters';
 
 const COMPARE_STATS = [
   { key: 'k',       label: 'Kills',      fmt: fmtCount     },
@@ -13,8 +13,7 @@ const COMPARE_STATS = [
   { key: 'apr',     label: 'APR',        fmt: fmtPassRating },
   { key: 'p3',      label: 'P3s',        fmt: fmtCount     },
   { key: 'dig',     label: 'Digs',       fmt: fmtCount     },
-  { key: 'bs',      label: 'Solo Blks',  fmt: fmtCount     },
-  { key: 'ba',      label: 'Blk Asst',   fmt: fmtCount     },
+  { key: 'blk',     label: 'Blocks',     fmt: fmtBlocks    },
   { key: 'ast',     label: 'Assists',    fmt: fmtCount     },
 ];
 

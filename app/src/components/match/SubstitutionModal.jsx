@@ -146,7 +146,7 @@ export function SubstitutionModal({ onClose }) {
             Player Out
           </p>
           <div className="grid grid-cols-3 gap-1.5">
-            {lineup.filter((sl) => sl.playerId).map((sl) => {
+            {[3, 2, 1, 4, 5, 0].map(i => lineup[i]).filter((sl) => sl?.playerId).map((sl) => {
               const isExhausted = exhaustedPlayerIds.includes(sl.playerId);
               const isLibero    = sl.playerId === liberoId;
               const disabled    = isLibero || atMax;

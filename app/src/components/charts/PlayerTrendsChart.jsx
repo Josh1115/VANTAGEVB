@@ -7,14 +7,14 @@ import { fmtHitting, fmtPassRating, fmtPct } from '../../stats/formatters';
 
 const STAT_OPTIONS = [
   { key: 'ver',     label: 'VER',   fmtY: v => v?.toFixed(1) ?? '',      fmtTip: v => v?.toFixed(2) ?? '—'  },
-  { key: 'hit_pct', label: 'HIT%',  fmtY: v => v != null ? ((v >= 0 ? '+' : '') + (v * 100).toFixed(0) + '%') : '', fmtTip: fmtHitting },
-  { key: 'k_pct',   label: 'K%',    fmtY: v => v != null ? (v * 100).toFixed(0) + '%' : '', fmtTip: fmtPct  },
+  { key: 'hit_pct', label: 'HIT%',  fmtY: v => v != null ? ((v >= 0 ? '+' : '') + (v * 100).toFixed(0) + '%') : '', fmtTip: fmtHitting, domain: [() => -1, () => 1] },
+  { key: 'k_pct',   label: 'K%',    fmtY: v => v != null ? (v * 100).toFixed(0) + '%' : '', fmtTip: fmtPct,  domain: [0, () => 1] },
   { key: 'apr',     label: 'APR',   fmtY: v => v?.toFixed(1) ?? '',      fmtTip: fmtPassRating               },
   { key: 'kps',     label: 'K/S',   fmtY: v => v?.toFixed(1) ?? '',      fmtTip: v => v?.toFixed(2) ?? '—'  },
   { key: 'dips',    label: 'Dig/S', fmtY: v => v?.toFixed(1) ?? '',      fmtTip: v => v?.toFixed(2) ?? '—'  },
   { key: 'recs',    label: 'REC/S', fmtY: v => v?.toFixed(1) ?? '',      fmtTip: v => v?.toFixed(2) ?? '—'  },
-  { key: 'si_pct',  label: 'S%',    fmtY: v => v != null ? (v * 100).toFixed(0) + '%' : '', fmtTip: fmtPct  },
-  { key: 'ace_pct', label: 'ACE%',  fmtY: v => v != null ? (v * 100).toFixed(0) + '%' : '', fmtTip: fmtPct  },
+  { key: 'si_pct',  label: 'S%',    fmtY: v => v != null ? (v * 100).toFixed(0) + '%' : '', fmtTip: fmtPct,  domain: [0, () => 1] },
+  { key: 'ace_pct', label: 'ACE%',  fmtY: v => v != null ? (v * 100).toFixed(0) + '%' : '', fmtTip: fmtPct,  domain: [0, () => 1] },
 ];
 
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#ec4899', '#f97316'];
@@ -85,6 +85,7 @@ export function PlayerTrendsChart({ trends, playerNames }) {
           />
           <YAxis
             tickFormatter={stat.fmtY}
+            domain={stat.domain}
             tick={{ fill: '#94a3b8', fontSize: 10 }}
             tickLine={false}
             axisLine={false}

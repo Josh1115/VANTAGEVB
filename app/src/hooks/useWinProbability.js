@@ -7,6 +7,24 @@ import { computePQ, computeSetWinProb, computeMatchWinProb } from '../stats/engi
 import { getRalliesForMatches } from '../stats/queries';
 import { db } from '../db/schema';
 
+// Shared hook — queries completed season matches (excluding matchId) and returns
+// { p, q } derived from their rally data. Used as a prior when in-match sample is small.
+export function useHistoricalPQ(matchId) {
+  return useLiveQuery(async () => {
+    if (!matchId) return null;
+    const match = await db.matches.get(matchId);
+    if (!match?.season_id) return null;
+    const seasonMatches = await db.matches
+      .where('season_id').equals(match.season_id)
+      .filter((m) => m.id !== matchId && m.status === MATCH_STATUS.COMPLETE)
+      .toArray();
+    if (!seasonMatches.length) return null;
+    const rallies = await getRalliesForMatches(seasonMatches.map((m) => m.id));
+    if (!rallies.length) return null;
+    return computePQ(rallies);
+  }, [matchId]);
+}
+
 export function useWinProbability() {
   const {
     matchId,
@@ -30,21 +48,7 @@ export function useWinProbability() {
     format:           s.format,
   })));
 
-  // Historical season p/q — used as fallback when current match lacks enough samples.
-  // Fetches all completed matches in the same season (excluding the current match).
-  const historicalPQ = useLiveQuery(async () => {
-    if (!matchId) return null;
-    const match = await db.matches.get(matchId);
-    if (!match?.season_id) return null;
-    const seasonMatches = await db.matches
-      .where('season_id').equals(match.season_id)
-      .filter((m) => m.id !== matchId && m.status === MATCH_STATUS.COMPLETE)
-      .toArray();
-    if (!seasonMatches.length) return null;
-    const rallies = await getRalliesForMatches(seasonMatches.map((m) => m.id));
-    if (!rallies.length) return null;
-    return computePQ(rallies);
-  }, [matchId]);
+  const historicalPQ = useHistoricalPQ(matchId);
 
   return useMemo(() => {
     const setsToWin   = format === FORMAT.BEST_OF_3 ? 2 : 3;

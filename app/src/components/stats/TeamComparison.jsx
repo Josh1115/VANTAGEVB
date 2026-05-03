@@ -1,4 +1,4 @@
-import { fmtCount, fmtPct, fmtHitting, fmtPassRating } from '../../stats/formatters';
+import { fmtCount, fmtPct, fmtHitting, fmtPassRating, fmtBlocks } from '../../stats/formatters';
 
 // oppKey = field name on the opp object (from computeOppDisplayStats), or null if not tracked
 // lowerBetter = true for error stats where lower is the winning side
@@ -13,7 +13,7 @@ const TEAM_COMPARE_STATS = [
   { key: 'dig',     oppKey: null,  label: 'Digs',         fmt: fmtCount,       lowerBetter: false },
   { key: 'pa',      oppKey: null,  label: 'Receptions',   fmt: fmtCount,       lowerBetter: false },
   { key: 'apr',     oppKey: null,  label: 'APR',          fmt: fmtPassRating,  lowerBetter: false, isRate: true },
-  { key: 'bs',      oppKey: 'blk', label: 'Blocks',       fmt: fmtCount,       lowerBetter: false },
+  { key: 'blk',     oppKey: 'blk', label: 'Blocks',       fmt: fmtBlocks,      lowerBetter: false },
 ];
 
 function StatBar({ v1, v2 }) {
