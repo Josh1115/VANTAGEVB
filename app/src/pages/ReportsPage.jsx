@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { buildPlayerMaps } from '../utils/players';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getIntStorage, STORAGE_KEYS } from '../utils/storage';
@@ -267,7 +267,8 @@ export function ReportsPage() {
   const [conference, setConference] = useState('');
   const [location,   setLocation]   = useState('');
   const [matchTypes, setMatchTypes] = useState([]);
-  const [result,     setResult]     = useState('');
+  const [searchParams] = useSearchParams();
+  const [result,     setResult]     = useState(() => searchParams.get('result') ?? '');
   const [stats, setStats] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(false);

@@ -33,6 +33,7 @@ function fmtSetScores(sets) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
+
 function SetPips({ ourSets, oppSets }) {
   const our = ourSets ?? 0;
   const opp = oppSets ?? 0;
@@ -776,7 +777,7 @@ export function HomePage() {
             VANTAGE
           </span>
           <span className="text-slate-400 font-normal text-sm tracking-wide italic">
-            powered by the Shua Stat Engine
+            powered by the SSE (Shua Stat Engine)
           </span>
         </h1>
         <div className="text-base font-semibold tracking-[0.22em] text-slate-600 uppercase mt-1">
@@ -844,7 +845,10 @@ export function HomePage() {
 
             {/* W / L numbers */}
             <div className="grid grid-cols-2 divide-x divide-slate-700/60">
-              <div className="py-5 text-center">
+              <button
+                className="py-5 text-center hover:bg-emerald-900/20 active:bg-emerald-900/30 transition-colors"
+                onClick={() => navigate('/reports?result=win')}
+              >
                 <div
                   className="text-7xl font-black text-emerald-400 tabular-nums leading-none scoreboard-flicker"
                   style={{ fontFamily: "'Orbitron', sans-serif" }}
@@ -852,8 +856,11 @@ export function HomePage() {
                   {displaySeasonRecord.wins}
                 </div>
                 <div className="text-xs font-black tracking-[0.2em] text-emerald-700 mt-2">WINS</div>
-              </div>
-              <div className="py-5 text-center">
+              </button>
+              <button
+                className="py-5 text-center hover:bg-red-900/20 active:bg-red-900/30 transition-colors"
+                onClick={() => navigate('/reports?result=loss')}
+              >
                 <div
                   className="text-7xl font-black text-red-400 tabular-nums leading-none scoreboard-flicker"
                   style={{ fontFamily: "'Orbitron', sans-serif" }}
@@ -861,7 +868,7 @@ export function HomePage() {
                   {displaySeasonRecord.losses}
                 </div>
                 <div className="text-xs font-black tracking-[0.2em] text-red-800 mt-2">LOSSES</div>
-              </div>
+              </button>
             </div>
 
             {/* Stats row */}
