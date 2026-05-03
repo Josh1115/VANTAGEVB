@@ -84,6 +84,17 @@ export const getRalliesForMatches = async (matchIds) => {
     : [];
 };
 
+// Same as getRalliesForMatches but each rally is annotated with match_id for per-match grouping
+export const getRalliesForMatchesWithMatchId = async (matchIds) => {
+  if (!matchIds.length) return [];
+  const sets = await db.sets.where('match_id').anyOf(matchIds).toArray();
+  const setToMatch = Object.fromEntries(sets.map(s => [s.id, s.match_id]));
+  const setIds = sets.map(s => s.id);
+  if (!setIds.length) return [];
+  const rallies = await db.rallies.where('set_id').anyOf(setIds).toArray();
+  return rallies.map(r => ({ ...r, match_id: setToMatch[r.set_id] }));
+};
+
 // Returns { [player_id]: modal_position_label } derived from actual lineup and substitution records.
 // Lineup records (starters) take precedence; substitution in_position_label fills the gap for sub players.
 // Uses the most frequently-played position when a player appears at multiple positions.

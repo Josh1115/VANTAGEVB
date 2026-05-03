@@ -7,13 +7,14 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
 import { db } from '../db/schema';
-import { computePlayerStats, computePlayerTrends, computeTeamStats } from '../stats/engine';
+import { computePlayerStats, computePlayerTrends, computeTeamStats, computePlayerWPA, computePQ } from '../stats/engine';
 import {
   getContactsForMatches,
   getBatchSetsPlayedCount,
   getPlayerPositionsForMatches,
   getOurScoredForMatches,
   getOppScoredForMatches,
+  getRalliesForMatchesWithMatchId,
 } from '../stats/queries';
 import { TAB_COLUMNS, SERVING_COLS } from '../stats/columns';
 import { fmtCount, fmtHitting, fmtPassRating, fmtPct, fmtVER } from '../stats/formatters';
@@ -95,7 +96,10 @@ const TREND_OPTS = {
     { key: 'de',  label: 'DE',  color: '#ef4444' },
   ],
   ver: [
-    { key: 'ver', label: 'VER', color: '#f97316', fmt: fmtVER },
+    { key: 'ver',     label: 'VER',  color: '#f97316', fmt: fmtVER },
+    { key: 'wpa',     label: 'WPA',  color: '#3b82f6', fmt: fmtVER },
+    { key: 'wpa_pos', label: 'WPA+', color: '#22c55e', fmt: fmtVER },
+    { key: 'wpa_neg', label: 'WPA−', color: '#ef4444', fmt: fmtVER },
   ],
 };
 
@@ -401,6 +405,7 @@ const BY_GAME_COLS = [
   { key: 'dig',    label: 'DIG',  fmt: fmtCount     },
   { key: 'ast',    label: 'AST',  fmt: fmtCount     },
   { key: 'ver',    label: 'VER',  fmt: fmtVER       },
+  { key: 'wpa',    label: 'WPA',  fmt: fmtVER       },
 ];
 
 // Strip the 'name' column — player identity is already in the page header
@@ -461,14 +466,28 @@ export function PlayerStatsPage() {
       getPlayerPositionsForMatches(matchIds),
       getOurScoredForMatches(matchIds),
       getOppScoredForMatches(matchIds),
+      getRalliesForMatchesWithMatchId(matchIds),
     ])
-      .then(([contacts, setsPerMatch, playerPositions, teamPoints, oppPoints]) => {
+      .then(([contacts, setsPerMatch, playerPositions, teamPoints, oppPoints, rallies]) => {
         const allStats  = computePlayerStats(contacts, 1, playerPositions);
         const playerRow = allStats[pid] ?? null;
         const allRows   = Object.values(allStats).filter(r => (r.sp ?? 0) > 0);
         const trends    = computePlayerTrends(matches, contacts, setsPerMatch, playerPositions);
         const teamRow   = computeTeamStats(contacts, 1);
-        setStats({ playerRow, allRows, trends, teamPoints, oppPoints, teamRow });
+
+        // Per-match WPA: group contacts + rallies by match, compute WPA for each
+        const { p, q } = computePQ(rallies);
+        const contactByMatch = {};
+        for (const c of contacts) (contactByMatch[c.match_id] ??= []).push(c);
+        const rallyByMatch = {};
+        for (const r of rallies) (rallyByMatch[r.match_id] ??= []).push(r);
+        const wpaByMatch = {};
+        for (const m of matches) {
+          const wpa = computePlayerWPA(contactByMatch[m.id] ?? [], rallyByMatch[m.id] ?? [], p, q);
+          wpaByMatch[m.id] = wpa[String(pid)] ?? null;
+        }
+
+        setStats({ playerRow, allRows, trends, teamPoints, oppPoints, teamRow, wpaByMatch });
       })
       .finally(() => setLoading(false));
   }, [matches, pid]); // eslint-disable-line react-hooks/exhaustive-deps -- intentional: recompute only when source data or player changes, not on internal setter references
@@ -482,16 +501,19 @@ export function PlayerStatsPage() {
   // Per-match rows for By Game tab
   const byGameRows = useMemo(() => {
     if (!stats?.trends) return [];
-    const trendRows = stats.trends.byPlayer[pid];
+    const trendRows  = stats.trends.byPlayer[pid];
+    const wpaByMatch = stats.wpaByMatch ?? {};
     if (!trendRows) return [];
     return stats.trends.matches.map((m, i) => {
-      const row = trendRows[i];
-      const d   = m.date ? new Date(m.date) : null;
-      const dateStr = d ? `${d.getMonth() + 1}/${d.getDate()}` : '—';
-      const opp     = m.opponentName || '—';
-      const oppAbbr = m.opponentAbbr || m.opponentName?.slice(0, 4).toUpperCase() || dateStr;
-      if (!row) return { _key: m.id, date: dateStr, opp, oppAbbr, si_pct: null, ace: null, se: null, k: null, ae: null, hit_pct: null, blks: null, dig: null, ast: null, ver: null };
-      return { _key: m.id, date: dateStr, opp, oppAbbr, ...row, blks: (row.bs ?? 0) + (row.ba ?? 0) };
+      const row    = trendRows[i];
+      const wpa    = wpaByMatch[m.id];
+      const d      = m.date ? new Date(m.date) : null;
+      const dateStr  = d ? `${d.getMonth() + 1}/${d.getDate()}` : '—';
+      const opp      = m.opponentName || '—';
+      const oppAbbr  = m.opponentAbbr || m.opponentName?.slice(0, 4).toUpperCase() || dateStr;
+      const wpaFields = { wpa: wpa?.wpa ?? null, wpa_pos: wpa?.wpa_pos ?? null, wpa_neg: wpa?.wpa_neg ?? null };
+      if (!row) return { _key: m.id, date: dateStr, opp, oppAbbr, si_pct: null, ace: null, se: null, k: null, ae: null, hit_pct: null, blks: null, dig: null, ast: null, ver: null, ...wpaFields };
+      return { _key: m.id, date: dateStr, opp, oppAbbr, ...row, blks: (row.bs ?? 0) + (row.ba ?? 0), ...wpaFields };
     });
   }, [stats, pid]);
 
