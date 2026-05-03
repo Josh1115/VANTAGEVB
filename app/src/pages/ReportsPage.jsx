@@ -52,10 +52,12 @@ function InsightsPanel({ seasonId }) {
   const [data, setData]         = useState(null);
   const [allStats, setAllStats] = useState(null);
   const [loading, setLoading]   = useState(false);
+  const [barsReady, setBarsReady] = useState(false);
 
   useEffect(() => {
     if (!seasonId) return;
     setLoading(true);
+    setBarsReady(false);
     Promise.all([
       computeWinCorrelation(Number(seasonId)),
       computeSeasonStats(Number(seasonId), {}),
@@ -64,6 +66,13 @@ function InsightsPanel({ seasonId }) {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [seasonId]);
+
+  // Trigger bar fill animation one frame after data renders
+  useEffect(() => {
+    if (!data) return;
+    const id = requestAnimationFrame(() => setBarsReady(true));
+    return () => cancelAnimationFrame(id);
+  }, [data]);
 
   if (loading) return <div className="flex justify-center py-12"><span className="text-slate-500 text-sm">Computing insights…</span></div>;
 
@@ -141,10 +150,10 @@ function InsightsPanel({ seasonId }) {
               {barPct != null && (
                 <div className="h-1.5 rounded-full bg-slate-700 overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all ${
+                    className={`h-full rounded-full transition-[width] duration-700 ease-out ${
                       barPct >= 65 ? 'bg-emerald-500' : barPct >= 35 ? 'bg-amber-500' : 'bg-red-500'
                     }`}
-                    style={{ width: `${barPct}%` }}
+                    style={{ width: barsReady ? `${barPct}%` : '0%' }}
                   />
                 </div>
               )}
@@ -792,7 +801,7 @@ export function ReportsPage() {
 
           <TabBar tabs={TABS} active={tab} onChange={setTab} />
 
-          <div className="p-4 md:p-6 space-y-6">
+          <div key={tab} className="p-4 md:p-6 space-y-6 animate-slide-up-fade">
 
             {/* ── Team Stats ──────────────────────────────────────────── */}
             {tab === 'team' && (
@@ -812,8 +821,8 @@ export function ReportsPage() {
 
                 {/* Stat grid */}
                 <div className="space-y-2">
-                  {TEAM_STAT_SECTIONS.map(({ label: sectionLabel, items }) => (
-                    <div key={sectionLabel}>
+                  {TEAM_STAT_SECTIONS.map(({ label: sectionLabel, items }, sIdx) => (
+                    <div key={sectionLabel} className="animate-slide-up-fade" style={{ animationDelay: `${sIdx * 50}ms` }}>
                       <SectionHeader>{sectionLabel}</SectionHeader>
                       <div className="grid grid-cols-3 gap-1.5">
                         {items.map((item) => (
