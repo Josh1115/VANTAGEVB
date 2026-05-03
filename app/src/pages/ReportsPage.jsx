@@ -48,15 +48,20 @@ const INSIGHT_METRICS = [
   { label: 'Blocks / Set',    key: 'bps',     src: 'team',     fmt: (v) => v?.toFixed(2) ?? '—', higherBetter: true  },
 ];
 
-function InsightsPanel({ seasonId, allStats }) {
-  const [data, setData]     = useState(null);
-  const [loading, setLoading] = useState(false);
+function InsightsPanel({ seasonId }) {
+  const [data, setData]         = useState(null);
+  const [allStats, setAllStats] = useState(null);
+  const [loading, setLoading]   = useState(false);
 
   useEffect(() => {
     if (!seasonId) return;
     setLoading(true);
-    computeWinCorrelation(Number(seasonId))
-      .then(setData)
+    Promise.all([
+      computeWinCorrelation(Number(seasonId)),
+      computeSeasonStats(Number(seasonId), {}),
+    ])
+      .then(([corr, season]) => { setData(corr); setAllStats(season); })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [seasonId]);
 
@@ -1403,7 +1408,7 @@ export function ReportsPage() {
 
             {/* ── Opp Stats ────────────────────────────────────────────── */}
             {tab === 'insights' && (
-              <InsightsPanel seasonId={selectedSeasonId} allStats={stats} />
+              <InsightsPanel seasonId={selectedSeasonId} />
             )}
 
             {tab === 'oppo' && stats?.opp && (

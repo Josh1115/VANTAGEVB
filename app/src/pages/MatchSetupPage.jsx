@@ -185,7 +185,7 @@ export function MatchSetupPage() {
           tournament_name:       matchType === 'tourney' ? tournamentName.trim() || null : null,
           tournament_round:      matchType === 'tourney' ? tournamentRound : null,
           playoff_round:         matchType === 'ihsa-playoffs' ? playoffRound.trim() || null : null,
-          date:                  new Date().toISOString(),
+          date:                  scheduledMatch?.date ?? new Date().toISOString(),
         });
         effectiveMatchId = scheduledMatchId;
       } else {
