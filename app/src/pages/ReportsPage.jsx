@@ -4,7 +4,7 @@ import { buildPlayerMaps } from '../utils/players';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getIntStorage, STORAGE_KEYS } from '../utils/storage';
 import { db } from '../db/schema';
-import { computeSeasonStats, computePQ, computeSetWinProb, aggregateXKTeamStats } from '../stats/engine';
+import { computeSeasonStats, computePQ, computeSetWinProb, aggregateXKTeamStats, computeWinCorrelation } from '../stats/engine';
 import { fmtHitting, fmtPassRating, fmtPct, fmtCount, fmtVER } from '../stats/formatters';
 import { VERBadge } from '../components/stats/VERBadge';
 import { ROTATION_COLS, SERVING_COLS, TAB_COLUMNS, ISOOS_COLS, TRANS_COLS, RUN_COLS } from '../stats/columns';
@@ -32,7 +32,124 @@ const TABS = [
   { value: 'trends',   label: 'Trends'             },
   { value: 'heatmap',  label: 'Heat Map'           },
   { value: 'oppo',     label: 'Opp Stats'          },
+  { value: 'insights', label: '⚡ Insights'         },
 ];
+
+// ─── Win Correlation Insights Panel ──────────────────────────────────────────
+
+const INSIGHT_METRICS = [
+  { label: 'Pass Rating',     key: 'apr',     src: 'team',     fmt: (v) => v?.toFixed(2) ?? '—', higherBetter: true  },
+  { label: 'Sideout %',       key: 'so_pct',  src: 'rotation', fmt: (v) => v != null ? `${Math.round(v * 100)}%` : '—', higherBetter: true  },
+  { label: 'Break Point %',   key: 'bp_pct',  src: 'rotation', fmt: (v) => v != null ? `${Math.round(v * 100)}%` : '—', higherBetter: true  },
+  { label: 'Kill %',          key: 'k_pct',   src: 'team',     fmt: (v) => v != null ? `${Math.round(v * 100)}%` : '—', higherBetter: true  },
+  { label: 'Hitting Eff.',    key: 'hit_pct', src: 'team',     fmt: (v) => v?.toFixed(3) ?? '—', higherBetter: true  },
+  { label: 'Ace %',           key: 'ace_pct', src: 'team',     fmt: (v) => v != null ? `${Math.round(v * 100)}%` : '—', higherBetter: true  },
+  { label: 'Serve Error %',   key: 'se_pct',  src: 'team',     fmt: (v) => v != null ? `${Math.round(v * 100)}%` : '—', higherBetter: false },
+  { label: 'Blocks / Set',    key: 'bps',     src: 'team',     fmt: (v) => v?.toFixed(2) ?? '—', higherBetter: true  },
+];
+
+function InsightsPanel({ seasonId, allStats }) {
+  const [data, setData]     = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!seasonId) return;
+    setLoading(true);
+    computeWinCorrelation(Number(seasonId))
+      .then(setData)
+      .finally(() => setLoading(false));
+  }, [seasonId]);
+
+  if (loading) return <div className="flex justify-center py-12"><span className="text-slate-500 text-sm">Computing insights…</span></div>;
+
+  if (!data) return (
+    <div className="text-center py-12 px-4">
+      <div className="text-3xl mb-3">📊</div>
+      <p className="text-slate-400 font-semibold">Not enough data yet</p>
+      <p className="text-slate-600 text-sm mt-1">Need at least 2 wins and 2 losses to show win correlations.</p>
+    </div>
+  );
+
+  const { win, loss } = data;
+
+  return (
+    <div className="space-y-4">
+      <div className="px-1">
+        <p className="text-xs font-black tracking-widest text-slate-500 uppercase">Win Correlation</p>
+        <p className="text-xs text-slate-600 mt-0.5">
+          Comparing your stats in {win.matches}W vs {loss.matches}L — metrics that separate wins from losses.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-2.5">
+        {INSIGHT_METRICS.map(({ label, key, src, fmt, higherBetter }) => {
+          const winVal  = src === 'rotation' ? win.rotation?.[key]  : win.team?.[key];
+          const lossVal = src === 'rotation' ? loss.rotation?.[key] : loss.team?.[key];
+          const nowVal  = src === 'rotation' ? allStats?.rotation?.[key] : allStats?.team?.[key];
+
+          if (winVal == null || lossVal == null) return null;
+
+          // Normalise direction so higher is always "better" for position calc
+          const wv = higherBetter ? winVal  : -winVal;
+          const lv = higherBetter ? lossVal : -lossVal;
+          const nv = nowVal != null ? (higherBetter ? nowVal : -nowVal) : null;
+
+          const range = wv - lv;
+          // position: 0 = at loss level, 1 = at win level
+          const pos = nv != null && range !== 0 ? (nv - lv) / range : null;
+
+          const statusColor = pos == null ? 'text-slate-500'
+            : pos >= 0.65 ? 'text-emerald-400'
+            : pos >= 0.35 ? 'text-amber-400'
+            : 'text-red-400';
+          const statusLabel = pos == null ? '—'
+            : pos >= 0.65 ? '✓ On track'
+            : pos >= 0.35 ? '⚡ Close — watch this'
+            : '✗ Below threshold';
+
+          const barPct = pos != null ? Math.max(0, Math.min(100, Math.round(pos * 100))) : null;
+
+          return (
+            <div key={key} className="bg-surface rounded-xl p-3.5 border border-slate-700/40">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-black uppercase tracking-wide text-slate-300">{label}</span>
+                <span className={`text-xs font-bold ${statusColor}`}>{statusLabel}</span>
+              </div>
+
+              <div className="flex items-end gap-4 mb-2.5">
+                <div className="flex-1 text-center">
+                  <div className="text-lg font-black text-red-400 tabular-nums leading-none">{fmt(lossVal)}</div>
+                  <div className="text-[10px] text-red-900 font-bold mt-0.5 tracking-wide">LOSS AVG</div>
+                </div>
+                <div className="flex-1 text-center">
+                  <div className={`text-lg font-black tabular-nums leading-none ${statusColor}`}>
+                    {nowVal != null ? fmt(nowVal) : '—'}
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-bold mt-0.5 tracking-wide">THIS SEASON</div>
+                </div>
+                <div className="flex-1 text-center">
+                  <div className="text-lg font-black text-emerald-400 tabular-nums leading-none">{fmt(winVal)}</div>
+                  <div className="text-[10px] text-emerald-700 font-bold mt-0.5 tracking-wide">WIN AVG</div>
+                </div>
+              </div>
+
+              {barPct != null && (
+                <div className="h-1.5 rounded-full bg-slate-700 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      barPct >= 65 ? 'bg-emerald-500' : barPct >= 35 ? 'bg-amber-500' : 'bg-red-500'
+                    }`}
+                    style={{ width: `${barPct}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 const TAB_VALUES = TABS.map(t => t.value);
 
 const PLAYER_COLS = [
@@ -1285,6 +1402,10 @@ export function ReportsPage() {
             )}
 
             {/* ── Opp Stats ────────────────────────────────────────────── */}
+            {tab === 'insights' && (
+              <InsightsPanel seasonId={selectedSeasonId} allStats={stats} />
+            )}
+
             {tab === 'oppo' && stats?.opp && (
               <div className="space-y-3">
                 <p className="text-xs text-slate-400 mb-4">Opponent performance across selected matches</p>

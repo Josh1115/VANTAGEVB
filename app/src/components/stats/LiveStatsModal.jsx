@@ -20,7 +20,7 @@ import { ServeZoneStatsPanel } from './panels/ServeZoneStatsPanel';
 import { OffenseBalanceChart } from './panels/OffenseBalanceChart';
 import { RecordsProgressPanel } from './panels/RecordsProgressPanel';
 
-const TABS = ['POINTS', 'SERVING', 'PASSING', 'ATTACKING', 'BLOCKING', 'DEFENSE', 'VER', 'RECORDS'];
+const TABS = ['POINTS', 'SERVING', 'PASSING', 'ATTACKING', 'BLOCKING', 'DEFENSE', 'VER', 'ROTATION', 'RECORDS'];
 
 const SERVE_VIEWS = ['ALL', 'FLOAT', 'TOP'];
 
@@ -81,7 +81,7 @@ const COLUMNS = {
 };
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, teamName, opponentName, recordAlerts = [], records = [], defaultTab = null }) {
+export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, teamName, opponentName, recordAlerts = [], records = [], defaultTab = null, seasonRotation = null }) {
   const [activeView, setActiveView] = useState('box');
   const [activeTab,  setActiveTab]  = useState('POINTS');
   const [serveView,  setServeView]  = useState('ALL');
@@ -489,7 +489,7 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
             </div>
 
             {/* Scope toggle */}
-            {activeTab !== 'RECORDS' && <ScopeToggle />}
+            {activeTab !== 'RECORDS' && activeTab !== 'ROTATION' && <ScopeToggle />}
 
             {/* Serve sub-toggle */}
             {activeTab === 'SERVING' && (
@@ -556,6 +556,108 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
                       </div>
                     )}
                   </div>
+                : activeTab === 'ROTATION'
+                ? (() => {
+                    const liveRot = computeRotationStats(committedRallies);
+                    const FLAG_DELTA = 0.10;
+                    const MIN_OPP   = 3;
+                    const rotNums   = [1, 2, 3, 4, 5, 6];
+
+                    const flags = rotNums.filter((n) => {
+                      const live   = liveRot.rotations?.[n];
+                      const season = seasonRotation?.rotations?.[n];
+                      if (!live || !season || live.so_opp < MIN_OPP) return false;
+                      return (live.so_pct ?? 0) < (season.so_pct ?? 0) - FLAG_DELTA;
+                    });
+
+                    const pct = (v) => v != null ? `${Math.round(v * 100)}%` : '—';
+
+                    return (
+                      <div className="px-4 py-3 space-y-3">
+                        {/* Alert banners for flagged rotations */}
+                        {flags.length > 0 && (
+                          <div className="space-y-1.5">
+                            {flags.map((n) => {
+                              const live   = liveRot.rotations[n];
+                              const season = seasonRotation.rotations[n];
+                              return (
+                                <div key={n} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-900/30 border border-amber-600/50">
+                                  <span className="text-amber-400 text-base leading-none mt-0.5">⚠</span>
+                                  <div>
+                                    <p className="text-xs font-black text-amber-300">
+                                      Rotation {n} — {live.so_win}/{live.so_opp} sideouts ({pct(live.so_pct)})
+                                    </p>
+                                    <p className="text-[11px] text-amber-600 mt-0.5">
+                                      Season avg {pct(season.so_pct)} — consider timeout or sub
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {flags.length === 0 && (
+                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-900/20 border border-emerald-800/40">
+                            <span className="text-emerald-400 text-sm">✓</span>
+                            <span className="text-xs text-emerald-500 font-semibold">All rotations tracking at or above season averages</span>
+                          </div>
+                        )}
+
+                        {/* Per-rotation comparison table */}
+                        <div className="bg-slate-800/50 rounded-xl overflow-hidden">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="border-b border-slate-700">
+                                <th className="px-3 py-2 text-left font-bold text-slate-400">ROT</th>
+                                <th className="px-2 py-2 text-right font-bold text-slate-400">SO%</th>
+                                <th className="px-2 py-2 text-right font-bold text-slate-400">SZN SO%</th>
+                                <th className="px-2 py-2 text-right font-bold text-slate-400">Δ</th>
+                                <th className="px-2 py-2 text-right font-bold text-slate-400">BP%</th>
+                                <th className="px-2 py-2 text-right font-bold text-slate-400">SZN BP%</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {rotNums.map((n) => {
+                                const live   = liveRot.rotations?.[n];
+                                const season = seasonRotation?.rotations?.[n];
+                                const soLive = live?.so_pct ?? null;
+                                const soSzn  = season?.so_pct ?? null;
+                                const delta  = soLive != null && soSzn != null ? soLive - soSzn : null;
+                                const isFlagged = flags.includes(n);
+                                const noData = !live || live.so_opp === 0;
+                                const deltaColor = delta == null ? 'text-slate-600'
+                                  : delta >= 0    ? 'text-emerald-400'
+                                  : delta >= -0.05 ? 'text-amber-400'
+                                  : 'text-red-400';
+                                return (
+                                  <tr key={n} className={`border-b border-slate-800/60 ${isFlagged ? 'bg-amber-900/10' : n % 2 === 0 ? 'bg-slate-900/20' : ''}`}>
+                                    <td className="px-3 py-2 font-black text-slate-200">
+                                      R{n} {isFlagged && <span className="text-amber-400 text-[10px]">⚠</span>}
+                                    </td>
+                                    <td className="px-2 py-2 text-right font-mono text-slate-200">
+                                      {noData ? <span className="text-slate-600">—</span> : pct(soLive)}
+                                    </td>
+                                    <td className="px-2 py-2 text-right font-mono text-slate-400">{pct(soSzn)}</td>
+                                    <td className={`px-2 py-2 text-right font-black ${deltaColor}`}>
+                                      {delta == null ? '—' : `${delta >= 0 ? '+' : ''}${Math.round(delta * 100)}%`}
+                                    </td>
+                                    <td className="px-2 py-2 text-right font-mono text-slate-200">
+                                      {noData ? <span className="text-slate-600">—</span> : pct(live?.bp_pct)}
+                                    </td>
+                                    <td className="px-2 py-2 text-right font-mono text-slate-400">{pct(season?.bp_pct)}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                        {!seasonRotation && (
+                          <p className="text-[11px] text-slate-600 text-center">Season baseline not available — SZN columns will populate after first match.</p>
+                        )}
+                      </div>
+                    );
+                  })()
                 : activeTab === 'RECORDS'
                 ? <RecordsProgressPanel
                     records={records}

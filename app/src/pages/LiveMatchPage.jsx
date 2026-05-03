@@ -5,7 +5,7 @@ import { db } from '../db/schema';
 import { useMatchStore } from '../store/matchStore';
 import { useUiStore } from '../store/uiStore';
 import { useShallow } from 'zustand/react/shallow';
-import { computePlayerStats, computeTeamStats } from '../stats/engine';
+import { computePlayerStats, computeTeamStats, computeSeasonStats } from '../stats/engine';
 import { SET_STATUS, FORMAT, SIDE } from '../constants';
 import { useMatchStats } from '../hooks/useMatchStats';
 import { useRecordAlerts } from '../hooks/useRecordAlerts';
@@ -55,6 +55,7 @@ export function LiveMatchPage() {
   const [opponentName,        setOpponentName]        = useState('');
   const [liveStatsDefaultTab, setLiveStatsDefaultTab] = useState(null);
   const [aceZoneHints,        setAceZoneHints]        = useState({}); // { [playerId]: { [zone]: count } }
+  const [seasonRotation,      setSeasonRotation]      = useState(null);
   const [flipLayout,          setFlipLayout]          = useState(() => getBoolStorage(STORAGE_KEYS.FLIP_LAYOUT));
 
   const handleToggleFlip = useCallback(() => {
@@ -304,7 +305,7 @@ export function LiveMatchPage() {
       setReady(true);
       await loadServeReticles(currentSet.id);
 
-      // Load ace zone hints from full season data (non-critical, fires after UI is ready)
+      // Load ace zone hints + season rotation baseline (non-critical, fires after UI is ready)
       if (match.season_id) {
         try {
           const seasonMatches = await db.matches.where('season_id').equals(match.season_id).toArray();
@@ -323,6 +324,14 @@ export function LiveMatchPage() {
           }
         } catch (e) {
           // hints are non-critical — silent fail
+        }
+
+        // Season rotation baseline for red-flag alerts in LiveStatsModal
+        try {
+          const seasonData = await computeSeasonStats(match.season_id, {});
+          if (seasonData && !seasonData.empty) setSeasonRotation(seasonData.rotation);
+        } catch (e) {
+          // non-critical — silent fail
         }
       }
       } catch (err) {
@@ -432,6 +441,7 @@ export function LiveMatchPage() {
         recordAlerts={activeAlerts}
         records={records}
         defaultTab={liveStatsDefaultTab}
+        seasonRotation={seasonRotation}
       />
       {summaryOpen && <ScoringSummaryModal onClose={() => setSummaryOpen(false)} />}
       {timeoutOpen && <TimeoutOverlay onClose={handleTimeoutClose} recordAlerts={activeAlerts} scoreAtLastTimeout={scoreAtTimeoutClose} />}

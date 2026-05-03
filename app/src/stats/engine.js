@@ -1093,6 +1093,24 @@ function computeTimeoutEffectiveness(timeouts, rallies) {
   };
 }
 
+/**
+ * Splits a season's stats into win-game and loss-game buckets to show
+ * which metrics correlate with winning for this specific team.
+ * Returns null when < 2 wins or < 2 losses exist (insufficient sample).
+ */
+export async function computeWinCorrelation(seasonId) {
+  const [winStats, lossStats] = await Promise.all([
+    computeSeasonStats(seasonId, { result: 'win' }),
+    computeSeasonStats(seasonId, { result: 'loss' }),
+  ]);
+  if (!winStats || !lossStats || winStats.empty || lossStats.empty) return null;
+  if ((winStats.matchCount ?? 0) < 2 || (lossStats.matchCount ?? 0) < 2) return null;
+  return {
+    win:  { team: winStats.team,  rotation: winStats.rotation,  matches: winStats.matchCount  },
+    loss: { team: lossStats.team, rotation: lossStats.rotation, matches: lossStats.matchCount },
+  };
+}
+
 export function computeRallyHistogram(contacts) {
   if (!contacts?.length) return [];
   const lenByRally = new Map();
