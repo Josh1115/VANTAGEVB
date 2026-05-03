@@ -294,14 +294,22 @@ function CommitCard({ entry, onEdit, onDelete }) {
 // Shows the active season's W/L computed live from match data.
 // Manual fields (coach, rankings, playoffs) are sourced from the matching
 // season_history entry if one exists; otherwise those sections are blank.
-function LiveSeasonCard({ year, matches, historyEntry, onEdit }) {
+// activeSeason: the season DB record (may have head_coach/asst_coach from the roster tab)
+// historyEntry: matching season_history row (has title, rankings, playoffs, and possibly coach overrides)
+function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit }) {
   const completed = (matches ?? []).filter(m => m.status === MATCH_STATUS.COMPLETE);
   const wins      = completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
   const losses    = completed.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
   const total     = completed.length;
   const winPct    = total > 0 ? fmtWinPct(wins, total) : null;
 
-  const hasCoach    = historyEntry?.head_coach || historyEntry?.asst_coach;
+  // Coaches: prefer history entry (explicitly set in History → Edit Details),
+  // fall back to season record (set from the roster tab)
+  const headCoach  = historyEntry?.head_coach  ?? activeSeason?.head_coach  ?? null;
+  const asstCoach  = historyEntry?.asst_coach  ?? activeSeason?.asst_coach  ?? null;
+  const tenureYear = historyEntry?.tenure_year ?? activeSeason?.tenure_year ?? null;
+
+  const hasCoach    = headCoach || asstCoach;
   const hasRankings = historyEntry?.state_rank != null || historyEntry?.national_rank != null;
   const hasPlayoffs = historyEntry?.playoff_seed || historyEntry?.state_finish || historyEntry?.playoff_result;
 
@@ -357,19 +365,19 @@ function LiveSeasonCard({ year, matches, historyEntry, onEdit }) {
 
         {hasCoach && (
           <div className="flex flex-wrap gap-x-5 gap-y-1">
-            {historyEntry.head_coach && (
+            {headCoach && (
               <span className="text-sm text-slate-200">
                 <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1.5">HC</span>
-                {historyEntry.head_coach}
-                {historyEntry.tenure_year != null && (
-                  <span className="text-xs text-slate-500 ml-1.5">· Year {historyEntry.tenure_year}</span>
+                {headCoach}
+                {tenureYear != null && (
+                  <span className="text-xs text-slate-500 ml-1.5">· Year {tenureYear}</span>
                 )}
               </span>
             )}
-            {historyEntry.asst_coach && (
+            {asstCoach && (
               <span className="text-sm text-slate-200">
                 <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1.5">AC</span>
-                {historyEntry.asst_coach}
+                {asstCoach}
               </span>
             )}
           </div>
@@ -766,6 +774,7 @@ export function HistoryPage() {
                       year={activeSeason.year}
                       matches={activeMatches}
                       historyEntry={liveHistoryEntry}
+                      activeSeason={activeSeason}
                       onEdit={() => setLiveEditOpen(true)}
                     />
                   )}

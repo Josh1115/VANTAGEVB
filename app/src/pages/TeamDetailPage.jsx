@@ -22,6 +22,67 @@ import { RosterImportModal } from '../components/team/RosterImportModal';
 
 const POS_COLOR = { S: 'blue', OH: 'orange', OPP: 'orange', MB: 'green', L: 'gray', DS: 'gray', RS: 'orange' };
 
+// ── Coach entry modal ─────────────────────────────────────────────────────────
+
+function CoachModal({ season, onClose }) {
+  const [headCoach,   setHeadCoach]   = useState(season.head_coach   ?? '');
+  const [asstCoach,   setAsstCoach]   = useState(season.asst_coach   ?? '');
+  const [tenureYear,  setTenureYear]  = useState(season.tenure_year  != null ? String(season.tenure_year) : '');
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    await db.seasons.update(season.id, {
+      head_coach:  headCoach.trim()  || null,
+      asst_coach:  asstCoach.trim()  || null,
+      tenure_year: tenureYear ? Number(tenureYear) : null,
+    });
+    onClose();
+  }
+
+  const inp = 'w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-primary';
+  const lbl = 'block text-xs font-semibold text-slate-400 mb-1';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60" onClick={onClose}>
+      <div
+        className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl p-5 space-y-4"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-slate-100">Coaching Staff</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
+        </div>
+
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={lbl}>Head Coach</label>
+              <input className={inp} placeholder="Coach Smith" value={headCoach} onChange={e => setHeadCoach(e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Tenure Year #</label>
+              <input className={inp} type="number" min="1" placeholder="3" value={tenureYear} onChange={e => setTenureYear(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <label className={lbl}>Assistant Coach</label>
+            <input className={inp} placeholder="Coach Jones" value={asstCoach} onChange={e => setAsstCoach(e.target.value)} />
+          </div>
+        </div>
+
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold active:scale-95 disabled:opacity-50"
+        >
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function TeamDetailPage() {
   const { teamId } = useParams();
   const navigate = useNavigate();
@@ -50,6 +111,13 @@ export function TeamDetailPage() {
     [id]
   );
 
+  // Most recent season for this team — used to store coaching staff
+  const currentSeason = useLiveQuery(
+    () => db.seasons.where('team_id').equals(id).toArray()
+      .then(arr => arr.sort((a, b) => b.year - a.year)[0] ?? null),
+    [id]
+  );
+
   const [tab, setTab]             = useState('roster');
   const [selectedSession, setSelectedSession] = useState(null);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -57,6 +125,7 @@ export function TeamDetailPage() {
   const [editPlayer, setEditPlayer]           = useState(null);
   const [showSeasonModal, setShowSeasonModal] = useState(false);
   const [editSeason, setEditSeason]           = useState(null);
+  const [showCoachModal, setShowCoachModal]   = useState(false);
   const [deletePlayer, setDeletePlayer]       = useState(null);
   const [showLineupModal, setShowLineupModal] = useState(false);
   const [editLineup, setEditLineup]           = useState(null);
@@ -102,6 +171,42 @@ export function TeamDetailPage() {
 
       {tab === 'roster' && (
         <div className="p-4 md:p-6">
+          {/* Coaching Staff */}
+          {currentSeason && (
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-400">Coaching Staff</span>
+                <button
+                  onClick={() => setShowCoachModal(true)}
+                  className="text-xs text-primary font-semibold px-2 py-1 rounded-lg hover:bg-slate-700/50 transition-colors"
+                >
+                  {currentSeason.head_coach ? 'Edit' : '+ Add'}
+                </button>
+              </div>
+              {currentSeason.head_coach || currentSeason.asst_coach ? (
+                <div className="bg-surface rounded-xl px-4 py-3 space-y-1">
+                  {currentSeason.head_coach && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 w-8 shrink-0">HC</span>
+                      <span className="text-sm text-slate-200 font-semibold">{currentSeason.head_coach}</span>
+                      {currentSeason.tenure_year != null && (
+                        <span className="text-xs text-slate-500">· Year {currentSeason.tenure_year}</span>
+                      )}
+                    </div>
+                  )}
+                  {currentSeason.asst_coach && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 w-8 shrink-0">AC</span>
+                      <span className="text-sm text-slate-200">{currentSeason.asst_coach}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-600 italic">No coaches entered yet.</p>
+              )}
+            </div>
+          )}
+
           <div className="flex justify-between items-center mb-3">
             <span className="text-sm text-slate-400">{activePlayers.length} active</span>
             <div className="flex gap-2">
@@ -547,6 +652,13 @@ export function TeamDetailPage() {
           teamId={id}
           season={editSeason ?? undefined}
           onClose={() => { setShowSeasonModal(false); setEditSeason(null); }}
+        />
+      )}
+
+      {showCoachModal && currentSeason && (
+        <CoachModal
+          season={currentSeason}
+          onClose={() => setShowCoachModal(false)}
         />
       )}
 
