@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
-import { COLLEGE_DIVISIONS } from '../constants';
+import { COLLEGE_DIVISIONS, MATCH_STATUS } from '../constants';
+import { STORAGE_KEYS, getIntStorage } from '../utils/storage';
 import { PageHeader } from '../components/layout/PageHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 
@@ -288,7 +289,123 @@ function CommitCard({ entry, onEdit, onDelete }) {
   );
 }
 
-// ── Season Card ───────────────────────────────────────────────────────────────
+// ── Live Season Card ──────────────────────────────────────────────────────────
+
+// Shows the active season's W/L computed live from match data.
+// Manual fields (coach, rankings, playoffs) are sourced from the matching
+// season_history entry if one exists; otherwise those sections are blank.
+function LiveSeasonCard({ year, matches, historyEntry, onEdit }) {
+  const completed = (matches ?? []).filter(m => m.status === MATCH_STATUS.COMPLETE);
+  const wins      = completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
+  const losses    = completed.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
+  const total     = completed.length;
+  const winPct    = total > 0 ? fmtWinPct(wins, total) : null;
+
+  const hasCoach    = historyEntry?.head_coach || historyEntry?.asst_coach;
+  const hasRankings = historyEntry?.state_rank != null || historyEntry?.national_rank != null;
+  const hasPlayoffs = historyEntry?.playoff_seed || historyEntry?.state_finish || historyEntry?.playoff_result;
+
+  return (
+    <div className="rounded-xl overflow-hidden border border-primary/50 shadow-[0_0_16px_-4px_rgba(249,115,22,0.2)]">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 bg-primary/10">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-base font-black text-white">{year ?? '—'}</span>
+          {total > 0 && (
+            <span className="text-sm font-bold text-slate-200 tabular-nums">
+              {wins}–{losses}
+              {winPct && <span className="text-xs text-slate-400 font-semibold ml-1.5">{winPct}</span>}
+            </span>
+          )}
+          <span className="text-[10px] font-black uppercase tracking-widest text-primary border border-primary/40 px-2 py-0.5 rounded-full">
+            LIVE
+          </span>
+        </div>
+        <button
+          onClick={onEdit}
+          className="text-xs text-primary font-semibold px-2 py-1 rounded-lg hover:bg-slate-700/50 transition-colors shrink-0"
+        >
+          {historyEntry ? 'Edit' : '+ Details'}
+        </button>
+      </div>
+
+      <div className="bg-slate-800 px-4 py-3 space-y-2.5">
+        {historyEntry?.title && (
+          <p className="text-base font-black text-primary tracking-wide">{historyEntry.title}</p>
+        )}
+
+        {hasRankings && (
+          <div className="flex gap-4">
+            {historyEntry.state_rank != null && (
+              <span className="text-sm font-bold text-slate-200">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1.5">State</span>
+                #{historyEntry.state_rank}
+              </span>
+            )}
+            {historyEntry.national_rank != null && (
+              <span className="text-sm font-bold text-slate-200">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1.5">National</span>
+                #{historyEntry.national_rank}
+              </span>
+            )}
+          </div>
+        )}
+
+        {total > 0 && (
+          <p className="text-xs text-slate-500">{total} {total === 1 ? 'game' : 'games'} played</p>
+        )}
+
+        {hasCoach && (
+          <div className="flex flex-wrap gap-x-5 gap-y-1">
+            {historyEntry.head_coach && (
+              <span className="text-sm text-slate-200">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1.5">HC</span>
+                {historyEntry.head_coach}
+                {historyEntry.tenure_year != null && (
+                  <span className="text-xs text-slate-500 ml-1.5">· Year {historyEntry.tenure_year}</span>
+                )}
+              </span>
+            )}
+            {historyEntry.asst_coach && (
+              <span className="text-sm text-slate-200">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1.5">AC</span>
+                {historyEntry.asst_coach}
+              </span>
+            )}
+          </div>
+        )}
+
+        {hasPlayoffs && (
+          <div className="pt-2 border-t border-slate-700/60 space-y-1.5">
+            <div className="flex flex-wrap gap-x-5 gap-y-1">
+              {historyEntry.playoff_seed && (
+                <span className="text-xs">
+                  <span className="text-slate-500 mr-1">Seed</span>
+                  <span className="text-slate-200 font-semibold">{historyEntry.playoff_seed}</span>
+                </span>
+              )}
+              {historyEntry.state_finish && (
+                <span className="text-xs">
+                  <span className="text-slate-500 mr-1">Finish</span>
+                  <span className="text-slate-200 font-semibold">{historyEntry.state_finish}</span>
+                </span>
+              )}
+            </div>
+            {historyEntry.playoff_result && (
+              <p className="text-xs text-slate-400 italic">{historyEntry.playoff_result}</p>
+            )}
+          </div>
+        )}
+
+        {!historyEntry && (
+          <p className="text-xs text-slate-600 italic">Tap + Details to add coach, rankings, and playoff info.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Static Season Card ────────────────────────────────────────────────────────
 
 function SeasonCard({ entry, onEdit, onDelete }) {
   const winPct     = fmtWinPct(entry.wins, entry.games);
@@ -413,6 +530,11 @@ export function HistoryPage() {
   const [editEntry, setEditEntry] = useState(null);
   const [showAddCommit, setShowAddCommit] = useState(false);
   const [editCommit,    setEditCommit]    = useState(null);
+  const [liveEditOpen,  setLiveEditOpen]  = useState(false);
+
+  // Default team/season from settings (read once — localStorage is synchronous)
+  const defaultTeamId   = useMemo(() => getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID),   []);
+  const defaultSeasonId = useMemo(() => getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID), []);
 
   const orgs = useLiveQuery(
     () => db.organizations.toArray().then(o => o.sort((a, b) => a.name?.localeCompare(b.name))),
@@ -435,6 +557,21 @@ export function HistoryPage() {
     [teamId]
   );
 
+  // Live data for the active default season (only when viewing the default team)
+  const isDefaultTeam = teamId != null && teamId === defaultTeamId;
+  const activeSeason = useLiveQuery(
+    () => defaultSeasonId && isDefaultTeam
+      ? db.seasons.get(defaultSeasonId)
+      : Promise.resolve(null),
+    [defaultSeasonId, isDefaultTeam]
+  );
+  const activeMatches = useLiveQuery(
+    () => defaultSeasonId && isDefaultTeam
+      ? db.matches.where('season_id').equals(defaultSeasonId).toArray()
+      : Promise.resolve([]),
+    [defaultSeasonId, isDefaultTeam]
+  );
+
   const genderTeams = useMemo(() => {
     const varsity = (orgTeams ?? []).filter(t => t.level === 'varsity');
     return {
@@ -443,7 +580,7 @@ export function HistoryPage() {
     };
   }, [orgTeams]);
 
-  // Auto-select when only one option exists
+  // Auto-select the only org when there's just one
   useMemo(() => {
     if (orgs?.length === 1 && !orgId) setOrgId(orgs[0].id);
   }, [orgs, orgId]);
@@ -465,10 +602,30 @@ export function HistoryPage() {
 
   useMemo(() => { setGender(null); setTeamId(null); }, [orgId]);
 
-  const sortedHistory = useMemo(
-    () => [...(history ?? [])].sort((a, b) => String(b.year).localeCompare(String(a.year))),
-    [history]
-  );
+  // One-time auto-select: jump to the default team when page opens with nothing selected
+  useEffect(() => {
+    if (!defaultTeamId || orgId) return;
+    db.teams.get(defaultTeamId).then(team => {
+      if (!team) return;
+      setOrgId(team.org_id);
+      setGender(team.gender ?? null);
+      setTeamId(team.id);
+    });
+  }, [defaultTeamId]); // eslint-disable-line react-hooks/exhaustive-deps -- run only on mount
+
+  // The history entry (if any) whose year matches the active season — folded into the live card
+  const liveHistoryEntry = useMemo(() => {
+    if (!activeSeason?.year || !history) return null;
+    return history.find(h => String(h.year) === String(activeSeason.year)) ?? null;
+  }, [activeSeason, history]);
+
+  const sortedHistory = useMemo(() => {
+    const activeYear = activeSeason?.year ? String(activeSeason.year) : null;
+    return [...(history ?? [])]
+      .filter(h => !activeYear || String(h.year) !== activeYear) // live card covers current year
+      .sort((a, b) => String(b.year).localeCompare(String(a.year)));
+  }, [history, activeSeason]);
+
   const sortedCommits = useMemo(
     () => [...(commits ?? [])].sort((a, b) => b.grad_year - a.grad_year),
     [commits]
@@ -503,6 +660,30 @@ export function HistoryPage() {
       </button>
     );
   };
+
+  // Initial data for the live card's edit modal
+  const liveEditInitial = liveHistoryEntry ? {
+    year:           liveHistoryEntry.year           ?? activeSeason?.year ?? '',
+    title:          liveHistoryEntry.title          ?? '',
+    state_rank:     liveHistoryEntry.state_rank     != null ? String(liveHistoryEntry.state_rank)    : '',
+    national_rank:  liveHistoryEntry.national_rank  != null ? String(liveHistoryEntry.national_rank) : '',
+    head_coach:     liveHistoryEntry.head_coach     ?? '',
+    tenure_year:    liveHistoryEntry.tenure_year    != null ? String(liveHistoryEntry.tenure_year) : '',
+    asst_coach:     liveHistoryEntry.asst_coach     ?? '',
+    games:          '',
+    wins:           '',
+    losses:         '',
+    playoff_seed:   liveHistoryEntry.playoff_seed   ?? '',
+    regional:       liveHistoryEntry.regional       ?? '',
+    sectional:      liveHistoryEntry.sectional      ?? '',
+    state_finish:   liveHistoryEntry.state_finish   ?? '',
+    playoff_result: liveHistoryEntry.playoff_result ?? '',
+  } : {
+    ...EMPTY_FORM,
+    year: activeSeason?.year ?? '',
+  };
+
+  const showLiveCard = isDefaultTeam && activeSeason != null;
 
   return (
     <div className="pb-24">
@@ -578,24 +759,35 @@ export function HistoryPage() {
                 </div>
 
                 {/* Season History */}
-                {sortedHistory.length === 0 ? (
-                  <EmptyState
-                    icon="📖"
-                    title="No seasons recorded"
-                    description="Tap + Season to start building your program's history"
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    {sortedHistory.map(entry => (
+                <div className="space-y-3">
+                  {/* Live card for the active/default season */}
+                  {showLiveCard && (
+                    <LiveSeasonCard
+                      year={activeSeason.year}
+                      matches={activeMatches}
+                      historyEntry={liveHistoryEntry}
+                      onEdit={() => setLiveEditOpen(true)}
+                    />
+                  )}
+
+                  {/* Manually-entered past seasons (active year is folded into the live card) */}
+                  {sortedHistory.length === 0 && !showLiveCard ? (
+                    <EmptyState
+                      icon="📖"
+                      title="No seasons recorded"
+                      description="Tap + Season to start building your program's history"
+                    />
+                  ) : sortedHistory.length === 0 && showLiveCard ? null : (
+                    sortedHistory.map(entry => (
                       <SeasonCard
                         key={entry.id}
                         entry={entry}
                         onEdit={setEditEntry}
                         onDelete={handleDelete}
                       />
-                    ))}
-                  </div>
-                )}
+                    ))
+                  )}
+                </div>
               </>
             )}
           </>
@@ -646,6 +838,16 @@ export function HistoryPage() {
             playoff_result: editEntry.playoff_result ?? '',
           }}
           onClose={() => setEditEntry(null)}
+        />
+      )}
+
+      {/* Live card edit modal — creates or updates the matching season_history entry */}
+      {liveEditOpen && teamId && activeSeason && (
+        <HistoryModal
+          teamId={teamId}
+          editId={liveHistoryEntry?.id}
+          initialData={liveEditInitial}
+          onClose={() => setLiveEditOpen(false)}
         />
       )}
     </div>
