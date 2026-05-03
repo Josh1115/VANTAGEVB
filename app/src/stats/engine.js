@@ -147,6 +147,7 @@ function deriveStats(p, sp, posLabel = null) {
     hit_pct: div(p.k - p.ae, p.ta),
     k_pct:   div(p.k,  p.ta),
     kps:     div(p.k,  sp),
+    aeps:    div(p.ae, sp),
 
     // Setting / penalty errors
     ast: p.ast, bhe: p.bhe, lift: p.lift, dbl: p.dbl, net: p.net,
@@ -779,6 +780,11 @@ export async function computeMatchStats(matchId) {
   for (const [pid, xk] of Object.entries(xkStats)) {
     if (players[pid]) Object.assign(players[pid], xk);
   }
+  const { p, q } = computePQ(rallies);
+  const wpaStats = computePlayerWPA(contacts, rallies, p, q);
+  for (const [pid, wpa] of Object.entries(wpaStats)) {
+    if (players[pid]) Object.assign(players[pid], wpa);
+  }
   return {
     players,
     team:             computeTeamStats(contacts, setsPlayed),
@@ -844,6 +850,11 @@ export async function computeSeasonStats(seasonId, filters = {}) {
   const xkStats = computeXKByPassRating(contacts);
   for (const [pid, xk] of Object.entries(xkStats)) {
     if (players[pid]) Object.assign(players[pid], xk);
+  }
+  const { p: seasonP, q: seasonQ } = computePQ(rallies);
+  const wpaStats = computePlayerWPA(contacts, rallies, seasonP, seasonQ);
+  for (const [pid, wpa] of Object.entries(wpaStats)) {
+    if (players[pid]) Object.assign(players[pid], wpa);
   }
   return {
     players,
@@ -982,13 +993,22 @@ const RALLY_BUCKETS = [
 // ── Win Probability — Markov chain model ─────────────────────────────────────
 // p = sideout rate  (P we win rally | serve_side = 'them')
 // q = break rate    (P we win rally | serve_side = 'us')
-// Fallback defaults from HS volleyball averages when sample is too small.
+// Fallback defaults from HS volleyball averages when no prior is available.
 const WP_FALLBACK_P = 0.58;
 const WP_FALLBACK_Q = 0.42;
-const WP_MIN_SAMPLE = 10; // rallies per side before trusting observed rates
+// Bayesian prior strength — equivalent number of "virtual" prior rallies.
+// At K live rallies the estimate is 50% prior / 50% observed.
+const BAYES_K     = 15; // global p,q blend
+const ROT_BAYES_K = 8;  // per-rotation blend (fewer rallies per rotation)
 
-export function computePQ(rallies, fallbackP = WP_FALLBACK_P, fallbackQ = WP_FALLBACK_Q) {
-  if (!rallies?.length) return { p: fallbackP, q: fallbackQ };
+// Bayesian-blended p,q. priorP/priorQ are the season-history rates used as the
+// prior; when omitted, the global HS fallback is used. The blend is continuous:
+// at 0 live rallies the estimate equals the prior; it converges to observed data
+// as rallies accumulate. No hard cutoff — estimates are always calibrated.
+export function computePQ(rallies, priorP = WP_FALLBACK_P, priorQ = WP_FALLBACK_Q) {
+  const pp = priorP ?? WP_FALLBACK_P;
+  const pq = priorQ ?? WP_FALLBACK_Q;
+  if (!rallies?.length) return { p: pp, q: pq };
   let recvTotal = 0, recvWin = 0, servTotal = 0, servWin = 0;
   for (const r of rallies) {
     if (r.serve_side === 'them') {
@@ -999,9 +1019,71 @@ export function computePQ(rallies, fallbackP = WP_FALLBACK_P, fallbackQ = WP_FAL
       if (r.point_winner === 'us') servWin++;
     }
   }
-  const p = recvTotal >= WP_MIN_SAMPLE ? recvWin / recvTotal : fallbackP;
-  const q = servTotal >= WP_MIN_SAMPLE ? servWin / servTotal : fallbackQ;
+  // Posterior mean of Beta(α₀ + wins, β₀ + losses) where α₀ = pp*K, β₀ = (1-pp)*K
+  const p = (pp * BAYES_K + recvWin) / (BAYES_K + recvTotal);
+  const q = (pq * BAYES_K + servWin) / (BAYES_K + servTotal);
   return { p, q };
+}
+
+// Compute per-rotation Bayesian-blended SO%/BP% rates.
+// seasonRotation: output of computeRotationStats() from season history (prior).
+// liveRallies: rallies from the current set (evidence).
+// priorP/priorQ: global fallback rates when a rotation has no season history.
+export function computeRotationPQ(seasonRotation, liveRallies, priorP = WP_FALLBACK_P, priorQ = WP_FALLBACK_Q) {
+  const pp = priorP ?? WP_FALLBACK_P;
+  const pq = priorQ ?? WP_FALLBACK_Q;
+  const liveRot = computeRotationStats(liveRallies ?? []);
+  const byRotation = {};
+  for (let r = 1; r <= 6; r++) {
+    const szn  = seasonRotation?.rotations?.[r];
+    const live = liveRot?.rotations?.[r];
+    const seasonSo = szn?.so_pct ?? pp;
+    const seasonBp = szn?.bp_pct ?? pq;
+    const liveSoOpp = live?.so_opp ?? 0;
+    const liveSoWin = live?.so_win ?? 0;
+    const liveBpOpp = live?.bp_opp ?? 0;
+    const liveBpWin = live?.bp_win ?? 0;
+    byRotation[r] = {
+      so_pct: (seasonSo * ROT_BAYES_K + liveSoWin) / (ROT_BAYES_K + liveSoOpp),
+      bp_pct: (seasonBp * ROT_BAYES_K + liveBpWin) / (ROT_BAYES_K + liveBpOpp),
+    };
+  }
+  return byRotation;
+}
+
+// Rotation-aware set win probability.
+// rotationRates: { 1..6: { so_pct, bp_pct } } from computeRotationPQ.
+// startRot: the rotation number we are currently in (1–6).
+// State: (ourScore, oppScore, ourRotation, serveSide).
+// Our rotation advances only when we sideout (win on their serve).
+export function computeSetWinProbRotation(rotationRates, ourScore, oppScore, startRot, serveSide, isDecider = false) {
+  const target = isDecider ? 15 : 25;
+  const rot0   = startRot ?? 1;
+  const memo   = new Map();
+
+  function dp(s1, s2, rot, side) {
+    if (s1 >= target && s1 >= s2 + 2) return 1;
+    if (s2 >= target && s2 >= s1 + 2) return 0;
+    if (s1 > 50 || s2 > 50) return 0.5;
+    const key = `${s1},${s2},${rot},${side}`;
+    if (memo.has(key)) return memo.get(key);
+    const rates = rotationRates?.[rot] ?? rotationRates?.[1] ?? { so_pct: WP_FALLBACK_P, bp_pct: WP_FALLBACK_Q };
+    const w = side === 'them' ? rates.so_pct : rates.bp_pct;
+    let val;
+    if (side === 'them') {
+      // Sideout: our rotation advances, we serve next
+      const nextRot = (rot % 6) + 1;
+      val = w * dp(s1 + 1, s2, nextRot, 'us') + (1 - w) * dp(s1, s2 + 1, rot, 'them');
+    } else {
+      // Hold serve: rotation unchanged. Lose: they sideout, our rotation still unchanged
+      val = w * dp(s1 + 1, s2, rot, 'us') + (1 - w) * dp(s1, s2 + 1, rot, 'them');
+    }
+    memo.set(key, val);
+    return val;
+  }
+
+  const side = serveSide === 'us' ? 'us' : 'them';
+  return dp(ourScore, oppScore, rot0, side);
 }
 
 export function computeSetWinProb(p, q, ourScore, oppScore, serveSide, isDecider = false) {
@@ -1049,6 +1131,110 @@ export function computeMatchWinProb(pCurrentSet, pFutureSet, ourSets, oppSets, s
   const winAfter  = dp(ourSets + 1, oppSets);
   const loseAfter = dp(ourSets, oppSets + 1);
   return pCurrentSet * winAfter + (1 - pCurrentSet) * loseAfter;
+}
+
+// Per-player Win Probability Added (WPA) using a rally-by-rally Markov delta.
+// For each rally: compute WP_before and WP_after using the flat p/q model,
+// then attribute the delta (WP_after − WP_before) to the terminal-contact player.
+//
+// Terminal contact attribution (our team only):
+//   We won  → ACE (server), KILL (attacker), BS (blocker), BA (split between assisters)
+//   We lost → SE (server via rally.server_player_id), AE (attacker), P0 (passer),
+//              error-action (BHE/lift/net/rotation), BE (blocker)
+//   Opponent error / opponent earned point → unattributed
+//
+// Returns { [playerId]: { wpa, wpa_pos, wpa_neg, wpa_count } }
+export function computePlayerWPA(contacts, rallies, p = WP_FALLBACK_P, q = WP_FALLBACK_Q) {
+  if (!rallies?.length || !contacts?.length) return {};
+
+  // Group all contacts (incl. opponent) by set_id + rally_number
+  const contactsByRally = new Map();
+  for (const c of contacts) {
+    const key = `${c.set_id}_${c.rally_number}`;
+    if (!contactsByRally.has(key)) contactsByRally.set(key, []);
+    contactsByRally.get(key).push(c);
+  }
+
+  // Group rallies by set_id, sorted by rally_number within each set
+  const bySet = new Map();
+  for (const r of rallies) {
+    if (!bySet.has(r.set_id)) bySet.set(r.set_id, []);
+    bySet.get(r.set_id).push(r);
+  }
+  for (const arr of bySet.values()) arr.sort((a, b) => a.rally_number - b.rally_number);
+
+  const acc = {};
+  const ensure = (pid) => { acc[pid] ??= { wpa: 0, wpa_pos: 0, wpa_neg: 0, wpa_count: 0 }; return acc[pid]; };
+
+  for (const setRallies of bySet.values()) {
+    if (!setRallies.length) continue;
+    // Detect deciding set by total points: deciding sets end ~15, regular sets end ~25
+    const ourPts = setRallies.filter(r => r.point_winner === 'us').length;
+    const oppPts = setRallies.filter(r => r.point_winner === 'them').length;
+    const isDecider = Math.max(ourPts, oppPts) <= 20;
+    const target = isDecider ? 15 : 25;
+
+    let ourScore = 0, oppScore = 0;
+
+    for (let i = 0; i < setRallies.length; i++) {
+      const rally = setRallies[i];
+      const next  = setRallies[i + 1];
+
+      const wpBefore = computeSetWinProb(p, q, ourScore, oppScore, rally.serve_side, isDecider);
+
+      if (rally.point_winner === 'us') ourScore++; else oppScore++;
+
+      const setEnded = (ourScore >= target && ourScore >= oppScore + 2) ||
+                       (oppScore >= target && oppScore >= ourScore + 2);
+      let wpAfter;
+      if (setEnded || !next) {
+        wpAfter = rally.point_winner === 'us' ? 1 : 0;
+      } else {
+        wpAfter = computeSetWinProb(p, q, ourScore, oppScore, next.serve_side, isDecider);
+      }
+
+      const delta = wpAfter - wpBefore;
+      const key   = `${rally.set_id}_${rally.rally_number}`;
+      const ours  = (contactsByRally.get(key) ?? []).filter(c => !c.opponent_contact);
+
+      const attributions = [];
+      if (rally.point_winner === 'us') {
+        const ace   = ours.find(c => c.action === 'serve'  && c.result === 'ace');
+        const kill  = ours.find(c => c.action === 'attack' && c.result === 'kill');
+        const bSolo = ours.find(c => c.action === 'block'  && c.result === 'solo');
+        const bAsst = ours.filter(c => c.action === 'block' && c.result === 'assist');
+        if (ace?.player_id)        attributions.push({ pid: String(ace.player_id),  w: 1 });
+        else if (kill?.player_id)  attributions.push({ pid: String(kill.player_id), w: 1 });
+        else if (bSolo?.player_id) attributions.push({ pid: String(bSolo.player_id), w: 1 });
+        else if (bAsst.length > 0) {
+          for (const ba of bAsst) if (ba.player_id) attributions.push({ pid: String(ba.player_id), w: 1 / bAsst.length });
+        }
+      } else {
+        const se  = ours.find(c => c.action === 'serve'  && c.result === 'error');
+        const ae  = ours.find(c => c.action === 'attack' && c.result === 'error');
+        const p0  = ours.find(c => c.action === 'pass'   && c.result === '0');
+        const err = ours.find(c => c.action === 'error');
+        const be  = ours.find(c => c.action === 'block'  && c.result === 'error');
+        if (se) {
+          const pid = rally.server_player_id ? String(rally.server_player_id) : se.player_id ? String(se.player_id) : null;
+          if (pid) attributions.push({ pid, w: 1 });
+        } else if (ae?.player_id)  attributions.push({ pid: String(ae.player_id),  w: 1 });
+        else if (p0?.player_id)    attributions.push({ pid: String(p0.player_id),  w: 1 });
+        else if (err?.player_id)   attributions.push({ pid: String(err.player_id), w: 1 });
+        else if (be?.player_id)    attributions.push({ pid: String(be.player_id),  w: 1 });
+      }
+
+      for (const { pid, w } of attributions) {
+        const slot = ensure(pid);
+        const contrib = delta * w;
+        slot.wpa += contrib;
+        slot.wpa_count++;
+        if (contrib > 0) slot.wpa_pos += contrib; else slot.wpa_neg += contrib;
+      }
+    }
+  }
+
+  return acc;
 }
 
 /**
@@ -1106,8 +1292,8 @@ export async function computeWinCorrelation(seasonId) {
   if (!winStats || !lossStats || winStats.empty || lossStats.empty) return null;
   if ((winStats.matchCount ?? 0) < 2 || (lossStats.matchCount ?? 0) < 2) return null;
   return {
-    win:  { team: winStats.team,  rotation: winStats.rotation,  matches: winStats.matchCount  },
-    loss: { team: lossStats.team, rotation: lossStats.rotation, matches: lossStats.matchCount },
+    win:  { team: winStats.team,  rotation: winStats.rotation,  isOos: winStats.isOos,  pointQuality: winStats.pointQuality,  matches: winStats.matchCount  },
+    loss: { team: lossStats.team, rotation: lossStats.rotation, isOos: lossStats.isOos, pointQuality: lossStats.pointQuality, matches: lossStats.matchCount },
   };
 }
 

@@ -3,12 +3,16 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMatchStore } from '../store/matchStore';
 import { useShallow } from 'zustand/react/shallow';
 import { FORMAT, MATCH_STATUS } from '../constants';
-import { computePQ, computeSetWinProb, computeMatchWinProb } from '../stats/engine';
+import {
+  computePQ, computeRotationPQ, computeRotationStats,
+  computeSetWinProb, computeSetWinProbRotation, computeMatchWinProb,
+} from '../stats/engine';
 import { getRalliesForMatches } from '../stats/queries';
 import { db } from '../db/schema';
 
-// Shared hook — queries completed season matches (excluding matchId) and returns
-// { p, q } derived from their rally data. Used as a prior when in-match sample is small.
+// Queries completed season matches (excluding current) and returns Bayesian priors:
+// { p, q } — global blended rates, and rotationStats — per-rotation counts from
+// season history used to seed the per-rotation Bayesian prior.
 export function useHistoricalPQ(matchId) {
   return useLiveQuery(async () => {
     if (!matchId) return null;
@@ -21,7 +25,8 @@ export function useHistoricalPQ(matchId) {
     if (!seasonMatches.length) return null;
     const rallies = await getRalliesForMatches(seasonMatches.map((m) => m.id));
     if (!rallies.length) return null;
-    return computePQ(rallies);
+    const { p, q } = computePQ(rallies);
+    return { p, q, rotationStats: computeRotationStats(rallies) };
   }, [matchId]);
 }
 
@@ -55,10 +60,29 @@ export function useWinProbability() {
     const decidingSet = format === FORMAT.BEST_OF_3 ? 3 : 5;
     const isDecider   = setNumber === decidingSet;
 
-    // Current match rates, falling back to season history, then hardcoded constants
+    // Bayesian-blended global rates (season prior + current-set evidence)
     const { p, q } = computePQ(committedRallies, historicalPQ?.p, historicalPQ?.q);
 
-    const setWinProb   = computeSetWinProb(p, q, ourScore, oppScore, serveSide, isDecider);
+    // Determine current rotation from the last committed rally.
+    // Rotation advances when we sideout (win on their serve).
+    const lastRally = committedRallies[committedRallies.length - 1];
+    let currentRotation = lastRally?.our_rotation ?? 1;
+    if (lastRally?.point_winner === 'us' && lastRally?.serve_side === 'them') {
+      currentRotation = (currentRotation % 6) + 1;
+    }
+
+    // Per-rotation Bayesian rates — season prior blended with live-set rallies.
+    // Falls back to flat p,q model when no season rotation history exists.
+    const rotationRates = historicalPQ?.rotationStats
+      ? computeRotationPQ(historicalPQ.rotationStats, committedRallies, p, q)
+      : null;
+
+    // Current set: use rotation-aware model when rotation data is available
+    const setWinProb = rotationRates
+      ? computeSetWinProbRotation(rotationRates, ourScore, oppScore, currentRotation, serveSide, isDecider)
+      : computeSetWinProb(p, q, ourScore, oppScore, serveSide, isDecider);
+
+    // Future sets: use global blended rates (rotation unknown for future sets)
     const pFutureSet   = computeSetWinProb(p, q, 0, 0, 'them', false);
     const matchWinProb = computeMatchWinProb(setWinProb, pFutureSet, ourSetsWon, oppSetsWon, setsToWin);
 

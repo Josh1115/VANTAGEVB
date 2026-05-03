@@ -37,15 +37,21 @@ const TABS = [
 
 // ─── Win Correlation Insights Panel ──────────────────────────────────────────
 
+const pctFmt = (v) => v != null ? `${Math.round(v * 100)}%` : '—';
+
 const INSIGHT_METRICS = [
-  { label: 'Pass Rating',     key: 'apr',     src: 'team',     fmt: (v) => v?.toFixed(2) ?? '—', higherBetter: true  },
-  { label: 'Sideout %',       key: 'so_pct',  src: 'rotation', fmt: (v) => v != null ? `${Math.round(v * 100)}%` : '—', higherBetter: true  },
-  { label: 'Break Point %',   key: 'bp_pct',  src: 'rotation', fmt: (v) => v != null ? `${Math.round(v * 100)}%` : '—', higherBetter: true  },
-  { label: 'Kill %',          key: 'k_pct',   src: 'team',     fmt: (v) => v != null ? `${Math.round(v * 100)}%` : '—', higherBetter: true  },
-  { label: 'Hitting Eff.',    key: 'hit_pct', src: 'team',     fmt: (v) => v?.toFixed(3) ?? '—', higherBetter: true  },
-  { label: 'Ace %',           key: 'ace_pct', src: 'team',     fmt: (v) => v != null ? `${Math.round(v * 100)}%` : '—', higherBetter: true  },
-  { label: 'Serve Error %',   key: 'se_pct',  src: 'team',     fmt: (v) => v != null ? `${Math.round(v * 100)}%` : '—', higherBetter: false },
-  { label: 'Blocks / Set',    key: 'bps',     src: 'team',     fmt: (v) => v?.toFixed(2) ?? '—', higherBetter: true  },
+  { label: 'Pass Rating',          key: 'apr',         src: 'team',         fmt: (v) => v?.toFixed(2) ?? '—', higherBetter: true  },
+  { label: 'Sideout %',            key: 'so_pct',      src: 'rotation',     fmt: pctFmt,                      higherBetter: true  },
+  { label: 'Break Point %',        key: 'bp_pct',      src: 'rotation',     fmt: pctFmt,                      higherBetter: true  },
+  { label: '3OPT %',               key: 'win_pct',     src: 'isOos_is',     fmt: pctFmt,                      higherBetter: true  },
+  { label: 'Kill %',               key: 'k_pct',       src: 'team',         fmt: pctFmt,                      higherBetter: true  },
+  { label: 'Kills / Set',          key: 'kps',         src: 'team',         fmt: (v) => v?.toFixed(1) ?? '—', higherBetter: true  },
+  { label: 'Attack Errors / Set',  key: 'aeps',        src: 'team',         fmt: (v) => v?.toFixed(1) ?? '—', higherBetter: false },
+  { label: 'Hitting Eff.',         key: 'hit_pct',     src: 'team',         fmt: (v) => v?.toFixed(3) ?? '—', higherBetter: true  },
+  { label: 'Earned Pts %',         key: 'earned_pct',  src: 'pointQuality', fmt: pctFmt,                      higherBetter: true  },
+  { label: 'Ace %',                key: 'ace_pct',     src: 'team',         fmt: pctFmt,                      higherBetter: true  },
+  { label: 'Serve Error %',        key: 'se_pct',      src: 'team',         fmt: pctFmt,                      higherBetter: false },
+  { label: 'Blocks / Set',         key: 'bps',         src: 'team',         fmt: (v) => v?.toFixed(2) ?? '—', higherBetter: true  },
 ];
 
 function InsightsPanel({ seasonId }) {
@@ -97,9 +103,15 @@ function InsightsPanel({ seasonId }) {
 
       <div className="grid grid-cols-1 gap-2.5">
         {INSIGHT_METRICS.map(({ label, key, src, fmt, higherBetter }) => {
-          const winVal  = src === 'rotation' ? win.rotation?.[key]  : win.team?.[key];
-          const lossVal = src === 'rotation' ? loss.rotation?.[key] : loss.team?.[key];
-          const nowVal  = src === 'rotation' ? allStats?.rotation?.[key] : allStats?.team?.[key];
+          const pick = (d, as) => {
+            if (src === 'rotation')     return d?.rotation?.[key];
+            if (src === 'isOos_is')     return d?.isOos?.total?.is?.[key];
+            if (src === 'pointQuality') return d?.pointQuality?.[key];
+            return d?.team?.[key];
+          };
+          const winVal  = pick(win);
+          const lossVal = pick(loss);
+          const nowVal  = pick(allStats);
 
           if (winVal == null || lossVal == null) return null;
 
