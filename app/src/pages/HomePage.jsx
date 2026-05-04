@@ -955,13 +955,13 @@ export function HomePage() {
         {seasonLeaders?.teamStats && (
           <div className="grid grid-cols-3 gap-2 animate-slide-up-fade" style={{ animationDelay: '220ms' }}>
             {[
-              { label: 'HIT%', val: fmtHitting(seasonLeaders.teamStats.hit_pct) },
-              { label: 'SRV%', val: fmtPct(seasonLeaders.teamStats.si_pct)      },
-              { label: 'ACE%', val: fmtPct(seasonLeaders.teamStats.ace_pct)     },
-            ].map(({ label, val }) => (
+              { label: 'HIT%', val: fmtHitting(seasonLeaders.teamStats.hit_pct), stat: 'hit_pct' },
+              { label: 'SRV%', val: fmtPct(seasonLeaders.teamStats.si_pct),      stat: 'si_pct'  },
+              { label: 'ACE%', val: fmtPct(seasonLeaders.teamStats.ace_pct),     stat: 'ace_pct' },
+            ].map(({ label, val, stat }) => (
               <button
                 key={label}
-                onClick={() => defaultSeasonId && navigate(`/seasons/${defaultSeasonId}/team`)}
+                onClick={() => defaultSeasonId && navigate(`/seasons/${defaultSeasonId}/team?stat=${stat}`)}
                 disabled={!defaultSeasonId}
                 className="bg-surface rounded-xl p-3 text-center active:scale-95 transition-transform disabled:active:scale-100"
               >
