@@ -736,6 +736,87 @@ export function HistoryPage() {
 
   const showLiveCard = isDefaultTeam && activeSeason != null;
 
+  const programRecord = useMemo(() => {
+    let wins = 0;
+    let losses = 0;
+    for (const h of sortedHistory) {
+      wins   += h.wins   ?? 0;
+      losses += h.losses ?? 0;
+    }
+    if (showLiveCard) {
+      const completed = (activeMatches ?? []).filter(
+        m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition'
+      );
+      wins   += completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
+      losses += completed.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
+    }
+    const total  = wins + losses;
+    const winPct = total > 0 ? fmtWinPct(wins, total) : null;
+    return { wins, losses, total, winPct };
+  }, [sortedHistory, activeMatches, showLiveCard]);
+
+  const coachRecords = useMemo(() => {
+    const map = {};
+    for (const h of sortedHistory) {
+      const name = h.head_coach?.trim();
+      if (!name) continue;
+      if (!map[name]) map[name] = { wins: 0, losses: 0, maxYear: 0 };
+      map[name].wins    += h.wins   ?? 0;
+      map[name].losses  += h.losses ?? 0;
+      map[name].maxYear  = Math.max(map[name].maxYear, Number(h.year) || 0);
+    }
+    if (showLiveCard) {
+      const name = (liveHistoryEntry?.head_coach ?? activeSeason?.head_coach)?.trim();
+      if (name) {
+        if (!map[name]) map[name] = { wins: 0, losses: 0, maxYear: 0 };
+        map[name].maxYear = Math.max(map[name].maxYear, Number(activeSeason?.year) || 9999);
+        const completed = (activeMatches ?? []).filter(
+          m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition'
+        );
+        map[name].wins   += completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
+        map[name].losses += completed.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
+      }
+    }
+    return Object.entries(map)
+      .map(([name, { wins, losses, maxYear }]) => ({
+        name, wins, losses, maxYear,
+        total:  wins + losses,
+        winPct: wins + losses > 0 ? fmtWinPct(wins, wins + losses) : null,
+      }))
+      .sort((a, b) => b.maxYear - a.maxYear);
+  }, [sortedHistory, activeMatches, showLiveCard, liveHistoryEntry, activeSeason]);
+
+  const asstCoachRecords = useMemo(() => {
+    const map = {};
+    for (const h of sortedHistory) {
+      const name = h.asst_coach?.trim();
+      if (!name) continue;
+      if (!map[name]) map[name] = { wins: 0, losses: 0, maxYear: 0 };
+      map[name].wins    += h.wins   ?? 0;
+      map[name].losses  += h.losses ?? 0;
+      map[name].maxYear  = Math.max(map[name].maxYear, Number(h.year) || 0);
+    }
+    if (showLiveCard) {
+      const name = (liveHistoryEntry?.asst_coach ?? activeSeason?.asst_coach)?.trim();
+      if (name) {
+        if (!map[name]) map[name] = { wins: 0, losses: 0, maxYear: 0 };
+        map[name].maxYear = Math.max(map[name].maxYear, Number(activeSeason?.year) || 9999);
+        const completed = (activeMatches ?? []).filter(
+          m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition'
+        );
+        map[name].wins   += completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
+        map[name].losses += completed.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
+      }
+    }
+    return Object.entries(map)
+      .map(([name, { wins, losses, maxYear }]) => ({
+        name, wins, losses, maxYear,
+        total:  wins + losses,
+        winPct: wins + losses > 0 ? fmtWinPct(wins, wins + losses) : null,
+      }))
+      .sort((a, b) => b.maxYear - a.maxYear);
+  }, [sortedHistory, activeMatches, showLiveCard, liveHistoryEntry, activeSeason]);
+
   return (
     <div className="pb-24">
       <PageHeader
@@ -808,6 +889,80 @@ export function HistoryPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Program Overall Record */}
+                {programRecord.total > 0 && (
+                  <div className="bg-surface rounded-xl px-4 py-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Program Overall Record</p>
+                    <div className="grid grid-cols-3 divide-x divide-slate-700/60">
+                      <div className="text-center pr-3">
+                        <div className="text-2xl font-black text-emerald-400 tabular-nums leading-none">{programRecord.wins}</div>
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 mt-1">Wins</div>
+                      </div>
+                      <div className="text-center px-3">
+                        <div className="text-2xl font-black text-red-400 tabular-nums leading-none">{programRecord.losses}</div>
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-red-800 mt-1">Losses</div>
+                      </div>
+                      <div className="text-center pl-3">
+                        <div className="text-2xl font-black text-primary tabular-nums leading-none">{programRecord.winPct ?? '—'}</div>
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">Win%</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Head Coach + Asst Coach Records */}
+                {(coachRecords.length > 0 || asstCoachRecords.length > 0) && (
+                  <div className="bg-surface rounded-xl px-4 py-3 space-y-3">
+                    {coachRecords.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Head Coach Records</p>
+                        <div className="space-y-2">
+                          {coachRecords.map(({ name, wins, losses, winPct }) => (
+                            <div key={name} className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-semibold text-slate-200 truncate">{name}</span>
+                              <div className="flex items-center gap-3 shrink-0">
+                                <span className="text-sm font-black tabular-nums">
+                                  <span className="text-emerald-400">{wins}</span>
+                                  <span className="text-slate-600 mx-0.5">–</span>
+                                  <span className="text-red-400">{losses}</span>
+                                </span>
+                                {winPct && (
+                                  <span className="text-xs font-bold text-primary tabular-nums w-14 text-right">{winPct}</span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {coachRecords.length > 0 && asstCoachRecords.length > 0 && (
+                      <div className="border-t border-slate-700/60" />
+                    )}
+                    {asstCoachRecords.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Assistant Coach Records</p>
+                        <div className="space-y-2">
+                          {asstCoachRecords.map(({ name, wins, losses, winPct }) => (
+                            <div key={name} className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-semibold text-slate-200 truncate">{name}</span>
+                              <div className="flex items-center gap-3 shrink-0">
+                                <span className="text-sm font-black tabular-nums">
+                                  <span className="text-emerald-400">{wins}</span>
+                                  <span className="text-slate-600 mx-0.5">–</span>
+                                  <span className="text-red-400">{losses}</span>
+                                </span>
+                                {winPct && (
+                                  <span className="text-xs font-bold text-primary tabular-nums w-14 text-right">{winPct}</span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Season History */}
                 <div className="space-y-3">
