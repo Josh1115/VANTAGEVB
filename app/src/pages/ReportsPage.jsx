@@ -474,20 +474,21 @@ export function ReportsPage() {
     });
   }
 
-  // When specific matches are selected OR L5 is active, conference/site/type chips are hidden
-  const showChipFilters = !selectedMatchIds?.length && result !== 'l5';
+  // When specific matches are selected OR L5/L10 is active, conference/site/type chips are hidden
+  const showChipFilters = !selectedMatchIds?.length && result !== 'l5' && result !== 'l10';
 
-  // Build active filters object. L5 and individual match selection are mutually exclusive
+  // Build active filters object. L5/L10 and individual match selection are mutually exclusive
   // with the conf/location/type chip filters — they use matchIds only.
   const activeFilters = {};
   if (selectedMatchIds?.length) {
     activeFilters.matchIds = selectedMatchIds;
-  } else if (result === 'l5') {
-    const last5 = (seasonMatches ?? [])
+  } else if (result === 'l5' || result === 'l10') {
+    const n = result === 'l10' ? 10 : 5;
+    const lastN = (seasonMatches ?? [])
       .filter((m) => m.status !== 'scheduled')
-      .slice(-5)
+      .slice(-n)
       .map((m) => m.id);
-    if (last5.length) activeFilters.matchIds = last5;
+    if (lastN.length) activeFilters.matchIds = lastN;
   } else {
     if (conference) activeFilters.conference = conference;
     if (location)   activeFilters.location   = location;
@@ -752,7 +753,7 @@ export function ReportsPage() {
           {!selectedMatchIds?.length && (
             <div className="flex gap-1.5 flex-wrap items-center">
               <span className="text-[10px] text-slate-500 uppercase tracking-wide mr-1">Result</span>
-              {[['', 'All'], ['win', 'Win'], ['loss', 'Loss'], ['l5', 'L5']].map(([val, label]) => (
+              {[['', 'All'], ['win', 'Win'], ['loss', 'Loss'], ['l5', 'L5'], ['l10', 'L10']].map(([val, label]) => (
                 <button key={val} onClick={() => setResult(val)} className={chipClass(result === val)}>{label}</button>
               ))}
             </div>
