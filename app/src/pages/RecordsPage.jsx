@@ -5,7 +5,7 @@ import { db } from '../db/schema';
 import { computeTeamStats, computePlayerStats } from '../stats/engine';
 import { getContactsForMatches, getBatchSetsPlayedCount } from '../stats/queries';
 import { buildPlayerMaps } from '../utils/players';
-import { fmtCount, fmtBlocks, fmtDate, fmtPct, fmtHitting } from '../stats/formatters';
+import { fmtCount, fmtBlocks, fmtDate, fmtPct, fmtHitting, fmtRawPct } from '../stats/formatters';
 import { MATCH_STATUS } from '../constants';
 import { STORAGE_KEYS, getIntStorage } from '../utils/storage';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -18,6 +18,14 @@ const RECORD_STATS = [
   { key: 'blk', label: 'Blocks',  fmt: fmtBlocks },
   { key: 'ast', label: 'Assists', fmt: fmtCount },
   { key: 'dig', label: 'Digs',    fmt: fmtCount },
+];
+
+const CAREER_STATS = [
+  ...RECORD_STATS,
+  { key: 'sp',      label: 'Sets',   fmt: fmtCount   },
+  { key: 'hit_pct', label: 'HIT%',   fmt: fmtHitting },
+  { key: 'k_pct',   label: 'K%',     fmt: fmtRawPct  },
+  { key: 'ace_pct', label: 'ACE%',   fmt: fmtRawPct  },
 ];
 
 const TEAM_SEASON_STATS = [
@@ -184,7 +192,7 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
   // career tab — manual entries only, no DB computation
   if (tab === 'career') {
     return Object.fromEntries(
-      RECORD_STATS.map(({ key }) => [key, mergeAndRank([], historicalRows(key))])
+      CAREER_STATS.map(({ key }) => [key, mergeAndRank([], historicalRows(key))])
     );
   }
 
@@ -702,7 +710,9 @@ function TourneyEntryCard({ entry, onEdit, onDelete }) {
   const startX = useRef(0);
 
   const placingLabel = ordinal(entry.placing);
-  const isChamp = entry.placing === 1;
+  const isChamp  = entry.placing === 1;
+  const isSilver = entry.placing === 2;
+  const isBronze = entry.placing === 3;
 
   return (
     <div className="relative overflow-hidden rounded-xl border border-slate-700/50">
@@ -733,11 +743,13 @@ function TourneyEntryCard({ entry, onEdit, onDelete }) {
             <span className={`text-xs px-2 py-0.5 rounded font-bold border ${
               isChamp
                 ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
-                : entry.placing <= 3
-                ? 'bg-slate-600/40 text-slate-200 border-slate-500/40'
+                : isSilver
+                ? 'bg-slate-400/20 text-slate-200 border-slate-400/50'
+                : isBronze
+                ? 'bg-amber-800/20 text-amber-500 border-amber-700/50'
                 : 'bg-slate-700/40 text-slate-400 border-slate-600/40'
             }`}>
-              {placingLabel}{isChamp ? ' 🏆' : ''}
+              {placingLabel}{isChamp ? ' 🏆' : isSilver ? ' 🥈' : isBronze ? ' 🥉' : ''}
             </span>
           </div>
         </div>
@@ -853,7 +865,9 @@ export function RecordsPage() {
     await db.historical_records.delete(id);
   }
 
-  const visibleStats = tab === 'team_season' ? TEAM_SEASON_STATS : RECORD_STATS;
+  const visibleStats = tab === 'team_season' ? TEAM_SEASON_STATS
+    : tab === 'career' ? CAREER_STATS
+    : RECORD_STATS;
   const statDef      = visibleStats.find(s => s.key === statKey);
   const rows      = boards?.[statKey] ?? [];
   const tabDef    = TABS.find(t => t.value === tab);

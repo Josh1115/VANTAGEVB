@@ -11,6 +11,9 @@ export const fmtPassRating = (val) => fmt(val, v => v.toFixed(2));
 // 18.3%  (ace%, SO%, BP%, etc.)
 export const fmtPct = (val) => fmt(val, v => (v * 100).toFixed(1) + '%');
 
+// 45.6%  (manually entered percentage — stored as the percentage value directly)
+export const fmtRawPct = (val) => fmt(val, v => v.toFixed(1) + '%');
+
 // Integer counts  (kills, aces, digs, etc.)
 export const fmtCount  = (val) => fmt(val, v => String(Math.round(v)));
 
