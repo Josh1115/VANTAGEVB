@@ -1643,6 +1643,25 @@ export function SettingsPage() {
           <div className="mt-4">
             <p className="text-xs font-bold tracking-widest text-slate-500 uppercase mb-2">Help &amp; Guide</p>
             <div className="space-y-1">
+              {/* Step-by-step visual guides */}
+              {[
+                { to: '/help/default-team',   icon: '🏠', label: 'Setting Up Default Team & Season' },
+                { to: '/help/serve-receive',  icon: '📐', label: 'Serve-Receive Formation Setup'    },
+              ].map(({ to, icon, label }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors text-left"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <span className="text-base">{icon}</span>
+                    <span className="text-sm font-medium text-slate-200">{label}</span>
+                    <span className="text-[9px] font-bold text-primary border border-primary/50 rounded px-1 py-px">GUIDE</span>
+                  </span>
+                  <span className="text-slate-500 text-sm">›</span>
+                </Link>
+              ))}
+              {/* FAQ modals */}
               {FAQ_TOPICS.map((topic) => (
                 <button
                   key={topic.id}
