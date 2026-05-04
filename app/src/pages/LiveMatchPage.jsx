@@ -56,6 +56,7 @@ export function LiveMatchPage() {
   const [liveStatsDefaultTab, setLiveStatsDefaultTab] = useState(null);
   const [aceZoneHints,        setAceZoneHints]        = useState({}); // { [playerId]: { [zone]: count } }
   const [seasonRotation,      setSeasonRotation]      = useState(null);
+  const [seasonId,            setSeasonId]            = useState(null);
   const [flipLayout,          setFlipLayout]          = useState(() => getBoolStorage(STORAGE_KEYS.FLIP_LAYOUT));
 
   const handleToggleFlip = useCallback(() => {
@@ -301,6 +302,7 @@ export function LiveMatchPage() {
       setTeamName(teamDisplayName);
       setOpponentName(oppDisplayName);
       setMatch(matchId, currentSet.id, season?.team_id ?? null, match.format ?? null, match.last_set_score ?? 15);
+      if (match.season_id) setSeasonId(match.season_id);
       loadSetFormationData(currentSet);
       setReady(true);
       await loadServeReticles(currentSet.id);

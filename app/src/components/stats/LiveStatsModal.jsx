@@ -5,7 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMatchStore } from '../../store/matchStore';
 import { useMatchStats } from '../../hooks/useMatchStats';
 import { db } from '../../db/schema';
-import { computeTeamStats, computeOppDisplayStats, computeRotationStats, computeRotationContactStats, computeISvsOOS, computeFreeDigWin, computeTransitionAttack, computePlayerStats, computeXKByPassRating, computePointQuality, computeServingPoints } from '../../stats/engine';
+import { computeTeamStats, computeOppDisplayStats, computeRotationStats, computeRotationContactStats, computeISvsOOS, computeFreeDigWin, computeTransitionAttack, computePlayerStats, computeXKByPassRating, computePointQuality, computeServingPoints, computeWinCorrelation } from '../../stats/engine';
 import { StatTable } from './StatTable';
 import { PointQualityPanel } from './PointQualityPanel';
 import { fmtCount, fmtPct, fmtHitting, fmtPassRating, fmtVER } from '../../stats/formatters';
@@ -81,12 +81,30 @@ const COLUMNS = {
 };
 
 // ── Main Component ────────────────────────────────────────────────────────────
+const pct = (v) => v != null ? `${Math.round(v * 100)}%` : '—';
+const INSIGHT_METRICS = [
+  { label: 'Pass Rating',    key: 'apr',        src: 'team',  fmt: (v) => v != null ? v.toFixed(2) : '—', higherBetter: true  },
+  { label: 'Sideout %',     key: 'so_pct',     src: 'rot',   fmt: pct,                                    higherBetter: true  },
+  { label: 'Break Point %', key: 'bp_pct',     src: 'rot',   fmt: pct,                                    higherBetter: true  },
+  { label: '3OPT %',        key: 'win_pct',    src: 'isOos', fmt: pct,                                    higherBetter: true  },
+  { label: 'Kill %',        key: 'k_pct',      src: 'team',  fmt: pct,                                    higherBetter: true  },
+  { label: 'Kills',         key: 'k',          src: 'team',  fmt: (v) => v != null ? String(Math.round(v)) : '—', higherBetter: true  },
+  { label: 'Attack Errors', key: 'ae',         src: 'team',  fmt: (v) => v != null ? String(Math.round(v)) : '—', higherBetter: false },
+  { label: 'Hitting Eff.',  key: 'hit_pct',    src: 'team',  fmt: (v) => v != null ? (v >= 0 ? '+' : '') + v.toFixed(3) : '—', higherBetter: true  },
+  { label: 'Earned Pts %',  key: 'earned_pct', src: 'pq',    fmt: pct,                                    higherBetter: true  },
+  { label: 'Ace %',         key: 'ace_pct',    src: 'team',  fmt: pct,                                    higherBetter: true  },
+];
+
 export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, teamName, opponentName, recordAlerts = [], records = [], defaultTab = null, seasonRotation = null }) {
   const [activeView, setActiveView] = useState('box');
   const [activeTab,  setActiveTab]  = useState('POINTS');
   const [serveView,  setServeView]  = useState('ALL');
   // scope: a set number (1, 2, 3...) or 'match'
   const [scope, setScope] = useState(1);
+
+  const [winCorr,    setWinCorr]    = useState(null);
+  const [corrLoaded, setCorrLoaded] = useState(false);
+  const [barsReady,  setBarsReady]  = useState(false);
 
   const prevOpenRef = useRef(false);
 
@@ -122,6 +140,27 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
       setActiveTab('RECORDS');
     }
   }, [open, defaultTab]);
+
+  const matchRecord = useLiveQuery(
+    () => matchId ? db.matches.get(matchId) : null,
+    [matchId]
+  );
+  const insightSeasonId = matchRecord?.season_id ?? null;
+
+  useEffect(() => {
+    if (!insightSeasonId || corrLoaded) return;
+    setCorrLoaded(true);
+    computeWinCorrelation(insightSeasonId)
+      .then(setWinCorr)
+      .catch(() => {});
+  }, [insightSeasonId, corrLoaded]);
+
+  useEffect(() => {
+    if (!winCorr) return;
+    setBarsReady(false);
+    const id = requestAnimationFrame(() => setBarsReady(true));
+    return () => cancelAnimationFrame(id);
+  }, [winCorr]);
 
   // Keep hook call for Zustand subscriptions even though we compute stats from scopedContacts
   useMatchStats();
@@ -261,6 +300,18 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
     () => computeTeamStats(allMatchContacts ?? [], setNumber),
     [allMatchContacts, setNumber]
   );
+  const matchRotStats = useMemo(
+    () => computeRotationStats(allMatchRallies ?? []),
+    [allMatchRallies]
+  );
+  const matchISvsOOS = useMemo(
+    () => computeISvsOOS(allMatchContacts ?? [], allMatchRallies ?? []),
+    [allMatchContacts, allMatchRallies]
+  );
+  const matchPointQuality = useMemo(
+    () => computePointQuality(allMatchContacts ?? []),
+    [allMatchContacts]
+  );
 
   // Opponent total points for PointQualityPanel
   const scopedOppTotal = useMemo(() => {
@@ -382,7 +433,7 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
 
       {/* Top-level tab bar */}
       <div className="flex border-b border-slate-700 flex-shrink-0">
-        {[['box', 'BOX SCORE'], ['stats', 'STATS']].map(([key, label]) => (
+        {[['box', 'BOX SCORE'], ['insights', 'INSIGHTS'], ['stats', 'STATS']].map(([key, label]) => (
           <button
             key={key}
             onPointerDown={(e) => { e.preventDefault(); setActiveView(key); }}
@@ -400,7 +451,94 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
 
-        {activeView === 'box' ? (
+        {activeView === 'insights' ? (
+          <div className="p-4 space-y-3">
+            <div className="flex items-baseline justify-between">
+              <p className="text-xs font-black tracking-widest text-slate-500 uppercase">Live Insights</p>
+              {winCorr && (
+                <p className="text-[10px] text-slate-600">{winCorr.win.matches}W · {winCorr.loss.matches}L baseline</p>
+              )}
+            </div>
+
+            {INSIGHT_METRICS.map(({ label, key, src, fmt, higherBetter }) => {
+              const pickLive = () => {
+                if (src === 'rot')   return matchRotStats?.[key];
+                if (src === 'isOos') return matchISvsOOS?.total?.is?.[key];
+                if (src === 'pq')    return matchPointQuality?.[key];
+                return matchTeamStats?.[key];
+              };
+              const pickCorr = (d) => {
+                if (src === 'rot')   return d?.rotation?.[key];
+                if (src === 'isOos') return d?.isOos?.total?.is?.[key];
+                if (src === 'pq')    return d?.pointQuality?.[key];
+                return d?.team?.[key];
+              };
+
+              const nowVal  = pickLive();
+              const winVal  = winCorr ? pickCorr(winCorr.win)  : null;
+              const lossVal = winCorr ? pickCorr(winCorr.loss) : null;
+
+              const hasCorr = winVal != null && lossVal != null;
+              const wv = hasCorr ? (higherBetter ? winVal  : -winVal)  : null;
+              const lv = hasCorr ? (higherBetter ? lossVal : -lossVal) : null;
+              const nv = nowVal != null && hasCorr ? (higherBetter ? nowVal : -nowVal) : null;
+              const range  = hasCorr ? wv - lv : null;
+              const pos    = nv != null && range !== 0 ? (nv - lv) / range : null;
+              const barPct = pos != null ? Math.max(0, Math.min(100, Math.round(pos * 100))) : null;
+
+              const statusColor = pos == null ? 'text-primary'
+                : pos >= 0.65 ? 'text-emerald-400'
+                : pos >= 0.35 ? 'text-amber-400'
+                : 'text-red-400';
+              const statusLabel = pos == null ? null
+                : pos >= 0.65 ? '✓ On track'
+                : pos >= 0.35 ? '⚡ Watch this'
+                : '✗ Below avg';
+
+              return (
+                <div key={key} className="bg-slate-800 rounded-xl p-3 border border-slate-700/40">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-black uppercase tracking-wide text-slate-400">{label}</span>
+                    {statusLabel && <span className={`text-[11px] font-bold ${statusColor}`}>{statusLabel}</span>}
+                  </div>
+
+                  {hasCorr ? (
+                    <>
+                      <div className="flex items-end gap-3 mb-2">
+                        <div className="flex-1 text-center">
+                          <div className="text-base font-black text-red-400 tabular-nums leading-none">{fmt(lossVal)}</div>
+                          <div className="text-[9px] text-red-900 font-bold mt-0.5 tracking-wide">LOSS AVG</div>
+                        </div>
+                        <div className="flex-1 text-center">
+                          <div className={`text-2xl font-black tabular-nums leading-none ${statusColor}`}>{nowVal != null ? fmt(nowVal) : '—'}</div>
+                          <div className="text-[9px] text-slate-500 font-bold mt-0.5 tracking-wide">THIS MATCH</div>
+                        </div>
+                        <div className="flex-1 text-center">
+                          <div className="text-base font-black text-emerald-400 tabular-nums leading-none">{fmt(winVal)}</div>
+                          <div className="text-[9px] text-emerald-700 font-bold mt-0.5 tracking-wide">WIN AVG</div>
+                        </div>
+                      </div>
+                      {barPct != null && (
+                        <div className="h-1.5 rounded-full bg-slate-700 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-[width] duration-700 ease-out ${
+                              barPct >= 65 ? 'bg-emerald-500' : barPct >= 35 ? 'bg-amber-500' : 'bg-red-500'
+                            }`}
+                            style={{ width: barsReady ? `${barPct}%` : '0%' }}
+                          />
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className={`text-2xl font-black tabular-nums leading-none ${statusColor}`}>
+                      {nowVal != null ? fmt(nowVal) : '—'}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : activeView === 'box' ? (
           <>
             <ScopeToggle />
 
