@@ -10,6 +10,8 @@ export const STAT_GLOSSARY = {
 
   // ── Serving (all / float / topspin) ──────────────────────────────────────
   sa:           { abbr: 'SA',       full: 'Serve Attempts',             def: 'Total serves attempted.' },
+  srv_pt:       { abbr: 'SRV PT',   full: 'Serving Points',             def: 'Rallies won by our team while this player was the server. Counts sideouts held AND break points earned.' },
+  att_pt:       { abbr: 'ATT:PT',   full: 'Attempts per Serving Point', def: 'SA ÷ SRV PT. How many serve attempts it takes this player to earn one serving point. Lower is better.' },
   ace:          { abbr: 'ACE',      full: 'Aces',                       def: 'Serves that score a point directly, untouched by the opponent.' },
   se:           { abbr: 'SE',       full: 'Serve Errors',               def: 'Total serves resulting in a point for the opponent.' },
   se_ob:        { abbr: 'SOB',      full: 'Serve Out of Bounds',        def: 'Serve errors landing outside the court.' },
@@ -51,13 +53,45 @@ export const STAT_GLOSSARY = {
   hit_pct:      { abbr: 'HIT%',     full: 'Hitting Percentage',         def: '(K − AE) ÷ TA. Ranges −1.000 to 1.000. The primary attacking efficiency stat.' },
   k_pct:        { abbr: 'K%',       full: 'Kill Percentage',            def: 'K ÷ TA. Kill rate, ignoring errors.' },
   kps:          { abbr: 'KPS',      full: 'Kills Per Set',              def: 'K ÷ SP.' },
+  aeps:         { abbr: 'AE/S',     full: 'Attack Errors Per Set',      def: 'AE ÷ SP.' },
+
+  // ── Kill-type breakdown ───────────────────────────────────────────────────
+  k_pure:       { abbr: 'PURE',     full: 'Pure Kills',                 def: 'Kills that land cleanly on the opponent\'s floor without touching a blocker.' },
+  k_pure_pct:   { abbr: 'PURE%',    full: 'Pure Kill %',                def: 'PURE ÷ K.' },
+  k_tool:       { abbr: 'TOOL',     full: 'Tool Kills',                 def: 'Kills intentionally deflected off the blocker\'s hands and out of bounds.' },
+  k_tool_pct:   { abbr: 'TOOL%',    full: 'Tool Kill %',                def: 'TOOL ÷ K.' },
+  k_over:       { abbr: 'OVER',     full: 'Overpass Kills',             def: 'Kills scored by attacking an opponent\'s overpass or a ball set close to the net.' },
+  k_over_pct:   { abbr: 'OVER%',    full: 'Overpass Kill %',            def: 'OVER ÷ K.' },
+  k_tip:        { abbr: 'TIP',      full: 'Tip Kills',                  def: 'Soft-touch kills (dinks/tips) placed over or around the block.' },
+  k_tip_pct:    { abbr: 'TIP%',     full: 'Tip Kill %',                 def: 'TIP ÷ K.' },
+  k_bk:         { abbr: 'BK',       full: 'Back-Set Kills',             def: 'Kills on back-set attacks (attacker behind the setter).' },
+  k_bk_pct:     { abbr: 'BK%',      full: 'Back-Set Kill %',            def: 'BK ÷ K.' },
+  k_touch:      { abbr: 'TOUCH',    full: 'Touch Kills',                def: 'Kills credited after the ball deflects off the block but stays in play and lands.' },
+  k_touch_pct:  { abbr: 'TOUCH%',   full: 'Touch Kill %',               def: 'TOUCH ÷ K.' },
+
+  // ── Attack-error type breakdown ───────────────────────────────────────────
+  ae_ob:        { abbr: 'OB',       full: 'Attack Errors — Out of Bounds', def: 'Attack errors where the ball landed out of bounds.' },
+  ae_ob_pct:    { abbr: 'OB%',      full: 'OB Error %',                 def: 'OB ÷ AE.' },
+  ae_net:       { abbr: 'NET',      full: 'Attack Errors — Into Net',   def: 'Attack errors where the ball contacted the net.' },
+  ae_net_pct:   { abbr: 'NET%',     full: 'Net Error %',                def: 'NET ÷ AE.' },
+  ae_blk:       { abbr: 'BLK',      full: 'Attack Errors — Blocked',    def: 'Attacks blocked by the opponent for a point (ball driven straight down).' },
+  ae_blk_pct:   { abbr: 'BLK%',     full: 'Blocked Error %',            def: 'BLK ÷ AE.' },
+  ae_bra:       { abbr: 'BRA',      full: 'Attack Errors — Brought Around', def: 'Attacks deflected off the block back onto the attacker\'s side for a point.' },
+  ae_bra_pct:   { abbr: 'BRA%',     full: 'Brought-Around Error %',     def: 'BRA ÷ AE.' },
+  fbs_pct:      { abbr: 'FBS%',     full: 'Freeball Send %',            def: 'FBS ÷ TA. Rate of attack attempts that became freeball sends rather than true attacks.' },
 
   // ── VER ───────────────────────────────────────────────────────────────────
-  ver:          { abbr: 'VER',      full: 'Volleyball Efficiency Rating', def: 'Position-adjusted composite efficiency rating per set.\n\nFormula:\nVER = Multiplier × (1 ÷ SP) × [\n  +4.00 × K\n  +4.00 × ACE\n  +3.50 × BS\n  +1.75 × BA\n  +1.50 × AST\n  +1.25 × DIG\n  +(P1 + 2·P2 + 3·P3 − 2·REC)   ← APR component\n  −2.50 × AE\n  −2.50 × SE\n  −1.50 × BHE\n  −1.50 × FBE\n  −1.50 × L\n  −1.50 × NET\n]\n\nAPR Component: (P1 + 2·P2 + 3·P3 − 2·REC)\n  Scores each pass relative to a neutral APR of 2.0:\n  P3 = +1 per pass (perfect)\n  P2 =  0 per pass (neutral)\n  P1 = −1 per pass (out of system)\n  P0 = −2 per pass (ace against)\n  Zero when the player has no pass attempts.\n\nPosition Multipliers:\n  OH  1.00 (baseline)\n  OPP 1.00 (baseline)\n  RS  1.00 (baseline)\n  MB  1.05 (fewer block/attack opps per set)\n  S   0.90 (assists weighted lower than kills)\n  DS  2.00 (no offensive stats — must build VER from digs/passing only)\n  L   1.65 (no offensive stats — must build VER from digs/passing only)\n\nGrades (standard):\n  ELITE+  ≥ 28\n  ELITE   ≥ 22\n  GOOD    ≥ 15\n  AVG     ≥ 10\n  LOW     ≥  5\n  BENCH   ≥  0\n  NEG      < 0\n\nGrades (L / DS — role-adjusted scale):\n  ELITE+  ≥ 18\n  ELITE   ≥ 14\n  GOOD    ≥ 10\n  AVG     ≥  6\n  LOW     ≥  3\n  BENCH   ≥  0\n  NEG      < 0\n\nHigher is better. A VER of 0 means the player broke even.' },
+  ver:          { abbr: 'VER',      full: 'Volleyball Efficiency Rating', def: 'Position-adjusted composite efficiency rating per set.\n\nFormula:\nVER = Multiplier × (1 ÷ SP) × [\n  +4.00 × K\n  +4.00 × ACE\n  +5.00 × BS\n  +2.50 × BA\n  +1.50 × AST\n  +1.25 × (DIG + FREE)   ← freeball digs count equally\n  +(P1 + 2·P2 + 3·P3 − 2·REC)   ← APR component\n  −2.50 × AE\n  −2.50 × SE\n  −2.50 × BHE\n  −2.50 × FBE\n  −2.50 × L\n  −2.50 × NET\n]\n\nAPR Component: (P1 + 2·P2 + 3·P3 − 2·REC)\n  Scores each pass relative to a neutral APR of 2.0:\n  P3 = +1 per pass (perfect)\n  P2 =  0 per pass (neutral)\n  P1 = −1 per pass (out of system)\n  P0 = −2 per pass (ace against)\n  Zero when the player has no pass attempts.\n\nPosition Multipliers (normalize VER so all positions share one tier scale):\n  OH  1.00 (baseline)\n  OPP 1.00 (baseline)\n  RS  1.00 (baseline)\n  MB  1.05 (fewer block/attack opps per set)\n  S   0.90 (assists weighted lower than kills)\n  DS  2.00 (no offensive stats — must build VER from digs/passing only)\n  L   1.65 (no offensive stats — must build VER from digs/passing only)\n\nGrades (all positions — posMult already normalizes VER cross-position):\n  ELITE+  ≥ 28\n  ELITE   ≥ 22\n  GOOD    ≥ 15\n  AVG     ≥ 10\n  LOW     ≥  5\n  BENCH   ≥  0\n  NEG      < 0\n\nHigher is better. A VER of 0 means the player broke even.' },
+
+  // ── WPA ───────────────────────────────────────────────────────────────────
+  wpa:          { abbr: 'WPA',      full: 'Win Probability Added',        def: 'Sum of win-probability deltas attributed to this player across all rallies. Each rally is worth (WP_after − WP_before); that delta is assigned to the terminal-contact player.\n\nPositive actions credited: ACE (server), K (attacker), BS/BA (blocker).\nNegative actions charged: SE (server), AE (attacker), P0 (passer), BHE/L/NET error contacts, BE (blocker).\nOpponent errors and unattributed rallies are excluded.\n\nHigher is better. A WPA of 0 means the player broke even relative to the baseline win expectancy.' },
+  wpa_pos:      { abbr: 'WPA+',     full: 'Positive WPA',                def: 'Sum of only the positive WPA contributions — rallies where this player was the terminal contact and their team won. Measures clutch scoring value.' },
+  wpa_neg:      { abbr: 'WPA−',     full: 'Negative WPA',                def: 'Sum of only the negative WPA contributions — rallies where this player was the terminal contact and their team lost the point. Measures error cost in high-leverage situations. Shown as a negative number; closer to 0 is better.' },
 
   // ── Blocking ──────────────────────────────────────────────────────────────
+  blk:          { abbr: 'BLK',      full: 'Blocks',                     def: 'Composite block total: BS + 0.5·BA. Block assists are split equally between all participating players.' },
   bs:           { abbr: 'BS',       full: 'Block Solos',                def: 'Blocks where only one player contacts the ball.' },
-  ba:           { abbr: 'BA',       full: 'Block Assists',              def: 'Blocks where 2+ players contact the ball.' },
+  ba:           { abbr: 'BA',       full: 'Block Assists',              def: 'Blocks where 2+ players contact the ball. Each participant shares 0.5 in the BLK composite.' },
   be:           { abbr: 'BE',       full: 'Block Errors',               def: 'Blocking attempts that give a point to the opponent.' },
   bps:          { abbr: 'BPS',      full: 'Blocks Per Set',             def: '(BS + 0.5·BA) ÷ SP.' },
 
@@ -65,18 +99,19 @@ export const STAT_GLOSSARY = {
   ast:          { abbr: 'AST',      full: 'Assists',                    def: 'Sets immediately followed by a kill (back-assigned).' },
   set_att:      { abbr: 'ATT',      full: 'Set Attempts',               def: 'Total setting contacts.' },
   bhe:          { abbr: 'BHE',      full: 'Ball Handling Error',        def: 'Double contact, lift, or carry on a setting attempt.' },
-  lift:         { abbr: 'L',        full: 'Lifts',                      def: 'Contact where the ball is visibly lifted or carried. Counts against VER at −1.5.' },
-  dbl:          { abbr: 'DBL',      full: 'Doubles',                    def: 'Illegal double-contact setting error.' },
-  net:          { abbr: 'NET',      full: 'Net Violations',             def: 'Contacts where the player touches the net during play. Counts against VER at −1.5.' },
+  lift:         { abbr: 'L',        full: 'Lifts',                      def: 'Contact where the ball is visibly lifted or carried. Penalized at −2.50 per set in VER.' },
+  dbl:          { abbr: 'DBL',      full: 'Doubles',                    def: 'Illegal double-contact error. Tracked separately; not directly penalized in VER (captured via the associated BHE contact).' },
+  net:          { abbr: 'NET',      full: 'Net Violations',             def: 'Contacts where the player touches the net during play. Penalized at −2.50 per set in VER.' },
   aps:          { abbr: 'APS',      full: 'Assists Per Set',            def: 'AST ÷ SP.' },
 
   // ── Defense ───────────────────────────────────────────────────────────────
-  dig:          { abbr: 'DIG',      full: 'Digs',                       def: 'Successful defensive contacts keeping the ball in play.' },
+  dig:          { abbr: 'DIG',      full: 'Digs',                       def: 'Successful defensive contacts keeping the ball in play (not freeballs).' },
+  fb_dig:       { abbr: 'FREE',     full: 'Freeball Digs',              def: 'Successful defensive contacts on an opponent freeball. Counts equally with DIG in VER (+1.25 per dig/free dig per set).' },
   de:           { abbr: 'DE',       full: 'Dig Errors',                 def: 'Defensive contacts resulting in a dead ball or opponent point.' },
-  dips:         { abbr: 'DiPS',     full: 'Digs Per Set',               def: 'DIG ÷ SP.' },
+  dips:         { abbr: 'DiPS',     full: 'Digs Per Set',               def: 'DIG ÷ SP. Does not include freeball digs.' },
   fbr:          { abbr: 'FBR',      full: 'Freeball Receives',          def: 'Controlled passes of an opponent freeball.' },
   fbs:          { abbr: 'FBS',      full: 'Freeball Sends',             def: 'Balls sent over as a freeball after a dig.' },
-  fbe:          { abbr: 'FBE',      full: 'Freeball Errors',            def: 'Errors committed on freeball contacts.' },
+  fbe:          { abbr: 'FBE',      full: 'Freeball Errors',            def: 'Errors committed on freeball contacts. Penalized at −2.50 per set in VER.' },
 
   // ── Rotation (SO% / SP%) ─────────────────────────────────────────────────
   so_pct:       { abbr: 'SO%',      full: 'Sideout %',                  def: 'Win rate when receiving serve. SO Win ÷ SO Opp.' },

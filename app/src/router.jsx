@@ -29,7 +29,9 @@ const ToolsPage        = lazy(() => import('./pages/ToolsPage').then(m => ({ def
 const ServeReceivePage = lazy(() => import('./pages/tools/ServeReceivePage').then(m => ({ default: m.ServeReceivePage })));
 const ServeTrackerPage = lazy(() => import('./pages/tools/ServeTrackerPage').then(m => ({ default: m.ServeTrackerPage })));
 const PracticeGamePage = lazy(() => import('./pages/tools/PracticeGamePage').then(m => ({ default: m.PracticeGamePage })));
-const TermsPage        = lazy(() => import('./pages/TermsPage').then(m => ({ default: m.TermsPage })));
+const TermsPage                = lazy(() => import('./pages/TermsPage').then(m => ({ default: m.TermsPage })));
+const HelpServeReceivePage     = lazy(() => import('./pages/HelpServeReceivePage').then(m => ({ default: m.HelpServeReceivePage })));
+const HelpDefaultTeamPage      = lazy(() => import('./pages/HelpDefaultTeamPage').then(m => ({ default: m.HelpDefaultTeamPage })));
 
 function PageFallback() {
   return (
@@ -71,6 +73,8 @@ export const router = createBrowserRouter([
       { path: 'tools/serve-tracker',         element: <S><ServeTrackerPage /></S> },
       { path: 'tools/practice-game',         element: <S><PracticeGamePage /></S> },
       { path: 'terms',                       element: <S><TermsPage /></S> },
+      { path: 'help/serve-receive',          element: <S><HelpServeReceivePage /></S> },
+      { path: 'help/default-team',           element: <S><HelpDefaultTeamPage /></S> },
       { path: '*',                           element: <NotFoundPage /> },
     ],
   },

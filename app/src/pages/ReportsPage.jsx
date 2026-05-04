@@ -183,7 +183,7 @@ const PLAYER_COLS = [
   { key: 'mp',        label: 'MP',    fmt: fmtCount     },
   { key: 'sp',        label: 'SP',    fmt: fmtCount     },
   { key: 'pos_label', label: 'POS',   fmt: (v) => v ?? '—' },
-  { key: 'ver',       label: 'VER',   fmt: fmtVER,      render: (v, row) => <VERBadge ver={v} position={row.pos_label} /> },
+  { key: 'ver',       label: 'VER',   fmt: fmtVER,      render: (v) => <VERBadge ver={v} /> },
   { key: 'sa',      label: 'SA',    fmt: fmtCount     },
   { key: 'si_pct',  label: 'SRV%',  fmt: fmtPct       },
   { key: 'ace',     label: 'ACE',   fmt: fmtCount     },

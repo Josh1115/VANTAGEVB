@@ -272,7 +272,15 @@ export function TeamDetailPage() {
       {tab === 'lineups' && (
         <div className="p-4 md:p-6">
           <div className="flex justify-between items-center mb-3">
-            <span className="text-sm text-slate-400">{savedLineups?.length ?? 0} saved</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-400">{savedLineups?.length ?? 0} saved</span>
+              <button
+                onClick={() => navigate('/help/serve-receive')}
+                className="text-[10px] text-slate-500 hover:text-slate-300 underline"
+              >
+                SR formation guide
+              </button>
+            </div>
             <div className="flex gap-2">
               <Button size="sm" variant="ghost" onClick={() => navigate(`/teams/${teamId}/optimizer`)}>Optimizer</Button>
               <Button size="sm" onClick={() => setShowLineupModal(true)}>+ Lineup</Button>

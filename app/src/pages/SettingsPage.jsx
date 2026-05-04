@@ -1209,7 +1209,12 @@ export function SettingsPage() {
 
             {/* Default team */}
             <div>
-              <label className="block text-sm font-medium mb-1">Default Team</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm font-medium">Default Team</label>
+                <Link to="/help/default-team" className="text-[10px] text-slate-500 hover:text-slate-300 underline">
+                  what does this do?
+                </Link>
+              </div>
               <div className="text-xs text-slate-400 mb-2">Pre-selected in tool pages and session setup</div>
               <select
                 value={defaultTeamId ?? ''}

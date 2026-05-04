@@ -67,7 +67,7 @@ const COLUMNS = {
   ],
   VER: [
     { key: 'name', label: 'Player' },
-    { key: 'ver',  label: 'VER',  fmt: fmtVER,  render: (v, row) => <VERBadge ver={v} position={row.pos_label} /> },
+    { key: 'ver',  label: 'VER',  fmt: fmtVER,  render: (v) => <VERBadge ver={v} /> },
     { key: 'k',    label: 'K',    fmt: fmtCount },
     { key: 'ace',  label: 'ACE',  fmt: fmtCount },
     { key: 'bs',   label: 'BS',   fmt: fmtCount },
