@@ -57,22 +57,22 @@ function TeamsIcon({ active }) {
   const rightNum = JERSEY_NUMBERS[(idx + 3) % JERSEY_NUMBERS.length];
 
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#f97316' }}>
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#f97316' }}>
       {/* Left person — head */}
-      <circle cx="7.5" cy="7" r="2.8"
+      <circle cx="7.5" cy="6.5" r="3.3"
         fill="currentColor" fillOpacity="0.2"
         stroke="currentColor" strokeWidth="1.4" />
       {/* Left person — shoulders/body */}
-      <path d="M1.5 20 C1.5 16 4 13.5 7.5 13.5 C11 13.5 13.5 16 13.5 20"
+      <path d="M0.5 21 C0.5 16 3.5 12.5 7.5 12.5 C11.5 12.5 14.5 16 14.5 21"
         fill="currentColor" fillOpacity="0.2"
         stroke="currentColor" strokeWidth="1.4"
         strokeLinecap="round" strokeLinejoin="round" />
       {/* Right person — head */}
-      <circle cx="16.5" cy="7" r="2.8"
+      <circle cx="16.5" cy="6.5" r="3.3"
         fill="currentColor" fillOpacity="0.2"
         stroke="currentColor" strokeWidth="1.4" />
       {/* Right person — shoulders/body */}
-      <path d="M10.5 20 C10.5 16 13 13.5 16.5 13.5 C20 13.5 22.5 16 22.5 20"
+      <path d="M9.5 21 C9.5 16 12.5 12.5 16.5 12.5 C20.5 12.5 23.5 16 23.5 21"
         fill="currentColor" fillOpacity="0.2"
         stroke="currentColor" strokeWidth="1.4"
         strokeLinecap="round" strokeLinejoin="round" />
@@ -80,13 +80,13 @@ function TeamsIcon({ active }) {
         <>
           <text key={`L${idx}`} x="7.5" y="17.5"
             className="jersey-num"
-            fontSize="5.5" fontWeight="bold" textAnchor="middle" dominantBaseline="central"
+            fontSize="7" fontWeight="bold" textAnchor="middle" dominantBaseline="central"
             fill="#ffffff">
             {leftNum}
           </text>
           <text key={`R${idx}`} x="16.5" y="17.5"
             className="jersey-num"
-            fontSize="5.5" fontWeight="bold" textAnchor="middle" dominantBaseline="central"
+            fontSize="7" fontWeight="bold" textAnchor="middle" dominantBaseline="central"
             fill="#60a5fa">
             {rightNum}
           </text>

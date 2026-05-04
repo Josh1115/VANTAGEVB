@@ -124,7 +124,7 @@ export function SeasonsPage() {
     return allSeasons.map((s) => {
       const team = teamMap[s.team_id];
       const matches = matchesBySeason[s.id] ?? [];
-      const completed = matches.filter((m) => m.status === MATCH_STATUS.COMPLETE);
+      const completed = matches.filter((m) => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition');
       const wins   = completed.filter((m) => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
       const losses = completed.length - wins;
       const isActive = matches.some(

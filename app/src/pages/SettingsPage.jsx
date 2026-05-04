@@ -18,6 +18,386 @@ import {
   getIntStorage, STORAGE_KEYS,
 } from '../utils/storage';
 
+// ─── Help illustrations (inline SVG mockups) ─────────────────────────────────
+
+const HELP_ILLUSTRATIONS = {
+  'live-layout': function LiveLayout() {
+    return (
+      <svg viewBox="0 0 400 190" className="w-full" aria-hidden="true">
+        <rect width="400" height="190" fill="#0f172a"/>
+        {/* Score header */}
+        <rect width="400" height="36" fill="#1e293b"/>
+        <circle cx="11" cy="18" r="5" fill="none" stroke="#64748b" strokeWidth="1.5"/>
+        <circle cx="24" cy="18" r="5" fill="none" stroke="#64748b" strokeWidth="1.5"/>
+        <text x="42" y="24" fill="white" fontSize="16" fontWeight="900" fontFamily="monospace">12</text>
+        <text x="200" y="13" fill="#94a3b8" fontSize="8" textAnchor="middle" fontWeight="700">SET 2</text>
+        <circle cx="200" cy="27" r="5" fill="#f97316"/>
+        <text x="345" y="24" fill="white" fontSize="16" fontWeight="900" fontFamily="monospace">10</text>
+        <circle cx="374" cy="18" r="5" fill="none" stroke="#64748b" strokeWidth="1.5"/>
+        <circle cx="387" cy="18" r="5" fill="none" stroke="#64748b" strokeWidth="1.5"/>
+        {/* Vertical dividers between tiles */}
+        <rect x="133" y="38" width="1" height="116" fill="#334155"/>
+        <rect x="267" y="38" width="1" height="116" fill="#334155"/>
+        {/* Horizontal divider */}
+        <rect x="0" y="96" width="400" height="1" fill="#334155"/>
+        {/* Tile row 1 — S4 S3 S2 */}
+        <rect x="0" y="38" width="133" height="58" fill="#1e293b"/>
+        <text x="66" y="61" fill="#64748b" fontSize="8" textAnchor="middle">S4</text>
+        <text x="66" y="75" fill="white" fontSize="9" textAnchor="middle" fontWeight="bold">#7 Emma</text>
+        <rect x="134" y="38" width="133" height="58" fill="#1e293b"/>
+        <text x="200" y="61" fill="#64748b" fontSize="8" textAnchor="middle">S3</text>
+        <text x="200" y="75" fill="white" fontSize="9" textAnchor="middle" fontWeight="bold">#3 Sara</text>
+        <rect x="268" y="38" width="132" height="58" fill="#1e293b"/>
+        <text x="333" y="61" fill="#64748b" fontSize="8" textAnchor="middle">S2</text>
+        <text x="333" y="75" fill="white" fontSize="9" textAnchor="middle" fontWeight="bold">#11 Ava</text>
+        {/* Tile row 2 — S5 S6 S1★ */}
+        <rect x="0" y="97" width="133" height="57" fill="#1e293b"/>
+        <text x="66" y="120" fill="#64748b" fontSize="8" textAnchor="middle">S5</text>
+        <text x="66" y="134" fill="white" fontSize="9" textAnchor="middle" fontWeight="bold">#15 Jess</text>
+        <rect x="134" y="97" width="133" height="57" fill="#1e293b"/>
+        <text x="200" y="120" fill="#64748b" fontSize="8" textAnchor="middle">S6</text>
+        <text x="200" y="134" fill="white" fontSize="9" textAnchor="middle" fontWeight="bold">#4 Kate</text>
+        {/* S1 server — highlighted */}
+        <rect x="268" y="97" width="132" height="57" fill="#f97316" fillOpacity="0.08"/>
+        <rect x="268" y="97" width="132" height="57" fill="none" stroke="#f97316" strokeWidth="1.5"/>
+        <text x="333" y="115" fill="#f97316" fontSize="8" textAnchor="middle" fontWeight="bold">S1 ★ SERVER</text>
+        <text x="333" y="129" fill="white" fontSize="9" textAnchor="middle" fontWeight="bold">#1 Lexi</text>
+        <text x="333" y="144" fill="#f97316" fontSize="7" textAnchor="middle">tap to record stats</text>
+        {/* Action bar */}
+        <rect x="0" y="156" width="400" height="34" fill="#1e293b"/>
+        <text x="40"  y="177" fill="#94a3b8" fontSize="8" textAnchor="middle">↺ ROT</text>
+        <text x="112" y="177" fill="#94a3b8" fontSize="8" textAnchor="middle">↻ ROT</text>
+        <text x="193" y="177" fill="#94a3b8" fontSize="8" textAnchor="middle">UNDO</text>
+        <text x="278" y="177" fill="#94a3b8" fontSize="8" textAnchor="middle">SUB (6/18)</text>
+        <text x="358" y="177" fill="#94a3b8" fontSize="8" textAnchor="middle">≡</text>
+      </svg>
+    );
+  },
+
+  'pass-ratings': function PassRatings() {
+    const btns = [
+      { num: '0', label: 'Aced',    sub: 'no pass',         stroke: '#ef4444', fill: 'rgba(239,68,68,0.12)',  text: '#ef4444' },
+      { num: '1', label: 'Poor',    sub: 'setter limited',  stroke: '#f97316', fill: 'rgba(249,115,22,0.12)', text: '#f97316' },
+      { num: '2', label: 'Good',    sub: '2–3 options',     stroke: '#eab308', fill: 'rgba(234,179,8,0.12)',  text: '#eab308' },
+      { num: '3', label: 'Perfect', sub: 'all options open',stroke: '#22c55e', fill: 'rgba(34,197,94,0.12)',  text: '#22c55e' },
+    ];
+    return (
+      <svg viewBox="0 0 320 104" className="w-full" aria-hidden="true">
+        <rect width="320" height="104" fill="#0f172a" rx="8"/>
+        <text x="160" y="16" fill="#94a3b8" fontSize="8" textAnchor="middle" fontWeight="700" letterSpacing="2">SERVE RECEIVE — PASS RATING</text>
+        {btns.map(({ num, label, sub, stroke, fill, text }, i) => (
+          <g key={num} transform={`translate(${8 + i * 78},0)`}>
+            <rect x="0" y="22" width="70" height="46" rx="8" fill={fill} stroke={stroke} strokeWidth="1.5"/>
+            <text x="35" y="52" fill={text} fontSize="22" fontWeight="900" textAnchor="middle">{num}</text>
+            <text x="35" y="78" fill={text} fontSize="8" textAnchor="middle" fontWeight="bold">{label}</text>
+            <text x="35" y="92" fill="#64748b" fontSize="7" textAnchor="middle">{sub}</text>
+          </g>
+        ))}
+      </svg>
+    );
+  },
+
+  'sub-panel': function SubPanel() {
+    const courtPlayers = [
+      { x: 10,  y: 52, name: '#7 Emma',  out: true  },
+      { x: 114, y: 52, name: '#3 Sara',  out: false },
+      { x: 218, y: 52, name: '#11 Ava',  out: false },
+      { x: 10,  y: 90, name: '#15 Jess', out: false },
+      { x: 114, y: 90, name: '#4 Kate',  out: false },
+      { x: 218, y: 90, name: '#1 Lexi',  out: false },
+    ];
+    const benchPlayers = [
+      { x: 10,  name: '#22 Mia',   in: true  },
+      { x: 114, name: '#9 Grace',  in: false },
+      { x: 218, name: '#5 Lily',   in: false },
+    ];
+    return (
+      <svg viewBox="0 0 320 190" className="w-full" aria-hidden="true">
+        <rect width="320" height="190" fill="#0f172a" rx="8"/>
+        <rect width="320" height="32" fill="#1e293b" rx="8"/>
+        <text x="160" y="20" fill="white" fontSize="11" textAnchor="middle" fontWeight="bold">Substitutions</text>
+        <text x="298" y="20" fill="#94a3b8" fontSize="9" textAnchor="middle">6 / 18</text>
+        <text x="10" y="46" fill="#94a3b8" fontSize="8" fontWeight="700" letterSpacing="1">ON COURT</text>
+        {courtPlayers.map(({ x, y, name, out }) => (
+          <g key={name}>
+            <rect x={x} y={y} width="96" height="26" rx="6"
+              fill={out ? 'rgba(99,102,241,0.2)' : '#1e293b'}
+              stroke={out ? '#6366f1' : '#334155'}
+              strokeWidth={out ? 1.5 : 1}/>
+            <text x={x + 48} y={y + 17} fill={out ? '#a5b4fc' : 'white'} fontSize="8" textAnchor="middle" fontWeight={out ? 'bold' : 'normal'}>
+              {name}{out ? ' ← OUT' : ''}
+            </text>
+          </g>
+        ))}
+        <line x1="10" y1="126" x2="310" y2="126" stroke="#334155" strokeWidth="1" strokeDasharray="5 4"/>
+        <text x="10" y="142" fill="#94a3b8" fontSize="8" fontWeight="700" letterSpacing="1">BENCH</text>
+        {benchPlayers.map(({ x, name, in: isIn }) => (
+          <g key={name}>
+            <rect x={x} y="148" width="96" height="26" rx="6"
+              fill={isIn ? 'rgba(34,197,94,0.15)' : '#1e293b'}
+              stroke={isIn ? '#22c55e' : '#334155'}
+              strokeWidth={isIn ? 1.5 : 1}/>
+            <text x={x + 48} y="165" fill={isIn ? '#86efac' : 'white'} fontSize="8" textAnchor="middle" fontWeight={isIn ? 'bold' : 'normal'}>
+              {name}{isIn ? ' ← IN' : ''}
+            </text>
+          </g>
+        ))}
+        <text x="160" y="185" fill="#64748b" fontSize="7" textAnchor="middle">Select OUT then IN, then tap Confirm Sub</text>
+      </svg>
+    );
+  },
+
+  'action-bar': function ActionBar() {
+    const btns = [
+      { label: '↺ ROT',    sub: 'rotate back',   hi: false },
+      { label: '↻ ROT',    sub: 'rotate forward', hi: false },
+      { label: 'UNDO',     sub: 'remove last tap',hi: true  },
+      { label: 'SUB',      sub: 'substitutions',  hi: false },
+      { label: '≡',        sub: 'menu',           hi: false },
+    ];
+    return (
+      <svg viewBox="0 0 320 96" className="w-full" aria-hidden="true">
+        <rect width="320" height="96" fill="#0f172a" rx="8"/>
+        <text x="160" y="16" fill="#94a3b8" fontSize="8" textAnchor="middle" fontWeight="700" letterSpacing="2">ACTION BAR</text>
+        {btns.map(({ label, sub, hi }, i) => (
+          <g key={label} transform={`translate(${6 + i * 62},0)`}>
+            <rect x="0" y="22" width="56" height="40" rx="8"
+              fill={hi ? 'rgba(249,115,22,0.18)' : '#1e293b'}
+              stroke={hi ? '#f97316' : '#334155'}
+              strokeWidth={hi ? 1.5 : 1}/>
+            <text x="28" y="46" fill={hi ? '#f97316' : 'white'} fontSize={label === '≡' ? '14' : '9'}
+              textAnchor="middle" fontWeight="bold">{label}</text>
+            <text x="28" y="76" fill="#64748b" fontSize="7" textAnchor="middle">{sub}</text>
+          </g>
+        ))}
+      </svg>
+    );
+  },
+
+  'reports-filters': function ReportsFilters() {
+    const row1 = [
+      { label: 'All',    active: true  },
+      { label: 'Wins',   active: false },
+      { label: 'Losses', active: false },
+      { label: 'Last 5', active: false },
+    ];
+    const row2 = [
+      { label: 'All',     active: false },
+      { label: 'Home',    active: false },
+      { label: 'Away',    active: false },
+      { label: 'Neutral', active: false },
+    ];
+    const chipW = (label) => label.length * 6.5 + 18;
+    let x1 = 10;
+    let x2 = 10;
+    return (
+      <svg viewBox="0 0 320 112" className="w-full" aria-hidden="true">
+        <rect width="320" height="112" fill="#0f172a" rx="8"/>
+        <text x="10" y="16" fill="#94a3b8" fontSize="8" fontWeight="700" letterSpacing="1">RESULT</text>
+        {row1.map(({ label, active }) => {
+          const w = chipW(label);
+          const cx = x1;
+          x1 += w + 6;
+          return (
+            <g key={label}>
+              <rect x={cx} y="22" width={w} height="20" rx="10"
+                fill={active ? 'rgba(249,115,22,0.22)' : '#1e293b'}
+                stroke={active ? '#f97316' : '#334155'}
+                strokeWidth={active ? 1.5 : 1}/>
+              <text x={cx + w/2} y="36" fill={active ? '#f97316' : '#94a3b8'}
+                fontSize="8" textAnchor="middle" fontWeight={active ? 'bold' : 'normal'}>{label}</text>
+            </g>
+          );
+        })}
+        <text x="10" y="58" fill="#94a3b8" fontSize="8" fontWeight="700" letterSpacing="1">LOCATION</text>
+        {row2.map(({ label, active }) => {
+          const w = chipW(label);
+          const cx = x2;
+          x2 += w + 6;
+          return (
+            <g key={label}>
+              <rect x={cx} y="64" width={w} height="20" rx="10"
+                fill={active ? 'rgba(249,115,22,0.22)' : '#1e293b'}
+                stroke={active ? '#f97316' : '#334155'}
+                strokeWidth={active ? 1.5 : 1}/>
+              <text x={cx + w/2} y="78" fill={active ? '#f97316' : '#94a3b8'}
+                fontSize="8" textAnchor="middle" fontWeight={active ? 'bold' : 'normal'}>{label}</text>
+            </g>
+          );
+        })}
+        <text x="10" y="102" fill="#64748b" fontSize="7">Filters can be combined — all stats recalculate instantly</text>
+      </svg>
+    );
+  },
+
+  'lineup-positions': function LineupPositions() {
+    // Court grid: front row P4/P3/P2 (top), back row P5/P6/P1 (bottom)
+    const cells = [
+      { x: 4,   y: 54,  label: 'P4', sub: 'Front-Left',   hi: false },
+      { x: 113, y: 54,  label: 'P3', sub: 'Front-Center',  hi: false },
+      { x: 222, y: 54,  label: 'P2', sub: 'Front-Right',   hi: false },
+      { x: 4,   y: 124, label: 'P5', sub: 'Back-Left',     hi: false },
+      { x: 113, y: 124, label: 'P6', sub: 'Back-Center',   hi: false },
+      { x: 222, y: 124, label: 'P1', sub: 'Back-Right',    hi: true  },
+    ];
+    return (
+      <svg viewBox="0 0 320 210" className="w-full" aria-hidden="true">
+        <rect width="320" height="210" fill="#0f172a" rx="8"/>
+        {/* Net */}
+        <rect x="4" y="46" width="312" height="5" fill="#334155" rx="2"/>
+        <text x="160" y="43" fill="#64748b" fontSize="7" textAnchor="middle" fontWeight="700" letterSpacing="1">NET ↑</text>
+        {/* Court outline */}
+        <rect x="4" y="51" width="312" height="144" fill="none" stroke="#334155" strokeWidth="1" rx="2"/>
+        {/* Cells */}
+        {cells.map(({ x, y, label, sub, hi }) => (
+          <g key={label}>
+            <rect x={x} y={y} width="105" height="62" rx="6"
+              fill={hi ? 'rgba(249,115,22,0.12)' : '#1e293b'}
+              stroke={hi ? '#f97316' : '#334155'}
+              strokeWidth={hi ? 1.5 : 1}/>
+            <text x={x + 52} y={y + 27} fill={hi ? '#f97316' : 'white'}
+              fontSize="15" fontWeight="900" textAnchor="middle">{label}</text>
+            <text x={x + 52} y={y + 42} fill={hi ? '#f97316' : '#64748b'}
+              fontSize="7" textAnchor="middle">{sub}</text>
+            {hi && <text x={x + 52} y={y + 55} fill="#f97316" fontSize="7" textAnchor="middle" fontWeight="bold">★ 1st Server</text>}
+          </g>
+        ))}
+        {/* Rotation arrow (clockwise curved) */}
+        <path d="M 275 115 A 50 50 0 1 1 275 116" fill="none" stroke="#475569" strokeWidth="1.5" strokeDasharray="4 3"/>
+        <polygon points="275,108 270,116 280,116" fill="#475569"/>
+        <text x="160" y="198" fill="#64748b" fontSize="7" textAnchor="middle">Players rotate clockwise each time your team wins the serve</text>
+      </svg>
+    );
+  },
+
+  'lineup-load': function LineupLoad() {
+    const lineups = [
+      { name: 'Base 5-1',           players: '#1 · #7 · #3 · #11 · #15 · #4', active: false },
+      { name: '6-2 Serve Receive',  players: '#1 · #22 · #3 · #11 · #15 · #7', active: true  },
+      { name: 'Tournament Lineup',  players: '#7 · #3 · #11 · #1 · #15 · #4', active: false },
+    ];
+    return (
+      <svg viewBox="0 0 320 170" className="w-full" aria-hidden="true">
+        <rect width="320" height="170" fill="#0f172a" rx="8"/>
+        <text x="10" y="18" fill="#94a3b8" fontSize="8" fontWeight="700" letterSpacing="1">SAVED LINEUPS</text>
+        <text x="298" y="18" fill="#f97316" fontSize="8" textAnchor="end" fontWeight="bold">+ New</text>
+        {lineups.map(({ name, players, active }, i) => (
+          <g key={name}>
+            <rect x="10" y={28 + i * 46} width="300" height="38" rx="8"
+              fill={active ? 'rgba(249,115,22,0.12)' : '#1e293b'}
+              stroke={active ? '#f97316' : '#334155'}
+              strokeWidth={active ? 1.5 : 1}/>
+            <text x="22" y={28 + i * 46 + 16} fill={active ? 'white' : '#cbd5e1'}
+              fontSize="10" fontWeight={active ? 'bold' : 'normal'}>{name}</text>
+            {active && (
+              <text x="284" y={28 + i * 46 + 16} fill="#f97316" fontSize="8" textAnchor="end" fontWeight="bold">← tap to load</text>
+            )}
+            <text x="22" y={28 + i * 46 + 30} fill="#475569" fontSize="7">{players}</text>
+          </g>
+        ))}
+        <text x="160" y="164" fill="#64748b" fontSize="7" textAnchor="middle">Tap any lineup to instantly fill all 6 positions — then adjust if needed</text>
+      </svg>
+    );
+  },
+
+  'serve-rec-session': function ServeRecSession() {
+    const players = [
+      { name: '#7 Emma', apr: '2.4', reps: 12, tap: null   },
+      { name: '#3 Sara',  apr: '1.8', reps: 9,  tap: '2'   },
+      { name: '#15 Jess', apr: '2.7', reps: 15, tap: null  },
+    ];
+    const btnColors = ['#ef4444','#f97316','#eab308','#22c55e'];
+    const btnBg     = ['rgba(239,68,68,0.14)','rgba(249,115,22,0.14)','rgba(234,179,8,0.14)','rgba(34,197,94,0.14)'];
+    return (
+      <svg viewBox="0 0 320 180" className="w-full" aria-hidden="true">
+        <rect width="320" height="180" fill="#0f172a" rx="8"/>
+        {/* Session APR header */}
+        <rect width="320" height="28" fill="#1e293b" rx="8"/>
+        <text x="160" y="18" fill="white" fontSize="10" textAnchor="middle" fontWeight="bold">Session APR: <tspan fill="#f97316">2.26</tspan> · 36 reps</text>
+        {/* Player cards */}
+        {players.map(({ name, apr, reps, tap }, pi) => (
+          <g key={name} transform={`translate(${6 + pi * 104},0)`}>
+            <rect x="0" y="34" width="96" height="138" rx="8" fill="#1e293b" stroke="#334155" strokeWidth="1"/>
+            <text x="48" y="50" fill="white" fontSize="8" textAnchor="middle" fontWeight="bold">{name}</text>
+            <text x="48" y="62" fill="#f97316" fontSize="8" textAnchor="middle">APR <tspan fontWeight="bold">{apr}</tspan></text>
+            <text x="48" y="73" fill="#64748b" fontSize="7" textAnchor="middle">{reps} reps</text>
+            {/* Rating buttons 0-3 */}
+            {['0','1','2','3'].map((n, bi) => {
+              const isTapped = tap === n;
+              return (
+                <g key={n}>
+                  <rect x="8" y={82 + bi * 22} width="80" height="18" rx="6"
+                    fill={isTapped ? btnBg[bi] : 'rgba(255,255,255,0.04)'}
+                    stroke={isTapped ? btnColors[bi] : '#334155'}
+                    strokeWidth={isTapped ? 1.5 : 1}/>
+                  <text x="48" y={82 + bi * 22 + 13} fill={isTapped ? btnColors[bi] : '#94a3b8'}
+                    fontSize="10" textAnchor="middle" fontWeight={isTapped ? 'bold' : 'normal'}>{n}</text>
+                </g>
+              );
+            })}
+          </g>
+        ))}
+      </svg>
+    );
+  },
+
+  'serve-rec-history': function ServeRecHistory() {
+    // Distribution bar: 0=8%, 1=22%, 2=38%, 3=32%
+    const dist = [
+      { pct: 8,  color: '#ef4444', label: '0' },
+      { pct: 22, color: '#f97316', label: '1' },
+      { pct: 38, color: '#eab308', label: '2' },
+      { pct: 32, color: '#22c55e', label: '3' },
+    ];
+    const passers = [
+      { rank: '1', name: '#7 Emma',  apr: '2.61', reps: 48 },
+      { rank: '2', name: '#15 Jess', apr: '2.44', reps: 41 },
+      { rank: '3', name: '#3 Sara',  apr: '2.18', reps: 37 },
+    ];
+    return (
+      <svg viewBox="0 0 320 190" className="w-full" aria-hidden="true">
+        <rect width="320" height="190" fill="#0f172a" rx="8"/>
+        {/* Totals strip */}
+        <rect x="10" y="10" width="300" height="34" fill="#1e293b" rx="8"/>
+        <text x="80"  y="32" fill="white" fontSize="14" textAnchor="middle" fontWeight="900">126</text>
+        <text x="80"  y="42" fill="#64748b" fontSize="7" textAnchor="middle">TOTAL REPS</text>
+        <text x="160" y="32" fill="#f97316" fontSize="14" textAnchor="middle" fontWeight="900">2.34</text>
+        <text x="160" y="42" fill="#64748b" fontSize="7" textAnchor="middle">TEAM APR</text>
+        <text x="248" y="28" fill="white" fontSize="10" textAnchor="middle" fontWeight="bold">6</text>
+        <text x="248" y="42" fill="#64748b" fontSize="7" textAnchor="middle">SESSIONS</text>
+        {/* Distribution bar */}
+        <text x="10" y="60" fill="#94a3b8" fontSize="8" fontWeight="700" letterSpacing="1">RATING DISTRIBUTION</text>
+        {(() => {
+          let barX = 10;
+          return dist.map(({ pct, color, label }) => {
+            const w = pct * 3;
+            const el = (
+              <g key={label}>
+                <rect x={barX} y="64" width={w} height="16" fill={color} fillOpacity="0.8"/>
+                <text x={barX + w/2} y="75" fill="white" fontSize="7" textAnchor="middle" fontWeight="bold">{label}: {pct}%</text>
+              </g>
+            );
+            barX += w;
+            return el;
+          });
+        })()}
+        {/* Top passers */}
+        <text x="10" y="96" fill="#94a3b8" fontSize="8" fontWeight="700" letterSpacing="1">TOP PASSERS</text>
+        {passers.map(({ rank, name, apr, reps }, i) => (
+          <g key={name}>
+            <rect x="10" y={102 + i * 28} width="300" height="22" rx="6" fill="#1e293b" stroke="#334155" strokeWidth="1"/>
+            <text x="22" y={102 + i * 28 + 15} fill="#64748b" fontSize="9" fontWeight="900">{rank}</text>
+            <text x="36" y={102 + i * 28 + 15} fill="white" fontSize="9" fontWeight="bold">{name}</text>
+            <text x="250" y={102 + i * 28 + 15} fill="#f97316" fontSize="9" fontWeight="900" textAnchor="end">{apr} APR</text>
+            <text x="300" y={102 + i * 28 + 15} fill="#475569" fontSize="7" textAnchor="end">{reps} reps</text>
+          </g>
+        ))}
+        <text x="160" y="188" fill="#64748b" fontSize="7" textAnchor="middle">Cumulative across all sessions this season</text>
+      </svg>
+    );
+  },
+};
+
 // ─── FAQ content ──────────────────────────────────────────────────────────────
 
 const FAQ_TOPICS = [
@@ -67,6 +447,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'The Live Screen Layout',
+        screenshot: 'live-layout',
         body: 'The scoreboard sits at the top. Below it are your 6 player tiles arranged by court position. Tap a player tile to log a contact for them. The action buttons on the right column let you log opponent actions or adjust the rally.',
       },
       {
@@ -75,6 +456,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Pass Ratings (0–3)',
+        screenshot: 'pass-ratings',
         body: 'After an opponent serve, tap the receiver → Pass. Rate the pass quality: 0 = we were aced (no pass), 1 = poor (setter has limited options), 2 = good (setter has 2–3 options), 3 = perfect (all options open). APR is the average of all pass ratings.',
       },
       {
@@ -99,7 +481,8 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Undoing a Contact',
-        body: 'Tap ↩ in the top bar to remove the last logged contact. You can undo multiple contacts to walk back through a rally. The undo does not cross set boundaries.',
+        screenshot: 'action-bar',
+        body: 'Tap UNDO in the action bar to remove the last logged contact. You can undo multiple contacts to walk back through a rally. The undo does not cross set boundaries.',
       },
       {
         heading: 'Ending a Set',
@@ -122,6 +505,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Making a Single Sub',
+        screenshot: 'sub-panel',
         body: 'Tap the player coming OUT from the court grid (top section). The grid highlights them in blue. Then tap the player coming IN from the bench (bottom section). Tap Confirm Sub.',
       },
       {
@@ -266,6 +650,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Result & Conference Filters',
+        screenshot: 'reports-filters',
         body: 'Use the filter chips to narrow data: Result (Wins / Losses / Last 5), Conference (conf vs. non-conf), Location (Home / Away / Neutral), and Match Type (Regular / Tournament / IHSA Playoffs). Filters can be combined.',
       },
       {
@@ -356,6 +741,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Serve Order (P1–P6)',
+        screenshot: 'lineup-positions',
         body: 'P1 is your first server — the player who serves first when the set begins. P2 through P6 follow in rotation order. Think of it as the order players will rotate through the serving position during the set.',
       },
       {
@@ -372,6 +758,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Loading a Saved Lineup',
+        screenshot: 'lineup-load',
         body: 'When setting up a lineup before a set — either during match setup or at the start of a new set — you\'ll see a "Saved Lineups" section at the top. Tap any saved lineup to instantly fill all 6 positions. You can still make individual adjustments after loading.',
       },
       {
@@ -399,6 +786,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Recording Passes',
+        screenshot: 'serve-rec-session',
         body: 'Each player gets their own card with four large buttons: 0, 1, 2, 3. Tap the rating immediately after each serve they receive. 0 = aced (no pass), 1 = poor pass, 2 = good pass, 3 = perfect pass. The session APR updates live as you go.',
       },
       {
@@ -419,6 +807,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Viewing History',
+        screenshot: 'serve-rec-history',
         body: 'The setup screen shows a summary of all sessions ever recorded: total reps, overall APR, a rating distribution bar (how many 0s, 1s, 2s, 3s across all drills), and a Top Passers leaderboard showing the 5 highest-APR non-middle-blockers with at least 10 reps.',
       },
       {
@@ -477,12 +866,20 @@ function HelpModal({ topic, onClose }) {
   return (
     <Modal title={`${topic.icon} ${topic.label}`} onClose={onClose}>
       <div className="space-y-0 max-h-[65vh] overflow-y-auto -mx-1 px-1 no-scrollbar">
-        {topic.content.map(({ heading, body }, i) => (
-          <div key={heading} className={`py-3.5 ${i < topic.content.length - 1 ? 'border-b border-slate-700/50' : ''}`}>
-            <p className="text-xs font-black uppercase tracking-wide text-primary mb-1.5">{heading}</p>
-            <p className="text-sm text-slate-300 leading-relaxed">{body}</p>
-          </div>
-        ))}
+        {topic.content.map(({ heading, body, screenshot }, i) => {
+          const Illustration = screenshot ? HELP_ILLUSTRATIONS[screenshot] : null;
+          return (
+            <div key={heading} className={`py-3.5 ${i < topic.content.length - 1 ? 'border-b border-slate-700/50' : ''}`}>
+              <p className="text-xs font-black uppercase tracking-wide text-primary mb-1.5">{heading}</p>
+              {Illustration && (
+                <div className="mb-2.5 rounded-lg overflow-hidden border border-slate-700/50">
+                  <Illustration />
+                </div>
+              )}
+              <p className="text-sm text-slate-300 leading-relaxed">{body}</p>
+            </div>
+          );
+        })}
       </div>
     </Modal>
   );

@@ -213,8 +213,11 @@ export function SeasonDetailPage() {
                   );
                 }
                 return (
-                  <button
+                  <SwipeableMatchCard
                     key={match.id}
+                    onDeleteConfirm={() => setConfirmDelete(match)}
+                  >
+                  <button
                     onClick={() => navigate(
                       match.status === MATCH_STATUS.COMPLETE
                         ? `/matches/${match.id}/summary`
@@ -255,6 +258,7 @@ export function SeasonDetailPage() {
                       </div>
                     </div>
                   </button>
+                  </SwipeableMatchCard>
                 );
               })}
             </div>
@@ -265,7 +269,13 @@ export function SeasonDetailPage() {
       {confirmDelete && (
         <ConfirmDialog
           title="Delete Match?"
-          message={`Delete scheduled match vs. ${confirmDelete.opponent_name ?? 'Unknown'}? This cannot be undone.`}
+          message={
+            confirmDelete.status === MATCH_STATUS.COMPLETE
+              ? `Delete completed match vs. ${confirmDelete.opponent_name ?? 'Unknown'}? All recorded stats will be permanently lost.`
+              : confirmDelete.status === MATCH_STATUS.IN_PROGRESS
+              ? `Delete in-progress match vs. ${confirmDelete.opponent_name ?? 'Unknown'}? All recorded stats will be permanently lost.`
+              : `Delete scheduled match vs. ${confirmDelete.opponent_name ?? 'Unknown'}? This cannot be undone.`
+          }
           confirmLabel="Delete"
           danger
           onConfirm={async () => {

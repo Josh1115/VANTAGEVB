@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { COLLEGE_DIVISIONS, MATCH_STATUS } from '../constants';
@@ -261,30 +261,73 @@ function CommitModal({ teamId, onClose, editId, initialData }) {
 
 function CommitCard({ entry, onEdit, onDelete }) {
   const divCls = DIV_COLORS[entry.division] ?? DIV_COLORS['Club'];
+  const [offset, setOffset]     = useState(0);
+  const [isSnapping, setIsSnapping] = useState(false);
+  const touchStartX = useRef(null);
+  const hasSwiped   = useRef(false);
+  const REVEAL = 130;
+
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+    hasSwiped.current   = false;
+    setIsSnapping(false);
+  };
+  const handleTouchMove = (e) => {
+    if (touchStartX.current === null) return;
+    const dx = touchStartX.current - e.touches[0].clientX;
+    if (Math.abs(dx) > 5) hasSwiped.current = true;
+    if (dx < 0) { setOffset(0); return; }
+    setOffset(Math.min(dx, REVEAL + 16));
+  };
+  const handleTouchEnd = () => {
+    setIsSnapping(true);
+    setOffset(offset > REVEAL * 0.45 ? REVEAL : 0);
+    touchStartX.current = null;
+  };
+
   return (
-    <div className="bg-slate-800 rounded-xl px-4 py-3 border border-slate-700/50">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="font-bold text-slate-100 truncate">{entry.player_name}</span>
-          <span className="text-xs text-slate-500 shrink-0">'{String(entry.grad_year).slice(-2)}</span>
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${divCls}`}>{entry.division}</span>
-          <button
-            onClick={() => onEdit(entry)}
-            className="text-xs text-primary font-semibold px-2 py-1 rounded-lg hover:bg-slate-600/50 transition-colors"
-          >
-            Edit
-          </button>
-          <button
-            onClick={() => onDelete(entry.id)}
-            className="text-xs text-red-400 font-semibold px-2 py-1 rounded-lg hover:bg-slate-600/50 transition-colors"
-          >
-            Delete
-          </button>
+    <div className="relative overflow-hidden rounded-xl">
+      {/* Revealed actions */}
+      <div className="absolute inset-y-0 right-0 flex" style={{ width: REVEAL }}>
+        <button
+          onClick={() => { setOffset(0); setIsSnapping(true); onEdit(entry); }}
+          className="flex-1 flex items-center justify-center bg-primary text-white text-xs font-bold"
+        >
+          Edit
+        </button>
+        <button
+          onClick={() => onDelete(entry.id)}
+          className="flex-1 flex items-center justify-center bg-red-600 rounded-r-xl text-white text-xs font-bold"
+        >
+          Delete
+        </button>
+      </div>
+
+      {/* Sliding card */}
+      <div
+        style={{
+          transform:  `translateX(-${offset}px)`,
+          transition: isSnapping ? 'transform 280ms cubic-bezier(0.25, 1, 0.5, 1)' : 'none',
+          willChange: 'transform',
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onClickCapture={(e) => {
+          if (hasSwiped.current) { hasSwiped.current = false; e.stopPropagation(); }
+        }}
+      >
+        <div className="bg-slate-800 rounded-xl px-4 py-3 border border-slate-700/50">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-bold text-slate-100 truncate">{entry.player_name}</span>
+              <span className="text-xs text-slate-500 shrink-0">'{String(entry.grad_year).slice(-2)}</span>
+            </div>
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${divCls}`}>{entry.division}</span>
+          </div>
+          <p className="text-sm text-slate-400 mt-0.5">{entry.college}</p>
         </div>
       </div>
-      <p className="text-sm text-slate-400 mt-0.5">{entry.college}</p>
     </div>
   );
 }
@@ -297,7 +340,7 @@ function CommitCard({ entry, onEdit, onDelete }) {
 // activeSeason: the season DB record (may have head_coach/asst_coach from the roster tab)
 // historyEntry: matching season_history row (has title, rankings, playoffs, and possibly coach overrides)
 function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit }) {
-  const completed = (matches ?? []).filter(m => m.status === MATCH_STATUS.COMPLETE);
+  const completed = (matches ?? []).filter(m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition');
   const wins      = completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
   const losses    = completed.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
   const total     = completed.length;

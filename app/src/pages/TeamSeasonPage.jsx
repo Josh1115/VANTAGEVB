@@ -269,7 +269,7 @@ export function TeamSeasonPage() {
   // W–L record from completed matches
   const record = useMemo(() => {
     if (!matches?.length) return null;
-    const completed = matches.filter(m => m.status === 'complete');
+    const completed = matches.filter(m => m.status === 'complete' && m.match_type !== 'exhibition');
     if (!completed.length) return null;
     const w = completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
     const l = completed.length - w;

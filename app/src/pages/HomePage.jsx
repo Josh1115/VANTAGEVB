@@ -528,6 +528,7 @@ export function HomePage() {
     return {
       ...leaders,
       leaderDeltas,
+      matchCount: matches.length,
       teamTotals: {
         k:   ts.k,
         ace: ts.ace,
@@ -991,11 +992,12 @@ export function HomePage() {
             { label: 'DIG', key: 'digs',    ttKey: 'dig' },
             { label: 'AST', key: 'assists', ttKey: 'ast' },
             { label: 'REC', key: 'rec',     ttKey: 'rec' },
-            { label: 'APR', key: 'apr',     ttKey: 'apr', fmt: v => Number(v).toFixed(2) },
+            { label: 'APR', key: 'apr',     ttKey: 'apr', fmt: v => Number(v).toFixed(2), noAvg: true },
           ];
           const tt  = seasonLeaders?.teamTotals;
           const td  = seasonLeaders?.teamDeltas;
           const ld  = seasonLeaders?.leaderDeltas;
+          const mc  = seasonLeaders?.matchCount ?? 0;
           const Delta = ({ val, fmt }) => {
             if (val == null) return null;
             if (val === 0) return (
@@ -1041,9 +1043,15 @@ export function HomePage() {
               </div>
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 px-0.5 animate-slide-up-fade" style={{ animationDelay: `${260 + LEADERS.length * 45}ms` }}>Team Totals</p>
               <div className="grid grid-cols-7 gap-2">
-                {LEADERS.map(({ label, ttKey, fmt }, i) => {
+                {LEADERS.map(({ label, ttKey, fmt, noAvg }, i) => {
                   const teamVal = tt?.[ttKey];
                   const canNav  = !!defaultSeasonId;
+                  const perMatch = !noAvg && teamVal != null && mc > 0
+                    ? (teamVal / mc)
+                    : null;
+                  const fmtPerMatch = perMatch != null
+                    ? (perMatch % 1 === 0 ? String(Math.round(perMatch)) : perMatch.toFixed(1))
+                    : null;
                   return (
                     <button
                       key={ttKey}
@@ -1053,10 +1061,13 @@ export function HomePage() {
                       style={{ animationDelay: `${320 + LEADERS.length * 45 + i * 45}ms` }}
                     >
                       <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</span>
-                      <span className="text-xl font-black text-slate-300 tabular-nums leading-none">
+                      <span className="text-xl font-black text-primary tabular-nums leading-none">
                         {teamVal != null ? (fmt ? fmt(teamVal) : teamVal) : '—'}
                       </span>
                       <Delta val={td?.[ttKey]} fmt={fmt} />
+                      {fmtPerMatch != null && (
+                        <span className="text-[9px] font-semibold text-white leading-none tabular-nums">{fmtPerMatch}<span className="text-slate-500">/MATCH</span></span>
+                      )}
                     </button>
                   );
                 })}
