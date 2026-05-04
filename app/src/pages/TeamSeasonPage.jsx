@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -208,9 +208,13 @@ function TrendChart({ data, chartKey, label, decimals, color, domain }) {
 
 export function TeamSeasonPage() {
   const { seasonId } = useParams();
+  const [searchParams] = useSearchParams();
   const id = Number(seasonId);
 
-  const [activeStat, setActiveStat] = useState('k');
+  const initStat = searchParams.get('stat');
+  const [activeStat, setActiveStat] = useState(
+    () => CHARTS.some(c => c.key === initStat) ? initStat : 'k'
+  );
   const [graphScope, setGraphScope] = useState('match');
   const [loading, setLoading] = useState(false);
   const [matchStats, setMatchStats] = useState(null); // [{ opp, k, ace, ... }]

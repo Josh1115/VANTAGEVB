@@ -1055,7 +1055,7 @@ export function HomePage() {
                   return (
                     <button
                       key={ttKey}
-                      onClick={() => canNav && navigate(`/seasons/${defaultSeasonId}/team`)}
+                      onClick={() => canNav && navigate(`/seasons/${defaultSeasonId}/team?stat=${ttKey}`)}
                       disabled={!canNav}
                       className="bg-surface rounded-xl p-2 text-center flex flex-col items-center gap-1 animate-slide-up-fade active:scale-95 transition-transform disabled:active:scale-100"
                       style={{ animationDelay: `${320 + LEADERS.length * 45 + i * 45}ms` }}
