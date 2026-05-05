@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { useOrganizations, useTeams } from '../hooks/useTeamData';
 import { useUiStore, selectShowToast } from '../store/uiStore';
@@ -419,8 +420,35 @@ function TeamRow({ team, onSelectTeam, onEditTeam, onDeleteTeam }) {
   );
 }
 
+const parseYear = (y) => { const m = String(y ?? '').match(/\d{4}/); return m ? parseInt(m[0], 10) : null; };
+
+function yearRangeLabel(teamIds, yearsByTeam) {
+  if (!yearsByTeam) return null;
+  const all = teamIds.flatMap((id) => yearsByTeam[id] ?? []);
+  const unique = [...new Set(all)];
+  if (unique.length < 2) return null;
+  const min = Math.min(...unique);
+  const max = Math.max(...unique);
+  return min === max ? `(${min})` : `(${min}–${max})`;
+}
+
 function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDeleteTeam, onSelectTeam }) {
   const teams = useTeams(org.id);
+
+  const yearsByTeam = useLiveQuery(async () => {
+    if (!teams?.length) return {};
+    const teamIds = teams.map((t) => t.id);
+    const [tracked, history] = await Promise.all([
+      db.seasons.where('team_id').anyOf(teamIds).toArray(),
+      db.season_history.where('team_id').anyOf(teamIds).toArray(),
+    ]);
+    const map = Object.fromEntries(teamIds.map((id) => [id, []]));
+    for (const s of [...tracked, ...history]) {
+      const y = parseYear(s.year);
+      if (y && map[s.team_id]) map[s.team_id].push(y);
+    }
+    return map;
+  }, [teams]);
 
   const genderGroups = GENDER_ORDER
     .map((g) => ({ gender: g, teams: (teams ?? []).filter((t) => (t.gender ?? null) === g) }))
@@ -447,12 +475,15 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
       {(teams ?? []).length === 0 ? (
         <p className="text-slate-500 text-sm px-4 py-3">No teams yet</p>
       ) : multiGender ? (
-        genderGroups.map(({ gender, teams: gTeams }) => (
+        genderGroups.map(({ gender, teams: gTeams }) => {
+          const range = yearRangeLabel(gTeams.map((t) => t.id), yearsByTeam);
+          return (
           <div key={gender ?? 'other'}>
-            <div className="px-4 py-1.5 border-b border-slate-700/60 bg-slate-800/40">
+            <div className="px-4 py-1.5 border-b border-slate-700/60 bg-slate-800/40 flex items-center gap-2">
               <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
                 {GENDER_LABELS[gender] ?? 'Other'}
               </span>
+              {range && <span className="text-[11px] text-slate-500 font-medium">{range}</span>}
             </div>
             {gTeams.map((team) => (
               <TeamRow
@@ -464,7 +495,7 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
               />
             ))}
           </div>
-        ))
+        ); })
       ) : (
         (teams ?? []).map((team) => (
           <TeamRow
