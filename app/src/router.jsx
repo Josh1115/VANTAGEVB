@@ -32,6 +32,9 @@ const PracticeGamePage = lazy(() => import('./pages/tools/PracticeGamePage').the
 const TermsPage                = lazy(() => import('./pages/TermsPage').then(m => ({ default: m.TermsPage })));
 const HelpServeReceivePage     = lazy(() => import('./pages/HelpServeReceivePage').then(m => ({ default: m.HelpServeReceivePage })));
 const HelpDefaultTeamPage      = lazy(() => import('./pages/HelpDefaultTeamPage').then(m => ({ default: m.HelpDefaultTeamPage })));
+const HelpMatchSummaryPage     = lazy(() => import('./pages/HelpMatchSummaryPage').then(m => ({ default: m.HelpMatchSummaryPage })));
+const HelpPreMatchPrepPage     = lazy(() => import('./pages/HelpPreMatchPrepPage').then(m => ({ default: m.HelpPreMatchPrepPage })));
+const HelpExportingPage        = lazy(() => import('./pages/HelpExportingPage').then(m => ({ default: m.HelpExportingPage })));
 
 function PageFallback() {
   return (
@@ -75,6 +78,9 @@ export const router = createBrowserRouter([
       { path: 'terms',                       element: <S><TermsPage /></S> },
       { path: 'help/serve-receive',          element: <S><HelpServeReceivePage /></S> },
       { path: 'help/default-team',           element: <S><HelpDefaultTeamPage /></S> },
+      { path: 'help/match-summary',          element: <S><HelpMatchSummaryPage /></S> },
+      { path: 'help/pre-match-prep',         element: <S><HelpPreMatchPrepPage /></S> },
+      { path: 'help/exporting',              element: <S><HelpExportingPage /></S> },
       { path: '*',                           element: <NotFoundPage /> },
     ],
   },

@@ -859,6 +859,138 @@ const FAQ_TOPICS = [
       },
     ],
   },
+  {
+    id: 'win-correlation',
+    label: 'Win Correlation (⚡ Insights)',
+    icon: '⚡',
+    content: [
+      {
+        heading: 'What is Win Correlation?',
+        body: 'Win Correlation compares your team\'s average stats in wins vs. losses across the season. It identifies which metrics — like SO%, Hitting Efficiency, or Blocks/Set — differ most between your winning and losing performances, giving you a data-backed picture of what actually drives your outcomes.',
+      },
+      {
+        heading: 'Where to Find It',
+        body: 'There are two Insights locations. Reports → ⚡ Insights tab shows season-wide averages — your overall win avg vs. loss avg for the selected season. Match Summary → ⚡ Insights tab shows this specific match\'s stats positioned against those season averages, so you can see exactly how this game compared to your typical winning or losing performance.',
+      },
+      {
+        heading: 'Reading the Bar',
+        body: 'Each metric card shows three values: LOSS AVG (red, left), THIS SEASON or THIS MATCH (center), and WIN AVG (green, right). The bar below fills left-to-right from 0% (at your loss average) to 100% (at your win average). The further right the bar, the closer you performed to your winning standard.',
+      },
+      {
+        heading: 'Status Labels',
+        body: '✓ On track = bar is 65% or more filled — you performed at or above your win benchmark. ⚡ Close — watch this = 35–64% filled — this metric was in range but not quite winning standard. ✗ Below threshold = under 35% filled — this metric was closer to your loss average and may have cost you the match.',
+      },
+      {
+        heading: 'Minimum Data Requirement',
+        body: 'Insights requires at least 2 wins and 2 losses in the season to calculate meaningful averages. With fewer than that, the tab shows an empty state. Once you have enough data, it populates automatically — no action needed.',
+      },
+      {
+        heading: 'Which Metrics Are Tracked',
+        body: 'Pass Rating, Sideout %, Break Point %, 3OPT % (in-system win rate), Kill %, Kills/Set, Attack Errors/Set, Hitting Efficiency, Earned Points %, Ace %, Serve Error %, and Blocks/Set. These 12 metrics represent the full picture of team efficiency across every phase of the game.',
+      },
+      {
+        heading: 'Using Insights Strategically',
+        body: 'After a loss, open Match Summary → ⚡ Insights and find the metrics marked ✗ Below threshold. Those are your starting points for practice focus. If SO% and Hitting Eff. are both below threshold, your offense under serve pressure is the problem to solve. Correlation doesn\'t guarantee causation, but consistent patterns across multiple matches are highly predictive.',
+      },
+    ],
+  },
+  {
+    id: 'opponent-scouting',
+    label: 'Opponent Scouting',
+    icon: '🎯',
+    content: [
+      {
+        heading: 'Where Opponents Live',
+        body: 'Tap Opponents in the bottom navigation bar. Every opponent you\'ve ever played is listed here, shared across all your teams and seasons. You only need to create an opponent once — all matches against them link back to the same record.',
+      },
+      {
+        heading: 'Creating an Opponent',
+        body: 'Tap + Add Opponent. Enter the school or team name, abbreviation (used on scoreboards), and optionally their state and classification. You can also flag them as a conference opponent so the Reports conference filter works correctly.',
+      },
+      {
+        heading: 'Scouting Notes — Manual Entry',
+        body: 'Tap an opponent to open their detail page. The Tendencies section lets you add free-text scouting notes by category: Serve Target, Attack Pattern, Defense Style, Rotation Strength, and Rotation Weakness. Add as many notes as you want. They\'re visible every time you view this opponent, regardless of season.',
+      },
+      {
+        heading: 'Auto-Populate from Match Data',
+        body: 'After recording a match against an opponent, the app offers to auto-generate scouting notes from the stats: their kill and error counts, block presence, ace totals, and your weakest rotation against them. A review modal lets you check each suggestion, edit the wording, and choose which ones to save.',
+      },
+      {
+        heading: 'All-Time Record',
+        body: 'The opponent detail page shows your all-time win-loss record against that school, plus a timeline of every match you\'ve played against them with the final score. Tap any past match to open its full Match Summary.',
+      },
+      {
+        heading: 'Using Scouting Before a Match',
+        body: 'Open the opponent\'s page the morning of or during film study. Tendencies give your team a focused game plan. The all-time record and past match summaries show how your strategies have worked (or not) against this team historically. Cross-reference with your Rotation Analysis from recent matches to build a specific sub plan.',
+      },
+    ],
+  },
+  {
+    id: 'tools',
+    label: 'Tools Section Explained',
+    icon: '🛠️',
+    content: [
+      {
+        heading: 'Where to Find Tools',
+        body: 'Tap the Tools icon in the bottom navigation (wrench icon). The Tools page lists three standalone utilities: Serve Tracker, Serve Receive, and Practice Game. These operate independently from your match records and are designed for practice and warm-up use.',
+      },
+      {
+        heading: 'Serve Tracker',
+        body: 'Serve Tracker lets you log every serve attempt during a practice session without being in a live match. Pick your team, select a player, and tap Float or Topspin, then the result (Ace, In, Net, Out). The session tracks each player\'s serve-in rate and ace rate in real time. Use it during serving warmups to build a consistent pre-match data baseline.',
+      },
+      {
+        heading: 'Serve Receive',
+        body: 'Serve Receive logs pass ratings (0–3) during passing drills. Select participating players, then tap the rating after each rep. The session APR updates live. Past sessions are saved with date and full breakdown, letting you track whether your team\'s passing is trending up across the season.',
+      },
+      {
+        heading: 'Practice Game',
+        body: 'Practice Game is a lightweight scoring tool for intra-squad scrimmages and rally-based drills. Set up two sides (e.g., Front Row vs Back Row), tap points as they score, and track the running score without any of the full live-match contact logging. Fast to start, fast to use.',
+      },
+      {
+        heading: 'Rotation Optimizer',
+        body: 'Inside a team\'s page (Teams → your team → Optimizer), the Rotation Optimizer uses your season\'s SO% and BP% data by rotation to suggest optimal serve-order pairings for your specific roster. It\'s powered by your recorded match data, so it becomes more accurate as the season progresses.',
+      },
+      {
+        heading: 'Tools vs Live Match',
+        body: 'Tool sessions are never included in your match records, Reports, or season stats. They are separate practice logs. If you want data to appear in season analytics, it must be recorded through a proper live match with lineup setup.',
+      },
+    ],
+  },
+  {
+    id: 'program-history',
+    label: 'Program History & Records',
+    icon: '🏛️',
+    content: [
+      {
+        heading: 'What is the History Tab?',
+        body: 'The History tab (bottom nav, clock icon) shows your program\'s full season-by-season record going back as far as you\'ve entered. The current season appears at the top as a live card — past seasons are listed below it chronologically.',
+      },
+      {
+        heading: 'The Current Season Card',
+        body: 'The live card at the top pulls directly from your recorded matches and updates automatically. It shows this season\'s win-loss record, key efficiency stats (HIT%, APR, SO%), and a comparison against your season averages. No manual entry needed for the current season.',
+      },
+      {
+        heading: 'Manually Entering Past Seasons',
+        body: 'To add a historical season, tap the + Add Season button. Enter the year, final record (wins and losses), and any optional stats you have on hand: hitting percentage, pass rating, ace percentage. You can enter as much or as little as you know — all fields except year and record are optional.',
+      },
+      {
+        heading: 'What Historical Stats Can Be Tracked',
+        body: 'Past season entries support: W-L record, conference record, tournament finish, HIT%, APR, ACE%, DIG/set, and free-text notes. You can also log significant tournament placements, state appearances, and other program milestones in the notes field.',
+      },
+      {
+        heading: 'Program Records',
+        body: 'The Records page (accessible from History or via the bottom nav) automatically tracks single-match and single-season records across every stat category — highest HIT%, most kills in a match, best SO% in a season, longest win streak. Records update automatically as new matches are recorded.',
+      },
+      {
+        heading: 'Year Range on Teams Page',
+        body: 'Once you have historical season entries, the Teams page shows the active year range for each program\'s gender section — for example, Girls (1997–2025). This is calculated from the earliest to latest season year across all teams in that gender group, using both manually entered history and stat-tracked seasons.',
+      },
+      {
+        heading: 'Building Out Your History',
+        body: 'Start with the most recent past seasons first — they\'re freshest in memory. Even entering just the W-L record for past years gives the program history meaningful depth. Over time, a complete multi-year history makes Insights more powerful because win correlation patterns become clearer across hundreds of matches.',
+      },
+    ],
+  },
 ];
 
 function HelpModal({ topic, onClose }) {
@@ -1647,6 +1779,9 @@ export function SettingsPage() {
               {[
                 { to: '/help/default-team',   icon: '🏠', label: 'Setting Up Default Team & Season' },
                 { to: '/help/serve-receive',  icon: '📐', label: 'Serve-Receive Formation Setup'    },
+                { to: '/help/match-summary',  icon: '📋', label: 'Match Summary Walkthrough'        },
+                { to: '/help/pre-match-prep', icon: '🎯', label: 'Pre-Match Prep Workflow'          },
+                { to: '/help/exporting',      icon: '📤', label: 'Exporting & Sharing Stats'        },
               ].map(({ to, icon, label }) => (
                 <Link
                   key={to}
