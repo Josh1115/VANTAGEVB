@@ -1777,11 +1777,12 @@ export function SettingsPage() {
             <div className="space-y-1">
               {/* Step-by-step visual guides */}
               {[
-                { to: '/help/default-team',   icon: '🏠', label: 'Setting Up Default Team & Season' },
-                { to: '/help/serve-receive',  icon: '📐', label: 'Serve-Receive Formation Setup'    },
-                { to: '/help/match-summary',  icon: '📋', label: 'Match Summary Walkthrough'        },
-                { to: '/help/pre-match-prep', icon: '🎯', label: 'Pre-Match Prep Workflow'          },
-                { to: '/help/exporting',      icon: '📤', label: 'Exporting & Sharing Stats'        },
+                { to: '/help/live-stat-labels', icon: '🏐', label: 'Live Stat Phase Labels'             },
+                { to: '/help/default-team',     icon: '🏠', label: 'Setting Up Default Team & Season'   },
+                { to: '/help/serve-receive',    icon: '📐', label: 'Serve-Receive Formation Setup'      },
+                { to: '/help/match-summary',    icon: '📋', label: 'Match Summary Walkthrough'          },
+                { to: '/help/pre-match-prep',   icon: '🎯', label: 'Pre-Match Prep Workflow'            },
+                { to: '/help/exporting',        icon: '📤', label: 'Exporting & Sharing Stats'          },
               ].map(({ to, icon, label }) => (
                 <Link
                   key={to}
