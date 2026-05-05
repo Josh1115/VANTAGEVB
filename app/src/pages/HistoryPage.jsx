@@ -369,7 +369,7 @@ function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit }) {
             </span>
           )}
           <span className="text-[10px] font-black uppercase tracking-widest text-primary border border-primary/40 px-2 py-0.5 rounded-full">
-            LIVE
+            CURRENT
           </span>
         </div>
         <button
