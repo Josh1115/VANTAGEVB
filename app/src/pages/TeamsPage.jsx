@@ -380,8 +380,40 @@ function IconTrash() {
   );
 }
 
+const GENDER_ORDER = ['F', 'M', 'Mixed', null];
+const GENDER_LABELS = { F: 'Girls', M: 'Boys', Mixed: 'Mixed' };
+
+function TeamRow({ team, onSelectTeam, onEditTeam, onDeleteTeam }) {
+  return (
+    <div className="flex items-center hover:bg-slate-700 transition-colors">
+      <button
+        onClick={() => onSelectTeam(team.id)}
+        className="flex-1 px-4 py-3 flex items-center justify-between"
+      >
+        <div className="font-medium">{team.name}</div>
+        <div className="flex items-center gap-2">
+          <Badge color="gray">{LEVEL_LABELS[team.level] ?? team.level}</Badge>
+          <span className="text-slate-400">→</span>
+        </div>
+      </button>
+      <button onClick={() => onEditTeam(team)} className="px-3 py-3 text-slate-500 hover:text-slate-300 transition-colors" title="Edit team">
+        <IconEdit />
+      </button>
+      <button onClick={() => onDeleteTeam(team)} className="px-3 py-3 text-slate-600 hover:text-red-400 transition-colors" title="Delete team">
+        <IconTrash />
+      </button>
+    </div>
+  );
+}
+
 function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDeleteTeam, onSelectTeam }) {
   const teams = useTeams(org.id);
+
+  const genderGroups = GENDER_ORDER
+    .map((g) => ({ gender: g, teams: (teams ?? []).filter((t) => (t.gender ?? null) === g) }))
+    .filter((g) => g.teams.length > 0);
+
+  const multiGender = genderGroups.length > 1;
 
   return (
     <div className="bg-surface rounded-xl overflow-hidden">
@@ -398,28 +430,37 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
         </div>
         <Button size="sm" variant="ghost" onClick={onAddTeam}>+ Team</Button>
       </div>
-      {teams?.length === 0 ? (
+
+      {(teams ?? []).length === 0 ? (
         <p className="text-slate-500 text-sm px-4 py-3">No teams yet</p>
-      ) : (
-        teams?.map((team) => (
-          <div key={team.id} className="flex items-center hover:bg-slate-700 transition-colors">
-            <button
-              onClick={() => onSelectTeam(team.id)}
-              className="flex-1 px-4 py-3 flex items-center justify-between"
-            >
-              <div className="font-medium">{team.name}</div>
-              <div className="flex items-center gap-2">
-                <Badge color="gray">{LEVEL_LABELS[team.level] ?? team.level}</Badge>
-                <span className="text-slate-400">→</span>
-              </div>
-            </button>
-            <button onClick={() => onEditTeam(team)} className="px-3 py-3 text-slate-500 hover:text-slate-300 transition-colors" title="Edit team">
-              <IconEdit />
-            </button>
-            <button onClick={() => onDeleteTeam(team)} className="px-3 py-3 text-slate-600 hover:text-red-400 transition-colors" title="Delete team">
-              <IconTrash />
-            </button>
+      ) : multiGender ? (
+        genderGroups.map(({ gender, teams: gTeams }) => (
+          <div key={gender ?? 'other'}>
+            <div className="px-4 py-1.5 border-b border-slate-700/60 bg-slate-800/40">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                {GENDER_LABELS[gender] ?? 'Other'}
+              </span>
+            </div>
+            {gTeams.map((team) => (
+              <TeamRow
+                key={team.id}
+                team={team}
+                onSelectTeam={onSelectTeam}
+                onEditTeam={onEditTeam}
+                onDeleteTeam={onDeleteTeam}
+              />
+            ))}
           </div>
+        ))
+      ) : (
+        (teams ?? []).map((team) => (
+          <TeamRow
+            key={team.id}
+            team={team}
+            onSelectTeam={onSelectTeam}
+            onEditTeam={onEditTeam}
+            onDeleteTeam={onDeleteTeam}
+          />
         ))
       )}
     </div>

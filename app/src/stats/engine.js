@@ -867,6 +867,7 @@ export async function computeSeasonStats(seasonId, filters = {}) {
     freeDigWin:       computeFreeDigWin(contacts, rallies, rallyMap),
     runs:             computeRunsByRotation(rallies),
     pointQuality:     computePointQuality(contacts),
+    servingPoints:    computeServingPoints(rallies),
     timeoutEffect:    computeTimeoutEffectiveness(timeouts, rallies),
     trends:           computePlayerTrends(matches.filter(m => m.status !== MATCH_STATUS.SCHEDULED), contacts, setsPerMatch, playerPositions),
     setsPlayed,
