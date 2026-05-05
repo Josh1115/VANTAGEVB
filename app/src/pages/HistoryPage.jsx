@@ -16,7 +16,7 @@ function fmtWinPct(wins, games) {
 // ── Add / Edit Modal ──────────────────────────────────────────────────────────
 
 const EMPTY_FORM = {
-  year: '', title: '', head_coach: '', tenure_year: '', asst_coach: '',
+  year: '', title: '', classification: '', head_coach: '', tenure_year: '', asst_coach: '',
   games: '', wins: '', losses: '',
   state_rank: '', national_rank: '',
   playoff_seed: '', regional: '', sectional: '', state_finish: '', playoff_result: '',
@@ -36,6 +36,7 @@ function HistoryModal({ teamId, onClose, editId, initialData }) {
       team_id:        teamId,
       year:           form.year.trim(),
       title:          form.title.trim()          || null,
+      classification: form.classification.trim() || null,
       head_coach:     form.head_coach.trim()     || null,
       asst_coach:     form.asst_coach.trim()     || null,
       tenure_year:    form.tenure_year  ? Number(form.tenure_year)  : null,
@@ -81,9 +82,15 @@ function HistoryModal({ teamId, onClose, editId, initialData }) {
             <input className={inp} placeholder="2024-25" value={form.year} onChange={e => set('year', e.target.value)} />
           </div>
 
-          <div>
-            <label className={lbl}>Season Title</label>
-            <input className={inp} placeholder="Conference Champions" value={form.title} onChange={e => set('title', e.target.value)} />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={lbl}>Season Title</label>
+              <input className={inp} placeholder="Conference Champions" value={form.title} onChange={e => set('title', e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Class <span className="text-slate-600 font-normal">(optional)</span></label>
+              <input className={inp} placeholder="e.g. 4A" value={form.classification} onChange={e => set('classification', e.target.value)} />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
