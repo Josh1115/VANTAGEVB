@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CourtZonePicker, ROMAN } from '../court/CourtZonePicker';
 import { getStorageItem, STORAGE_KEYS } from '../../utils/storage';
 
@@ -21,11 +21,39 @@ const POSITION_OPTIONS = ['OH', 'OPP', 'MB', 'S', 'L', 'DS', 'RS'];
 export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions, startZone, setStartZone, liberoId, setLiberoId, players }) {
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [dragOverIdx, setDragOverIdx] = useState(null);
+  const containerRef = useRef(null);
+  const rowRefs = useRef([]);
+  const draggingIdxRef = useRef(null);
+  const dragOverIdxRef = useRef(null);
 
   const swapSlots = (from, to) => {
     const swapArr = (arr) => { const n = [...arr]; [n[from], n[to]] = [n[to], n[from]]; return n; };
     setLineup(swapArr);
     setSlotPositions(swapArr);
+  };
+
+  const handleDragMove = (e) => {
+    if (draggingIdxRef.current === null) return;
+    for (let i = 0; i < rowRefs.current.length; i++) {
+      const rect = rowRefs.current[i]?.getBoundingClientRect();
+      if (rect && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        if (dragOverIdxRef.current !== i) {
+          dragOverIdxRef.current = i;
+          setDragOverIdx(i);
+        }
+        break;
+      }
+    }
+  };
+
+  const handleDragEnd = () => {
+    const from = draggingIdxRef.current;
+    const to = dragOverIdxRef.current;
+    if (from !== null && to !== null && from !== to) swapSlots(from, to);
+    draggingIdxRef.current = null;
+    dragOverIdxRef.current = null;
+    setDraggingIdx(null);
+    setDragOverIdx(null);
   };
 
   // Auto-select first player with position 'L' as libero when roster loads
@@ -99,23 +127,28 @@ export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions,
           I serves first. Assign players in the order they will rotate through the serve.
         </p>
         <div
+          ref={containerRef}
           className="space-y-2"
-          onPointerLeave={() => { setDraggingIdx(null); setDragOverIdx(null); }}
+          onPointerMove={handleDragMove}
+          onPointerUp={handleDragEnd}
+          onPointerLeave={handleDragEnd}
         >
           {ROMAN.map((roman, i) => (
             <div
               key={roman}
+              ref={(el) => { rowRefs.current[i] = el; }}
               className={`flex items-center gap-2 rounded px-1 transition-colors
                 ${dragOverIdx === i && draggingIdx !== i ? 'bg-slate-700/60 ring-1 ring-primary/60' : ''}`}
-              onPointerEnter={() => { if (draggingIdx !== null) setDragOverIdx(i); }}
             >
               <span
-                className="text-slate-500 hover:text-slate-300 cursor-grab px-1 select-none touch-none text-[1.6vmin]"
-                onPointerDown={(e) => { e.preventDefault(); setDraggingIdx(i); setDragOverIdx(i); }}
-                onPointerUp={() => {
-                  if (draggingIdx !== null && dragOverIdx !== null && draggingIdx !== dragOverIdx)
-                    swapSlots(draggingIdx, dragOverIdx);
-                  setDraggingIdx(null); setDragOverIdx(null);
+                className={`px-1 select-none touch-none text-[1.6vmin] ${draggingIdx !== null ? 'cursor-grabbing' : 'cursor-grab'} text-slate-500 hover:text-slate-300`}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  containerRef.current?.setPointerCapture(e.pointerId);
+                  draggingIdxRef.current = i;
+                  dragOverIdxRef.current = i;
+                  setDraggingIdx(i);
+                  setDragOverIdx(i);
                 }}
               >⠿</span>
               <span className="text-base text-orange-400 font-black w-8 shrink-0 text-right">{roman}</span>
@@ -187,6 +220,32 @@ export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions,
           serveOrder={lineup}
           players={players}
         />
+
+        {/* Rotation number buttons — alternative to tapping the court */}
+        <div className="mt-3">
+          <p className="text-[11px] text-slate-500 mb-1.5">Or pick starting rotation:</p>
+          <div className="flex gap-1.5">
+            {[1, 2, 3, 4, 5, 6].map((rot) => {
+              const zone = ((8 - rot) % 6) || 6;
+              const isActive = startZone === zone;
+              return (
+                <button
+                  key={rot}
+                  type="button"
+                  onClick={() => setStartZone(zone)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-colors
+                    ${isActive
+                      ? 'bg-primary/20 text-primary border-primary/50'
+                      : 'bg-surface text-slate-400 border-slate-600 hover:border-slate-400 hover:text-slate-200'
+                    }`}
+                >
+                  {rot}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {(() => {
           const rotNum = ((1 - startZone + 6) % 6) + 1;
           const isServing = startZone === 1;

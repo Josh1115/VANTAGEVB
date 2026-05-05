@@ -262,6 +262,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
   const pointHistory  = useMatchStore((s) => s.pointHistory);
   const format        = useMatchStore((s) => s.format);
   const lastSetScore  = useMatchStore((s) => s.lastSetScore);
+  const rotationNum   = useMatchStore((s) => s.rotationNum);
 
   const { teamStats, oppStats } = useMatchStats();
   const { matchWinProb } = useWinProbability();
@@ -419,6 +420,12 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
 
         {/* ── Libero box — sits between sub tracker and center score block ── */}
         <LiberoBox liberoPlayer={liberoPlayer} onAssignLibero={onAssignLibero} />
+
+        {/* ── Rotation tracker ── */}
+        <div className="flex flex-col items-center shrink-0 ml-1 px-[1vmin] py-[0.4vmin] rounded border border-purple-700 bg-purple-950/40">
+          <span className="text-[1.1vmin] font-bold text-purple-500 leading-none uppercase tracking-wide">ROT</span>
+          <span className="text-[2.6vmin] font-black text-purple-400 leading-none tabular-nums">{rotationNum}</span>
+        </div>
 
         {/* ── Left spacer ── */}
         <div className="flex-1" />
