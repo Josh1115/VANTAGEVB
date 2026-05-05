@@ -6,13 +6,13 @@ import { db } from '../db/schema';
 import { computeMatchStats,
          computePlayerStats, computeTeamStats, computeRotationStats, computePointQuality,
          computeServeZoneStats, computeISvsOOS, computeTransitionAttack,
-         computeServingPoints,
+         computeServingPoints, computeRunsByRotation,
          computePQ, computeSetWinProb, computeMatchWinProb,
          aggregateXKTeamStats, computeWinCorrelation } from '../stats/engine';
 import { getRalliesForMatch, getRalliesForMatches } from '../stats/queries';
 import { exportMatchCSV, exportMatchPDF, exportMaxPrepsCSV } from '../stats/export';
 import { fmtHitting, fmtPassRating, fmtPct, fmtCount, fmtDate } from '../stats/formatters';
-import { ROTATION_COLS, SERVING_COLS, TAB_COLUMNS } from '../stats/columns';
+import { ROTATION_COLS, SERVING_COLS, TAB_COLUMNS, ISOOS_COLS, TRANS_COLS, RUN_COLS } from '../stats/columns';
 import { PageHeader } from '../components/layout/PageHeader';
 import { TabBar } from '../components/ui/Tab';
 import { Button } from '../components/ui/Button';
@@ -24,6 +24,7 @@ import { PointQualityPanel } from '../components/stats/PointQualityPanel';
 import { RotationRadarChart } from '../components/charts/RotationRadarChart';
 import { CourtHeatMap } from '../components/charts/CourtHeatMap';
 import { RotationBarChart } from '../components/charts/RotationBarChart';
+import { SideoutPieChart } from '../components/charts/SideoutPieChart';
 import { SubToggle } from '../components/stats/SubToggle';
 import { SetDistByRotationPanel } from '../components/stats/panels/SetDistByRotationPanel';
 import { SetTrendsChart } from '../components/stats/SetTrendsChart';
@@ -182,11 +183,66 @@ function WinProbChart({ rawRallies, sets, format, historicalPQ }) {
   );
 }
 
+function MiniTable({ cols, rows }) {
+  const [sortKey, setSortKey] = useState(cols[1]?.key ?? cols[0].key);
+  const [desc,    setDesc]    = useState(true);
+  if (!rows.length) return null;
+  const dataRows  = rows.filter(r => !r.isTotal);
+  const totalRows = rows.filter(r =>  r.isTotal);
+  const sorted = [...dataRows].sort((a, b) => {
+    if (sortKey === 'name') return desc
+      ? (b.name ?? '').localeCompare(a.name ?? '')
+      : (a.name ?? '').localeCompare(b.name ?? '');
+    const av = a[sortKey] ?? -Infinity, bv = b[sortKey] ?? -Infinity;
+    return desc ? bv - av : av - bv;
+  });
+  function handleSort(key) {
+    if (sortKey === key) setDesc(d => !d);
+    else { setSortKey(key); setDesc(true); }
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-slate-700">
+            {cols.map((c) => (
+              <th key={c.key} onClick={() => handleSort(c.key)}
+                className={`px-2 py-1.5 font-semibold whitespace-nowrap cursor-pointer select-none ${c.key === 'name' ? 'text-left' : 'text-right'} ${sortKey === c.key ? 'text-primary' : 'text-slate-400'}`}>
+                {c.label}{sortKey === c.key && <span className="ml-0.5 text-[10px]">{desc ? '↓' : '↑'}</span>}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((row, i) => (
+            <tr key={row.rot} className={`border-b border-slate-800/60 ${i % 2 !== 0 ? 'bg-slate-900/30' : ''}`}>
+              {cols.map((c) => (
+                <td key={c.key} className={`px-2 py-1.5 tabular-nums text-slate-300 ${c.key === 'name' ? 'text-left' : 'text-right'}`}>
+                  {c.fmt ? c.fmt(row[c.key]) : (row[c.key] ?? '—')}
+                </td>
+              ))}
+            </tr>
+          ))}
+          {totalRows.map(row => (
+            <tr key={row.rot} className="border-t border-slate-600 font-semibold text-white">
+              {cols.map((c) => (
+                <td key={c.key} className={`px-2 py-1.5 tabular-nums ${c.key === 'name' ? 'text-left' : 'text-right'}`}>
+                  {c.fmt ? c.fmt(row[c.key]) : (row[c.key] ?? '—')}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 const TABS = [
   { value: 'scoring',   label: 'Scoring'   },
   { value: 'report',    label: 'Report'    },
   { value: 'insights',  label: '⚡ Insights' },
-  { value: 'trends',    label: 'Trends'    },
+  { value: 'rotation',  label: 'Rotation'  },
   { value: 'serving',   label: 'Serving'   },
   { value: 'passing',   label: 'Passing'   },
   { value: 'attacking', label: 'Attacking' },
@@ -195,7 +251,6 @@ const TABS = [
   { value: 'defense',   label: 'Defense'   },
   { value: 'ver',       label: 'VER'       },
   { value: 'compare',   label: 'Compare'   },
-  { value: 'opponent',  label: 'Opp'       },
 ];
 const TAB_VALUES = TABS.map(t => t.value);
 
@@ -665,7 +720,6 @@ export function MatchSummaryPage() {
   const [tab, setTab] = useState('scoring');
   const [serveView,     setServeView]     = useState('all');
   const [selectedServingPlayerId, setSelectedServingPlayerId] = useState(null);
-  const [trendsView,    setTrendsView]    = useState('trends');
   const [scoringView,   setScoringView]   = useState('scoring');
   const [stats, setStats] = useState(null);
   const [contacts, setContacts] = useState([]);
@@ -856,6 +910,7 @@ export function MatchSummaryPage() {
       serveZones:       computeServeZoneStats(fc),
       isOos:            computeISvsOOS(fc, fr),
       transitionAttack: computeTransitionAttack(fc, fr),
+      runs:             computeRunsByRotation(fr),
       servingPoints:    computeServingPoints(fr),
     };
   }, [stats, rawRallies, selectedSetId]);
@@ -1021,12 +1076,58 @@ export function MatchSummaryPage() {
     displayStats
       ? Object.entries(displayStats.rotation.rotations).map(([n, r]) => ({
           id: n,
-          name: `Rotation ${n}`,
+          name: `R${n}`,
           ...r,
         }))
       : [],
     [displayStats]
   );
+
+  const isOosRows = useMemo(() => {
+    if (!displayStats?.isOos) return [];
+    const { byRotation, total } = displayStats.isOos;
+    const toRow = (rot, label, d) => ({
+      rot, name: label,
+      is_ta: d.is.ta, is_k_pct: d.is.k_pct, is_hit_pct: d.is.hit_pct, is_win_pct: d.is.win_pct,
+      oos_ta: d.oos.ta, oos_k_pct: d.oos.k_pct, oos_hit_pct: d.oos.hit_pct, oos_win_pct: d.oos.win_pct,
+    });
+    return [
+      ...Object.entries(byRotation).map(([r, d]) => toRow(r, `R${r}`, d)),
+      { ...toRow('total', 'Total', total), isTotal: true },
+    ];
+  }, [displayStats]);
+
+  const transRows = useMemo(() => {
+    if (!displayStats?.transitionAttack) return [];
+    const { free, transition } = displayStats.transitionAttack;
+    const toRow = (rot, label, f, t) => ({
+      rot, name: label,
+      free_ta: f.ta, free_k_pct: f.k_pct, free_hit_pct: f.hit_pct, free_win_pct: f.win_pct,
+      trans_ta: t.ta, trans_k_pct: t.k_pct, trans_hit_pct: t.hit_pct, trans_win_pct: t.win_pct,
+    });
+    const rows = [];
+    for (let r = 1; r <= 6; r++) {
+      rows.push(toRow(String(r), `R${r}`, free.byRotation[r], transition.byRotation[r]));
+    }
+    rows.push({ ...toRow('total', 'Total', free.total, transition.total), isTotal: true });
+    return rows;
+  }, [displayStats]);
+
+  const runRows = useMemo(() => {
+    if (!displayStats?.runs) return [];
+    const { byRotation, total } = displayStats.runs;
+    const toRow = (rot, label, d) => ({
+      rot, name: label,
+      max_run: d.max_run > 0 ? d.max_run : null,
+      avg_run: d.avg_run,
+      runs_3plus: d.runs_3plus,
+      runs_5plus: d.runs_5plus,
+    });
+    return [
+      ...Object.entries(byRotation).map(([r, d]) => toRow(r, `R${r}`, d)),
+      { ...toRow('total', 'Total', total), isTotal: true },
+    ];
+  }, [displayStats]);
 
   const matchMeta = match ? { ...match, sets: sets ?? [] } : {};
 
@@ -1357,6 +1458,27 @@ export function MatchSummaryPage() {
                     oppName={match?.opponent_name ?? 'Opponent'}
                   />
                 )}
+                {displayStats.opp && (
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Opponent</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { label: 'ACE',  val: displayStats.opp.ace,  desc: 'Aces vs us'          },
+                        { label: 'SE',   val: displayStats.opp.se,   desc: 'Serve errors'         },
+                        { label: 'K',    val: displayStats.opp.k,    desc: 'Kills'                },
+                        { label: 'AE',   val: displayStats.opp.ae,   desc: 'Attack errors'        },
+                        { label: 'BLK',  val: displayStats.opp.blk,  desc: 'Blocked by us'        },
+                        { label: 'ERR',  val: displayStats.opp.errs, desc: 'Ball handling errors' },
+                      ].map(({ label, val, desc }) => (
+                        <div key={label} className="bg-surface rounded-xl p-3 text-center">
+                          <div className="text-xs text-slate-400 mb-1">{desc}</div>
+                          <div className="text-2xl font-black text-primary">{val}</div>
+                          <div className="text-xs font-bold text-slate-300 mt-0.5">{label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1364,52 +1486,38 @@ export function MatchSummaryPage() {
               <MatchInsightsPanel matchStats={displayStats} seasonId={match?.season_id} />
             )}
 
-            {tab === 'trends' && (
-              <>
-                <SubToggle
-                  options={[['trends', 'TRENDS'], ['rotation', 'ROTATION'], ['winprob', 'WIN PROB']]}
-                  value={trendsView}
-                  onChange={setTrendsView}
-                />
-                {trendsView === 'trends' && (
-                  <div className="space-y-8 mt-3">
-                    <SetTrendsChart contacts={contacts} sets={sets ?? []} />
-                    <div className="border-t border-slate-700/50 pt-6">
-                      <RallyHistogram contacts={contacts} />
-                    </div>
+            {tab === 'rotation' && displayStats?.rotation && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <SideoutPieChart so_pct={displayStats.rotation.so_pct} label="Sideout" />
+                  <SideoutPieChart so_pct={displayStats.rotation.bp_pct} label="Serving Point" />
+                </div>
+                <RotationBarChart rotationRows={rotationRows} />
+                <RotationRadarChart rotationStats={displayStats.rotation} />
+                <RotationSpotlight rows={rotationRows} />
+                <StatTable columns={ROTATION_COLS} rows={rotationRows} />
+                {isOosRows.length > 0 && (
+                  <div className="bg-surface rounded-xl p-3">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">In System vs Out of System by Rotation</p>
+                    <MiniTable cols={ISOOS_COLS} rows={isOosRows} />
                   </div>
                 )}
-                {trendsView === 'winprob' && (
-                  <div className="mt-3">
-                    <WinProbChart
-                      rawRallies={rawRallies}
-                      sets={sets ?? []}
-                      format={match?.format ?? FORMAT.BEST_OF_5}
-                      historicalPQ={historicalPQ}
-                    />
+                {transRows.length > 0 && (
+                  <div className="bg-surface rounded-xl p-3">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Transition &amp; Free Ball Offense by Rotation</p>
+                    <MiniTable cols={TRANS_COLS} rows={transRows} />
                   </div>
                 )}
-                {trendsView === 'rotation' && displayStats?.rotation && (
-                  <div className="space-y-6 mt-3">
-                    <RotationBarChart rotationRows={rotationRows} />
-                    <RotationRadarChart rotationStats={displayStats.rotation} />
-                    <RotationSpotlight rows={rotationRows} />
-                    <StatTable columns={ROTATION_COLS} rows={rotationRows} />
-                    <SetDistByRotationPanel contacts={displayStats.contacts} positionMap={positionMap} />
-                    <div className="grid grid-cols-2 gap-4 text-sm text-center">
-                      <div className="bg-surface rounded-xl p-3">
-                        <div className="text-xs text-slate-400">Overall SO%</div>
-                        <div className="text-lg font-bold text-primary">{fmtPct(displayStats.rotation.so_pct)}</div>
-                      </div>
-                      <div className="bg-surface rounded-xl p-3">
-                        <div className="text-xs text-slate-400">Overall SP%</div>
-                        <div className="text-lg font-bold text-sky-400">{fmtPct(displayStats.rotation.bp_pct)}</div>
-                      </div>
-                    </div>
-                    <CourtHeatMap contacts={contacts} />
+                {runRows.length > 0 && (
+                  <div className="bg-surface rounded-xl p-3">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Scoring Runs by Rotation</p>
+                    <p className="text-xs text-slate-500 mb-2">Runs of 2+ consecutive points, grouped by the rotation where the run started.</p>
+                    <MiniTable cols={RUN_COLS} rows={runRows} />
                   </div>
                 )}
-              </>
+                <SetDistByRotationPanel contacts={displayStats.contacts} positionMap={positionMap} />
+                <CourtHeatMap contacts={contacts} />
+              </div>
             )}
 
             {tab === 'serving' && (
@@ -1658,28 +1766,6 @@ export function MatchSummaryPage() {
               <PlayerComparison playerRows={playerRows} />
             )}
 
-            {tab === 'opponent' && displayStats?.opp && (
-              <div className="space-y-3">
-                <p className="text-xs text-slate-400 mb-4">Opponent performance this match</p>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: 'ACE',  val: displayStats.opp.ace,  desc: 'Aces vs us'         },
-                    { label: 'SE',   val: displayStats.opp.se,   desc: 'Serve errors'        },
-                    { label: 'K',    val: displayStats.opp.k,    desc: 'Kills'               },
-                    { label: 'AE',   val: displayStats.opp.ae,   desc: 'Attack errors'       },
-                    { label: 'BLK',  val: displayStats.opp.blk,  desc: 'Blocked by us'       },
-                    { label: 'ERR',  val: displayStats.opp.errs, desc: 'Ball handling errors' },
-                  ].map(({ label, val, desc }) => (
-                    <div key={label} className="bg-surface rounded-xl p-3 text-center">
-                      <div className="text-xs text-slate-400 mb-1">{desc}</div>
-                      <div className="text-2xl font-black text-primary">{val}</div>
-                      <div className="text-xs font-bold text-slate-300 mt-0.5">{label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {tab === 'report' && displayStats && (() => {
               const t = displayStats.team;
               const numSets = (sets ?? []).filter(s => s.status === 'complete').length || 1;
@@ -1880,6 +1966,21 @@ export function MatchSummaryPage() {
                       </div>
                     );
                   })()}
+
+                  <div className="space-y-8 pt-2">
+                    <SetTrendsChart contacts={contacts} sets={sets ?? []} />
+                    <div className="border-t border-slate-700/50 pt-6">
+                      <RallyHistogram contacts={contacts} />
+                    </div>
+                    <div className="border-t border-slate-700/50 pt-6">
+                      <WinProbChart
+                        rawRallies={rawRallies}
+                        sets={sets ?? []}
+                        format={match?.format ?? FORMAT.BEST_OF_5}
+                        historicalPQ={historicalPQ}
+                      />
+                    </div>
+                  </div>
                 </div>
               );
             })()}
