@@ -515,13 +515,16 @@ export function HomePage() {
         apr:     ld('apr',     leaders.apr?.id,     ps => ps.apr  ?? 0),
       };
       teamDeltas = {
-        k:   (ts.k   ?? 0) - (prevTs.k   ?? 0),
-        ace: (ts.ace  ?? 0) - (prevTs.ace  ?? 0),
-        blk: (ts.blk  ?? 0) - (prevTs.blk  ?? 0),
-        dig: (ts.dig  ?? 0) - (prevTs.dig  ?? 0),
-        ast: (ts.ast  ?? 0) - (prevTs.ast  ?? 0),
-        rec: (ts.pa   ?? 0) - (prevTs.pa   ?? 0),
-        apr: (ts.apr != null && prevTs.apr != null) ? ts.apr - prevTs.apr : null,
+        k:       (ts.k   ?? 0) - (prevTs.k   ?? 0),
+        ace:     (ts.ace  ?? 0) - (prevTs.ace  ?? 0),
+        blk:     (ts.blk  ?? 0) - (prevTs.blk  ?? 0),
+        dig:     (ts.dig  ?? 0) - (prevTs.dig  ?? 0),
+        ast:     (ts.ast  ?? 0) - (prevTs.ast  ?? 0),
+        rec:     (ts.pa   ?? 0) - (prevTs.pa   ?? 0),
+        apr:     (ts.apr     != null && prevTs.apr     != null) ? ts.apr     - prevTs.apr     : null,
+        hit_pct: (ts.hit_pct != null && prevTs.hit_pct != null) ? ts.hit_pct - prevTs.hit_pct : null,
+        si_pct:  (ts.si_pct  != null && prevTs.si_pct  != null) ? ts.si_pct  - prevTs.si_pct  : null,
+        ace_pct: (ts.ace_pct != null && prevTs.ace_pct != null) ? ts.ace_pct - prevTs.ace_pct : null,
       };
     }
 
@@ -955,10 +958,10 @@ export function HomePage() {
         {seasonLeaders?.teamStats && (
           <div className="grid grid-cols-3 gap-2 animate-slide-up-fade" style={{ animationDelay: '220ms' }}>
             {[
-              { label: 'HIT%', val: fmtHitting(seasonLeaders.teamStats.hit_pct), stat: 'hit_pct' },
-              { label: 'SRV%', val: fmtPct(seasonLeaders.teamStats.si_pct),      stat: 'si_pct'  },
-              { label: 'ACE%', val: fmtPct(seasonLeaders.teamStats.ace_pct),     stat: 'ace_pct' },
-            ].map(({ label, val, stat }) => (
+              { label: 'HIT%', val: fmtHitting(seasonLeaders.teamStats.hit_pct), stat: 'hit_pct', deltaVal: seasonLeaders.teamDeltas?.hit_pct, fmt: v => fmtHitting(Math.abs(v)) },
+              { label: 'SRV%', val: fmtPct(seasonLeaders.teamStats.si_pct),      stat: 'si_pct',  deltaVal: seasonLeaders.teamDeltas?.si_pct,  fmt: v => fmtPct(Math.abs(v))     },
+              { label: 'ACE%', val: fmtPct(seasonLeaders.teamStats.ace_pct),     stat: 'ace_pct', deltaVal: seasonLeaders.teamDeltas?.ace_pct, fmt: v => fmtPct(Math.abs(v))     },
+            ].map(({ label, val, stat, deltaVal, fmt }) => (
               <button
                 key={label}
                 onClick={() => defaultSeasonId && navigate(`/seasons/${defaultSeasonId}/team?stat=${stat}`)}
@@ -967,6 +970,11 @@ export function HomePage() {
               >
                 <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</div>
                 <div className="text-xl font-black text-primary tabular-nums mt-0.5">{val}</div>
+                {deltaVal != null && deltaVal !== 0 && (
+                  <span className={`flex items-center justify-center gap-px text-[8px] font-bold leading-none tabular-nums mt-0.5 ${deltaVal > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {deltaVal > 0 ? '▲' : '▼'}{fmt(deltaVal)}
+                  </span>
+                )}
               </button>
             ))}
           </div>
