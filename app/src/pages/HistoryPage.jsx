@@ -18,7 +18,7 @@ function fmtWinPct(wins, games) {
 const EMPTY_FORM = {
   year: '', title: '', classification: '', head_coach: '', tenure_year: '', asst_coach: '',
   games: '', wins: '', losses: '',
-  state_rank: '', national_rank: '',
+  state_rank: '', national_rank: '', class_rank: '',
   playoff_seed: '', regional: '', sectional: '', state_finish: '', playoff_result: '',
 };
 
@@ -45,6 +45,7 @@ function HistoryModal({ teamId, onClose, editId, initialData }) {
       losses:         form.losses       ? Number(form.losses)       : null,
       state_rank:     form.state_rank    ? Number(form.state_rank)    : null,
       national_rank:  form.national_rank ? Number(form.national_rank) : null,
+      class_rank:     form.class_rank.trim()  || null,
       playoff_seed:   form.playoff_seed.trim()   || null,
       regional:       form.regional.trim()       || null,
       sectional:      form.sectional.trim()      || null,
@@ -124,14 +125,18 @@ function HistoryModal({ teamId, onClose, editId, initialData }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className={lbl}>State Ranking</label>
+              <label className={lbl}>State Rank</label>
               <input className={inp} type="number" min="1" placeholder="e.g. 3" value={form.state_rank} onChange={e => set('state_rank', e.target.value)} />
             </div>
             <div>
-              <label className={lbl}>National Ranking</label>
+              <label className={lbl}>National Rank</label>
               <input className={inp} type="number" min="1" placeholder="e.g. 12" value={form.national_rank} onChange={e => set('national_rank', e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Class Rank</label>
+              <input className={inp} placeholder="e.g. 1" value={form.class_rank} onChange={e => set('class_rank', e.target.value)} />
             </div>
           </div>
 
