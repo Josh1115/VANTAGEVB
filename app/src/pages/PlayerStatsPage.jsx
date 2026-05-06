@@ -103,12 +103,14 @@ const TREND_OPTS = {
   ],
 };
 
-function PerGameTrendGraph({ rows, statTab, serveView }) {
+function PerGameTrendGraph({ rows, statTab, serveView, initialKey }) {
   const opts = statTab === 'serving'
     ? (TREND_OPTS.serving[serveView] ?? TREND_OPTS.serving.all)
     : (TREND_OPTS[statTab] ?? []);
 
-  const [selectedKey, setSelectedKey] = useState(opts[0]?.key ?? null);
+  const [selectedKey, setSelectedKey] = useState(
+    (initialKey && opts.some(o => o.key === initialKey)) ? initialKey : (opts[0]?.key ?? null)
+  );
 
   if (!opts.length || !rows.length) return null;
 
@@ -382,6 +384,16 @@ const chipClass = (active) =>
     ? `${CHIP} bg-primary text-white`
     : `${CHIP} bg-surface text-slate-400 hover:text-white`;
 
+const STAT_PARAM_MAP = {
+  k:   { statTab: 'attacking', trendKey: 'k'    },
+  ace: { statTab: 'serving',   trendKey: 'ace'  },
+  blk: { statTab: 'blocking',  trendKey: 'blks' },
+  dig: { statTab: 'defense',   trendKey: 'dig'  },
+  ast: { statTab: 'setting',   trendKey: 'ast'  },
+  rec: { statTab: 'passing',   trendKey: 'pa'   },
+  apr: { statTab: 'passing',   trendKey: 'apr'  },
+};
+
 const STAT_TABS = [
   { value: 'serving',   label: 'Serving'   },
   { value: 'passing',   label: 'Passing'   },
@@ -418,10 +430,11 @@ export function PlayerStatsPage() {
   const [searchParams] = useSearchParams();
   const pid = Number(playerId);
   const tid = Number(teamId);
-  const seasonParam = searchParams.get('season');
+  const seasonParam   = searchParams.get('season');
+  const statParamEntry = STAT_PARAM_MAP[searchParams.get('stat')] ?? null;
 
   const [mainTab,   setMainTab]   = useState('season');
-  const [statTab,   setStatTab]   = useState('serving');
+  const [statTab,   setStatTab]   = useState(statParamEntry?.statTab ?? 'serving');
   const [serveView, setServeView] = useState('all');
   const [loading,   setLoading]   = useState(false);
   const [stats,     setStats]     = useState(null); // { playerRow, trends, matches }
@@ -587,7 +600,7 @@ export function PlayerStatsPage() {
             <div className="px-2 py-3">
               <StatTable columns={currentCols} rows={statRow} />
             </div>
-            <PerGameTrendGraph key={`${statTab}-${serveView}`} rows={byGameRows} statTab={statTab} serveView={serveView} />
+            <PerGameTrendGraph key={`${statTab}-${serveView}`} rows={byGameRows} statTab={statTab} serveView={serveView} initialKey={statParamEntry?.trendKey} />
           </div>
         )
       ) : mainTab === 'report_card' ? (

@@ -1024,13 +1024,13 @@ export function HomePage() {
                 Season Leaders{seasonRecord?.seasonName ? <span className="ml-1.5 normal-case font-semibold tracking-normal text-slate-600">· {seasonRecord.seasonName}</span> : ''}
               </p>
               <div className="grid grid-cols-7 gap-2">
-                {LEADERS.map(({ label, key, fmt }, i) => {
+                {LEADERS.map(({ label, key, ttKey, fmt }, i) => {
                   const leader = seasonLeaders?.[key];
                   const canNav = leader?.id && defaultTeamId;
                   return (
                     <button
                       key={key}
-                      onClick={() => canNav && navigate(`/teams/${defaultTeamId}/players/${leader.id}?season=${defaultSeasonId}`)}
+                      onClick={() => canNav && navigate(`/teams/${defaultTeamId}/players/${leader.id}?season=${defaultSeasonId}&stat=${ttKey}`)}
                       disabled={!canNav}
                       className="bg-surface rounded-xl p-2 text-center flex flex-col items-center gap-1 animate-slide-up-fade active:scale-95 transition-transform disabled:active:scale-100"
                       style={{ animationDelay: `${260 + i * 45}ms` }}
