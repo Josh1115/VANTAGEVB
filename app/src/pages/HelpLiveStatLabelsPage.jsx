@@ -1,3 +1,4 @@
+import { useLocation } from 'react-router-dom';
 import { PageHeader } from '../components/layout/PageHeader';
 
 const BG      = '#000000';
@@ -483,9 +484,10 @@ function DiagActionBar() {
 }
 
 export function HelpLiveStatLabelsPage() {
+  const { state } = useLocation();
   return (
     <div className="min-h-screen" style={{ background: BG }}>
-      <PageHeader title="Live Stat Phase Labels" backTo="/settings" />
+      <PageHeader title="Live Stat Phase Labels" backTo={state?.fromLive ? null : '/settings'} />
 
       <div className="p-4 space-y-8 max-w-2xl mx-auto pb-12">
 

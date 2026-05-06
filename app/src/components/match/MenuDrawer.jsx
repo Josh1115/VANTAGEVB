@@ -74,20 +74,6 @@ export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName
   return (
     <>
       <Drawer title="Match Menu" onClose={onClose}>
-        <div className="flex items-center justify-between py-3 mb-3 border-b border-slate-700">
-          <div>
-            <div className="text-sm font-medium text-white">Flip Team Layout</div>
-            <div className="text-xs text-slate-400 mt-0.5">Show your team on the right side</div>
-          </div>
-          <button
-            onClick={onFlipLayout}
-            className={`relative w-11 h-6 rounded-full transition-colors ${flipLayout ? 'bg-primary' : 'bg-slate-600'}`}
-            aria-checked={flipLayout}
-            role="switch"
-          >
-            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${flipLayout ? 'translate-x-5' : ''}`} />
-          </button>
-        </div>
         {/* ── Score Adjustment ── */}
         <div className="mb-3 pb-3 border-b border-slate-700">
           <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Score Adjustment</div>
@@ -139,6 +125,35 @@ export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName
               </div>
             </div>
           ))}
+        </div>
+
+        {/* ── Help ── */}
+        <button
+          onClick={() => { onClose(); navigate('/help/live-stat-labels', { state: { fromLive: true } }); }}
+          className="w-full flex items-center gap-3 mb-4 px-3 py-2.5 rounded-xl bg-primary/15 border border-primary/40 text-left active:brightness-90"
+        >
+          <span className="text-lg">📖</span>
+          <div>
+            <div className="text-sm font-bold text-primary">Live Stat Phase Labels</div>
+            <div className="text-xs text-slate-400">New? Learn every button &amp; indicator</div>
+          </div>
+          <span className="ml-auto text-primary text-lg">›</span>
+        </button>
+
+        {/* ── Flip Layout ── */}
+        <div className="flex items-center justify-between py-3 mb-3 border-t border-slate-700">
+          <div>
+            <div className="text-sm font-medium text-white">Flip Team Layout</div>
+            <div className="text-xs text-slate-400 mt-0.5">Show your team on the right side</div>
+          </div>
+          <button
+            onClick={onFlipLayout}
+            className={`relative w-11 h-6 rounded-full transition-colors ${flipLayout ? 'bg-primary' : 'bg-slate-600'}`}
+            aria-checked={flipLayout}
+            role="switch"
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${flipLayout ? 'translate-x-5' : ''}`} />
+          </button>
         </div>
 
         <div className="space-y-3">

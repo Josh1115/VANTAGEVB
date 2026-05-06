@@ -1,11 +1,11 @@
 export const VER_TIERS = [
-  { min: 28,        label: 'ELITE+', cls: 'bg-orange-500/20 text-orange-400 border-orange-500/40' },
-  { min: 22,        label: 'ELITE',  cls: 'bg-cyan-500/20   text-cyan-400   border-cyan-500/40'   },
+  { min: 28,        label: 'ELITE+', cls: 'bg-cyan-500/20   text-cyan-400   border-cyan-500/40'   },
+  { min: 22,        label: 'ELITE',  cls: 'bg-orange-500/20 text-orange-400 border-orange-500/40' },
   { min: 15,        label: 'GOOD',   cls: 'bg-green-500/20  text-green-400  border-green-500/40'  },
   { min: 10,        label: 'AVG',    cls: 'bg-slate-500/20  text-white      border-slate-500/40'  },
   { min: 5,         label: 'LOW',    cls: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40' },
-  { min: 0,         label: 'BENCH',  cls: 'bg-slate-700/40  text-slate-400  border-slate-700'     },
-  { min: -Infinity, label: 'NEG',    cls: 'bg-red-500/20    text-red-400    border-red-500/40'    },
+  { min: 0,         label: 'BENCH',  cls: 'bg-red-500/20    text-slate-300  border-red-500/40'    },
+  { min: -Infinity, label: 'NEG',    cls: 'bg-black         text-red-500    border-red-900'        },
 ];
 
 export function VERBadge({ ver }) {

@@ -32,27 +32,27 @@ function HistoryModal({ teamId, onClose, editId, initialData }) {
   async function handleSave() {
     if (!form.year.trim()) { setError('Season year is required.'); return; }
     setSaving(true);
-    const fields = {
-      team_id:        teamId,
-      year:           form.year.trim(),
-      title:          form.title.trim()          || null,
-      classification: form.classification.trim() || null,
-      head_coach:     form.head_coach.trim()     || null,
-      asst_coach:     form.asst_coach.trim()     || null,
-      tenure_year:    form.tenure_year  ? Number(form.tenure_year)  : null,
-      games:          form.games        ? Number(form.games)        : null,
-      wins:           form.wins         ? Number(form.wins)         : null,
-      losses:         form.losses       ? Number(form.losses)       : null,
-      state_rank:     form.state_rank    ? Number(form.state_rank)    : null,
-      national_rank:  form.national_rank ? Number(form.national_rank) : null,
-      class_rank:     form.class_rank.trim()  || null,
-      playoff_seed:   form.playoff_seed.trim()   || null,
-      regional:       form.regional.trim()       || null,
-      sectional:      form.sectional.trim()      || null,
-      state_finish:   form.state_finish.trim()   || null,
-      playoff_result: form.playoff_result.trim() || null,
-    };
     try {
+      const fields = {
+        team_id:        teamId,
+        year:           form.year.trim(),
+        title:          form.title.trim()                || null,
+        classification: (form.classification ?? '').trim() || null,
+        head_coach:     form.head_coach.trim()           || null,
+        asst_coach:     form.asst_coach.trim()           || null,
+        tenure_year:    form.tenure_year  ? Number(form.tenure_year)  : null,
+        games:          form.games        ? Number(form.games)        : null,
+        wins:           form.wins         ? Number(form.wins)         : null,
+        losses:         form.losses       ? Number(form.losses)       : null,
+        state_rank:     form.state_rank    ? Number(form.state_rank)    : null,
+        national_rank:  form.national_rank ? Number(form.national_rank) : null,
+        class_rank:     (form.class_rank ?? '').trim()   || null,
+        playoff_seed:   form.playoff_seed.trim()         || null,
+        regional:       form.regional.trim()             || null,
+        sectional:      form.sectional.trim()            || null,
+        state_finish:   form.state_finish.trim()         || null,
+        playoff_result: form.playoff_result.trim()       || null,
+      };
       if (editId) { await db.season_history.update(editId, fields); }
       else        { await db.season_history.add(fields); }
       onClose();
@@ -728,6 +728,8 @@ export function HistoryPage() {
   const liveEditInitial = liveHistoryEntry ? {
     year:           liveHistoryEntry.year           ?? activeSeason?.year ?? '',
     title:          liveHistoryEntry.title          ?? '',
+    classification: liveHistoryEntry.classification ?? '',
+    class_rank:     liveHistoryEntry.class_rank     ?? '',
     state_rank:     liveHistoryEntry.state_rank     != null ? String(liveHistoryEntry.state_rank)    : '',
     national_rank:  liveHistoryEntry.national_rank  != null ? String(liveHistoryEntry.national_rank) : '',
     head_coach:     liveHistoryEntry.head_coach     ?? '',
@@ -1042,6 +1044,8 @@ export function HistoryPage() {
           initialData={{
             year:           editEntry.year           ?? '',
             title:          editEntry.title          ?? '',
+            classification: editEntry.classification ?? '',
+            class_rank:     editEntry.class_rank     ?? '',
             state_rank:     editEntry.state_rank     != null ? String(editEntry.state_rank)    : '',
             national_rank:  editEntry.national_rank  != null ? String(editEntry.national_rank) : '',
             head_coach:     editEntry.head_coach     ?? '',

@@ -7,7 +7,7 @@ import { db } from '../db/schema';
 import { computeSeasonStats, computePQ, computeSetWinProb, aggregateXKTeamStats } from '../stats/engine';
 import { InsightsPanel } from '../components/stats/InsightsPanel';
 import { fmtHitting, fmtPassRating, fmtPct, fmtCount, fmtVER } from '../stats/formatters';
-import { VERBadge } from '../components/stats/VERBadge';
+import { VERBadge, VER_TIERS } from '../components/stats/VERBadge';
 import { ROTATION_COLS, SERVING_COLS, TAB_COLUMNS, ISOOS_COLS, TRANS_COLS, RUN_COLS } from '../stats/columns';
 import { PageHeader } from '../components/layout/PageHeader';
 import { TabBar } from '../components/ui/Tab';
@@ -1160,7 +1160,39 @@ export function ReportsPage() {
                   <StatTable columns={TAB_COLUMNS.defense} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} />
                 )}
                 {playerStatView === 'ver' && (
-                  <StatTable columns={TAB_COLUMNS.ver} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} showGlossary />
+                  <>
+                    <StatTable columns={TAB_COLUMNS.ver} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} showGlossary />
+                    <div className="bg-surface rounded-xl p-3 space-y-2.5">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">VER Tiers</p>
+                      <div className="space-y-1 text-[10px] text-slate-400 leading-relaxed">
+                        <p>VER is scaled by position before tier assignment so all positions share one standard scale:</p>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 mt-1">
+                          {[
+                            ['OH / OPP / RS', '1.00×'],
+                            ['MB',            '1.05×'],
+                            ['S',             '0.90×'],
+                            ['DS',            '2.00×'],
+                            ['L',             '1.65×'],
+                          ].map(([pos, mult]) => (
+                            <div key={pos} className="flex items-center justify-between gap-2">
+                              <span className="text-slate-300 font-bold">{pos}</span>
+                              <span className="text-slate-500 tabular-nums">{mult}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-1.5 pt-1 border-t border-slate-700/40">
+                        {VER_TIERS.map(({ label, min, cls }) => (
+                          <div key={label} className="flex items-center gap-2">
+                            <span className={`text-[9px] font-bold px-1.5 py-px rounded border w-14 text-center shrink-0 ${cls}`}>{label}</span>
+                            <span className="text-[11px] text-slate-400 tabular-nums">
+                              {min === -Infinity ? '< 0' : min === 0 ? '0 – 4.99' : `≥ ${min}`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
               </>
             )}
