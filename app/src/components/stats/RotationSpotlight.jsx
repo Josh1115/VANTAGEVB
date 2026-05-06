@@ -1,4 +1,4 @@
-// Markov-chain DP: expected points scored when starting in `startRot` (receiving).
+// Markov-chain DP: expected points scored when starting in `startRot`.
 //
 // State: (our, opp, rot, serving)
 // Transitions:
@@ -46,14 +46,28 @@ function computeOptimalStart(rows) {
   const qualified = rows.filter(r => (r.so_opp ?? 0) >= 5 && (r.bp_opp ?? 0) >= 5);
   if (qualified.length === 0) return null;
 
-  const scored = qualified
+  // Only surface a second rotation if it's within 0.01 pts/set — a genuine tie
+  const TIE_THRESHOLD = 0.01;
+
+  const scoredReceive = qualified
     .map(r => ({ ...r, _exp: dp(0, 0, Number(r.id), false) }))
     .sort((a, b) => b._exp - a._exp);
+  const bestReceive = scoredReceive[0]._exp;
 
-  const best = scored[0]._exp;
+  const scoredServe = qualified
+    .map(r => ({ ...r, _exp: dp(0, 0, Number(r.id), true) }))
+    .sort((a, b) => b._exp - a._exp);
+  const bestServe = scoredServe[0]._exp;
+
   return {
-    top:      scored.filter(r => Math.abs(r._exp - best) < 0.05),
-    allScored: scored,
+    receive: {
+      top:       scoredReceive.filter(r => Math.abs(r._exp - bestReceive) < TIE_THRESHOLD),
+      allScored: scoredReceive,
+    },
+    serve: {
+      top:       scoredServe.filter(r => Math.abs(r._exp - bestServe) < TIE_THRESHOLD),
+      allScored: scoredServe,
+    },
     avgSo,
     avgBp,
     statMap,
@@ -74,6 +88,59 @@ function StrengthDot({ so, bp, avgSo, avgBp }) {
             : delta < -0.04 ? 'bg-red-500'
             :                  'bg-yellow-500';
   return <span className={`inline-block w-1.5 h-1.5 rounded-full ${cls} shrink-0`} />;
+}
+
+function RotationCard({ label, scenario, rows, avgSo, avgBp, statMap }) {
+  return (
+    <div className="bg-green-950/40 border border-green-700/50 rounded-lg px-3 py-2 text-sm space-y-2">
+      <div className="flex items-baseline gap-2 flex-wrap">
+        <span className="text-green-400 font-semibold">★ {label}:</span>
+        <span className="text-slate-100 font-bold">{scenario.top.map(r => r.name).join(' / ')}</span>
+        <span className="text-slate-400 text-xs tabular-nums">
+          ~{scenario.top[0]._exp.toFixed(1)} pts/set expected
+        </span>
+      </div>
+
+      {scenario.top.map(topRot => {
+        const seq = rotSeq(Number(topRot.id));
+        return (
+          <div key={topRot.id} className="space-y-1">
+            <div className="flex gap-1">
+              {seq.map((rotNum, i) => {
+                const s     = statMap[rotNum];
+                const row   = rows.find(r => Number(r.id) === rotNum);
+                const soTxt = row?.so_pct != null ? `${Math.round(row.so_pct * 100)}%` : '—';
+                const bpTxt = row?.bp_pct != null ? `${Math.round(row.bp_pct * 100)}%` : '—';
+                const isStart = i === 0;
+                return (
+                  <div
+                    key={rotNum}
+                    className={`flex-1 rounded-md px-1 py-1.5 text-center text-[10px] leading-tight border ${
+                      isStart
+                        ? 'border-green-600 bg-green-900/40'
+                        : 'border-slate-700 bg-slate-800/50'
+                    }`}
+                  >
+                    <div className={`font-bold text-xs mb-0.5 ${isStart ? 'text-green-300' : 'text-slate-300'}`}>
+                      R{rotNum}
+                    </div>
+                    <StrengthDot so={s.so} bp={s.bp} avgSo={avgSo} avgBp={avgBp} />
+                    <div className="text-slate-400 tabular-nums mt-0.5">SO {soTxt}</div>
+                    <div className="text-slate-400 tabular-nums">SP {bpTxt}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-3 text-[10px] text-slate-600">
+              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block"/>above avg</span>
+              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-yellow-500 inline-block"/>near avg</span>
+              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block"/>below avg</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export function RotationSpotlight({ rows }) {
@@ -105,59 +172,27 @@ export function RotationSpotlight({ rows }) {
       )}
 
       {rec ? (
-        <div className="bg-green-950/40 border border-green-700/50 rounded-lg px-3 py-2 text-sm space-y-2">
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="text-green-400 font-semibold">★ Best Starting Rotation:</span>
-            <span className="text-slate-100 font-bold">{rec.top.map(r => r.name).join(' / ')}</span>
-            <span className="text-slate-400 text-xs tabular-nums">
-              ~{rec.top[0]._exp.toFixed(1)} pts/set expected
-            </span>
-          </div>
-
-          {/* Rotation lineup — like a batting order */}
-          {rec.top.map(topRot => {
-            const seq = rotSeq(Number(topRot.id));
-            return (
-              <div key={topRot.id} className="space-y-1">
-                <div className="flex gap-1">
-                  {seq.map((rotNum, i) => {
-                    const s    = rec.statMap[rotNum];
-                    const row  = rows.find(r => Number(r.id) === rotNum);
-                    const soTxt = row?.so_pct != null ? `${Math.round(row.so_pct * 100)}%` : '—';
-                    const bpTxt = row?.bp_pct != null ? `${Math.round(row.bp_pct * 100)}%` : '—';
-                    const isStart = i === 0;
-                    return (
-                      <div
-                        key={rotNum}
-                        className={`flex-1 rounded-md px-1 py-1.5 text-center text-[10px] leading-tight border ${
-                          isStart
-                            ? 'border-green-600 bg-green-900/40'
-                            : 'border-slate-700 bg-slate-800/50'
-                        }`}
-                      >
-                        <div className={`font-bold text-xs mb-0.5 ${isStart ? 'text-green-300' : 'text-slate-300'}`}>
-                          R{rotNum}
-                        </div>
-                        <StrengthDot so={s.so} bp={s.bp} avgSo={rec.avgSo} avgBp={rec.avgBp} />
-                        <div className="text-slate-400 tabular-nums mt-0.5">SO {soTxt}</div>
-                        <div className="text-slate-400 tabular-nums">SP {bpTxt}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="flex items-center gap-3 text-[10px] text-slate-600">
-                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block"/>above avg</span>
-                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-yellow-500 inline-block"/>near avg</span>
-                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block"/>below avg</span>
-                </div>
-              </div>
-            );
-          })}
-
-          <div className="text-slate-500 text-xs pt-0.5">
+        <>
+          <RotationCard
+            label="Best Rotation to Start Serving"
+            scenario={rec.serve}
+            rows={rows}
+            avgSo={rec.avgSo}
+            avgBp={rec.avgBp}
+            statMap={rec.statMap}
+          />
+          <RotationCard
+            label="Best Rotation to Start Receiving"
+            scenario={rec.receive}
+            rows={rows}
+            avgSo={rec.avgSo}
+            avgBp={rec.avgBp}
+            statMap={rec.statMap}
+          />
+          <div className="text-slate-500 text-xs px-1">
             Sequence-optimized — simulates the full set so stronger rotations get more at-bats, like a batting order.
           </div>
-        </div>
+        </>
       ) : (
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-2 text-sm text-slate-500">
           Starting rotation recommendation requires 5+ serve and receive opportunities per rotation.

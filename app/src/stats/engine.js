@@ -1298,6 +1298,13 @@ export async function computeWinCorrelation(seasonId) {
   };
 }
 
+export function pickMetricVal(src, key, d) {
+  if (src === 'rotation')     return d?.rotation?.[key];
+  if (src === 'isOos_is')     return d?.isOos?.total?.is?.[key];
+  if (src === 'pointQuality') return d?.pointQuality?.[key];
+  return d?.team?.[key];
+}
+
 export function computeRallyHistogram(contacts) {
   if (!contacts?.length) return [];
   const lenByRally = new Map();

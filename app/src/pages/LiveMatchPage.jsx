@@ -446,7 +446,7 @@ export function LiveMatchPage() {
         seasonRotation={seasonRotation}
       />
       {summaryOpen && <ScoringSummaryModal onClose={() => setSummaryOpen(false)} />}
-      {timeoutOpen && <TimeoutOverlay onClose={handleTimeoutClose} recordAlerts={activeAlerts} scoreAtLastTimeout={scoreAtTimeoutClose} />}
+      {timeoutOpen && <TimeoutOverlay onClose={handleTimeoutClose} recordAlerts={activeAlerts} scoreAtLastTimeout={scoreAtTimeoutClose} seasonId={seasonId} />}
 
       {confettiNav && (
         <Confetti

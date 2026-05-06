@@ -6,6 +6,7 @@ import { useHistoricalPQ } from '../../hooks/useWinProbability';
 import {
   computePlayerStats, computeTeamStats, computeRotationStats,
   computePointQuality, computeOppDisplayStats, computeXKByPassRating,
+  computeISvsOOS,
   computePQ, computeSetWinProb, computeMatchWinProb,
 } from '../../stats/engine';
 import { FORMAT } from '../../constants';
@@ -22,10 +23,12 @@ import { RotationRadarChart } from '../charts/RotationRadarChart';
 import { CourtHeatMap } from '../charts/CourtHeatMap';
 import { RecordAlertPanel } from './RecordAlertPanel';
 import { CourtWhiteboard } from './CourtWhiteboard';
+import { InsightsPanel } from '../stats/InsightsPanel';
 import { fmtPct, fmtHitting } from '../../stats/formatters';
 
 const TABS = [
   { value: 'scoring',   label: 'Scoring'   },
+  { value: 'insights',  label: 'Insights'  },
   { value: 'trends',    label: 'Trends'    },
   { value: 'serving',   label: 'Serving'   },
   { value: 'passing',   label: 'Passing'   },
@@ -65,7 +68,7 @@ function classifyPoint(lastContact, pointWinner) {
   return { label, ours };
 }
 
-export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout = null }) {
+export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout = null, seasonId = null }) {
   const [activeTab,      setActiveTab]      = useState('scoring');
   const [scope,          setScope]          = useState('set');
   const [serveView,      setServeView]      = useState('all');
@@ -123,7 +126,22 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
   const pointQuality = useMemo(() => computePointQuality(setContacts),    [setContacts]);
   const oppStats     = useMemo(() => computeOppDisplayStats(setContacts), [setContacts]);
 
-  const rotationStats = useMemo(() => computeRotationStats(setRallies), [setRallies]);
+  const matchRotationStats = useMemo(() => computeRotationStats(committedRallies), [committedRallies]);
+  const rotationStats      = useMemo(
+    () => scope === 'set' ? computeRotationStats(setRallies) : matchRotationStats,
+    [scope, setRallies, matchRotationStats]
+  );
+
+  // Always match-scoped regardless of the scope toggle — InsightsPanel compares full match to season avgs
+  const matchInsightStats = useMemo(() => {
+    if (!committedContacts.length) return null;
+    return {
+      team:         computeTeamStats(committedContacts, Math.max(1, ourSetsWon + oppSetsWon)),
+      rotation:     matchRotationStats,
+      pointQuality: computePointQuality(committedContacts),
+      isOos:        computeISvsOOS(committedContacts, committedRallies),
+    };
+  }, [committedContacts, committedRallies, ourSetsWon, oppSetsWon, matchRotationStats]);
 
   const winProbHistory = useMemo(() => {
     if (!committedRallies.length) return [];
@@ -409,6 +427,10 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
 
           {activeTab === 'scoring' && (
             <PointQualityPanel pq={pointQuality} oppScored={oppScore} />
+          )}
+
+          {activeTab === 'insights' && (
+            <InsightsPanel seasonId={seasonId} currentStats={matchInsightStats} currentLabel="THIS MATCH" />
           )}
 
           {activeTab === 'trends' && (

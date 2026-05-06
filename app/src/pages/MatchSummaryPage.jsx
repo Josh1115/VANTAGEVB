@@ -8,7 +8,7 @@ import { computeMatchStats,
          computeServeZoneStats, computeISvsOOS, computeTransitionAttack,
          computeServingPoints, computeRunsByRotation,
          computePQ, computeSetWinProb, computeMatchWinProb,
-         aggregateXKTeamStats, computeWinCorrelation } from '../stats/engine';
+         aggregateXKTeamStats, computeWinCorrelation, pickMetricVal } from '../stats/engine';
 import { getRalliesForMatch, getRalliesForMatches } from '../stats/queries';
 import { exportMatchCSV, exportMatchPDF, exportMaxPrepsCSV } from '../stats/export';
 import { fmtHitting, fmtPassRating, fmtPct, fmtCount, fmtDate } from '../stats/formatters';
@@ -595,12 +595,6 @@ const INSIGHT_METRICS = [
   { label: 'Blocks / Set',        key: 'bps',        src: 'team',         fmt: (v) => v?.toFixed(2) ?? '—', higherBetter: true  },
 ];
 
-function pickMetricVal(src, key, d) {
-  if (src === 'rotation')     return d?.rotation?.[key];
-  if (src === 'isOos_is')     return d?.isOos?.total?.is?.[key];
-  if (src === 'pointQuality') return d?.pointQuality?.[key];
-  return d?.team?.[key];
-}
 
 function MatchInsightsPanel({ matchStats, seasonId }) {
   const [corrData, setCorrData] = useState(null);
