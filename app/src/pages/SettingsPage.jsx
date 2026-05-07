@@ -576,7 +576,7 @@ const FAQ_TOPICS = [
   {
     id: 'ver',
     label: 'VER Score Explained',
-    icon: '⚡',
+    icon: '🏅',
     content: [
       {
         heading: 'What is VER?',
@@ -679,7 +679,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Insights Status Labels',
-        body: '✓ On track = your season average is 65%+ of the way toward your win average. ⚡ Close = 35–64%. ✗ Below threshold = below 35% — this metric may be costing you matches.',
+        body: '✓ On track = your season average is 65%+ of the way toward your win average. Close = 35–64%. ✗ Below threshold = below 35% — this metric may be costing you matches.',
       },
       {
         heading: 'Win/Loss Shortcut',
@@ -690,7 +690,7 @@ const FAQ_TOPICS = [
   {
     id: 'live-tips',
     label: 'Live Match Tips',
-    icon: '⚡',
+    icon: '💡',
     content: [
       {
         heading: 'Prioritize High-Value Actions',
@@ -861,8 +861,8 @@ const FAQ_TOPICS = [
   },
   {
     id: 'win-correlation',
-    label: 'Win Correlation (⚡ Insights)',
-    icon: '⚡',
+    label: 'Win Correlation (Insights)',
+    icon: '📈',
     content: [
       {
         heading: 'What is Win Correlation?',
@@ -870,7 +870,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Where to Find It',
-        body: 'There are two Insights locations. Reports → ⚡ Insights tab shows season-wide averages — your overall win avg vs. loss avg for the selected season. Match Summary → ⚡ Insights tab shows this specific match\'s stats positioned against those season averages, so you can see exactly how this game compared to your typical winning or losing performance.',
+        body: 'There are two Insights locations. Reports → Insights tab shows season-wide averages — your overall win avg vs. loss avg for the selected season. Match Summary → Insights tab shows this specific match\'s stats positioned against those season averages, so you can see exactly how this game compared to your typical winning or losing performance.',
       },
       {
         heading: 'Reading the Bar',
@@ -878,7 +878,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Status Labels',
-        body: '✓ On track = bar is 65% or more filled — you performed at or above your win benchmark. ⚡ Close — watch this = 35–64% filled — this metric was in range but not quite winning standard. ✗ Below threshold = under 35% filled — this metric was closer to your loss average and may have cost you the match.',
+        body: '✓ On track = bar is 65% or more filled — you performed at or above your win benchmark. Close — watch this = 35–64% filled — this metric was in range but not quite winning standard. ✗ Below threshold = under 35% filled — this metric was closer to your loss average and may have cost you the match.',
       },
       {
         heading: 'Minimum Data Requirement',
@@ -890,7 +890,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Using Insights Strategically',
-        body: 'After a loss, open Match Summary → ⚡ Insights and find the metrics marked ✗ Below threshold. Those are your starting points for practice focus. If SO% and Hitting Eff. are both below threshold, your offense under serve pressure is the problem to solve. Correlation doesn\'t guarantee causation, but consistent patterns across multiple matches are highly predictive.',
+        body: 'After a loss, open Match Summary → Insights and find the metrics marked ✗ Below threshold. Those are your starting points for practice focus. If SO% and Hitting Eff. are both below threshold, your offense under serve pressure is the problem to solve. Correlation doesn\'t guarantee causation, but consistent patterns across multiple matches are highly predictive.',
       },
     ],
   },

@@ -11,7 +11,7 @@ const selectClass = 'bg-surface border border-slate-700 rounded-lg px-3 py-2 tex
 
 const TENDENCY_TYPES = [
   { type: 'serve_target',       label: 'Serve Target',    icon: '🎯' },
-  { type: 'attack_pattern',     label: 'Attack Pattern',  icon: '⚡' },
+  { type: 'attack_pattern',     label: 'Attack Pattern',  icon: '📐' },
   { type: 'defense_style',      label: 'Defense Style',   icon: '🛡️' },
   { type: 'rotation_strength',  label: 'Strong Rotation', icon: '💪' },
   { type: 'rotation_weakness',  label: 'Weak Rotation',   icon: '⚠️' },

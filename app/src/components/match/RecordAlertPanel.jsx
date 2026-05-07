@@ -8,7 +8,7 @@ const MILESTONE_CONFIG = {
   tie: {
     bg:     'bg-slate-400/20',
     border: 'border-slate-300',
-    icon:   '⚡',
+    icon:   '=',
     label:  (a) => `TIED RECORD! ${a.playerName} · ${a.currentValue} ${a.statLabel}`,
   },
   one_away: {

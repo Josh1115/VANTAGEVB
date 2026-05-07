@@ -492,7 +492,7 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
                 : 'text-red-400';
               const statusLabel = pos == null ? null
                 : pos >= 0.65 ? '✓ On track'
-                : pos >= 0.35 ? '⚡ Watch this'
+                : pos >= 0.35 ? 'Watch this'
                 : '✗ Below avg';
 
               return (

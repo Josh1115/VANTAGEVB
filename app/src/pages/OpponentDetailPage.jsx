@@ -15,7 +15,7 @@ const selectClass = 'bg-surface border border-slate-700 rounded-lg px-3 py-2 tex
 // ── Tendency types ───────────────────────────────────────────────────────────
 const TENDENCY_TYPES = [
   { type: 'serve_target',    label: 'Serve Target',     icon: '🎯', placeholder: 'e.g. Short zones 1 & 6' },
-  { type: 'attack_pattern',  label: 'Attack Pattern',   icon: '⚡', placeholder: 'e.g. Heavy outside, quick middle' },
+  { type: 'attack_pattern',  label: 'Attack Pattern',   icon: '📐', placeholder: 'e.g. Heavy outside, quick middle' },
   { type: 'defense_style',   label: 'Defense Style',    icon: '🛡️', placeholder: 'e.g. Rotational, perimeter' },
   { type: 'rotation_strength', label: 'Strong Rotation', icon: '💪', placeholder: 'e.g. Rotation 2 — ace server' },
   { type: 'rotation_weakness', label: 'Weak Rotation',  icon: '⚠️', placeholder: 'e.g. Rotation 5 — weak passer' },

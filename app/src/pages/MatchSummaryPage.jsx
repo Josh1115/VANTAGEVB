@@ -241,7 +241,7 @@ function MiniTable({ cols, rows }) {
 const TABS = [
   { value: 'scoring',   label: 'Scoring'   },
   { value: 'report',    label: 'Report'    },
-  { value: 'insights',  label: '⚡ Insights' },
+  { value: 'insights',  label: 'Insights' },
   { value: 'rotation',  label: 'Rotation'  },
   { value: 'serving',   label: 'Serving'   },
   { value: 'passing',   label: 'Passing'   },
@@ -464,7 +464,7 @@ const ShareCard = ({ cardRef, match, sets, stats, fmtDate }) => {
 
 const TENDENCY_ICONS = {
   serve_target:      '🎯',
-  attack_pattern:    '⚡',
+  attack_pattern:    '',
   defense_style:     '🛡️',
   rotation_strength: '💪',
   rotation_weakness: '⚠️',
@@ -659,7 +659,7 @@ function MatchInsightsPanel({ matchStats, seasonId }) {
             : 'text-red-400';
           const statusLabel = pos == null ? '—'
             : pos >= 0.65 ? '✓ On track'
-            : pos >= 0.35 ? '⚡ Close — watch this'
+            : pos >= 0.35 ? 'Close — watch this'
             : '✗ Below threshold';
 
           const barPct = pos != null ? Math.max(0, Math.min(100, Math.round(pos * 100))) : null;
@@ -1795,7 +1795,7 @@ export function MatchSummaryPage() {
                 },
                 {
                   label: 'Attacking',
-                  icon: '⚡',
+                  icon: '',
                   ...letterGrade(t.hit_pct, [0.300, 0.200, 0.100, 0.000]),
                   stats: [
                     { label: 'HIT%',     val: fmtHitting(t.hit_pct) },

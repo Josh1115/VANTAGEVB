@@ -11,20 +11,24 @@ import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Badge } from '../components/ui/Badge';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { LogoPickerModal } from '../components/team/LogoPickerModal';
 
 
 function OrgFormModal({ onClose, org }) {
   const [name, setName] = useState(org?.name ?? '');
   const [type, setType] = useState(org?.type ?? 'school');
+  const [logoDataUrl, setLogoDataUrl] = useState(org?.logo_data_url ?? null);
+  const [showLogoPicker, setShowLogoPicker] = useState(false);
   const showToast = useUiStore(selectShowToast);
 
   const save = async () => {
     if (!name.trim()) return;
     try {
+      const fields = { name: name.trim(), type, logo_data_url: logoDataUrl ?? null };
       if (org) {
-        await db.organizations.update(org.id, { name: name.trim(), type });
+        await db.organizations.update(org.id, fields);
       } else {
-        await db.organizations.add({ name: name.trim(), type });
+        await db.organizations.add(fields);
       }
       onClose();
     } catch (err) {
@@ -33,40 +37,74 @@ function OrgFormModal({ onClose, org }) {
   };
 
   return (
-    <Modal
-      title={org ? 'Edit Organization' : 'New Organization'}
-      onClose={onClose}
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={save}>Save</Button>
-        </>
-      }
-    >
-      <div className="space-y-3">
-        <div>
-          <label className="block text-sm text-slate-400 mb-1">Name</label>
-          <input
-            className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Lincoln High School"
-            autoFocus
-          />
+    <>
+      <Modal
+        title={org ? 'Edit Organization' : 'New Organization'}
+        onClose={onClose}
+        footer={
+          <>
+            <Button variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button onClick={save}>Save</Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-14 h-14 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center overflow-hidden shrink-0"
+              style={logoDataUrl ? { backgroundImage: 'repeating-conic-gradient(#334155 0% 25%, #1e293b 0% 50%)', backgroundSize: '8px 8px' } : {}}
+            >
+              {logoDataUrl
+                ? <img src={logoDataUrl} alt="logo" className="max-w-full max-h-full object-contain" />
+                : <span className="text-2xl text-slate-500">🏫</span>
+              }
+            </div>
+            <div className="flex flex-col gap-1">
+              <Button size="sm" variant="ghost" onClick={() => setShowLogoPicker(true)}>
+                {logoDataUrl ? 'Change Logo' : 'Add Logo'}
+              </Button>
+              {logoDataUrl && (
+                <button
+                  type="button"
+                  onClick={() => setLogoDataUrl(null)}
+                  className="text-xs text-slate-500 hover:text-red-400 text-left"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm text-slate-400 mb-1">Name</label>
+            <input
+              className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Lincoln High School"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-slate-400 mb-1">Type</label>
+            <select
+              className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+            >
+              <option value="school">School</option>
+              <option value="club">Club</option>
+            </select>
+          </div>
         </div>
-        <div>
-          <label className="block text-sm text-slate-400 mb-1">Type</label>
-          <select
-            className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-          >
-            <option value="school">School</option>
-            <option value="club">Club</option>
-          </select>
-        </div>
-      </div>
-    </Modal>
+      </Modal>
+
+      {showLogoPicker && (
+        <LogoPickerModal
+          onSave={(dataUrl) => { setLogoDataUrl(dataUrl); setShowLogoPicker(false); }}
+          onClose={() => setShowLogoPicker(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -460,6 +498,12 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
     <div className="bg-surface rounded-xl overflow-hidden">
       <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
         <div className="flex items-center gap-2">
+          {org.logo_data_url && (
+            <div className="w-7 h-7 rounded overflow-hidden shrink-0 flex items-center justify-center"
+              style={{ backgroundImage: 'repeating-conic-gradient(#334155 0% 25%, #1e293b 0% 50%)', backgroundSize: '6px 6px' }}>
+              <img src={org.logo_data_url} alt="" className="max-w-full max-h-full object-contain" />
+            </div>
+          )}
           <span className="font-semibold">{org.name}</span>
           <Badge color={org.type === 'school' ? 'blue' : 'orange'}>{org.type}</Badge>
           <button onClick={onEditOrg} className="text-slate-500 hover:text-slate-300 transition-colors p-0.5" title="Edit organization">

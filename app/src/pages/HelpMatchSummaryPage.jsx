@@ -61,7 +61,7 @@ function DiagScoreHeader() {
 
 // ── Diagram: tab bar ───────────────────────────────────────────────────────────
 function DiagTabBar() {
-  const tabs = ['Scoring','Report','⚡ Insights','Trends','Serving','Passing','Attacking','…'];
+  const tabs = ['Scoring','Report','Insights','Trends','Serving','Passing','Attacking','…'];
   return (
     <svg viewBox="0 0 320 40" className="w-full rounded-xl" style={{ background: SURFACE2 }}>
       <rect x="0" y="0" width="320" height="40" fill={SURFACE2} />
@@ -114,7 +114,7 @@ function DiagReportCard() {
 function DiagInsightsCard() {
   return (
     <svg viewBox="0 0 320 130" className="w-full rounded-xl" style={{ background: SURFACE }}>
-      <text x="16" y="18" fill={TXT5} fontSize="8" fontWeight="900" letterSpacing="2">⚡ WIN CORRELATION — THIS MATCH</text>
+      <text x="16" y="18" fill={TXT5} fontSize="8" fontWeight="900" letterSpacing="2">WIN CORRELATION — THIS MATCH</text>
 
       {/* Metric card 1 — on track */}
       <rect x="8" y="26" width="304" height="44" rx="8" fill={SURFACE2} stroke={BORDER} strokeWidth="1" />
@@ -133,7 +133,7 @@ function DiagInsightsCard() {
       {/* Metric card 2 — watch this */}
       <rect x="8" y="78" width="304" height="44" rx="8" fill={SURFACE2} stroke={BORDER} strokeWidth="1" />
       <text x="16" y="92" fill={TXT3} fontSize="8" fontWeight="900" letterSpacing="0.5">HITTING EFF.</text>
-      <text x="306" y="92" fill={AMBER} fontSize="8" fontWeight="800" textAnchor="end">⚡ Close</text>
+      <text x="306" y="92" fill={AMBER} fontSize="8" fontWeight="800" textAnchor="end">Close</text>
       <text x="60" y="110" fill={RED} fontSize="12" fontWeight="900" textAnchor="middle">.148</text>
       <text x="60" y="117" fill="#7f1d1d" fontSize="7" fontWeight="700" textAnchor="middle">LOSS AVG</text>
       <text x="160" y="110" fill={AMBER} fontSize="12" fontWeight="900" textAnchor="middle">.219</text>
@@ -231,7 +231,7 @@ export function HelpMatchSummaryPage() {
         </Step>
 
         <Step number={2} title="Navigate tabs — the full menu"
-          note="A scrollable tab bar sits below the header. Slide left to reveal all tabs: Scoring, Report, ⚡ Insights, Trends, Serving, Passing, Attacking, Setting, Blocking, Defense, VER, Compare, and Opp. Each tab recalculates instantly if you've filtered to a single set.">
+          note="A scrollable tab bar sits below the header. Slide left to reveal all tabs: Scoring, Report, Insights, Trends, Serving, Passing, Attacking, Setting, Blocking, Defense, VER, Compare, and Opp. Each tab recalculates instantly if you've filtered to a single set.">
           <DiagTabBar />
         </Step>
 
@@ -244,7 +244,7 @@ export function HelpMatchSummaryPage() {
           <DiagReportCard />
         </Step>
 
-        <Step number={5} title="⚡ Insights tab — this match vs your averages"
+        <Step number={5} title="Insights tab — this match vs your averages"
           note="Insights shows 12 key metrics for this specific match and positions each one between your season loss average (left, red) and season win average (right, green). The animated bar shows exactly how close you were to your winning benchmark. Requires at least 2 wins and 2 losses in the season to populate.">
           <DiagInsightsCard />
         </Step>

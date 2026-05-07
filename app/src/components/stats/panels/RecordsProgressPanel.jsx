@@ -3,7 +3,7 @@ import { TRACKABLE_STATS } from '../../../constants';
 
 const MILESTONE_BADGE = {
   beat:     { icon: '🏆', cls: 'bg-yellow-500/20 border-yellow-500 text-yellow-300', short: 'RECORD' },
-  tie:      { icon: '⚡', cls: 'bg-slate-400/20 border-slate-300 text-slate-200',   short: 'TIED'   },
+  tie:      { icon: '=',  cls: 'bg-slate-400/20 border-slate-300 text-slate-200',   short: 'TIED'   },
   one_away: { icon: '🔥', cls: 'bg-orange-500/20 border-orange-400 text-orange-300', short: '1 AWAY' },
   pct90:    { icon: '▲',  cls: 'bg-yellow-600/20 border-yellow-500 text-yellow-400', short: '90%+'   },
   pct80:    { icon: '▲',  cls: 'bg-green-600/20  border-green-500  text-green-400',  short: '80%+'   },

@@ -75,12 +75,12 @@ function DiagRotationWeakness() {
 function DiagInsightsBanner() {
   return (
     <svg viewBox="0 0 320 96" className="w-full rounded-xl" style={{ background: SURFACE }}>
-      <text x="16" y="16" fill={TXT5} fontSize="8" fontWeight="900" letterSpacing="2">⚡ INSIGHTS — FOCUS AREAS</text>
+      <text x="16" y="16" fill={TXT5} fontSize="8" fontWeight="900" letterSpacing="2">INSIGHTS — FOCUS AREAS</text>
 
       {/* Close — watch this */}
       <rect x="8" y="22" width="304" height="30" rx="7" fill="rgba(251,191,36,0.1)" stroke="rgba(251,191,36,0.4)" strokeWidth="1" />
       <text x="16" y="35" fill={TXT3} fontSize="8" fontWeight="900">HITTING EFF.</text>
-      <text x="306" y="35" fill={AMBER} fontSize="8" fontWeight="800" textAnchor="end">⚡ Close — watch this</text>
+      <text x="306" y="35" fill={AMBER} fontSize="8" fontWeight="800" textAnchor="end">Close — watch this</text>
       <rect x="16" y="40" width="288" height="5" rx="2.5" fill="#334155" />
       <rect x="16" y="40" width="144" height="5" rx="2.5" fill={AMBER} />
 
@@ -108,7 +108,7 @@ function DiagOpponentCard() {
       <text x="16" y="46" fill={TXT5} fontSize="8" fontWeight="700" letterSpacing="1">TENDENCIES</text>
       {[
         { icon:'🎯', text:'Targets zone 5-6 serve', x: 16,  y: 56 },
-        { icon:'⚡', text:'22 kills, 6 errors last match', x: 16,  y: 72 },
+        { icon:'📐', text:'22 kills, 6 errors last match', x: 16,  y: 72 },
         { icon:'🛡️', text:'Strong R2 blocking scheme', x: 16,  y: 88 },
         { icon:'⚠️', text:'Weak sideout in R4', x: 170, y: 56 },
       ].map(({ icon, text, x, y }) => (
@@ -192,8 +192,8 @@ export function HelpPreMatchPrepPage() {
           <DiagRotationWeakness />
         </Step>
 
-        <Step number={2} title="Review ⚡ Insights for focus metrics"
-          note="Still in Reports, tap the ⚡ Insights tab. Look for any metric flagged '⚡ Close — watch this' or '✗ Below threshold.' These are the areas where small improvements produce the biggest swing in match outcomes. Identify one or two specific focus points to emphasize in your pre-match talk.">
+        <Step number={2} title="Review Insights for focus metrics"
+          note="Still in Reports, tap the Insights tab. Look for any metric flagged 'Close — watch this' or '✗ Below threshold.' These are the areas where small improvements produce the biggest swing in match outcomes. Identify one or two specific focus points to emphasize in your pre-match talk.">
           <DiagInsightsBanner />
         </Step>
 
