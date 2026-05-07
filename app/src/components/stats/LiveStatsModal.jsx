@@ -696,7 +696,7 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
                   </div>
                 : activeTab === 'ROTATION'
                 ? (() => {
-                    const liveRot = computeRotationStats(committedRallies);
+                    const liveRot = computeRotationStats(scopedRallies);
                     const FLAG_DELTA = 0.10;
                     const MIN_OPP   = 3;
                     const rotNums   = [1, 2, 3, 4, 5, 6];
