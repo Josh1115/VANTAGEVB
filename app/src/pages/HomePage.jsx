@@ -330,6 +330,8 @@ export function HomePage() {
   const [schedTourneyName,  setSchedTourneyName]  = useState('');
   const [schedTourneyRound, setSchedTourneyRound] = useState('pool');
   const [schedPlayoffRound, setSchedPlayoffRound] = useState('');
+  const [schedOppRecord,    setSchedOppRecord]    = useState('');
+  const [schedOppRank,      setSchedOppRank]      = useState('');
   const [schedSaving,    setSchedSaving]    = useState(false);
 
   const todayDisplay = useMemo(() => {
@@ -665,6 +667,8 @@ export function HomePage() {
     setSchedTourneyName(match.tournament_name ?? '');
     setSchedTourneyRound(match.tournament_round ?? 'pool');
     setSchedPlayoffRound(match.playoff_round ?? '');
+    setSchedOppRecord(match.opponent_record ?? '');
+    setSchedOppRank(match.opponent_maxpreps_rank != null ? String(match.opponent_maxpreps_rank) : '');
     setSchedOpen(true);
   }
 
@@ -680,7 +684,9 @@ export function HomePage() {
       const fields = {
         opponent_id:   oppRecord.id,
         opponent_name: oppRecord.name,
-        opponent_abbr: schedOppAbbr.trim().toUpperCase() || null,
+        opponent_abbr:         schedOppAbbr.trim().toUpperCase() || null,
+        opponent_record:       schedOppRecord.trim() || null,
+        opponent_maxpreps_rank: schedOppRank !== '' ? parseInt(schedOppRank, 10) : null,
         date:          schedDate ? new Date(schedDate + 'T12:00:00').toISOString() : new Date().toISOString(),
         location:      schedLoc,
         conference:    schedConf,
@@ -707,6 +713,8 @@ export function HomePage() {
     setSchedTourneyName('');
     setSchedTourneyRound('pool');
     setSchedPlayoffRound('');
+    setSchedOppRecord('');
+    setSchedOppRank('');
     setSchedOpen(false);
   }
 
@@ -1440,6 +1448,35 @@ export function HomePage() {
                     className="w-[56px] bg-surface border border-slate-600 text-white rounded-lg px-2 py-2 text-sm text-center font-bold uppercase tracking-widest focus:outline-none focus:border-primary placeholder:text-slate-600"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Opponent record + MaxPreps rank */}
+            <div className="flex gap-2">
+              <div className="flex-1 min-w-0">
+                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+                  Record <span className="normal-case font-normal">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={schedOppRecord}
+                  onChange={(e) => setSchedOppRecord(e.target.value)}
+                  placeholder="e.g. 12-3"
+                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+                  MaxPreps Rank <span className="normal-case font-normal">(opt)</span>
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={schedOppRank}
+                  onChange={(e) => setSchedOppRank(e.target.value)}
+                  placeholder="e.g. 42"
+                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
+                />
               </div>
             </div>
 

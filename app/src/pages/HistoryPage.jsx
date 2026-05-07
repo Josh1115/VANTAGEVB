@@ -22,7 +22,7 @@ const EMPTY_FORM = {
   playoff_seed: '', regional: '', sectional: '', state_finish: '', playoff_result: '',
 };
 
-function HistoryModal({ teamId, onClose, editId, initialData }) {
+function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }) {
   const [form, setForm] = useState(initialData ?? EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -73,15 +73,24 @@ function HistoryModal({ teamId, onClose, editId, initialData }) {
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-slate-100">{editId ? 'Edit Season' : 'Add Season'}</h2>
+          <h2 className="text-base font-bold text-slate-100">
+            {liveMode ? 'Current Season Details' : editId ? 'Edit Season' : 'Add Season'}
+          </h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
         </div>
 
         <div className="space-y-3">
-          <div>
-            <label className={lbl}>Season Year *</label>
-            <input className={inp} placeholder="2024-25" value={form.year} onChange={e => set('year', e.target.value)} />
-          </div>
+          {liveMode ? (
+            <div>
+              <label className={lbl}>Season Year</label>
+              <p className="text-sm font-bold text-slate-200 py-2">{form.year || '—'}</p>
+            </div>
+          ) : (
+            <div>
+              <label className={lbl}>Season Year *</label>
+              <input className={inp} placeholder="2024-25" value={form.year} onChange={e => set('year', e.target.value)} />
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -110,20 +119,22 @@ function HistoryModal({ teamId, onClose, editId, initialData }) {
             <input className={inp} placeholder="Coach Jones" value={form.asst_coach} onChange={e => set('asst_coach', e.target.value)} />
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className={lbl}>Games</label>
-              <input className={inp} type="number" min="0" placeholder="32" value={form.games} onChange={e => set('games', e.target.value)} />
+          {!liveMode && (
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className={lbl}>Games</label>
+                <input className={inp} type="number" min="0" placeholder="32" value={form.games} onChange={e => set('games', e.target.value)} />
+              </div>
+              <div>
+                <label className={lbl}>Wins</label>
+                <input className={inp} type="number" min="0" placeholder="24" value={form.wins} onChange={e => set('wins', e.target.value)} />
+              </div>
+              <div>
+                <label className={lbl}>Losses</label>
+                <input className={inp} type="number" min="0" placeholder="8" value={form.losses} onChange={e => set('losses', e.target.value)} />
+              </div>
             </div>
-            <div>
-              <label className={lbl}>Wins</label>
-              <input className={inp} type="number" min="0" placeholder="24" value={form.wins} onChange={e => set('wins', e.target.value)} />
-            </div>
-            <div>
-              <label className={lbl}>Losses</label>
-              <input className={inp} type="number" min="0" placeholder="8" value={form.losses} onChange={e => set('losses', e.target.value)} />
-            </div>
-          </div>
+          )}
 
           <div className="grid grid-cols-3 gap-2">
             <div>
@@ -166,7 +177,7 @@ function HistoryModal({ teamId, onClose, editId, initialData }) {
           disabled={saving}
           className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold active:scale-95 disabled:opacity-50"
         >
-          {saving ? 'Saving…' : editId ? 'Save Changes' : 'Add Season'}
+          {saving ? 'Saving…' : liveMode ? 'Save Details' : editId ? 'Save Changes' : 'Add Season'}
         </button>
       </div>
     </div>
@@ -365,7 +376,7 @@ function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit }) {
   const tenureYear = historyEntry?.tenure_year ?? activeSeason?.tenure_year ?? null;
 
   const hasCoach    = headCoach || asstCoach;
-  const hasRankings = historyEntry?.state_rank != null || historyEntry?.national_rank != null;
+  const hasRankings = historyEntry?.state_rank != null || historyEntry?.national_rank != null || historyEntry?.class_rank != null;
   const hasPlayoffs = historyEntry?.playoff_seed || historyEntry?.state_finish || historyEntry?.playoff_result;
 
   return (
@@ -399,6 +410,12 @@ function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit }) {
 
         {hasRankings && (
           <div className="flex gap-4">
+            {historyEntry.class_rank != null && (
+              <span className="text-sm font-bold text-slate-200">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1.5">Class</span>
+                #{historyEntry.class_rank}
+              </span>
+            )}
             {historyEntry.state_rank != null && (
               <span className="text-sm font-bold text-slate-200">
                 <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1.5">State</span>
@@ -513,8 +530,14 @@ function SeasonCard({ entry, onEdit, onDelete }) {
 
       <div className="px-4 py-3 space-y-2.5">
         {/* Rankings */}
-        {(entry.state_rank != null || entry.national_rank != null) && (
+        {(entry.class_rank != null || entry.state_rank != null || entry.national_rank != null) && (
           <div className="flex gap-4">
+            {entry.class_rank != null && (
+              <span className="text-sm font-bold text-slate-200">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1.5">Class</span>
+                #{entry.class_rank}
+              </span>
+            )}
             {entry.state_rank != null && (
               <span className="text-sm font-bold text-slate-200">
                 <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1.5">State</span>
@@ -1070,6 +1093,7 @@ export function HistoryPage() {
           teamId={teamId}
           editId={liveHistoryEntry?.id}
           initialData={liveEditInitial}
+          liveMode
           onClose={() => setLiveEditOpen(false)}
         />
       )}
