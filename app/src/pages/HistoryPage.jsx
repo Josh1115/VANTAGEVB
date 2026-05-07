@@ -30,12 +30,13 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
   function set(field, val) { setForm(f => ({ ...f, [field]: val })); setError(''); }
 
   async function handleSave() {
-    if (!form.year.trim()) { setError('Season year is required.'); return; }
+    const yearStr = String(form.year ?? '').trim();
+    if (!yearStr) { setError('Season year is required.'); return; }
     setSaving(true);
     try {
       const fields = {
         team_id:        teamId,
-        year:           form.year.trim(),
+        year:           yearStr,
         title:          form.title.trim()                || null,
         classification: (form.classification ?? '').trim() || null,
         head_coach:     form.head_coach.trim()           || null,
@@ -385,6 +386,9 @@ function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit }) {
       <div className="flex items-center justify-between px-4 py-3 bg-primary/10">
         <div className="flex items-center gap-3 min-w-0">
           <span className="text-base font-black text-white">{year ?? '—'}</span>
+          {historyEntry?.classification && (
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{historyEntry.classification}</span>
+          )}
           {total > 0 && (
             <span className="text-sm font-bold text-slate-200 tabular-nums">
               {wins}–{losses}
@@ -499,6 +503,9 @@ function SeasonCard({ entry, onEdit, onDelete }) {
       <div className="flex items-center justify-between px-4 py-3 bg-slate-700/40">
         <div className="flex items-center gap-3">
           <span className="text-base font-black text-white">{entry.year}</span>
+          {entry.classification && (
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{entry.classification}</span>
+          )}
           {hasRecord && (
             <span className="text-sm font-bold text-slate-200 tabular-nums">
               {entry.wins ?? '—'}–{entry.losses ?? '—'}
@@ -749,7 +756,7 @@ export function HistoryPage() {
 
   // Initial data for the live card's edit modal
   const liveEditInitial = liveHistoryEntry ? {
-    year:           liveHistoryEntry.year           ?? activeSeason?.year ?? '',
+    year:           String(liveHistoryEntry.year ?? activeSeason?.year ?? ''),
     title:          liveHistoryEntry.title          ?? '',
     classification: liveHistoryEntry.classification ?? '',
     class_rank:     liveHistoryEntry.class_rank     ?? '',
@@ -768,7 +775,7 @@ export function HistoryPage() {
     playoff_result: liveHistoryEntry.playoff_result ?? '',
   } : {
     ...EMPTY_FORM,
-    year: activeSeason?.year ?? '',
+    year: activeSeason?.year != null ? String(activeSeason.year) : '',
   };
 
   const showLiveCard = isDefaultTeam && activeSeason != null;
