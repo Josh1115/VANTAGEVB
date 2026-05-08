@@ -15,11 +15,14 @@ function fmtWinPct(wins, games) {
 
 // ── Add / Edit Modal ──────────────────────────────────────────────────────────
 
+const EMPTY_ROUND = { round: '', opponent: '', result: 'W', score: '', opp_seed: '' };
+
 const EMPTY_FORM = {
   year: '', title: '', classification: '', head_coach: '', tenure_year: '', asst_coach: '',
   games: '', wins: '', losses: '',
   state_rank: '', national_rank: '', class_rank: '',
   playoff_seed: '', regional: '', sectional: '', state_finish: '', playoff_result: '',
+  playoff_rounds: [],
 };
 
 function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }) {
@@ -53,6 +56,7 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
         sectional:      form.sectional.trim()            || null,
         state_finish:   form.state_finish.trim()         || null,
         playoff_result: form.playoff_result.trim()       || null,
+        playoff_rounds: (form.playoff_rounds ?? []).filter(r => r.round?.trim() || r.opponent?.trim()),
       };
       if (editId) { await db.season_history.update(editId, fields); }
       else        { await db.season_history.add(fields); }
@@ -154,20 +158,82 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
 
           <p className="text-[10px] text-slate-500 uppercase tracking-wide font-semibold pt-1">Playoffs</p>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className={lbl}>Playoff Seed</label>
-              <input className={inp} placeholder="#2" value={form.playoff_seed} onChange={e => set('playoff_seed', e.target.value)} />
-            </div>
-            <div>
-              <label className={lbl}>Playoff Finish</label>
-              <input className={inp} placeholder="Sectional Finals" value={form.state_finish} onChange={e => set('state_finish', e.target.value)} />
-            </div>
+          <div>
+            <label className={lbl}>Our Playoff Seed</label>
+            <input className={inp} placeholder="#2" value={form.playoff_seed} onChange={e => set('playoff_seed', e.target.value)} />
           </div>
 
-          <div>
-            <label className={lbl}>Playoff Result</label>
-            <input className={inp} placeholder="Lost to Lincoln 0-3 in Sectional Finals" value={form.playoff_result} onChange={e => set('playoff_result', e.target.value)} />
+          {/* Playoff rounds */}
+          <div className="space-y-2">
+            <label className={lbl}>Playoff Rounds</label>
+            <datalist id="round-presets">
+              {['Regional','Sectional','Super-Sectional','Quarterfinal','Semifinal','State Championship','First Round','Second Round'].map(r => (
+                <option key={r} value={r} />
+              ))}
+            </datalist>
+            {(form.playoff_rounds ?? []).map((r, i) => {
+              const setRound = (field, val) => {
+                const updated = form.playoff_rounds.map((x, j) => j === i ? { ...x, [field]: val } : x);
+                set('playoff_rounds', updated);
+              };
+              return (
+                <div key={i} className="bg-slate-800 rounded-lg p-2 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      list="round-presets"
+                      className={`${inp} flex-1`}
+                      placeholder="Round (e.g. Regional)"
+                      value={r.round}
+                      onChange={e => setRound('round', e.target.value)}
+                    />
+                    <div className="flex rounded-lg overflow-hidden border border-slate-600 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setRound('result', 'W')}
+                        className={`px-2.5 py-1.5 text-xs font-black transition-colors ${r.result === 'W' ? 'bg-emerald-700 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'}`}
+                      >W</button>
+                      <button
+                        type="button"
+                        onClick={() => setRound('result', 'L')}
+                        className={`px-2.5 py-1.5 text-xs font-black transition-colors ${r.result === 'L' ? 'bg-red-700 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'}`}
+                      >L</button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => set('playoff_rounds', form.playoff_rounds.filter((_, j) => j !== i))}
+                      className="text-slate-500 hover:text-red-400 text-lg leading-none px-1 shrink-0"
+                    >×</button>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      className={`${inp} flex-1`}
+                      placeholder="Opponent name"
+                      value={r.opponent}
+                      onChange={e => setRound('opponent', e.target.value)}
+                    />
+                    <input
+                      className={`${inp} w-16`}
+                      placeholder="#Seed"
+                      value={r.opp_seed}
+                      onChange={e => setRound('opp_seed', e.target.value)}
+                    />
+                    <input
+                      className={`${inp} w-16`}
+                      placeholder="3-1"
+                      value={r.score}
+                      onChange={e => setRound('score', e.target.value)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => set('playoff_rounds', [...(form.playoff_rounds ?? []), { ...EMPTY_ROUND }])}
+              className="w-full py-1.5 rounded-lg border border-dashed border-slate-600 text-xs text-slate-400 hover:text-white hover:border-slate-400 transition-colors"
+            >
+              + Add Round
+            </button>
           </div>
         </div>
 
@@ -378,7 +444,7 @@ function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit }) {
 
   const hasCoach    = headCoach || asstCoach;
   const hasRankings = historyEntry?.state_rank != null || historyEntry?.national_rank != null || historyEntry?.class_rank != null;
-  const hasPlayoffs = historyEntry?.playoff_seed || historyEntry?.state_finish || historyEntry?.playoff_result;
+  const hasPlayoffs = historyEntry?.playoff_seed || historyEntry?.state_finish || historyEntry?.playoff_result || (historyEntry?.playoff_rounds?.length > 0);
 
   return (
     <div className="rounded-xl overflow-hidden border border-primary/50 shadow-[0_0_16px_-4px_rgba(249,115,22,0.2)]">
@@ -459,32 +525,70 @@ function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit }) {
           </div>
         )}
 
-        {hasPlayoffs && (
-          <div className="pt-2 border-t border-slate-700/60 space-y-1.5">
-            <div className="flex flex-wrap gap-x-5 gap-y-1">
-              {historyEntry.playoff_seed && (
-                <span className="text-xs">
-                  <span className="text-slate-500 mr-1">Seed</span>
-                  <span className="text-slate-200 font-semibold">{historyEntry.playoff_seed}</span>
-                </span>
-              )}
-              {historyEntry.state_finish && (
-                <span className="text-xs">
-                  <span className="text-slate-500 mr-1">Finish</span>
-                  <span className="text-slate-200 font-semibold">{historyEntry.state_finish}</span>
-                </span>
-              )}
-            </div>
-            {historyEntry.playoff_result && (
-              <p className="text-xs text-slate-400 italic">{historyEntry.playoff_result}</p>
-            )}
-          </div>
-        )}
+        {hasPlayoffs && <PlayoffRoundsDisplay entry={historyEntry} />}
 
         {!historyEntry && (
           <p className="text-xs text-slate-600 italic">Tap + Details to add coach, rankings, and playoff info.</p>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Shared playoff rounds display ─────────────────────────────────────────────
+
+function PlayoffRoundsDisplay({ entry }) {
+  const rounds = entry?.playoff_rounds ?? [];
+  const hasSeed    = !!entry?.playoff_seed;
+  const hasFinish  = !!entry?.state_finish;
+  const hasResult  = !!entry?.playoff_result;
+  const hasRounds  = rounds.length > 0;
+
+  if (!hasSeed && !hasFinish && !hasResult && !hasRounds) return null;
+
+  return (
+    <div className="pt-2 border-t border-slate-700/60 space-y-2">
+      {/* Our seed header row */}
+      {(hasSeed || hasFinish) && (
+        <div className="flex flex-wrap gap-x-5 gap-y-1">
+          {hasSeed && (
+            <span className="text-xs">
+              <span className="text-slate-500 mr-1">Our Seed</span>
+              <span className="text-slate-200 font-semibold">{entry.playoff_seed}</span>
+            </span>
+          )}
+          {hasFinish && (
+            <span className="text-xs">
+              <span className="text-slate-500 mr-1">Finish</span>
+              <span className="text-slate-200 font-semibold">{entry.state_finish}</span>
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Structured rounds */}
+      {hasRounds && (
+        <div className="space-y-1">
+          {rounds.map((r, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs">
+              <span className="text-slate-400 font-semibold min-w-[7rem]">{r.round || '—'}</span>
+              <span className={`font-black px-1.5 py-0.5 rounded text-[10px] ${r.result === 'W' ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
+                {r.result}
+              </span>
+              <span className="text-slate-300 flex-1 truncate">
+                {r.opponent || '—'}
+                {r.opp_seed ? <span className="text-slate-500 ml-1">(#{String(r.opp_seed).replace('#', '')})</span> : null}
+              </span>
+              {r.score && <span className="text-slate-400 font-mono shrink-0">{r.score}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Legacy free-text result (backward compat) */}
+      {hasResult && !hasRounds && (
+        <p className="text-xs text-slate-400 italic">{entry.playoff_result}</p>
+      )}
     </div>
   );
 }
@@ -495,7 +599,7 @@ function SeasonCard({ entry, onEdit, onDelete }) {
   const winPct     = fmtWinPct(entry.wins, entry.games);
   const hasCoach   = entry.head_coach || entry.asst_coach;
   const hasRecord  = entry.wins != null || entry.losses != null;
-  const hasPlayoffs = entry.playoff_seed || entry.state_finish || entry.playoff_result;
+  const hasPlayoffs = entry.playoff_seed || entry.state_finish || entry.playoff_result || (entry.playoff_rounds?.length > 0);
 
   return (
     <div className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700/50">
@@ -587,27 +691,7 @@ function SeasonCard({ entry, onEdit, onDelete }) {
         )}
 
         {/* Playoffs */}
-        {hasPlayoffs && (
-          <div className="pt-2 border-t border-slate-700/60 space-y-1.5">
-            <div className="flex flex-wrap gap-x-5 gap-y-1">
-              {entry.playoff_seed && (
-                <span className="text-xs">
-                  <span className="text-slate-500 mr-1">Seed</span>
-                  <span className="text-slate-200 font-semibold">{entry.playoff_seed}</span>
-                </span>
-              )}
-              {entry.state_finish && (
-                <span className="text-xs">
-                  <span className="text-slate-500 mr-1">Finish</span>
-                  <span className="text-slate-200 font-semibold">{entry.state_finish}</span>
-                </span>
-              )}
-            </div>
-            {entry.playoff_result && (
-              <p className="text-xs text-slate-400 italic">{entry.playoff_result}</p>
-            )}
-          </div>
-        )}
+        {hasPlayoffs && <PlayoffRoundsDisplay entry={entry} />}
       </div>
     </div>
   );
@@ -773,6 +857,7 @@ export function HistoryPage() {
     sectional:      liveHistoryEntry.sectional      ?? '',
     state_finish:   liveHistoryEntry.state_finish   ?? '',
     playoff_result: liveHistoryEntry.playoff_result ?? '',
+    playoff_rounds: liveHistoryEntry.playoff_rounds ?? [],
   } : {
     ...EMPTY_FORM,
     year: activeSeason?.year != null ? String(activeSeason.year) : '',
@@ -1089,6 +1174,7 @@ export function HistoryPage() {
             sectional:      editEntry.sectional      ?? '',
             state_finish:   editEntry.state_finish   ?? '',
             playoff_result: editEntry.playoff_result ?? '',
+            playoff_rounds: editEntry.playoff_rounds ?? [],
           }}
           onClose={() => setEditEntry(null)}
         />
