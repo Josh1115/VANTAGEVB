@@ -116,7 +116,7 @@ function RunStrip({ teamStats: t, oppStats: o, currentRun, teamName, opponentNam
       className={`h-[3.1vmin] relative flex items-center select-none
         ${currentRun.count >= 3
           ? currentRun.side === 'us' ? 'bg-orange-950/70' : 'bg-red-950/70'
-          : 'bg-black/30'
+          : 'bg-black/60'
         }`}
       style={runPulseStyle}
     >
@@ -366,8 +366,8 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
 
       {/* ── Main header row ── */}
       <div
-        className="relative flex items-center bg-surface border-b border-slate-700 text-white overflow-hidden px-2 gap-1"
-        style={{ height: 'calc(5.85vmin + env(safe-area-inset-top))', paddingTop: 'env(safe-area-inset-top)' }}
+        className="relative flex items-center border-b border-slate-900 text-white overflow-hidden px-2 gap-1"
+        style={{ height: 'calc(5.85vmin + env(safe-area-inset-top))', paddingTop: 'env(safe-area-inset-top)', background: 'linear-gradient(to right, rgba(249,115,22,0.07) 0%, #000 30%, #000 70%, rgba(239,68,68,0.05) 100%)' }}
       >
 
         {/* ── Far left: US sets won + our timeouts + sub counter  (swaps when flipped) ── */}
@@ -377,7 +377,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
             <>
               <div className="flex flex-col items-center">
                 <div className="border-2 border-slate-500 rounded px-[1.8vmin] py-[0.5vmin] bg-slate-800/40">
-                  <span className="text-[3.1vmin] font-black text-slate-300 leading-none tabular-nums">{oppSetsWon}</span>
+                  <span className="text-[3.1vmin] font-black text-slate-300 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{oppSetsWon}</span>
                 </div>
               </div>
               <TimeoutBox used={oppTimeouts} onTap={() => setTimeoutConfirm('them')} />
@@ -387,7 +387,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
             <>
               <div className="flex flex-col items-center">
                 <div className="border-2 border-orange-500 rounded px-[1.8vmin] py-[0.5vmin] bg-orange-950/30">
-                  <span className="text-[3.1vmin] font-black text-orange-400 leading-none tabular-nums">{ourSetsWon}</span>
+                  <span className="text-[3.1vmin] font-black text-orange-400 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{ourSetsWon}</span>
                 </div>
               </div>
               <TimeoutBox used={ourTimeouts} onTap={() => setTimeoutConfirm('us')} />
@@ -431,7 +431,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
           )}
 
           {/* Left name — our team (normal) or opponent (flipped) */}
-          <span className="text-[2.9vmin] text-slate-100 font-bold uppercase tracking-widest leading-none">
+          <span className="text-[2.9vmin] text-slate-100 font-bold uppercase tracking-widest leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
             {flipped ? (opponentName || 'AWY') : (teamName || 'HOM')}
           </span>
 
@@ -445,7 +445,8 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
           >
             <span
               key={flipped ? `them-${oppScore}` : `us-${ourScore}`}
-              className={`block text-[4.2vmin] font-black tabular-nums leading-none score-pop ${flipped ? theirScoreCls : ourScoreCls}`}
+              className={`block text-[4.2vmin] font-black tabular-nums leading-none score-pop ${flipped ? `text-slate-200 ${theirScoreCls}` : `text-amber-400 ${ourScoreCls}`}`}
+              style={{ fontFamily: "'Orbitron', sans-serif", textShadow: flipped ? '0 0 6px rgba(255,255,255,0.25)' : '0 0 10px #f59e0b90, 0 0 24px #f59e0b40' }}
             >
               {String(flipped ? oppScore : ourScore).padStart(2, '0')}
             </span>
@@ -486,14 +487,15 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
           >
             <span
               key={flipped ? `us-${ourScore}` : `them-${oppScore}`}
-              className={`block text-[4.2vmin] font-black tabular-nums leading-none score-pop ${flipped ? ourScoreCls : theirScoreCls}`}
+              className={`block text-[4.2vmin] font-black tabular-nums leading-none score-pop ${flipped ? `text-amber-400 ${ourScoreCls}` : `text-slate-200 ${theirScoreCls}`}`}
+              style={{ fontFamily: "'Orbitron', sans-serif", textShadow: flipped ? '0 0 10px #f59e0b90, 0 0 24px #f59e0b40' : '0 0 6px rgba(255,255,255,0.25)' }}
             >
               {String(flipped ? ourScore : oppScore).padStart(2, '0')}
             </span>
           </div>
 
           {/* Right name */}
-          <span className="text-[2.9vmin] text-slate-300 font-bold uppercase tracking-widest leading-none">
+          <span className="text-[2.9vmin] text-slate-300 font-bold uppercase tracking-widest leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
             {flipped ? (teamName || 'HOM') : (opponentName || 'AWY')}
           </span>
         </div>
@@ -525,7 +527,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
               <TimeoutBox used={ourTimeouts} onTap={() => setTimeoutConfirm('us')} />
               <div className="flex flex-col items-center">
                 <div className="border-2 border-orange-500 rounded px-[1.8vmin] py-[0.5vmin] bg-orange-950/30">
-                  <span className="text-[3.1vmin] font-black text-orange-400 leading-none tabular-nums">{ourSetsWon}</span>
+                  <span className="text-[3.1vmin] font-black text-orange-400 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{ourSetsWon}</span>
                 </div>
               </div>
             </>
@@ -535,7 +537,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
               <TimeoutBox used={oppTimeouts} onTap={() => setTimeoutConfirm('them')} />
               <div className="flex flex-col items-center">
                 <div className="border-2 border-slate-500 rounded px-[1.8vmin] py-[0.5vmin] bg-slate-800/40">
-                  <span className="text-[3.1vmin] font-black text-slate-300 leading-none tabular-nums">{oppSetsWon}</span>
+                  <span className="text-[3.1vmin] font-black text-slate-300 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{oppSetsWon}</span>
                 </div>
               </div>
             </>
