@@ -460,14 +460,15 @@ function TeamRow({ team, onSelectTeam, onEditTeam, onDeleteTeam }) {
 
 const parseYear = (y) => { const m = String(y ?? '').match(/\d{4}/); return m ? parseInt(m[0], 10) : null; };
 
-function yearRangeLabel(teamIds, yearsByTeam) {
+function yearRangeInfo(teamIds, yearsByTeam) {
   if (!yearsByTeam) return null;
   const all = teamIds.flatMap((id) => yearsByTeam[id] ?? []);
   const unique = [...new Set(all)];
-  if (unique.length < 2) return null;
+  if (!unique.length) return null;
   const min = Math.min(...unique);
   const max = Math.max(...unique);
-  return min === max ? `(${min})` : `(${min}–${max})`;
+  const label = min === max ? `(${min})` : `(${min}–${max})`;
+  return { label, count: unique.length };
 }
 
 function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDeleteTeam, onSelectTeam }) {
@@ -520,14 +521,15 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
         <p className="text-slate-500 text-sm px-4 py-3">No teams yet</p>
       ) : multiGender ? (
         genderGroups.map(({ gender, teams: gTeams }) => {
-          const range = yearRangeLabel(gTeams.map((t) => t.id), yearsByTeam);
+          const info = yearRangeInfo(gTeams.map((t) => t.id), yearsByTeam);
           return (
           <div key={gender ?? 'other'}>
             <div className="px-4 py-1.5 border-b border-slate-700/60 bg-slate-800/40 flex items-center gap-2">
               <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
                 {GENDER_LABELS[gender] ?? 'Other'}
               </span>
-              {range && <span className="text-[11px] text-slate-500 font-medium">{range}</span>}
+              {info && <span className="text-[11px] text-slate-500 font-medium">{info.label}</span>}
+              {info && <span className="text-[11px] text-slate-600">{info.count} {info.count === 1 ? 'season' : 'seasons'}</span>}
             </div>
             {gTeams.map((team) => (
               <TeamRow
@@ -540,17 +542,30 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
             ))}
           </div>
         ); })
-      ) : (
-        (teams ?? []).map((team) => (
-          <TeamRow
-            key={team.id}
-            team={team}
-            onSelectTeam={onSelectTeam}
-            onEditTeam={onEditTeam}
-            onDeleteTeam={onDeleteTeam}
-          />
-        ))
-      )}
+      ) : (() => {
+          const allTeamIds = (teams ?? []).map((t) => t.id);
+          const info = yearRangeInfo(allTeamIds, yearsByTeam);
+          return (
+            <>
+              {info && (
+                <div className="px-4 py-1.5 border-b border-slate-700/60 bg-slate-800/40 flex items-center gap-2">
+                  <span className="text-[11px] text-slate-500 font-medium">{info.label}</span>
+                  <span className="text-[11px] text-slate-600">{info.count} {info.count === 1 ? 'season' : 'seasons'}</span>
+                </div>
+              )}
+              {(teams ?? []).map((team) => (
+                <TeamRow
+                  key={team.id}
+                  team={team}
+                  onSelectTeam={onSelectTeam}
+                  onEditTeam={onEditTeam}
+                  onDeleteTeam={onDeleteTeam}
+                />
+              ))}
+            </>
+          );
+        })()
+      }
     </div>
   );
 }

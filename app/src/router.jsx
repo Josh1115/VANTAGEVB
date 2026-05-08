@@ -36,6 +36,9 @@ const HelpMatchSummaryPage     = lazy(() => import('./pages/HelpMatchSummaryPage
 const HelpPreMatchPrepPage     = lazy(() => import('./pages/HelpPreMatchPrepPage').then(m => ({ default: m.HelpPreMatchPrepPage })));
 const HelpExportingPage        = lazy(() => import('./pages/HelpExportingPage').then(m => ({ default: m.HelpExportingPage })));
 const HelpLiveStatLabelsPage   = lazy(() => import('./pages/HelpLiveStatLabelsPage').then(m => ({ default: m.HelpLiveStatLabelsPage })));
+const HelpFirstMatchPage       = lazy(() => import('./pages/HelpFirstMatchPage').then(m => ({ default: m.HelpFirstMatchPage })));
+const HelpLiveMatchPage        = lazy(() => import('./pages/HelpLiveMatchPage').then(m => ({ default: m.HelpLiveMatchPage })));
+const HelpPlayerReportPage     = lazy(() => import('./pages/HelpPlayerReportPage').then(m => ({ default: m.HelpPlayerReportPage })));
 
 function PageFallback() {
   return (
@@ -83,6 +86,9 @@ export const router = createBrowserRouter([
       { path: 'help/pre-match-prep',         element: <S><HelpPreMatchPrepPage /></S> },
       { path: 'help/exporting',              element: <S><HelpExportingPage /></S> },
       { path: 'help/live-stat-labels',      element: <S><HelpLiveStatLabelsPage /></S> },
+      { path: 'help/first-match',           element: <S><HelpFirstMatchPage /></S> },
+      { path: 'help/live-match',            element: <S><HelpLiveMatchPage /></S> },
+      { path: 'help/player-report',         element: <S><HelpPlayerReportPage /></S> },
       { path: '*',                           element: <NotFoundPage /> },
     ],
   },

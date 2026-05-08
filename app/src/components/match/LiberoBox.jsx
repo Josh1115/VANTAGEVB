@@ -68,7 +68,7 @@ export const LiberoBox = memo(function LiberoBox({ liberoPlayer, onAssignLibero 
 
         <button
           onPointerDown={(e) => { e.preventDefault(); swapLibero(liberoPlayer); }}
-          className="text-[2vmin] font-bold min-w-[12vmin] py-1 rounded leading-none border transition-colors text-center bg-slate-700 border-slate-500 text-slate-200 hover:bg-slate-600"
+          className="text-[2vmin] font-bold min-w-[16vmin] py-1 rounded leading-none border transition-colors text-center bg-slate-700 border-slate-500 text-slate-200 hover:bg-slate-600"
         >
           SWAP OUT
         </button>
@@ -87,7 +87,7 @@ export const LiberoBox = memo(function LiberoBox({ liberoPlayer, onAssignLibero 
       <button
         disabled={!canSwap}
         onPointerDown={(e) => { e.preventDefault(); swapLibero(liberoPlayer); }}
-        className={`text-[2vmin] font-bold min-w-[12vmin] py-1 rounded leading-none border transition-colors text-center
+        className={`text-[2vmin] font-bold min-w-[16vmin] py-1 rounded leading-none border transition-colors text-center
           ${canSwap
             ? 'bg-emerald-800 border-emerald-600 text-emerald-200 hover:bg-emerald-700'
             : 'bg-transparent border-slate-700 text-slate-700 cursor-not-allowed'

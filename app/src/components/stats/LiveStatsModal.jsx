@@ -425,9 +425,9 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
         </span>
         <button
           onPointerDown={(e) => { e.preventDefault(); onClose(); }}
-          className="text-slate-400 hover:text-white text-2xl leading-none"
+          className="w-48 py-1.5 rounded bg-slate-700 border border-slate-600 text-slate-200 text-xl font-bold hover:bg-slate-600 active:bg-slate-500"
         >
-          ✕
+          BACK
         </button>
       </div>
 
