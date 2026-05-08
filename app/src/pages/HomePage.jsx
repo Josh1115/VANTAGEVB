@@ -1124,8 +1124,13 @@ export function HomePage() {
               })()}
               <div className="min-w-0 flex-1">
                 <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 leading-none mb-0.5">Next</div>
-                <div className="font-semibold text-sm truncate">{nextMatch.opponent_name ?? 'TBD'}</div>
-                <div className="flex items-center gap-1 mt-0.5">
+                <div className="font-semibold text-sm truncate">
+                  {nextMatch.opponent_name ?? 'TBD'}
+                  {nextMatch.opponent_maxpreps_rank != null && (
+                    <span className="text-slate-400 font-normal"> #{nextMatch.opponent_maxpreps_rank}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                   {nextMatch.location && (
                     <span className={`text-[9px] font-bold px-1 py-0.5 rounded uppercase ${
                       nextMatch.location === 'home' ? 'bg-emerald-900/50 text-emerald-400' :
@@ -1134,6 +1139,16 @@ export function HomePage() {
                     }`}>
                       {nextMatch.location === 'home' ? 'H' : nextMatch.location === 'away' ? 'A' : 'N'}
                     </span>
+                  )}
+                  {nextMatch.conference && (
+                    <span className={`text-[9px] font-bold px-1 py-0.5 rounded uppercase ${
+                      nextMatch.conference === 'conference' ? 'bg-blue-900/50 text-blue-400' : 'bg-slate-700 text-slate-400'
+                    }`}>
+                      {nextMatch.conference === 'conference' ? 'CON' : 'NC'}
+                    </span>
+                  )}
+                  {nextMatch.opponent_record && (
+                    <span className="text-[9px] font-semibold text-slate-500">{nextMatch.opponent_record}</span>
                   )}
                   <span className="text-[11px] text-slate-400 truncate">{fmtDate(nextMatch.date)}</span>
                 </div>
@@ -1247,12 +1262,17 @@ export function HomePage() {
                 <div className="w-full bg-surface rounded-xl px-4 py-3 flex items-center justify-between border-l-4 border-transparent">
                   <div>
                     <div className="font-semibold flex items-center gap-1.5 flex-wrap">
-                      {match.opponent_name ?? 'vs. Unknown'}
+                      <span>
+                        {match.opponent_name ?? 'vs. Unknown'}
+                        {match.opponent_maxpreps_rank != null && (
+                          <span className="text-slate-400 font-normal"> #{match.opponent_maxpreps_rank}</span>
+                        )}
+                      </span>
                       {match.match_type === 'tourney' && match.tournament_name && (
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide">{match.tournament_name}</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       {match.location && (
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
                           match.location === 'home'    ? 'bg-emerald-900/50 text-emerald-400' :
@@ -1261,6 +1281,16 @@ export function HomePage() {
                         }`}>
                           {match.location === 'home' ? 'H' : match.location === 'away' ? 'A' : 'N'}
                         </span>
+                      )}
+                      {match.conference && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                          match.conference === 'conference' ? 'bg-blue-900/50 text-blue-400' : 'bg-slate-700 text-slate-400'
+                        }`}>
+                          {match.conference === 'conference' ? 'CON' : 'NC'}
+                        </span>
+                      )}
+                      {match.opponent_record && (
+                        <span className="text-[10px] font-semibold text-slate-500">{match.opponent_record}</span>
                       )}
                       <span className="text-xs text-slate-400">
                         {match.season ? `${match.season.name ?? match.season.year} · ` : ''}{fmtDate(match.date)}

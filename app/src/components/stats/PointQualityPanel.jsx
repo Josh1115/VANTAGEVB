@@ -55,9 +55,7 @@ function PointsPieChart({ earned, free, given, divisor = 1 }) {
                 dataKey="value"
                 labelLine={false}
                 label={renderLabel}
-                animationBegin={0}
-                animationDuration={600}
-                animationEasing="ease-out"
+                isAnimationActive={false}
               >
                 {data.map((entry) => (
                   <Cell key={entry.name} fill={SLICE_COLORS[entry.name]} />
