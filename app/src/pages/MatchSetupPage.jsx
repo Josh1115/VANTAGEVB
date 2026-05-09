@@ -117,6 +117,8 @@ export function MatchSetupPage() {
       setTournamentRound(scheduledMatch.tournament_round ?? 'pool');
       if (scheduledMatch.match_type === 'tourney') setTourneySet3(scheduledMatch.last_set_score ?? 25);
       setPlayoffRound(scheduledMatch.playoff_round ?? '');
+      setOpponentRecord(scheduledMatch.opponent_record ?? '');
+      setOpponentMaxprepsRank(scheduledMatch.opponent_maxpreps_rank != null ? String(scheduledMatch.opponent_maxpreps_rank) : '');
       setPrefilled(true);
     }
   }, [scheduledMatch, prefilled]);

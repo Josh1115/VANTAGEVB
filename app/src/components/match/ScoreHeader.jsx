@@ -505,8 +505,8 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
           {lastFeedItem && (
             <div
               key={lastFeedItem.id}
-              className="animate-feed-in px-3 py-0.5 rounded-full bg-slate-700/80 border border-slate-500/60
-                text-white font-bold text-[1.6vmin] shadow pointer-events-none whitespace-nowrap"
+              className="animate-feed-in max-w-[50%] truncate px-3 py-0.5 rounded-full bg-slate-700/80 border border-slate-500/60
+                text-white font-bold text-[1.6vmin] shadow pointer-events-none"
             >
               {lastFeedItem.label}
             </div>

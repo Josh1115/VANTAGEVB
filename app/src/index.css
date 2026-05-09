@@ -624,8 +624,8 @@
 
 /* ── Score proximity tension (late game, within 1 point) ── */
 @keyframes score-tension {
-  0%, 100% { transform: scale(1); }
-  50%       { transform: scale(1.022); }
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50%       { transform: translateX(-50%) scale(1.022); }
 }
 .score-tension {
   animation: score-tension 2s ease-in-out infinite;
