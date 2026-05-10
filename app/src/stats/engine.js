@@ -1087,6 +1087,34 @@ export function computeSetWinProbRotation(rotationRates, ourScore, oppScore, sta
   return dp(ourScore, oppScore, rot0, side);
 }
 
+// Expected points scored by us when starting a set at 0–0 in a given rotation / serve side.
+// Uses the same rotation-cycling DP as computeSetWinProbRotation but returns E[our_score].
+export function computeExpectedPts(rotationRates, startRot, serveSide, isDecider = false) {
+  const target = isDecider ? 15 : 25;
+  const memo = new Map();
+
+  function dp(s1, s2, rot, side) {
+    if (s1 >= target && s1 - s2 >= 2) return s1;
+    if (s2 >= target && s2 - s1 >= 2) return s1;
+    if (s1 > 50 || s2 > 50) return s1;
+    const key = `${s1},${s2},${rot},${side}`;
+    if (memo.has(key)) return memo.get(key);
+    const rates = rotationRates?.[rot] ?? { so_pct: WP_FALLBACK_P, bp_pct: WP_FALLBACK_Q };
+    const w = side === 'them' ? rates.so_pct : rates.bp_pct;
+    let val;
+    if (side === 'them') {
+      const nextRot = (rot % 6) + 1;
+      val = w * dp(s1 + 1, s2, nextRot, 'us') + (1 - w) * dp(s1, s2 + 1, rot, 'them');
+    } else {
+      val = w * dp(s1 + 1, s2, rot, 'us') + (1 - w) * dp(s1, s2 + 1, rot, 'them');
+    }
+    memo.set(key, val);
+    return val;
+  }
+
+  return dp(0, 0, startRot ?? 1, serveSide === 'us' ? 'us' : 'them');
+}
+
 export function computeSetWinProb(p, q, ourScore, oppScore, serveSide, isDecider = false) {
   const target = isDecider ? 15 : 25;
   const memo = new Map();

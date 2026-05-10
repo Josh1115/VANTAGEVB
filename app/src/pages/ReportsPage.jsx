@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, Fragment } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { buildPlayerMaps } from '../utils/players';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getIntStorage, STORAGE_KEYS } from '../utils/storage';
 import { db } from '../db/schema';
-import { computeSeasonStats, computePQ, computeSetWinProb, aggregateXKTeamStats } from '../stats/engine';
+import { computeSeasonStats, computePQ, computeSetWinProb, computeExpectedPts, aggregateXKTeamStats } from '../stats/engine';
 import { InsightsPanel } from '../components/stats/InsightsPanel';
 import { fmtHitting, fmtPassRating, fmtPct, fmtCount, fmtVER } from '../stats/formatters';
 import { VERBadge, VER_TIERS } from '../components/stats/VERBadge';
@@ -1206,6 +1206,60 @@ export function ReportsPage() {
                 </div>
                 <RotationRadarChart rotationStats={stats.rotation} />
                 <RotationSpotlight rows={rotationRows} />
+
+                {/* Expected pts per set by starting rotation */}
+                {(() => {
+                  const rots = stats.rotation.rotations;
+                  if (!rots || Object.keys(rots).length === 0) return null;
+                  const rates = {};
+                  for (let r = 1; r <= 6; r++) {
+                    rates[r] = {
+                      so_pct: rots[r]?.so_pct ?? 0.58,
+                      bp_pct: rots[r]?.bp_pct ?? 0.42,
+                    };
+                  }
+                  const rows = [1,2,3,4,5,6].map((r) => ({
+                    rot:  r,
+                    serve: computeExpectedPts(rates, r, 'us'),
+                    rec:   computeExpectedPts(rates, r, 'them'),
+                  }));
+                  const allServe = rows.map(r => r.serve);
+                  const allRec   = rows.map(r => r.rec);
+                  const maxServe = Math.max(...allServe);
+                  const minServe = Math.min(...allServe);
+                  const maxRec   = Math.max(...allRec);
+                  const minRec   = Math.min(...allRec);
+                  return (
+                    <div className="bg-surface rounded-xl p-3">
+                      <SectionHeader>Expected Pts / Set by Starting Rotation</SectionHeader>
+                      <p className="text-[11px] text-slate-500 -mt-1 mb-3">Projected score if the set started in each rotation, serving or receiving.</p>
+                      <div className="grid grid-cols-3 gap-px bg-slate-700 rounded-lg overflow-hidden text-center text-xs">
+                        <div className="bg-slate-800 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Rot</div>
+                        <div className="bg-slate-800 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Serving</div>
+                        <div className="bg-slate-800 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Receiving</div>
+                        {rows.map(({ rot, serve, rec }) => (
+                          <Fragment key={rot}>
+                            <div className="bg-slate-900 py-2 font-bold text-slate-300">R{rot}</div>
+                            <div className={`py-2 font-black tabular-nums ${
+                              serve === maxServe ? 'bg-emerald-900/40 text-emerald-300'
+                            : serve === minServe ? 'bg-red-900/30 text-red-400'
+                            : 'bg-slate-900 text-slate-200'}`}>
+                              {serve.toFixed(1)}
+                            </div>
+                            <div className={`py-2 font-black tabular-nums ${
+                              rec === maxRec ? 'bg-emerald-900/40 text-emerald-300'
+                            : rec === minRec ? 'bg-red-900/30 text-red-400'
+                            : 'bg-slate-900 text-slate-200'}`}>
+                              {rec.toFixed(1)}
+                            </div>
+                          </Fragment>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-slate-600 text-center mt-2">Green = best rotation · Red = worst rotation</p>
+                    </div>
+                  );
+                })()}
+
                 <StatTable columns={ROTATION_COLS} rows={rotationRows} />
 
                 {/* IS vs OOS by Rotation */}
