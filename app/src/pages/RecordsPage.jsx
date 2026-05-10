@@ -405,7 +405,7 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, teamId }) {
   const bgCls = row.rank === 1 ? 'bg-[#555232]'
     : row.rank === 2 ? 'bg-[#424b5a]'
     : row.rank === 3 ? 'bg-[#472f2f]'
-    : row.active || row.currentSeason ? 'bg-yellow-950'
+    : row.active || row.currentSeason ? 'bg-orange-500/50'
     : 'bg-slate-800';
 
   const inner = (
@@ -480,7 +480,7 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, teamId }) {
   const borderCls = row.rank === 1 ? 'border border-yellow-400/30'
     : row.rank === 2 ? 'border border-zinc-300/20'
     : row.rank === 3 ? 'border border-orange-600/25'
-    : row.active || row.currentSeason ? 'border border-yellow-500/20'
+    : row.active || row.currentSeason ? 'border border-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.5)]'
     : 'border border-slate-700/50';
 
   return (

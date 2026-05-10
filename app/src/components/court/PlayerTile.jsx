@@ -170,7 +170,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
     const currentRally = useMatchStore.getState().rallyCount;
     addPoint(SIDE.US);
     try {
-      return await recordContact({ player_id: slot.playerId, action, result, rally_number: currentRally, ...extra });
+      return await recordContact({ player_id: slot.playerId, action, result, rally_number: currentRally, _causedPoint: SIDE.US, ...extra });
     } catch (err) {
       console.error('[VBStat] tapAndScore recordContact failed:', err);
       showToast(`Stat not recorded: ${err?.message ?? err}`, 'error');
@@ -182,7 +182,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
     const { rallyCount: currentRally, serveSide: currentServeSide } = useMatchStore.getState();
     addPoint(SIDE.THEM);
     try {
-      await recordContact({ player_id: slot.playerId, action, result, rally_number: currentRally, serve_side: currentServeSide, ...extra });
+      await recordContact({ player_id: slot.playerId, action, result, rally_number: currentRally, serve_side: currentServeSide, _causedPoint: SIDE.THEM, ...extra });
     } catch (err) {
       console.error('[VBStat] tapAndScoreThem recordContact failed:', err);
       showToast(`Stat not recorded: ${err?.message ?? err}`, 'error');
@@ -194,7 +194,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
     const currentRally = useMatchStore.getState().rallyCount;
     addPoint(SIDE.THEM);
     try {
-      const aeId = await recordContact({ player_id: slot.playerId, action: ACTION.ATTACK, result: RESULT.ERROR, error_type: 'blk', rally_number: currentRally });
+      const aeId = await recordContact({ player_id: slot.playerId, action: ACTION.ATTACK, result: RESULT.ERROR, error_type: 'blk', rally_number: currentRally, _causedPoint: SIDE.THEM });
       recordOppBlock(aeId);
     } catch (err) {
       console.error('[VBStat] handleAeBlocked recordContact failed:', err);

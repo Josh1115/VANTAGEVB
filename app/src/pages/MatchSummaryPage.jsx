@@ -739,11 +739,15 @@ export function MatchSummaryPage() {
   const [editTourneyName,  setEditTourneyName]  = useState('');
   const [editTourneyRound, setEditTourneyRound] = useState('pool');
   const [editPlayoffRound, setEditPlayoffRound] = useState('');
+  const [editOppRank,   setEditOppRank]   = useState('');
   const [editSaving,    setEditSaving]    = useState(false);
   const [editResultOpen,   setEditResultOpen]   = useState(false);
   const [editOurSets,      setEditOurSets]      = useState(0);
   const [editOppSets,      setEditOppSets]      = useState(0);
   const [editResultSaving, setEditResultSaving] = useState(false);
+  const [addSetOurScore,   setAddSetOurScore]   = useState('');
+  const [addSetOppScore,   setAddSetOppScore]   = useState('');
+  const [addSetSaving,     setAddSetSaving]     = useState(false);
 
   // Scouting auto-populate
   const showToast = useUiStore(selectShowToast);
@@ -1140,6 +1144,7 @@ export function MatchSummaryPage() {
     setEditTourneyName(match.tournament_name ?? '');
     setEditTourneyRound(match.tournament_round ?? 'pool');
     setEditPlayoffRound(match.playoff_round ?? '');
+    setEditOppRank(match.opponent_maxpreps_rank != null ? String(match.opponent_maxpreps_rank) : '');
     setEditOpen(true);
   }
 
@@ -1158,6 +1163,7 @@ export function MatchSummaryPage() {
         tournament_name:  editMatchType === 'tourney' ? editTourneyName.trim() || null : null,
         tournament_round: editMatchType === 'tourney' ? editTourneyRound : null,
         playoff_round:    editMatchType === 'ihsa-playoffs' ? editPlayoffRound.trim() || null : null,
+        opponent_maxpreps_rank: editOppRank.trim() !== '' ? parseInt(editOppRank, 10) || null : null,
       });
       setEditOpen(false);
     } finally {
@@ -1175,6 +1181,28 @@ export function MatchSummaryPage() {
       setEditResultOpen(false);
     } finally {
       setEditResultSaving(false);
+    }
+  }
+
+  async function handleAddSet() {
+    const ourScore = parseInt(addSetOurScore, 10);
+    const oppScore = parseInt(addSetOppScore, 10);
+    if (isNaN(ourScore) || isNaN(oppScore) || ourScore < 0 || oppScore < 0) return;
+    setAddSetSaving(true);
+    try {
+      const existingSets = await db.sets.where('match_id').equals(id).sortBy('set_number');
+      const nextSetNumber = existingSets.length > 0 ? existingSets[existingSets.length - 1].set_number + 1 : 1;
+      await db.sets.add({
+        match_id:   id,
+        set_number: nextSetNumber,
+        status:     'complete',
+        our_score:  ourScore,
+        opp_score:  oppScore,
+      });
+      setAddSetOurScore('');
+      setAddSetOppScore('');
+    } finally {
+      setAddSetSaving(false);
     }
   }
 
@@ -1260,7 +1288,7 @@ export function MatchSummaryPage() {
               <button
                 onClick={openEditModal}
                 title="Edit match details"
-                className="text-slate-600 hover:text-slate-300 text-sm transition-colors"
+                className="text-slate-400 hover:text-orange-400 text-sm transition-colors"
               >✎</button>
             </div>
             {match.status === 'complete' && (() => {
@@ -1274,10 +1302,12 @@ export function MatchSummaryPage() {
                     onClick={() => {
                       setEditOurSets(match.our_sets_won ?? 0);
                       setEditOppSets(match.opp_sets_won ?? 0);
+                      setAddSetOurScore('');
+                      setAddSetOppScore('');
                       setEditResultOpen(true);
                     }}
                     title="Correct set result"
-                    className="text-slate-600 hover:text-slate-300 text-sm transition-colors"
+                    className="text-slate-400 hover:text-orange-400 text-sm transition-colors"
                   >✎</button>
                 </div>
               );
@@ -1309,7 +1339,7 @@ export function MatchSummaryPage() {
                       <button
                         onClick={() => setReviseModalSet(s)}
                         title="Revise set"
-                        className="text-xs text-slate-600 hover:text-slate-300 px-1 transition-colors"
+                        className="text-xs text-slate-400 hover:text-orange-400 px-1 transition-colors"
                       >
                         ✎
                       </button>
@@ -2072,6 +2102,12 @@ export function MatchSummaryPage() {
                   onChange={(e) => setEditOppRecord(e.target.value)}
                   className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
               </div>
+              <div style={{ width: '5rem' }}>
+                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Rank</label>
+                <input type="number" min="1" value={editOppRank} placeholder="—"
+                  onChange={(e) => setEditOppRank(e.target.value)}
+                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+              </div>
             </div>
             <div>
               <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Location</label>
@@ -2179,31 +2215,64 @@ export function MatchSummaryPage() {
             </>
           }
         >
-          <div className="space-y-4">
-            <p className="text-sm text-slate-400">
-              Correct the sets-won count if the final result was recorded incorrectly.
-            </p>
-            <div className="flex gap-4 items-end">
-              <div className="flex-1">
-                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
-                  {match.team_name || 'Our Sets'}
-                </label>
-                <input
-                  type="number" min="0" max="5" value={editOurSets}
-                  onChange={(e) => setEditOurSets(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm text-center font-bold focus:outline-none focus:border-primary"
-                />
+          <div className="space-y-5">
+            <div className="space-y-3">
+              <p className="text-sm text-slate-400">
+                Correct the sets-won count if the final result was recorded incorrectly.
+              </p>
+              <div className="flex gap-4 items-end">
+                <div className="flex-1">
+                  <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+                    {match.team_name || 'Our Sets'}
+                  </label>
+                  <input
+                    type="number" min="0" max="5" value={editOurSets}
+                    onChange={(e) => setEditOurSets(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm text-center font-bold focus:outline-none focus:border-primary"
+                  />
+                </div>
+                <span className="text-xl font-black text-slate-500 pb-2">–</span>
+                <div className="flex-1">
+                  <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+                    {match.opponent_name || 'Their Sets'}
+                  </label>
+                  <input
+                    type="number" min="0" max="5" value={editOppSets}
+                    onChange={(e) => setEditOppSets(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm text-center font-bold focus:outline-none focus:border-primary"
+                  />
+                </div>
               </div>
-              <span className="text-xl font-black text-slate-500 pb-2">–</span>
-              <div className="flex-1">
-                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
-                  {match.opponent_name || 'Their Sets'}
-                </label>
-                <input
-                  type="number" min="0" max="5" value={editOppSets}
-                  onChange={(e) => setEditOppSets(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm text-center font-bold focus:outline-none focus:border-primary"
-                />
+            </div>
+            <div className="border-t border-slate-700 pt-4 space-y-3">
+              <p className="text-sm text-slate-400">
+                Add a missing set if stat-taking had issues for one set.
+              </p>
+              <div className="flex gap-3 items-end">
+                <div className="flex-1">
+                  <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Us</label>
+                  <input
+                    type="number" min="0" value={addSetOurScore} placeholder="—"
+                    onChange={(e) => setAddSetOurScore(e.target.value)}
+                    className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm text-center font-bold focus:outline-none focus:border-primary"
+                  />
+                </div>
+                <span className="text-xl font-black text-slate-500 pb-2">–</span>
+                <div className="flex-1">
+                  <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Them</label>
+                  <input
+                    type="number" min="0" value={addSetOppScore} placeholder="—"
+                    onChange={(e) => setAddSetOppScore(e.target.value)}
+                    className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm text-center font-bold focus:outline-none focus:border-primary"
+                  />
+                </div>
+                <button
+                  onClick={handleAddSet}
+                  disabled={addSetSaving || addSetOurScore === '' || addSetOppScore === ''}
+                  className="pb-0.5 px-4 py-2 text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white rounded-lg disabled:opacity-40 transition-colors self-end"
+                >
+                  {addSetSaving ? 'Adding…' : 'Add Set'}
+                </button>
               </div>
             </div>
           </div>

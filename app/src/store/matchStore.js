@@ -163,6 +163,47 @@ function setFeed(setFn, label) {
   setFn({ lastFeedItem: { label, id } });
 }
 
+// When a contact action also caused a point (causedPoint set), undo both in one step.
+// Returns { finalRest, pointUpdates } — pointUpdates is {} when no linked point is found.
+async function resolveLinkedPoint(s, action, rest) {
+  if (!action.causedPoint || !rest.length) return { finalRest: rest, pointUpdates: {} };
+  const pa = rest[0];
+  if (pa.type !== 'point_us' && pa.type !== 'point_them') return { finalRest: rest, pointUpdates: {} };
+  if (pa.rallyId) await db.rallies.delete(pa.rallyId);
+  const base = {
+    rallyPhase:       pa.prevRallyPhase ?? 'pre_serve',
+    serveSide:        pa.prevServeSide,
+    rallyCount:       Math.max(0, s.rallyCount - 1),
+    currentRun:       pa.prevRun ?? { side: null, count: 0 },
+    pointHistory:     s.pointHistory.slice(0, -1),
+    committedRallies: s.committedRallies.slice(0, -1),
+    pendingSetWin:    null,
+    pendingHblk:      null,
+  };
+  if (pa.type === 'point_us') {
+    return {
+      finalRest: rest.slice(1),
+      pointUpdates: {
+        ...base,
+        ourScore:    Math.max(0, s.ourScore - 1),
+        lineup:      pa.prevLineup,
+        rotationNum: pa.prevRotation,
+        ...(pa.prevLiberoOnCourt !== undefined && {
+          liberoOnCourt:               pa.prevLiberoOnCourt,
+          liberoReplacedPlayerId:      pa.prevLiberoReplacedPlayerId ?? null,
+          liberoReplacedName:          pa.prevLiberoReplacedName ?? '',
+          liberoReplacedJersey:        pa.prevLiberoReplacedJersey ?? '',
+          liberoReplacedPositionLabel: pa.prevLiberoReplacedPositionLabel ?? '',
+        }),
+      },
+    };
+  }
+  return {
+    finalRest: rest.slice(1),
+    pointUpdates: { ...base, oppScore: Math.max(0, s.oppScore - 1) },
+  };
+}
+
 const pushAction = (get, set, entry) => {
   const prev = get().actionHistory;
   set({ actionHistory: [entry, ...prev] });
@@ -432,16 +473,18 @@ export const useMatchStore = create((set, get) => ({
         if (action.assistContactId) {
           await db.contacts.delete(action.assistContactId);
         }
+        const { finalRest: cRest, pointUpdates: cPt } = await resolveLinkedPoint(s, action, rest);
         set({
-          actionHistory:     rest,
+          actionHistory:     cRest,
           committedContacts: s.committedContacts
             .filter(c => c.id !== action.contactId && c.id !== action.assistContactId),
           lastFeedItem: null,
-          rallyPhase: action.prevRallyPhase ?? 'pre_serve',
+          rallyPhase: cPt.rallyPhase ?? action.prevRallyPhase ?? 'pre_serve',
           ...(s.lastSetContactId === action.contactId ? { lastSetContactId: null } : {}),
           serveReticles: s.serveReticles.filter(r => r.contactId !== action.contactId),
           pendingServeContact: s.pendingServeContact?.contactId === action.contactId
             ? null : s.pendingServeContact,
+          ...cPt,
         });
         break;
       }
@@ -450,12 +493,14 @@ export const useMatchStore = create((set, get) => ({
       case 'blocked_attack': {
         await db.contacts.delete(action.contactId);
         if (action.blkContactId) await db.contacts.delete(action.blkContactId);
+        const { finalRest: bRest, pointUpdates: bPt } = await resolveLinkedPoint(s, action, rest);
         set({
-          actionHistory:     rest,
+          actionHistory:     bRest,
           committedContacts: s.committedContacts
             .filter(c => c.id !== action.contactId && c.id !== action.blkContactId),
           lastFeedItem: null,
-          rallyPhase: action.prevRallyPhase ?? 'pre_serve',
+          rallyPhase: bPt.rallyPhase ?? action.prevRallyPhase ?? 'pre_serve',
+          ...bPt,
         });
         break;
       }
@@ -474,10 +519,12 @@ export const useMatchStore = create((set, get) => ({
 
       case 'opp_contact': {
         await db.contacts.delete(action.contactId);
+        const { finalRest: oRest, pointUpdates: oPt } = await resolveLinkedPoint(s, action, rest);
         set({
-          actionHistory:     rest,
+          actionHistory:     oRest,
           committedContacts: s.committedContacts.filter(c => c.id !== action.contactId),
           lastFeedItem:      null,
+          ...oPt,
         });
         break;
       }
@@ -586,6 +633,7 @@ export const useMatchStore = create((set, get) => ({
 
   recordContact: async (contactData) => {
     const s = get();
+    const { _causedPoint, ...contactFields } = contactData;
     const contactFull = {
       match_id:     s.matchId,
       set_id:       s.currentSetId,
@@ -593,7 +641,7 @@ export const useMatchStore = create((set, get) => ({
       rally_number: s.rallyCount,
       serve_side:   s.serveSide,
       timestamp:    Date.now(),
-      ...contactData,
+      ...contactFields,
     };
     let id;
     try {
@@ -607,7 +655,7 @@ export const useMatchStore = create((set, get) => ({
 
     const prevHistory = get().actionHistory;
     set({
-      actionHistory:     [{ type: 'contact', contactId: id, prevRallyPhase: s.rallyPhase }, ...prevHistory],
+      actionHistory:     [{ type: 'contact', contactId: id, prevRallyPhase: s.rallyPhase, causedPoint: _causedPoint ?? null }, ...prevHistory],
       committedContacts: newCommittedContacts,
       // Track last SET contact id so assist back-assignment is O(1) instead of O(n)
       ...(contactData.action === ACTION.SET ? { lastSetContactId: id } : {}),
@@ -931,7 +979,7 @@ export const useMatchStore = create((set, get) => ({
       const id = await db.contacts.add(contactFull);
       set((cur) => ({
         committedContacts: [...cur.committedContacts, { ...contactFull, id }],
-        actionHistory: [{ type: 'opp_contact', contactId: id }, ...cur.actionHistory],
+        actionHistory: [{ type: 'opp_contact', contactId: id, causedPoint: SIDE.THEM }, ...cur.actionHistory],
       }));
     } catch (err) {
       console.error('[VBStat] recordHomeRotError contact write failed:', err);
@@ -959,7 +1007,7 @@ export const useMatchStore = create((set, get) => ({
       const id = await db.contacts.add(contactFull);
       set((cur) => ({
         committedContacts: [...cur.committedContacts, { ...contactFull, id }],
-        actionHistory: [{ type: 'opp_contact', contactId: id }, ...cur.actionHistory],
+        actionHistory: [{ type: 'opp_contact', contactId: id, causedPoint: pointSide }, ...cur.actionHistory],
       }));
     } catch (err) {
       console.error('[VBStat] addOppPoint contact write failed:', err);

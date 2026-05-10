@@ -51,6 +51,8 @@ export function MatchSetupPage() {
   const [saving,         setSaving]         = useState(false);
   const [error,          setError]          = useState('');
   const [loadPickerOpen, setLoadPickerOpen] = useState(false);
+  const [manualEntry,    setManualEntry]    = useState(false);
+  const [manualSets,     setManualSets]     = useState([{ ourScore: '', oppScore: '' }]);
 
   // Load all seasons with their team + org name for the picker
   const seasons = useLiveQuery(async () => {
@@ -140,6 +142,74 @@ export function MatchSetupPage() {
     setSlotPositions(sl.slot_positions ?? Array(6).fill(''));
     setStartFormations(sl.serve_receive_formations ?? null);
     setLoadPickerOpen(false);
+  };
+
+  const handleManualSave = async () => {
+    setError('');
+    if (!seasonId) { setError('Select a season.'); return; }
+    if (!opponent.trim()) { setError('Enter opponent name.'); return; }
+    const parsedSets = manualSets.map((s) => ({
+      ourScore: parseInt(s.ourScore, 10),
+      oppScore: parseInt(s.oppScore, 10),
+    }));
+    if (parsedSets.some((s) => isNaN(s.ourScore) || isNaN(s.oppScore) || s.ourScore < 0 || s.oppScore < 0)) {
+      setError('Enter valid scores for every set.');
+      return;
+    }
+    setSaving(true);
+    try {
+      let oppRecord = lockedOppId != null ? await db.opponents.get(lockedOppId) : null;
+      if (!oppRecord) {
+        const nameLower = opponent.trim().toLowerCase();
+        const all = await db.opponents.toArray();
+        oppRecord = all.find((o) => o.name.toLowerCase() === nameLower) ?? null;
+      }
+      if (!oppRecord) {
+        const oppId = await db.opponents.add({ name: opponent.trim() });
+        oppRecord = { id: oppId, name: opponent.trim() };
+      }
+
+      const ourSetsWon = parsedSets.filter((s) => s.ourScore > s.oppScore).length;
+      const oppSetsWon = parsedSets.filter((s) => s.oppScore > s.ourScore).length;
+
+      const matchId = await db.matches.add({
+        season_id:              Number(seasonId),
+        opponent_id:            oppRecord.id,
+        opponent_name:          oppRecord.name,
+        opponent_abbr:          opponentAbbr.trim().toUpperCase() || null,
+        opponent_record:        opponentRecord.trim() || null,
+        opponent_maxpreps_rank: opponentMaxprepsRank !== '' ? parseInt(opponentMaxprepsRank, 10) : null,
+        status:                 MATCH_STATUS.COMPLETE,
+        format,
+        last_set_score:         matchType === 'tourney' ? tourneySet3 : lastSetScore,
+        location,
+        conference,
+        match_type:             matchType,
+        tournament_name:        matchType === 'tourney' ? tournamentName.trim() || null : null,
+        tournament_round:       matchType === 'tourney' ? tournamentRound : null,
+        playoff_round:          matchType === 'ihsa-playoffs' ? playoffRound.trim() || null : null,
+        date:                   new Date().toISOString(),
+        our_sets_won:           ourSetsWon,
+        opp_sets_won:           oppSetsWon,
+      });
+
+      await db.sets.bulkAdd(
+        parsedSets.map((s, i) => ({
+          match_id:   matchId,
+          set_number: i + 1,
+          status:     'complete',
+          our_score:  s.ourScore,
+          opp_score:  s.oppScore,
+        }))
+      );
+
+      navigate(`/matches/${matchId}/summary`);
+    } catch (e) {
+      showToast('Failed to save match. Try again.', 'error');
+      setError('Failed to save match. Try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleStart = async () => {
@@ -578,74 +648,140 @@ export function MatchSetupPage() {
           );
         })()}
 
-        {/* Load saved lineup */}
-        {selectedSeason && (savedLineups ?? []).length > 0 && (
-          <div>
-            <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
-              Saved Lineups
-            </label>
-            {loadPickerOpen ? (
-              <div className="space-y-2">
-                {savedLineups.map((sl) => (
+        {!manualEntry && (
+          <>
+            {/* Load saved lineup */}
+            {selectedSeason && (savedLineups ?? []).length > 0 && (
+              <div>
+                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+                  Saved Lineups
+                </label>
+                {loadPickerOpen ? (
+                  <div className="space-y-2">
+                    {savedLineups.map((sl) => (
+                      <button
+                        key={sl.id}
+                        onClick={() => applyLoadedLineup(sl)}
+                        className="w-full text-left bg-surface border border-slate-600 hover:border-primary rounded-lg px-4 py-3 transition-colors"
+                      >
+                        <span className="font-semibold text-white">{sl.name}</span>
+                        <span className="block text-xs text-slate-400 mt-0.5">
+                          {sl.serve_order.map((pid) => {
+                            const p = (players ?? []).find((pl) => String(pl.id) === String(pid));
+                            return p ? `#${p.jersey_number} ${p.name}` : '?';
+                          }).join(' · ')}
+                        </span>
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setLoadPickerOpen(false)}
+                      className="w-full py-2 text-sm text-slate-500 hover:text-slate-300"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
                   <button
-                    key={sl.id}
-                    onClick={() => applyLoadedLineup(sl)}
-                    className="w-full text-left bg-surface border border-slate-600 hover:border-primary rounded-lg px-4 py-3 transition-colors"
+                    onClick={() => setLoadPickerOpen(true)}
+                    className="w-full py-2 rounded-lg text-sm font-semibold border border-slate-600 text-slate-300 hover:border-slate-400 bg-surface transition-colors"
                   >
-                    <span className="font-semibold text-white">{sl.name}</span>
-                    <span className="block text-xs text-slate-400 mt-0.5">
-                      {sl.serve_order.map((pid) => {
-                        const p = (players ?? []).find((pl) => String(pl.id) === String(pid));
-                        return p ? `#${p.jersey_number} ${p.name}` : '?';
-                      }).join(' · ')}
-                    </span>
+                    Load Saved Lineup
                   </button>
-                ))}
-                <button
-                  onClick={() => setLoadPickerOpen(false)}
-                  className="w-full py-2 text-sm text-slate-500 hover:text-slate-300"
-                >
-                  Cancel
-                </button>
+                )}
               </div>
-            ) : (
+            )}
+
+            {/* Lineup builder */}
+            {selectedSeason && (players ?? []).length > 0 && (
+              <LineupForm
+                lineup={lineup}
+                setLineup={setLineupState}
+                slotPositions={slotPositions}
+                setSlotPositions={setSlotPositions}
+                startZone={startZone}
+                setStartZone={setStartZone}
+                liberoId={liberoId}
+                setLiberoId={setLiberoId}
+                players={players}
+              />
+            )}
+          </>
+        )}
+
+        {/* Divider + Manual Entry toggle */}
+        <div className="border-t border-slate-700 pt-4">
+          <button
+            type="button"
+            onClick={() => { setManualEntry((v) => !v); setError(''); }}
+            className="w-full py-2 rounded-lg text-sm font-semibold border border-slate-600 text-slate-400 hover:text-slate-200 hover:border-slate-400 bg-surface transition-colors"
+          >
+            {manualEntry ? '← Back to stat tracking' : 'Log result only (no stats)'}
+          </button>
+        </div>
+
+        {/* Manual set score entry */}
+        {manualEntry && (
+          <div className="space-y-3">
+            <label className="block text-xs text-slate-400 font-semibold uppercase tracking-wide">
+              Set Scores
+            </label>
+            {manualSets.map((s, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-500 w-5 shrink-0">S{i + 1}</span>
+                <input
+                  type="number" min="0" value={s.ourScore} placeholder="Us"
+                  onChange={(e) => {
+                    const next = [...manualSets];
+                    next[i] = { ...next[i], ourScore: e.target.value };
+                    setManualSets(next);
+                  }}
+                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm text-center font-bold focus:outline-none focus:border-primary"
+                />
+                <span className="text-slate-500 font-black shrink-0">–</span>
+                <input
+                  type="number" min="0" value={s.oppScore} placeholder="Them"
+                  onChange={(e) => {
+                    const next = [...manualSets];
+                    next[i] = { ...next[i], oppScore: e.target.value };
+                    setManualSets(next);
+                  }}
+                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm text-center font-bold focus:outline-none focus:border-primary"
+                />
+                {manualSets.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setManualSets((prev) => prev.filter((_, j) => j !== i))}
+                    className="text-slate-600 hover:text-red-400 text-lg leading-none shrink-0 transition-colors"
+                    title="Remove set"
+                  >×</button>
+                )}
+              </div>
+            ))}
+            {manualSets.length < (format === FORMAT.BEST_OF_5 ? 5 : 3) && (
               <button
-                onClick={() => setLoadPickerOpen(true)}
-                className="w-full py-2 rounded-lg text-sm font-semibold border border-slate-600 text-slate-300 hover:border-slate-400 bg-surface transition-colors"
+                type="button"
+                onClick={() => setManualSets((prev) => [...prev, { ourScore: '', oppScore: '' }])}
+                className="w-full py-2 rounded-lg text-sm font-semibold border border-dashed border-slate-600 text-slate-500 hover:text-slate-300 hover:border-slate-400 transition-colors"
               >
-                Load Saved Lineup
+                + Add Set
               </button>
             )}
           </div>
         )}
 
-        {/* Lineup builder */}
-        {selectedSeason && (players ?? []).length > 0 && (
-          <LineupForm
-            lineup={lineup}
-            setLineup={setLineupState}
-            slotPositions={slotPositions}
-            setSlotPositions={setSlotPositions}
-            startZone={startZone}
-            setStartZone={setStartZone}
-            liberoId={liberoId}
-            setLiberoId={setLiberoId}
-            players={players}
-          />
-        )}
-
         {/* Error */}
         {error && <p className="text-red-400 text-sm">{error}</p>}
 
-        {/* Start */}
-        <Button
-          size="lg"
-          className="w-full"
-          disabled={saving}
-          onClick={handleStart}
-        >
-          {saving ? 'Creating…' : 'Start Match'}
-        </Button>
+        {/* Primary action */}
+        {manualEntry ? (
+          <Button size="lg" className="w-full" disabled={saving} onClick={handleManualSave}>
+            {saving ? 'Saving…' : 'Save Match'}
+          </Button>
+        ) : (
+          <Button size="lg" className="w-full" disabled={saving} onClick={handleStart}>
+            {saving ? 'Creating…' : 'Start Match'}
+          </Button>
+        )}
       </div>
     </div>
   );
