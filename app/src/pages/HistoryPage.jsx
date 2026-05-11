@@ -204,25 +204,34 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
                       className="text-slate-500 hover:text-red-400 text-lg leading-none px-1 shrink-0"
                     >×</button>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      className={`${inp} flex-1`}
-                      placeholder="Opponent name"
-                      value={r.opponent}
-                      onChange={e => setRound('opponent', e.target.value)}
-                    />
-                    <input
-                      className={`${inp} w-16`}
-                      placeholder="#Seed"
-                      value={r.opp_seed}
-                      onChange={e => setRound('opp_seed', e.target.value)}
-                    />
-                    <input
-                      className={`${inp} w-16`}
-                      placeholder="3-1"
-                      value={r.score}
-                      onChange={e => setRound('score', e.target.value)}
-                    />
+                  <div className="flex items-end gap-1.5">
+                    <div className="flex-1 min-w-0">
+                      <label className={lbl}>Opponent</label>
+                      <input
+                        className={inp}
+                        placeholder="e.g. Lincoln-Way Central"
+                        value={r.opponent}
+                        onChange={e => setRound('opponent', e.target.value)}
+                      />
+                    </div>
+                    <div className="w-14 shrink-0">
+                      <label className={lbl}>Seed</label>
+                      <input
+                        className={inp}
+                        placeholder="#"
+                        value={r.opp_seed}
+                        onChange={e => setRound('opp_seed', e.target.value)}
+                      />
+                    </div>
+                    <div className="w-16 shrink-0">
+                      <label className={lbl}>Score</label>
+                      <input
+                        className={inp}
+                        placeholder="3-1"
+                        value={r.score}
+                        onChange={e => setRound('score', e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
               );
