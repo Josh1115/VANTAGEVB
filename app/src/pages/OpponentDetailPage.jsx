@@ -289,13 +289,51 @@ function NotesTab({ opp }) {
   );
 }
 
+// ── Delete confirmation modal ────────────────────────────────────────────────
+function DeleteOppModal({ opp, matchCount, onConfirm, onCancel, deleting }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm px-4 pb-8">
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-sm space-y-4">
+        <div className="space-y-1">
+          <p className="text-white font-bold text-base">Delete {opp.name}?</p>
+          <p className="text-slate-400 text-sm leading-relaxed">
+            This will permanently delete this opponent and all scouting tendencies saved for them.
+            {matchCount > 0 && (
+              <> The <span className="text-white font-semibold">{matchCount} match{matchCount !== 1 ? 'es' : ''}</span> recorded against them will be kept — this opponent will just appear as a name with no linked profile.</>
+            )}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={onCancel}
+            disabled={deleting}
+            className="flex-1 py-2.5 rounded-xl bg-slate-700 text-slate-200 text-sm font-semibold hover:bg-slate-600 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={deleting}
+            className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-500 transition-colors disabled:opacity-50"
+          >
+            {deleting ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ────────────────────────────────────────────────────────────────
 export function OpponentDetailPage() {
   const { oppId } = useParams();
+  const navigate  = useNavigate();
   const oid = Number(oppId);
   const [tab, setTab] = useState('history');
   const [selectedTeamId, setSelectedTeamId] = useState(() => getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID, null));
   const [selectedSeasonId, setSelectedSeasonId] = useState(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting,   setDeleting]   = useState(false);
 
   const opp   = useLiveQuery(() => db.opponents.get(oid), [oid]);
   const teams  = useLiveQuery(() => db.teams.toArray(), []);
@@ -303,6 +341,14 @@ export function OpponentDetailPage() {
     if (!selectedTeamId) return [];
     return db.seasons.where('team_id').equals(selectedTeamId).sortBy('year').then(s => [...s].reverse());
   }, [selectedTeamId]);
+
+  const matchCount = useLiveQuery(async () => {
+    const nameLower = (opp?.name ?? '').toLowerCase();
+    const all = await db.matches.toArray();
+    return all.filter(m =>
+      m.opponent_id === oid || (m.opponent_name ?? '').toLowerCase() === nameLower
+    ).length;
+  }, [oid, opp?.name]);
 
   function handleTeamChange(e) {
     const id = e.target.value ? Number(e.target.value) : null;
@@ -315,13 +361,42 @@ export function OpponentDetailPage() {
     setSelectedSeasonId(e.target.value ? Number(e.target.value) : null);
   }
 
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await db.opp_tendencies.where('opp_id').equals(oid).delete();
+      await db.matches.where('opponent_id').equals(oid).modify({ opponent_id: null });
+      await db.opponents.delete(oid);
+      navigate('/opponents', { replace: true });
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   if (!opp) {
     return <div className="flex items-center justify-center h-48"><Spinner /></div>;
   }
 
   return (
     <div>
-      <PageHeader title={opp.name} backTo="/opponents" />
+      <PageHeader
+        title={opp.name}
+        backTo="/opponents"
+        action={
+          <button
+            onClick={() => setDeleteOpen(true)}
+            className="p-2 text-slate-500 hover:text-red-400 transition-colors rounded-lg"
+            title="Delete opponent"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              <path d="M10 11v6M14 11v6" />
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+            </svg>
+          </button>
+        }
+      />
 
       {/* Filters row */}
       {(teams ?? []).length > 0 && (
@@ -356,6 +431,16 @@ export function OpponentDetailPage() {
       {tab === 'history'    && <HistoryTab    oppId={oid} oppName={opp.name} selectedTeamId={selectedTeamId} selectedSeasonId={selectedSeasonId} />}
       {tab === 'tendencies' && <TendenciesTab oppId={oid} selectedTeamId={selectedTeamId} selectedSeasonId={selectedSeasonId} />}
       {tab === 'notes'      && <NotesTab      opp={opp}   />}
+
+      {deleteOpen && (
+        <DeleteOppModal
+          opp={opp}
+          matchCount={matchCount ?? 0}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteOpen(false)}
+          deleting={deleting}
+        />
+      )}
     </div>
   );
 }
