@@ -1200,11 +1200,17 @@ export function ReportsPage() {
             {/* ── Rotation Analysis ────────────────────────────────────── */}
             {tab === 'rotation' && (
               <>
-                <div className="grid grid-cols-2 gap-4 text-center">
-                  <SideoutPieChart so_pct={stats.rotation.so_pct} label="Sideout" />
-                  <SideoutPieChart so_pct={stats.rotation.bp_pct} label="Serving Point" />
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <SideoutPieChart so_pct={stats.rotation.so_pct} label="Sideout" />
+                  </div>
+                  <div className="flex-[1.4] min-w-0">
+                    <RotationRadarChart rotationStats={stats.rotation} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <SideoutPieChart so_pct={stats.rotation.bp_pct} label="Serving Point" />
+                  </div>
                 </div>
-                <RotationRadarChart rotationStats={stats.rotation} />
                 <RotationSpotlight rows={rotationRows} />
 
                 {/* Expected pts per set by starting rotation */}

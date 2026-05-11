@@ -281,6 +281,19 @@ export function MatchSetupPage() {
         });
       }
 
+      // Remove any orphaned in-progress sets from a previous back-and-restart cycle
+      const orphanedSets = await db.sets
+        .where('match_id').equals(effectiveMatchId)
+        .filter((s) => s.status === SET_STATUS.IN_PROGRESS)
+        .toArray();
+      for (const orphan of orphanedSets) {
+        const hasContacts = await db.contacts.where('set_id').equals(orphan.id).count();
+        if (!hasContacts) {
+          await db.lineups.where('set_id').equals(orphan.id).delete();
+          await db.sets.delete(orphan.id);
+        }
+      }
+
       // Create first set
       const setId = await db.sets.add({
         match_id:         effectiveMatchId,

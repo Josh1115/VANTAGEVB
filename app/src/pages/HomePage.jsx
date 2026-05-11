@@ -862,7 +862,7 @@ export function HomePage() {
                 onClick={() => navigate('/reports?result=win')}
               >
                 <div
-                  className="text-7xl font-black text-emerald-400 tabular-nums leading-none scoreboard-flicker"
+                  className="text-7xl font-black text-emerald-400 tabular-nums leading-none tracking-[0.15em] scoreboard-flicker"
                   style={{ fontFamily: "'Orbitron', sans-serif" }}
                 >
                   {displaySeasonRecord.wins}
@@ -874,7 +874,7 @@ export function HomePage() {
                 onClick={() => navigate('/reports?result=loss')}
               >
                 <div
-                  className="text-7xl font-black text-red-400 tabular-nums leading-none scoreboard-flicker"
+                  className="text-7xl font-black text-red-400 tabular-nums leading-none tracking-[0.15em] scoreboard-flicker"
                   style={{ fontFamily: "'Orbitron', sans-serif" }}
                 >
                   {displaySeasonRecord.losses}
