@@ -1778,7 +1778,7 @@ export function SettingsPage() {
 
               {/* Getting Started */}
               <div>
-                <p className="text-[10px] font-bold tracking-widest text-slate-600 uppercase mb-1.5 px-1">Getting Started</p>
+                <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-1.5 px-1">Getting Started</p>
                 <div className="space-y-1">
                   {[
                     { to: '/help/first-match',   icon: '🆕', label: 'Your First Match'                 },
@@ -1801,7 +1801,7 @@ export function SettingsPage() {
 
               {/* Recording a Match */}
               <div>
-                <p className="text-[10px] font-bold tracking-widest text-slate-600 uppercase mb-1.5 px-1">Recording a Match</p>
+                <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-1.5 px-1">Recording a Match</p>
                 <div className="space-y-1">
                   {[
                     { to: '/help/live-match',        icon: '📲', label: 'Live Match Screen Guide'       },
@@ -1825,7 +1825,7 @@ export function SettingsPage() {
 
               {/* After the Match */}
               <div>
-                <p className="text-[10px] font-bold tracking-widest text-slate-600 uppercase mb-1.5 px-1">After the Match</p>
+                <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-1.5 px-1">After the Match</p>
                 <div className="space-y-1">
                   {[
                     { to: '/help/match-summary', icon: '📋', label: 'Match Summary Walkthrough' },
@@ -1847,7 +1847,7 @@ export function SettingsPage() {
 
               {/* Analysis & Reports */}
               <div>
-                <p className="text-[10px] font-bold tracking-widest text-slate-600 uppercase mb-1.5 px-1">Analysis &amp; Reports</p>
+                <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-1.5 px-1">Analysis &amp; Reports</p>
                 <div className="space-y-1">
                   {[
                     { to: '/help/reports',       icon: '📈', label: 'Reading the Reports Page' },
@@ -1870,7 +1870,7 @@ export function SettingsPage() {
 
               {/* Season Management */}
               <div>
-                <p className="text-[10px] font-bold tracking-widest text-slate-600 uppercase mb-1.5 px-1">Season Management</p>
+                <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-1.5 px-1">Season Management</p>
                 <div className="space-y-1">
                   {[
                     { to: '/help/season-history', icon: '🏆', label: 'Season History & Playoff Entry' },
@@ -1891,7 +1891,7 @@ export function SettingsPage() {
 
               {/* FAQ modals */}
               <div>
-                <p className="text-[10px] font-bold tracking-widest text-slate-600 uppercase mb-1.5 px-1">FAQ</p>
+                <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-1.5 px-1">FAQ</p>
                 <div className="space-y-1">
                   {FAQ_TOPICS.map((topic) => (
                     <button
