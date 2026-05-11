@@ -1773,47 +1773,142 @@ export function SettingsPage() {
 
           {/* Help / FAQ */}
           <div className="mt-4">
-            <p className="text-xs font-bold tracking-widest text-slate-500 uppercase mb-2">Help &amp; Guide</p>
-            <div className="space-y-1">
-              {/* Step-by-step visual guides */}
-              {[
-                { to: '/help/first-match',      icon: '🆕', label: 'Your First Match'                   },
-                { to: '/help/live-match',       icon: '📲', label: 'Live Match Screen Guide'             },
-                { to: '/help/live-stat-labels', icon: '🏐', label: 'Live Stat Phase Labels'             },
-                { to: '/help/default-team',     icon: '🏠', label: 'Setting Up Default Team & Season'   },
-                { to: '/help/serve-receive',    icon: '📐', label: 'Serve-Receive Formation Setup'      },
-                { to: '/help/match-summary',    icon: '📋', label: 'Match Summary Walkthrough'          },
-                { to: '/help/pre-match-prep',   icon: '🎯', label: 'Pre-Match Prep Workflow'            },
-                { to: '/help/exporting',        icon: '📤', label: 'Exporting & Sharing Stats'          },
-                { to: '/help/player-report',    icon: '📊', label: 'Reading Player Reports'             },
-              ].map(({ to, icon, label }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors text-left"
-                >
-                  <span className="flex items-center gap-2.5">
-                    <span className="text-base">{icon}</span>
-                    <span className="text-sm font-medium text-slate-200">{label}</span>
-                    <span className="text-[9px] font-bold text-primary border border-primary/50 rounded px-1 py-px">GUIDE</span>
-                  </span>
-                  <span className="text-slate-500 text-sm">›</span>
-                </Link>
-              ))}
+            <p className="text-xs font-bold tracking-widest text-slate-500 uppercase mb-3">Help &amp; Guides</p>
+            <div className="space-y-4">
+
+              {/* Getting Started */}
+              <div>
+                <p className="text-[10px] font-bold tracking-widest text-slate-600 uppercase mb-1.5 px-1">Getting Started</p>
+                <div className="space-y-1">
+                  {[
+                    { to: '/help/first-match',   icon: '🆕', label: 'Your First Match'                 },
+                    { to: '/help/default-team',  icon: '🏠', label: 'Setting Up Default Team & Season' },
+                    { to: '/help/roster',        icon: '👥', label: 'Managing Your Roster'             },
+                  ].map(({ to, icon, label }) => (
+                    <Link key={to} to={to}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors text-left"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <span className="text-base">{icon}</span>
+                        <span className="text-sm font-medium text-slate-200">{label}</span>
+                        <span className="text-[9px] font-bold text-primary border border-primary/50 rounded px-1 py-px">GUIDE</span>
+                      </span>
+                      <span className="text-slate-500 text-sm">›</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* Recording a Match */}
+              <div>
+                <p className="text-[10px] font-bold tracking-widest text-slate-600 uppercase mb-1.5 px-1">Recording a Match</p>
+                <div className="space-y-1">
+                  {[
+                    { to: '/help/live-match',        icon: '📲', label: 'Live Match Screen Guide'       },
+                    { to: '/help/live-stat-labels',  icon: '🏐', label: 'Live Stat Phase Labels'        },
+                    { to: '/help/serve-receive',     icon: '📐', label: 'Serve-Receive Formation Setup' },
+                    { to: '/help/substitutions',     icon: '🔄', label: 'Substitutions & Lineup Changes'},
+                  ].map(({ to, icon, label }) => (
+                    <Link key={to} to={to}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors text-left"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <span className="text-base">{icon}</span>
+                        <span className="text-sm font-medium text-slate-200">{label}</span>
+                        <span className="text-[9px] font-bold text-primary border border-primary/50 rounded px-1 py-px">GUIDE</span>
+                      </span>
+                      <span className="text-slate-500 text-sm">›</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* After the Match */}
+              <div>
+                <p className="text-[10px] font-bold tracking-widest text-slate-600 uppercase mb-1.5 px-1">After the Match</p>
+                <div className="space-y-1">
+                  {[
+                    { to: '/help/match-summary', icon: '📋', label: 'Match Summary Walkthrough' },
+                    { to: '/help/exporting',     icon: '📤', label: 'Exporting & Sharing Stats' },
+                  ].map(({ to, icon, label }) => (
+                    <Link key={to} to={to}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors text-left"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <span className="text-base">{icon}</span>
+                        <span className="text-sm font-medium text-slate-200">{label}</span>
+                        <span className="text-[9px] font-bold text-primary border border-primary/50 rounded px-1 py-px">GUIDE</span>
+                      </span>
+                      <span className="text-slate-500 text-sm">›</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* Analysis & Reports */}
+              <div>
+                <p className="text-[10px] font-bold tracking-widest text-slate-600 uppercase mb-1.5 px-1">Analysis &amp; Reports</p>
+                <div className="space-y-1">
+                  {[
+                    { to: '/help/reports',       icon: '📈', label: 'Reading the Reports Page' },
+                    { to: '/help/player-report', icon: '📊', label: 'Reading Player Reports'   },
+                    { to: '/help/pre-match-prep',icon: '🎯', label: 'Pre-Match Prep Workflow'  },
+                  ].map(({ to, icon, label }) => (
+                    <Link key={to} to={to}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors text-left"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <span className="text-base">{icon}</span>
+                        <span className="text-sm font-medium text-slate-200">{label}</span>
+                        <span className="text-[9px] font-bold text-primary border border-primary/50 rounded px-1 py-px">GUIDE</span>
+                      </span>
+                      <span className="text-slate-500 text-sm">›</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* Season Management */}
+              <div>
+                <p className="text-[10px] font-bold tracking-widest text-slate-600 uppercase mb-1.5 px-1">Season Management</p>
+                <div className="space-y-1">
+                  {[
+                    { to: '/help/season-history', icon: '🏆', label: 'Season History & Playoff Entry' },
+                  ].map(({ to, icon, label }) => (
+                    <Link key={to} to={to}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors text-left"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <span className="text-base">{icon}</span>
+                        <span className="text-sm font-medium text-slate-200">{label}</span>
+                        <span className="text-[9px] font-bold text-primary border border-primary/50 rounded px-1 py-px">GUIDE</span>
+                      </span>
+                      <span className="text-slate-500 text-sm">›</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
               {/* FAQ modals */}
-              {FAQ_TOPICS.map((topic) => (
-                <button
-                  key={topic.id}
-                  onClick={() => setHelpTopic(topic)}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-slate-700 hover:border-primary/60 hover:bg-primary/5 transition-colors text-left"
-                >
-                  <span className="flex items-center gap-2.5">
-                    <span className="text-base">{topic.icon}</span>
-                    <span className="text-sm font-medium text-slate-200">{topic.label}</span>
-                  </span>
-                  <span className="text-slate-500 text-sm">›</span>
-                </button>
-              ))}
+              <div>
+                <p className="text-[10px] font-bold tracking-widest text-slate-600 uppercase mb-1.5 px-1">FAQ</p>
+                <div className="space-y-1">
+                  {FAQ_TOPICS.map((topic) => (
+                    <button
+                      key={topic.id}
+                      onClick={() => setHelpTopic(topic)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-slate-700 hover:border-primary/60 hover:bg-primary/5 transition-colors text-left"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <span className="text-base">{topic.icon}</span>
+                        <span className="text-sm font-medium text-slate-200">{topic.label}</span>
+                      </span>
+                      <span className="text-slate-500 text-sm">›</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
             </div>
           </div>
 
