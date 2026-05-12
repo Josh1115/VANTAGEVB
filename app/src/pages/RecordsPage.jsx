@@ -474,8 +474,10 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, teamId }) {
     </div>
   );
 
+  const isActive = row.active || row.currentSeason;
+
   if (!row.historical) {
-    if ((row.active || row.currentSeason) && row.rank > 3) {
+    if (isActive) {
       return (
         <div className="relative rounded-lg overflow-hidden border border-orange-400 animate-active-record-glow">
           {inner}
@@ -485,10 +487,13 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, teamId }) {
     return inner;
   }
 
-  const borderCls = row.rank === 1 ? 'border border-yellow-400/30'
+  const medalBorder = row.rank === 1 ? 'border border-yellow-400/30'
     : row.rank === 2 ? 'border border-zinc-300/20'
     : row.rank === 3 ? 'border border-orange-600/25'
-    : row.active || row.currentSeason ? 'border border-orange-400 animate-active-record-glow'
+    : null;
+  const borderCls = medalBorder
+    ? `${medalBorder}${isActive ? ' animate-active-record-glow' : ''}`
+    : isActive ? 'border border-orange-400 animate-active-record-glow'
     : 'border border-slate-700/50';
 
   return (
