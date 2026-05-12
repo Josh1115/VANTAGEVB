@@ -671,15 +671,23 @@ export function HomePage() {
     }
     seasonRecordAnimated.current = true;
     const { wins, losses } = seasonRecord;
-    const steps = 20;
+    const steps = 30;
     let step = 0;
-    const timer = setInterval(() => {
+    let cancelled = false;
+
+    // 0–75%: 18ms · 75–95%: 55ms · 95–100%: 130ms
+    function tick() {
+      if (cancelled) return;
       step++;
       const t = step / steps;
       setDisplaySeasonRecord({ wins: Math.round(wins * t), losses: Math.round(losses * t) });
-      if (step >= steps) { clearInterval(timer); setDisplaySeasonRecord({ wins, losses }); }
-    }, 600 / steps);
-    return () => clearInterval(timer);
+      if (step >= steps) { setDisplaySeasonRecord({ wins, losses }); return; }
+      const delay = t >= 0.95 ? 130 : t >= 0.75 ? 55 : 18;
+      setTimeout(tick, delay);
+    }
+
+    setTimeout(tick, 18);
+    return () => { cancelled = true; };
   }, [seasonRecord]);
 
   const inProgress    = recentMatches?.find((m) => m.status === MATCH_STATUS.IN_PROGRESS);
