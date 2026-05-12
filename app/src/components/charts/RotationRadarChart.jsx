@@ -15,7 +15,7 @@ export function RotationRadarChart({ rotationStats }) {
 
   return (
     <ResponsiveContainer width="100%" height={260}>
-      <RadarChart data={data} margin={{ top: 8, right: 24, left: 24, bottom: 8 }}>
+      <RadarChart data={data} margin={{ top: 8, right: 24, left: 24, bottom: 28 }}>
         <PolarGrid stroke="#1e293b" />
         <PolarAngleAxis dataKey="rotation" tick={{ fill: '#94a3b8', fontSize: 12 }} />
         <PolarRadiusAxis
