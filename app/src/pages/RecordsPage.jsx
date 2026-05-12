@@ -474,7 +474,16 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, teamId }) {
     </div>
   );
 
-  if (!row.historical) return inner;
+  if (!row.historical) {
+    if ((row.active || row.currentSeason) && row.rank > 3) {
+      return (
+        <div className="relative rounded-lg overflow-hidden border border-orange-400 animate-active-record-glow">
+          {inner}
+        </div>
+      );
+    }
+    return inner;
+  }
 
   const borderCls = row.rank === 1 ? 'border border-yellow-400/30'
     : row.rank === 2 ? 'border border-zinc-300/20'
