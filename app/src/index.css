@@ -1082,3 +1082,11 @@
   animation: medal-pulse 2s ease-in-out infinite;
 }
 
+@keyframes active-record-glow {
+  0%, 100% { box-shadow: 0 0 4px 1px rgba(249,115,22,0.5), 0 0 10px 2px rgba(249,115,22,0.25); }
+  50%       { box-shadow: 0 0 10px 3px rgba(249,115,22,0.85), 0 0 22px 6px rgba(249,115,22,0.4); }
+}
+.animate-active-record-glow {
+  animation: active-record-glow 2s ease-in-out infinite;
+}
+

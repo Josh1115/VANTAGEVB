@@ -405,7 +405,6 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, teamId }) {
   const bgCls = row.rank === 1 ? 'bg-[#555232]'
     : row.rank === 2 ? 'bg-[#424b5a]'
     : row.rank === 3 ? 'bg-[#472f2f]'
-    : row.active || row.currentSeason ? 'bg-orange-950'
     : 'bg-slate-800';
 
   const inner = (
@@ -480,7 +479,7 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, teamId }) {
   const borderCls = row.rank === 1 ? 'border border-yellow-400/30'
     : row.rank === 2 ? 'border border-zinc-300/20'
     : row.rank === 3 ? 'border border-orange-600/25'
-    : row.active || row.currentSeason ? 'border border-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.5)]'
+    : row.active || row.currentSeason ? 'border border-orange-400 animate-active-record-glow'
     : 'border border-slate-700/50';
 
   return (
