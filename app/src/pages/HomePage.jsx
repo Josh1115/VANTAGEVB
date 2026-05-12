@@ -5,6 +5,15 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { MATCH_STATUS } from '../constants';
 import { fmtDate, fmtHitting, fmtPct } from '../stats/formatters';
+
+// Converts "HH:MM" (24h) → "H:MM AM/PM"
+function fmtTime(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
 import { computePlayerStats, computeTeamStats } from '../stats/engine';
 import { deleteMatch } from '../stats/queries';
 import { Button } from '../components/ui/Button';
@@ -214,7 +223,9 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
                           {match.location === 'home' ? 'H' : match.location === 'away' ? 'A' : 'N'}
                         </span>
                       )}
-                      <span className="text-xs text-slate-400">Scheduled</span>
+                      <span className="text-xs text-slate-400">
+                        Scheduled{match.match_time ? ` · ${fmtTime(match.match_time)}` : ''}
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -332,6 +343,7 @@ export function HomePage() {
   const [schedPlayoffRound, setSchedPlayoffRound] = useState('');
   const [schedOppRecord,    setSchedOppRecord]    = useState('');
   const [schedOppRank,      setSchedOppRank]      = useState('');
+  const [schedTime,         setSchedTime]         = useState('');
   const [schedSaving,    setSchedSaving]    = useState(false);
 
   const todayDisplay = useMemo(() => {
@@ -344,13 +356,23 @@ export function HomePage() {
   const defaultTeamId   = useMemo(() => getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID),   []);
   const defaultSeasonId = useMemo(() => getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID), []);
 
+  // Sort matches by date, breaking same-day ties with match_time ("HH:MM" 24h). No time = sorts last within the day.
+  const sortByDateTime = (a, b) => {
+    const da = a.date?.slice(0, 10) ?? '';
+    const db2 = b.date?.slice(0, 10) ?? '';
+    if (da !== db2) return da < db2 ? -1 : 1;
+    const ta = a.match_time ?? '99:99';
+    const tb = b.match_time ?? '99:99';
+    return ta < tb ? -1 : ta > tb ? 1 : 0;
+  };
+
   const recentMatches = useLiveQuery(async () => {
     let matches;
     if (matchView === 'schedule') {
       const all = defaultSeasonId
         ? await db.matches.where('season_id').equals(defaultSeasonId).toArray()
         : await db.matches.toArray();
-      matches = all.sort((a, b) => new Date(a.date) - new Date(b.date));
+      matches = all.sort(sortByDateTime);
     } else {
       const now = Date.now();
       const all = defaultSeasonId
@@ -359,7 +381,7 @@ export function HomePage() {
       matches = all
         .sort((a, b) => Math.abs(new Date(a.date) - now) - Math.abs(new Date(b.date) - now))
         .slice(0, 5)
-        .sort((a, b) => new Date(a.date) - new Date(b.date));
+        .sort(sortByDateTime);
     }
 
     const seasonIds = [...new Set(matches.map((m) => m.season_id).filter(Boolean))];
@@ -454,7 +476,7 @@ export function HomePage() {
     const all = await db.matches.where('season_id').equals(defaultSeasonId).toArray();
     const upcoming = all
       .filter(m => m.status === MATCH_STATUS.SCHEDULED || m.status === MATCH_STATUS.SETUP)
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
+      .sort(sortByDateTime);
     if (!upcoming.length) return null;
     const m = upcoming[0];
     let opponentName = m.opponent_name;
@@ -472,7 +494,7 @@ export function HomePage() {
       .filter(m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition')
       .toArray();
     if (!allMatches.length) return null;
-    const matches = [...allMatches].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const matches = [...allMatches].sort(sortByDateTime);
     const lastMatchId = matches[matches.length - 1].id;
     const matchIds = matches.map(m => m.id);
     const [contacts, players] = await Promise.all([
@@ -676,6 +698,7 @@ export function HomePage() {
     setSchedPlayoffRound(match.playoff_round ?? '');
     setSchedOppRecord(match.opponent_record ?? '');
     setSchedOppRank(match.opponent_maxpreps_rank != null ? String(match.opponent_maxpreps_rank) : '');
+    setSchedTime(match.match_time ?? '');
     setSchedOpen(true);
   }
 
@@ -701,6 +724,7 @@ export function HomePage() {
         tournament_name:  schedMatchType === 'tourney' ? schedTourneyName.trim() || null : null,
         tournament_round: schedMatchType === 'tourney' ? schedTourneyRound : null,
         playoff_round:    schedMatchType === 'ihsa-playoffs' ? schedPlayoffRound.trim() || null : null,
+        match_time:       schedTime || null,
       };
       await db.matches.update(editMatchId, fields);
       resetSchedForm();
@@ -722,6 +746,7 @@ export function HomePage() {
     setSchedPlayoffRound('');
     setSchedOppRecord('');
     setSchedOppRank('');
+    setSchedTime('');
     setSchedOpen(false);
   }
 
@@ -1171,7 +1196,9 @@ export function HomePage() {
                   {nextMatch.opponent_record && (
                     <span className="text-[9px] font-semibold text-slate-500">{nextMatch.opponent_record}</span>
                   )}
-                  <span className="text-[11px] text-slate-400 truncate">{fmtDate(nextMatch.date)}</span>
+                  <span className="text-[11px] text-slate-400 truncate">
+                    {fmtDate(nextMatch.date)}{nextMatch.match_time ? ` · ${fmtTime(nextMatch.match_time)}` : ''}
+                  </span>
                 </div>
               </div>
               {nextMatch.status === MATCH_STATUS.SCHEDULED ? (
@@ -1314,7 +1341,7 @@ export function HomePage() {
                         <span className="text-[10px] font-semibold text-slate-500">{match.opponent_record}</span>
                       )}
                       <span className="text-xs text-slate-400">
-                        {match.season ? `${match.season.name ?? match.season.year} · ` : ''}{fmtDate(match.date)}
+                        {match.season ? `${match.season.name ?? match.season.year} · ` : ''}{fmtDate(match.date)}{match.match_time ? ` · ${fmtTime(match.match_time)}` : ''}
                       </span>
                     </div>
                   </div>
@@ -1380,7 +1407,7 @@ export function HomePage() {
                         </span>
                       )}
                       <span className="text-xs text-slate-400">
-                        {match.season ? `${match.season.name ?? match.season.year} · ` : ''}{fmtDate(match.date)}
+                        {match.season ? `${match.season.name ?? match.season.year} · ` : ''}{fmtDate(match.date)}{match.match_time ? ` · ${fmtTime(match.match_time)}` : ''}
                       </span>
                     </div>
                   </div>
@@ -1531,15 +1558,26 @@ export function HomePage() {
               </div>
             </div>
 
-            {/* Date */}
-            <div>
-              <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Date</label>
-              <input
-                type="date"
-                value={schedDate}
-                onChange={(e) => setSchedDate(e.target.value)}
-                className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
-              />
+            {/* Date + Time */}
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Date</label>
+                <input
+                  type="date"
+                  value={schedDate}
+                  onChange={(e) => setSchedDate(e.target.value)}
+                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                />
+              </div>
+              <div className="w-36">
+                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Start Time <span className="normal-case font-normal text-slate-500">(optional)</span></label>
+                <input
+                  type="time"
+                  value={schedTime}
+                  onChange={(e) => setSchedTime(e.target.value)}
+                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                />
+              </div>
             </div>
 
             {/* Location */}
