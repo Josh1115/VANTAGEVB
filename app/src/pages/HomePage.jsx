@@ -443,7 +443,9 @@ export function HomePage() {
       homeW, homeL, awayW, awayL, neutW, neutL, confW, confL, tourneyW, tourneyL, last5W, last5L, last5Count: last5.length,
       hasLocData: (homeW + homeL + awayW + awayL + neutW + neutL) > 0,
       matchProgress: { completed: matches.length, total: allSeasonMatches.length },
-      stateRank: historyEntry?.state_rank ?? null,
+      stateRank:    historyEntry?.state_rank    ?? null,
+      nationalRank: historyEntry?.national_rank ?? null,
+      teamState:    team.state ?? null,
     };
   }, [defaultTeamId, defaultSeasonId]);
 
@@ -861,7 +863,15 @@ export function HomePage() {
               {seasonRecord.stateRank != null && (
                 <>
                   <span className="text-slate-600 mx-2">·</span>
-                  <span className="text-xs font-black text-amber-400 tracking-wide">#{seasonRecord.stateRank} STATE</span>
+                  <span className="text-xs font-black text-amber-400 tracking-wide">
+                    #{seasonRecord.stateRank} {seasonRecord.teamState ?? 'STATE'}
+                  </span>
+                </>
+              )}
+              {seasonRecord.nationalRank != null && (
+                <>
+                  <span className="text-slate-600 mx-2">·</span>
+                  <span className="text-xs font-black text-amber-400 tracking-wide">#{seasonRecord.nationalRank} NATIONAL</span>
                 </>
               )}
             </div>
