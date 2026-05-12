@@ -1847,6 +1847,54 @@ export function MatchSummaryPage() {
                     </div>
                   );
                 })()}
+
+                {/* Dig-to-Kill% */}
+                {(() => {
+                  const dtk = displayStats?.digToKill;
+                  if (!dtk || dtk.team.dg === 0) return null;
+                  const dgRows = playerRows.filter(r => (r.dg ?? 0) > 0);
+                  return (
+                    <div className="bg-surface rounded-xl p-3 space-y-3">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Dig-to-Kill%</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: 'DIG',     val: fmtCount(dtk.team.dg) },
+                          { label: 'DG K%',   val: fmtPct(dtk.team.dg_k_pct) },
+                          { label: 'DG Win%', val: fmtPct(dtk.team.dg_win_pct) },
+                        ].map(({ label, val }) => (
+                          <div key={label} className="bg-slate-800/60 rounded-lg p-2 text-center">
+                            <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">{label}</div>
+                            <div className="text-lg font-black text-primary mt-0.5">{val}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {dgRows.length > 0 && (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="border-b border-slate-700">
+                                <th className="px-2 py-1.5 text-left font-semibold text-slate-400">Player</th>
+                                <th className="px-2 py-1.5 text-right font-semibold text-slate-400">DIG</th>
+                                <th className="px-2 py-1.5 text-right font-semibold text-slate-400">DG K%</th>
+                                <th className="px-2 py-1.5 text-right font-semibold text-slate-400">DG Win%</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {dgRows.map((r, i) => (
+                                <tr key={r.id} className={`border-b border-slate-800/60 ${i % 2 !== 0 ? 'bg-slate-900/30' : ''}`}>
+                                  <td className="px-2 py-1.5 text-slate-300">{r.name}</td>
+                                  <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{r.dg ?? 0}</td>
+                                  <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{fmtPct(r.dg_k_pct)}</td>
+                                  <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{fmtPct(r.dg_win_pct)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 

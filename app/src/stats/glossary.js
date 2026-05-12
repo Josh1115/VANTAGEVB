@@ -112,6 +112,8 @@ export const STAT_GLOSSARY = {
   fbr:          { abbr: 'FBR',      full: 'Freeball Receives',          def: 'Controlled passes of an opponent freeball.' },
   fbs:          { abbr: 'FBS',      full: 'Freeball Sends',             def: 'Balls sent over as a freeball after a dig.' },
   fbe:          { abbr: 'FBE',      full: 'Freeball Errors',            def: 'Errors committed on freeball contacts. Penalized at −2.50 per set in VER.' },
+  dg_k_pct:    { abbr: 'DG K%',   full: 'Dig-to-Kill %',              def: 'Rate at which a player\'s successful transition digs lead to a kill on the next attack. DG K ÷ DG (digs with a subsequent attack).' },
+  dg_win_pct:  { abbr: 'DG Win%', full: 'Dig-to-Win %',               def: 'Win rate on rallies where the player recorded a transition dig.' },
 
   // ── Rotation (SO% / SP%) ─────────────────────────────────────────────────
   so_pct:       { abbr: 'SO%',      full: 'Sideout %',                  def: 'Win rate when receiving serve. SO Win ÷ SO Opp.' },

@@ -405,7 +405,7 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, teamId }) {
   const bgCls = row.rank === 1 ? 'bg-[#555232]'
     : row.rank === 2 ? 'bg-[#424b5a]'
     : row.rank === 3 ? 'bg-[#472f2f]'
-    : row.active || row.currentSeason ? 'bg-orange-500/50'
+    : row.active || row.currentSeason ? 'bg-orange-950'
     : 'bg-slate-800';
 
   const inner = (

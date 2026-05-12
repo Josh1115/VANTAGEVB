@@ -415,6 +415,10 @@ export function HomePage() {
     ]);
     const matches = allSeasonMatches.filter(m => m.status === MATCH_STATUS.COMPLETE);
     if (!team || !season) return null;
+    const historyEntry = await db.season_history
+      .where('team_id').equals(defaultTeamId)
+      .filter(h => h.year === (season.name ?? String(season.year)))
+      .first();
     const isWin = m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0);
     const wins   = matches.filter(isWin).length;
     const losses = matches.length - wins;
@@ -439,6 +443,7 @@ export function HomePage() {
       homeW, homeL, awayW, awayL, neutW, neutL, confW, confL, tourneyW, tourneyL, last5W, last5L, last5Count: last5.length,
       hasLocData: (homeW + homeL + awayW + awayL + neutW + neutL) > 0,
       matchProgress: { completed: matches.length, total: allSeasonMatches.length },
+      stateRank: historyEntry?.state_rank ?? null,
     };
   }, [defaultTeamId, defaultSeasonId]);
 
@@ -853,6 +858,12 @@ export function HomePage() {
               </span>
               <span className="text-slate-600 mx-2">·</span>
               <span className="text-xs text-slate-400 font-semibold">{seasonRecord.seasonName}</span>
+              {seasonRecord.stateRank != null && (
+                <>
+                  <span className="text-slate-600 mx-2">·</span>
+                  <span className="text-xs font-black text-amber-400 tracking-wide">#{seasonRecord.stateRank} STATE</span>
+                </>
+              )}
             </div>
 
             {/* W / L numbers */}

@@ -641,6 +641,73 @@ export function computeFreeballOutcomes(contacts, rallies, rallyMap = buildRally
 }
 
 /**
+ * Dig-to-Kill% — for each transition dig, did the next attack result in a kill?
+ *
+ * A "transition dig" is action=dig, result=success (not freeball).
+ * For each dig window (dig → next dig or end of rally), we find the terminal
+ * attack and record whether it was a kill. Tracks per digger and team total.
+ *
+ * Returns { byPlayer: { [pid]: { dg, dg_k, dg_win, dg_k_pct, dg_win_pct } }, team: same }
+ */
+export function computeDigToKill(contacts, rallies, rallyMap = buildRallyMap(rallies)) {
+  const contactsByRally = groupContactsByRally(contacts, true);
+  const byPlayer = {};
+  const team = { dg: 0, dg_k: 0, dg_win: 0 };
+
+  for (const [key, rallyContacts] of contactsByRally) {
+    const rally = rallyMap.get(key);
+    if (!rally) continue;
+    const won = rally.point_winner === 'us' ? 1 : 0;
+
+    const digs = rallyContacts.filter(c => c.action === 'dig' && c.result === 'success');
+    if (!digs.length) continue;
+
+    for (let i = 0; i < digs.length; i++) {
+      const dig    = digs[i];
+      const nextDig = digs[i + 1];
+      const digTs  = dig.timestamp ?? 0;
+      const nextTs = nextDig != null ? (nextDig.timestamp ?? Infinity) : Infinity;
+
+      const attacks = rallyContacts.filter(c => {
+        const ts = c.timestamp ?? 0;
+        return ts > digTs && ts < nextTs && (
+          c.action === 'attack' ||
+          (c.action === 'set' && c.result === 'ball_handling_error')
+        );
+      });
+      if (!attacks.length) continue;
+
+      const atk =
+        attacks.find(c => c.result === 'kill') ??
+        attacks.find(c => c.result === 'error' || c.result === 'ball_handling_error') ??
+        attacks[attacks.length - 1];
+
+      const isK = atk.result === 'kill';
+      const pid = String(dig.player_id);
+
+      if (!byPlayer[pid]) byPlayer[pid] = { dg: 0, dg_k: 0, dg_win: 0 };
+      byPlayer[pid].dg++;
+      if (isK) byPlayer[pid].dg_k++;
+      byPlayer[pid].dg_win += won;
+
+      team.dg++;
+      if (isK) team.dg_k++;
+      team.dg_win += won;
+    }
+  }
+
+  for (const s of Object.values(byPlayer)) {
+    s.dg_k_pct   = div(s.dg_k,   s.dg);
+    s.dg_win_pct = div(s.dg_win, s.dg);
+  }
+
+  return {
+    byPlayer,
+    team: { ...team, dg_k_pct: div(team.dg_k, team.dg), dg_win_pct: div(team.dg_win, team.dg) },
+  };
+}
+
+/**
  * Point-quality breakdown for a contacts array.
  * Returns earned / given / free detail objects and totals.
  *
@@ -785,6 +852,10 @@ export async function computeMatchStats(matchId) {
   for (const [pid, wpa] of Object.entries(wpaStats)) {
     if (players[pid]) Object.assign(players[pid], wpa);
   }
+  const digToKill = computeDigToKill(contacts, rallies, rallyMap);
+  for (const [pid, dg] of Object.entries(digToKill.byPlayer)) {
+    if (players[pid]) Object.assign(players[pid], dg);
+  }
   return {
     players,
     team:             computeTeamStats(contacts, setsPlayed),
@@ -795,6 +866,7 @@ export async function computeMatchStats(matchId) {
     isOos:            computeISvsOOS(contacts, rallies, rallyMap),
     transitionAttack: computeTransitionAttack(contacts, rallies, rallyMap),
     freeDigWin:       computeFreeDigWin(contacts, rallies, rallyMap),
+    digToKill:        computeDigToKill(contacts, rallies, rallyMap),
     runs:             computeRunsByRotation(rallies),
     pointQuality:     computePointQuality(contacts),
     servingPoints:    computeServingPoints(rallies),
@@ -856,6 +928,10 @@ export async function computeSeasonStats(seasonId, filters = {}) {
   for (const [pid, wpa] of Object.entries(wpaStats)) {
     if (players[pid]) Object.assign(players[pid], wpa);
   }
+  const digToKillSeason = computeDigToKill(contacts, rallies, rallyMap);
+  for (const [pid, dg] of Object.entries(digToKillSeason.byPlayer)) {
+    if (players[pid]) Object.assign(players[pid], dg);
+  }
   return {
     players,
     team:             computeTeamStats(contacts, setsPlayed),
@@ -865,6 +941,7 @@ export async function computeSeasonStats(seasonId, filters = {}) {
     isOos:            computeISvsOOS(contacts, rallies, rallyMap),
     transitionAttack: computeTransitionAttack(contacts, rallies, rallyMap),
     freeDigWin:       computeFreeDigWin(contacts, rallies, rallyMap),
+    digToKill:        computeDigToKill(contacts, rallies, rallyMap),
     runs:             computeRunsByRotation(rallies),
     pointQuality:     computePointQuality(contacts),
     servingPoints:    computeServingPoints(rallies),

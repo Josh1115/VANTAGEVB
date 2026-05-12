@@ -1148,6 +1148,39 @@ export function ReportsPage() {
                         </>
                       );
                     })()}
+                    {(() => {
+                      const dtk = stats?.digToKill;
+                      if (!dtk || dtk.team.dg === 0) return null;
+                      const dgRows = playerRows.filter(r => (r.dg ?? 0) > 0);
+                      return (
+                        <div className="bg-surface rounded-xl p-3 space-y-3">
+                          <SectionHeader>Dig-to-Kill%</SectionHeader>
+                          <div className="grid grid-cols-3 gap-3">
+                            {[
+                              { label: 'DIG',     val: fmtCount(dtk.team.dg) },
+                              { label: 'DG K%',   val: fmtPct(dtk.team.dg_k_pct) },
+                              { label: 'DG Win%', val: fmtPct(dtk.team.dg_win_pct) },
+                            ].map(({ label, val }) => (
+                              <div key={label}>
+                                <div className="text-xs text-slate-400">{label}</div>
+                                <div className="text-lg font-bold text-primary">{val}</div>
+                              </div>
+                            ))}
+                          </div>
+                          {dgRows.length > 0 && (
+                            <XPassRatingTable
+                              title=""
+                              rows={dgRows}
+                              cols={[
+                                { key: 'dg',        label: 'DIG',    fmt: (v) => v ?? 0 },
+                                { key: 'dg_k_pct',  label: 'DG K%',  fmt: fmtPct },
+                                { key: 'dg_win_pct',label: 'DG Win%',fmt: fmtPct },
+                              ]}
+                            />
+                          )}
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
                 {playerStatView === 'setting' && (

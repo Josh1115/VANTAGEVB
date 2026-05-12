@@ -1910,11 +1910,11 @@ export function SettingsPage() {
         {/* About */}
         <section className="bg-surface rounded-xl p-4">
           <h2 className="font-semibold mb-1">About</h2>
-          <p className="text-sm text-slate-400">VANTAGE — Volleyball Stat Tracker</p>
-          <p className="text-sm text-slate-400 mt-2 leading-relaxed">
+          <p className="text-sm text-white">VANTAGE — Volleyball Stat Tracker</p>
+          <p className="text-sm text-white mt-2 leading-relaxed">
             VANTAGE is a comprehensive volleyball statistics platform built for coaches who want a competitive edge. Record every contact live during a match — serves, passes, attacks, blocks, and digs — and instantly access deep analytics: rotation efficiency, player VER ratings, win correlation insights, and real-time performance alerts. All data lives on your device, works offline, and requires no account or subscription. From pre-match lineup prep to post-match film review, VANTAGE gives your program the same data-driven tools used at the highest levels of the sport.
           </p>
-          <p className="text-xs text-slate-500 mt-2">All data stored locally on this device. No account required.</p>
+          <p className="text-xs text-white mt-2">All data stored locally on this device. No account required.</p>
 
           <div className="flex items-baseline gap-2 mt-4 flex-wrap">
             <Link to="/terms" className="text-xs text-primary hover:text-orange-300 transition-colors underline underline-offset-2">
