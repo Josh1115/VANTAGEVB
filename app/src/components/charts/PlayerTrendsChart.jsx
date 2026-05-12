@@ -17,38 +17,36 @@ const STAT_OPTIONS = [
   { key: 'ace_pct', label: 'ACE%',  fmtY: v => v != null ? (v * 100).toFixed(0) + '%' : '', fmtTip: fmtPct,  domain: [0, () => 1] },
 ];
 
-const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#ec4899', '#f97316'];
+// 14 perceptually distinct colors for dark backgrounds
+const COLORS = [
+  '#f97316', '#3b82f6', '#22c55e', '#ef4444', '#a855f7',
+  '#06b6d4', '#ec4899', '#eab308', '#14b8a6', '#f43f5e',
+  '#8b5cf6', '#84cc16', '#0ea5e9', '#fb923c',
+];
+
+// Secondary differentiator: solid → dashed → dotted, cycling every 5 players
+const DASHES = ['', '6 3', '2 4'];
 
 const CHIP = 'px-3 py-1 rounded-full text-xs font-semibold transition-colors';
 const chipClass = active =>
   active ? `${CHIP} bg-primary text-white` : `${CHIP} bg-surface text-slate-400 hover:text-white`;
 
-const fmtShortDate = (iso) => {
-  if (!iso) return '';
-  const d = new Date(iso + 'T00:00:00');
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-};
-
 export function PlayerTrendsChart({ trends, playerNames }) {
-  const [statKey, setStatKey] = useState('ver');
+  const [statKey,    setStatKey]    = useState('ver');
+  const [focusedPid, setFocusedPid] = useState(null);
 
   if (!trends?.matches.length || !Object.keys(trends.byPlayer).length) return null;
 
   const stat = STAT_OPTIONS.find(s => s.key === statKey);
 
-  // One object per match; each player ID is a key with their stat value (or null)
   const data = trends.matches.map((m, i) => {
-    const row = {
-      name:         m.opponentAbbr || m.opponentName || `M${i + 1}`,
-      opponentName: m.opponentName,
-    };
+    const row = { name: m.opponentAbbr || m.opponentName || `M${i + 1}`, opponentName: m.opponentName };
     for (const [pid, entries] of Object.entries(trends.byPlayer)) {
       row[pid] = entries[i]?.[statKey] ?? null;
     }
     return row;
   });
 
-  // Only render players who have at least one non-null value for this stat
   const playerIds = Object.keys(trends.byPlayer).filter(pid =>
     data.some(d => d[pid] != null)
   );
@@ -61,17 +59,57 @@ export function PlayerTrendsChart({ trends, playerNames }) {
     );
   }
 
+  const colorOf = (i) => COLORS[i % COLORS.length];
+  const dashOf  = (i) => DASHES[Math.floor(i / 5) % DASHES.length];
+
+  const renderLegend = ({ payload }) => (
+    <div className="mt-3">
+      <div className="flex flex-wrap gap-x-4 gap-y-2 justify-center px-2">
+        {payload.map((entry) => {
+          const pid      = entry.value;
+          const idx      = playerIds.indexOf(pid);
+          const color    = colorOf(idx);
+          const isFocused = focusedPid === pid;
+          const isDimmed  = focusedPid !== null && !isFocused;
+          return (
+            <button
+              key={pid}
+              onClick={() => setFocusedPid(f => f === pid ? null : pid)}
+              className={`flex items-center gap-1.5 transition-opacity select-none ${isDimmed ? 'opacity-30' : 'opacity-100'}`}
+            >
+              <svg width="18" height="10" className="shrink-0">
+                <line
+                  x1="0" y1="5" x2="18" y2="5"
+                  stroke={color}
+                  strokeWidth={isFocused ? 3 : 2}
+                  strokeDasharray={dashOf(idx) || undefined}
+                />
+                <circle cx="9" cy="5" r="3" fill={color} />
+              </svg>
+              <span className={`text-xs font-semibold ${isFocused ? 'text-white' : 'text-slate-400'}`}>
+                {playerNames[pid] ?? `#${pid}`}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-center text-[10px] text-slate-600 mt-2 italic">
+        Tap a name to highlight their trend
+      </p>
+    </div>
+  );
+
   return (
     <>
       <div className="flex gap-1.5 flex-wrap mb-4">
         {STAT_OPTIONS.map(s => (
-          <button key={s.key} onClick={() => setStatKey(s.key)} className={chipClass(statKey === s.key)}>
+          <button key={s.key} onClick={() => { setStatKey(s.key); setFocusedPid(null); }} className={chipClass(statKey === s.key)}>
             {s.label}
           </button>
         ))}
       </div>
 
-      <ResponsiveContainer width="100%" height={630}>
+      <ResponsiveContainer width="100%" height={660}>
         <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 32 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
           <XAxis
@@ -104,24 +142,29 @@ export function PlayerTrendsChart({ trends, playerNames }) {
               playerNames[item.dataKey] ?? `#${item.dataKey}`,
             ]}
           />
-          <Legend
-            formatter={pid => playerNames[pid] ?? `#${pid}`}
-            wrapperStyle={{ fontSize: 11, paddingTop: 4 }}
-          />
-          {playerIds.map((pid, i) => (
-            <Line
-              key={pid}
-              dataKey={pid}
-              stroke={COLORS[i % COLORS.length]}
-              strokeWidth={2}
-              dot={{ r: 3, fill: COLORS[i % COLORS.length] }}
-              activeDot={{ r: 5 }}
-              connectNulls={false}
-              animationBegin={i * 60}
-              animationDuration={600}
-              animationEasing="ease-out"
-            />
-          ))}
+          <Legend content={renderLegend} />
+          {playerIds.map((pid, i) => {
+            const color     = colorOf(i);
+            const dash      = dashOf(i);
+            const isFocused = focusedPid === pid;
+            const isDimmed  = focusedPid !== null && !isFocused;
+            return (
+              <Line
+                key={pid}
+                dataKey={pid}
+                stroke={color}
+                strokeWidth={isFocused ? 3.5 : isDimmed ? 1 : 2}
+                strokeOpacity={isDimmed ? 0.18 : 1}
+                strokeDasharray={dash || undefined}
+                dot={isDimmed ? false : { r: isFocused ? 4 : 3, fill: color }}
+                activeDot={isDimmed ? false : { r: 5 }}
+                connectNulls={false}
+                animationBegin={i * 60}
+                animationDuration={600}
+                animationEasing="ease-out"
+              />
+            );
+          })}
         </LineChart>
       </ResponsiveContainer>
     </>
