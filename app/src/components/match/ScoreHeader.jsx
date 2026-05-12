@@ -113,7 +113,7 @@ function RunStrip({ teamStats: t, oppStats: o, currentRun, teamName, opponentNam
 
   return (
     <div
-      className={`h-[3.1vmin] relative flex items-center select-none
+      className={`h-[3.75vmin] relative flex items-center select-none
         ${currentRun.count >= 3
           ? currentRun.side === 'us' ? 'bg-orange-950/70' : 'bg-red-950/70'
           : 'bg-black/60'
@@ -366,8 +366,8 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
 
       {/* ── Main header row ── */}
       <div
-        className="relative flex items-center border-b border-slate-900 text-white overflow-hidden px-2 gap-1"
-        style={{ height: 'calc(5.85vmin + env(safe-area-inset-top))', paddingTop: 'env(safe-area-inset-top)', background: 'linear-gradient(to right, rgba(249,115,22,0.07) 0%, #000 30%, #000 70%, rgba(239,68,68,0.05) 100%)' }}
+        className="relative flex items-center text-white overflow-hidden px-2 gap-1"
+        style={{ height: 'calc(10vmin + env(safe-area-inset-top))', paddingTop: 'env(safe-area-inset-top)', background: '#08090b', borderBottom: '1px solid rgba(249,115,22,0.2)' }}
       >
 
         {/* ── Far left: US sets won + our timeouts + sub counter  (swaps when flipped) ── */}
@@ -424,80 +424,90 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
         {/* ── Left spacer ── */}
         <div className="flex-1" />
 
-        {/* ── Center: absolutely centered score block ── */}
-        <div className={`absolute left-1/2 -translate-x-1/2 flex items-center gap-2${tense ? ' score-tension' : ''}`}>
+        {/* ── Center: gym scoreboard two-panel layout ── */}
+        <div
+          className={`absolute left-1/2 -translate-x-1/2 flex items-stretch rounded overflow-hidden${tense ? ' score-tension' : ''}`}
+          style={{ boxShadow: '0 0 0 1px rgba(249,115,22,0.14), 0 4px 28px rgba(0,0,0,0.9)' }}
+        >
           {tiedFlashKey > 0 && (
-            <div key={tiedFlashKey} className="equalize-flash absolute inset-[-6px] rounded-lg bg-white pointer-events-none z-10" />
+            <div key={tiedFlashKey} className="equalize-flash absolute inset-0 bg-white pointer-events-none z-10" />
           )}
 
-          {/* Left name — our team (normal) or opponent (flipped) */}
-          <span className="text-[2.9vmin] text-slate-100 font-bold uppercase tracking-widest leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-            {flipped ? (opponentName || 'AWY') : (teamName || 'HOM')}
-          </span>
+          {/* Serve indicator — left (outside of left score panel) */}
+          <div className="flex items-center justify-center w-[3.5vmin]">
+            {(flipped ? !weServe : weServe) && (
+              <span key={`srv-l-${serveVersion}`} className="text-[2.4vmin] leading-none serve-pulse">🏐</span>
+            )}
+          </div>
 
-          {/* Left score */}
+          {/* Left score panel */}
           <div
             onPointerDown={(e) => onScoreDown(flipped ? 'them' : 'us', e)}
             onPointerUp={() => onScoreUp(flipped ? 'them' : 'us')}
             onPointerLeave={() => onScoreUp(flipped ? 'them' : 'us')}
-            className={`cursor-pointer select-none transition-opacity overflow-hidden leading-none ${(flipped ? themHolding : usHolding) ? 'opacity-40' : ''}`}
+            className={`flex flex-col items-center justify-center px-[3vmin] cursor-pointer select-none transition-opacity ${(flipped ? themHolding : usHolding) ? 'opacity-40' : ''}`}
+            style={{ background: 'linear-gradient(180deg, rgba(249,115,22,0.10) 0%, rgba(249,115,22,0.03) 100%)', borderRight: '1px solid rgba(249,115,22,0.2)' }}
             title="Hold 3s to adjust score"
           >
+            <span className="text-[2vmin] font-bold uppercase tracking-widest text-white leading-none mb-[0.4vmin]">
+              {flipped ? (opponentName || 'AWY') : (teamName || 'HOM')}
+            </span>
             <span
               key={flipped ? `them-${oppScore}` : `us-${ourScore}`}
-              className={`block text-[4.2vmin] font-black tabular-nums leading-none score-pop ${flipped ? `text-slate-200 ${theirScoreCls}` : `text-amber-400 ${ourScoreCls}`}`}
-              style={{ fontFamily: "'Orbitron', sans-serif", textShadow: flipped ? '0 0 6px rgba(255,255,255,0.25)' : '0 0 10px #f59e0b90, 0 0 24px #f59e0b40' }}
+              className={`block text-[5.85vmin] font-black tabular-nums leading-[1] score-pop ${flipped ? `text-slate-100 ${theirScoreCls}` : `text-amber-400 ${ourScoreCls}`}`}
+              style={{
+                fontFamily: "'Orbitron', sans-serif",
+                textShadow: flipped
+                  ? '0 0 10px rgba(255,255,255,0.55), 0 0 28px rgba(255,255,255,0.2)'
+                  : '0 0 14px #f59e0b, 0 0 36px #f59e0b55',
+              }}
             >
               {String(flipped ? oppScore : ourScore).padStart(2, '0')}
             </span>
           </div>
 
-          {/* Left ball indicator */}
-          {(flipped ? !weServe : weServe)
-            ? <span key={`srv-l-${serveVersion}`} className="text-xl leading-none serve-pulse animate-serve-from-right">🏐</span>
-            : serveTrail === 'left'
-              ? <span key={`trail-l-${serveTrailKey}`} className="text-xl leading-none serve-trail">🏐</span>
-              : <span className="text-xl leading-none opacity-0">🏐</span>}
-
-          {/* set number + sparkline */}
-          <div className="flex flex-col items-center px-2 gap-[1px]">
-            <span className="text-[1.6vmin] font-black text-slate-500 leading-none uppercase tracking-wide whitespace-nowrap">Set {setNumber}</span>
+          {/* Center column — set number + sparkline */}
+          <div className="flex flex-col items-center justify-center px-[1.8vmin] bg-black/60 gap-[0.4vmin]">
+            <span className="text-[1.6vmin] font-black text-slate-500 uppercase tracking-wider leading-none">SET</span>
+            <span className="text-[4vmin] font-black text-slate-300 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{setNumber}</span>
             {isTied && (
-              <span key={tiedFlashKey} className="tied-label-in text-[1.3vmin] font-black text-yellow-400 uppercase tracking-widest leading-none">
-                TIED
-              </span>
+              <span key={tiedFlashKey} className="tied-label-in text-[1.1vmin] font-black text-yellow-400 uppercase tracking-widest leading-none">TIE</span>
             )}
             <ScoreSparkline pointHistory={pointHistory} />
           </div>
 
-          {/* Right ball indicator */}
-          {(flipped ? weServe : !weServe)
-            ? <span key={`srv-r-${serveVersion}`} className="text-xl leading-none serve-pulse animate-serve-from-left">🏐</span>
-            : serveTrail === 'right'
-              ? <span key={`trail-r-${serveTrailKey}`} className="text-xl leading-none serve-trail">🏐</span>
-              : <span className="text-xl leading-none opacity-0">🏐</span>}
-
-          {/* Right score */}
+          {/* Right score panel */}
           <div
             onPointerDown={(e) => onScoreDown(flipped ? 'us' : 'them', e)}
             onPointerUp={() => onScoreUp(flipped ? 'us' : 'them')}
             onPointerLeave={() => onScoreUp(flipped ? 'us' : 'them')}
-            className={`cursor-pointer select-none transition-opacity overflow-hidden leading-none ${(flipped ? usHolding : themHolding) ? 'opacity-40' : ''}`}
+            className={`flex flex-col items-center justify-center px-[3vmin] cursor-pointer select-none transition-opacity ${(flipped ? usHolding : themHolding) ? 'opacity-40' : ''}`}
+            style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)', borderLeft: '1px solid rgba(255,255,255,0.08)' }}
             title="Hold 3s to adjust score"
           >
+            <span className="text-[2vmin] font-bold uppercase tracking-widest text-white leading-none mb-[0.4vmin]">
+              {flipped ? (teamName || 'HOM') : (opponentName || 'AWY')}
+            </span>
             <span
               key={flipped ? `us-${ourScore}` : `them-${oppScore}`}
-              className={`block text-[4.2vmin] font-black tabular-nums leading-none score-pop ${flipped ? `text-amber-400 ${ourScoreCls}` : `text-slate-200 ${theirScoreCls}`}`}
-              style={{ fontFamily: "'Orbitron', sans-serif", textShadow: flipped ? '0 0 10px #f59e0b90, 0 0 24px #f59e0b40' : '0 0 6px rgba(255,255,255,0.25)' }}
+              className={`block text-[5.85vmin] font-black tabular-nums leading-[1] score-pop ${flipped ? `text-amber-400 ${ourScoreCls}` : `text-slate-100 ${theirScoreCls}`}`}
+              style={{
+                fontFamily: "'Orbitron', sans-serif",
+                textShadow: flipped
+                  ? '0 0 14px #f59e0b, 0 0 36px #f59e0b55'
+                  : '0 0 10px rgba(255,255,255,0.55), 0 0 28px rgba(255,255,255,0.2)',
+              }}
             >
               {String(flipped ? ourScore : oppScore).padStart(2, '0')}
             </span>
           </div>
 
-          {/* Right name */}
-          <span className="text-[2.9vmin] text-slate-300 font-bold uppercase tracking-widest leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-            {flipped ? (teamName || 'HOM') : (opponentName || 'AWY')}
-          </span>
+          {/* Serve indicator — right (outside of right score panel) */}
+          <div className="flex items-center justify-center w-[3.5vmin]">
+            {(flipped ? weServe : !weServe) && (
+              <span key={`srv-r-${serveVersion}`} className="text-[2.4vmin] leading-none serve-pulse">🏐</span>
+            )}
+          </div>
         </div>
 
         {/* ── Right spacer / last action feed ── */}
@@ -567,7 +577,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
           />
           <div
             className="fixed left-1/2 -translate-x-1/2 z-50"
-            style={{ top: 'calc(11.7vmin + env(safe-area-inset-top))' }}
+            style={{ top: 'calc(15.15vmin + env(safe-area-inset-top))' }}
             onPointerDown={(e) => e.stopPropagation()}
           >
             <div className="animate-nudge-pop flex flex-col items-center gap-3 bg-slate-800 border border-slate-600 rounded-xl px-6 py-4 shadow-2xl">
@@ -607,7 +617,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
           />
           <div
             className="fixed left-1/2 -translate-x-1/2 z-50"
-            style={{ top: 'calc(11.7vmin + env(safe-area-inset-top))' }}
+            style={{ top: 'calc(15.15vmin + env(safe-area-inset-top))' }}
             onPointerDown={(e) => e.stopPropagation()}
           >
             <div className="animate-nudge-pop flex flex-col items-center gap-3 bg-red-950 border border-red-700 rounded-xl px-6 py-4 shadow-2xl">
@@ -640,7 +650,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
           {/* Popup panel — outer div handles fixed position, inner div animates */}
           <div
             className="fixed left-1/2 -translate-x-1/2 z-50"
-            style={{ top: 'calc(11.7vmin + env(safe-area-inset-top))' }}
+            style={{ top: 'calc(15.15vmin + env(safe-area-inset-top))' }}
             onPointerDown={(e) => e.stopPropagation()}
           >
             <div className="animate-nudge-pop flex flex-col items-center gap-2 bg-slate-800 border border-slate-600 rounded-xl px-6 py-3 shadow-2xl">

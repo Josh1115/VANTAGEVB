@@ -135,8 +135,11 @@ export const getPlayerPositionsForMatches = async (matchIds) => {
   );
 };
 
-// Cascade-delete a match and all dependent records
+// Cascade-delete a match and all dependent records.
+// If the match had an opponent_id and this was their only match, the opponent
+// record (and their tendencies) are also deleted to avoid orphaned profiles.
 export async function deleteMatch(matchId) {
+  const match  = await db.matches.get(matchId);
   const sets   = await db.sets.where('match_id').equals(matchId).toArray();
   const setIds = sets.map((s) => s.id);
   await Promise.all([
@@ -147,4 +150,13 @@ export async function deleteMatch(matchId) {
   ]);
   await db.sets.where('match_id').equals(matchId).delete();
   await db.matches.delete(matchId);
+
+  // Clean up orphaned opponent created solely for this match
+  if (match?.opponent_id) {
+    const remaining = await db.matches.where('opponent_id').equals(match.opponent_id).count();
+    if (remaining === 0) {
+      await db.opp_tendencies.where('opp_id').equals(match.opponent_id).delete();
+      await db.opponents.delete(match.opponent_id);
+    }
+  }
 }

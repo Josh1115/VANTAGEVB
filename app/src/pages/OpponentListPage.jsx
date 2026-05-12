@@ -6,6 +6,8 @@ import { getIntStorage, setStorageItem, STORAGE_KEYS } from '../utils/storage';
 import { PageHeader } from '../components/layout/PageHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Button } from '../components/ui/Button';
+import { SwipeableMatchCard } from '../components/ui/SwipeableMatchCard';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 
 const selectClass = 'bg-surface border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary';
 
@@ -79,10 +81,9 @@ function OppReportSection({ opp, tendencies, navigate }) {
 
 export function OpponentListPage() {
   const navigate = useNavigate();
-  const [view,    setView]    = useState('scouting');
-  const [addOpen, setAddOpen] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [saving,  setSaving]  = useState(false);
+  const [view,          setView]          = useState('scouting');
+  const [deleteTarget,  setDeleteTarget]  = useState(null); // { id, name }
+  const [deleting,      setDeleting]      = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState(() => getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID, null));
 
   const opponents     = useLiveQuery(() => db.opponents.toArray(), []);
@@ -187,17 +188,16 @@ export function OpponentListPage() {
     return c;
   }, [allTendencies, selectedTeamId]);
 
-  async function handleAdd() {
-    const name = newName.trim();
-    if (!name) return;
-    setSaving(true);
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      const id = await db.opponents.add({ name });
-      setNewName('');
-      setAddOpen(false);
-      navigate(`/opponents/${id}`);
+      await db.opp_tendencies.where('opp_id').equals(deleteTarget.id).delete();
+      await db.matches.where('opponent_id').equals(deleteTarget.id).modify({ opponent_id: null });
+      await db.opponents.delete(deleteTarget.id);
     } finally {
-      setSaving(false);
+      setDeleting(false);
+      setDeleteTarget(null);
     }
   }
 
@@ -219,7 +219,6 @@ export function OpponentListPage() {
       <PageHeader
         title="Opponents"
         backTo="/"
-        action={<Button size="sm" onClick={() => setAddOpen(v => !v)}>+ Opponent</Button>}
       />
 
       {/* View toggle */}
@@ -237,21 +236,6 @@ export function OpponentListPage() {
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
           </select>
-        </div>
-      )}
-
-      {/* Add opponent inline form */}
-      {addOpen && (
-        <div className="mx-4 mt-2 flex gap-2">
-          <input
-            autoFocus
-            className="flex-1 px-3 py-2 rounded-lg bg-surface border border-slate-600 text-white text-sm placeholder:text-slate-500"
-            placeholder="Opponent name…"
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
-          />
-          <Button onClick={handleAdd} disabled={saving || !newName.trim()}>Add</Button>
         </div>
       )}
 
@@ -285,15 +269,14 @@ export function OpponentListPage() {
 
       {/* ── Opponent View ── */}
       {view === 'opponents' && (
-        <div className="p-4 space-y-2">
+        <div className="p-4">
           {sortedOpponents.length === 0 ? (
             <EmptyState
               icon="🔭"
               title="No opponents yet"
-              description="Opponents are created automatically when you set up a match, or add one manually."
-              action={<Button onClick={() => setAddOpen(true)}>+ Opponent</Button>}
+              description="Opponents are created automatically when you set up a match."
             />
-          ) : sortedOpponents.map(opp => {
+          ) : sortedOpponents.map((opp, i) => {
             const s = oppStats[opp.id] ?? {};
             const record   = s.total > 0 ? `${s.wins}–${s.losses}` : null;
             const lastDate = s.latest
@@ -301,28 +284,44 @@ export function OpponentListPage() {
               : null;
             const scoutCount = scoutCountByOpp[opp.id] ?? 0;
             return (
-              <button
+              <SwipeableMatchCard
                 key={opp.id}
-                onClick={() => navigate(`/opponents/${opp.id}`)}
-                className="w-full bg-surface rounded-xl px-4 py-3 flex items-center gap-3 text-left hover:bg-slate-700 active:scale-[0.98] transition-[transform,background-color] duration-75"
+                animDelay={`${i * 30}ms`}
+                onDeleteConfirm={() => setDeleteTarget({ id: opp.id, name: opp.name })}
               >
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-white truncate">{opp.name}</div>
-                  <div className="flex items-center gap-3 mt-0.5">
-                    {lastDate && <span className="text-xs text-slate-400">Last played {lastDate}</span>}
-                    {scoutCount > 0 && (
-                      <span className="text-xs text-primary/80">🔭 {scoutCount}</span>
-                    )}
+                <button
+                  onClick={() => navigate(`/opponents/${opp.id}`)}
+                  className="w-full bg-surface rounded-xl px-4 py-3 flex items-center gap-3 text-left hover:bg-slate-700 active:scale-[0.98] transition-[transform,background-color] duration-75"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-white truncate">{opp.name}</div>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      {lastDate && <span className="text-xs text-slate-400">Last played {lastDate}</span>}
+                      {scoutCount > 0 && (
+                        <span className="text-xs text-primary/80">🔭 {scoutCount}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                {record && (
-                  <span className="text-sm font-semibold text-slate-300 shrink-0">{record}</span>
-                )}
-                <span className="text-slate-600 text-lg">›</span>
-              </button>
+                  {record && (
+                    <span className="text-sm font-semibold text-slate-300 shrink-0">{record}</span>
+                  )}
+                  <span className="text-slate-600 text-lg">›</span>
+                </button>
+              </SwipeableMatchCard>
             );
           })}
         </div>
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title={`Delete ${deleteTarget.name}?`}
+          message="This removes their profile and all scouting notes. Matches played against them are kept."
+          confirmLabel={deleting ? 'Deleting…' : 'Delete'}
+          danger
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteTarget(null)}
+        />
       )}
     </div>
   );
