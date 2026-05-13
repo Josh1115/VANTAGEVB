@@ -13,6 +13,10 @@ const CYCLE = LETTERS.length * PER_LETTER + UL_DUR + HOLD + FADE + 240; // 5600m
 
 const CYCLE_S = (CYCLE / 1000).toFixed(4);
 
+// Safe upper-bound for any Orbitron Bold uppercase glyph outline perimeter at 36px.
+// Must be >= the longest glyph path so the full draw spans the animation duration.
+const LETTER_DASH = 400;
+
 const FONT_OBJ = {
   fontFamily: "'Orbitron', sans-serif",
   fontWeight: '900',
@@ -20,40 +24,40 @@ const FONT_OBJ = {
   letterSpacing: '0.12em',
 };
 
-// All keyframe percentages are derived from constants — computed once at module load.
-function buildCSS() {
-  const p = (ms) => `${((ms / CYCLE) * 100).toFixed(4)}%`;
+// totalWidth is the measured SVG text width — used for the underline dash.
+function buildCSS(totalWidth) {
+  const p   = (ms) => `${((ms / CYCLE) * 100).toFixed(4)}%`;
   const fsMs = LETTERS.length * PER_LETTER + UL_DUR + HOLD;
   const feMs = fsMs + FADE;
   const ulS  = LETTERS.length * PER_LETTER;
   const ulE  = ulS + UL_DUR;
+  const ld   = LETTER_DASH;
+  const tw   = totalWidth.toFixed(2);
 
   const lKFs = LETTERS.map((_, i) => {
     const s = i * PER_LETTER, e = (i + 1) * PER_LETTER;
     return (
       `@keyframes vt-l${i}{` +
-      `0%,${p(s)}{stroke-dashoffset:9999;opacity:0}` +
-      `${p(s + 1)}{stroke-dashoffset:9999;opacity:1}` +
+      `0%,${p(s)}{stroke-dashoffset:${ld};opacity:0}` +
+      `${p(s + 1)}{stroke-dashoffset:${ld};opacity:1}` +
       `${p(e)}{stroke-dashoffset:0;opacity:1}` +
       `${p(fsMs)}{stroke-dashoffset:0;opacity:1}` +
       `${p(feMs)}{stroke-dashoffset:0;opacity:0}` +
-      `100%{stroke-dashoffset:9999;opacity:0}}`
+      `100%{stroke-dashoffset:${ld};opacity:0}}`
     );
   });
 
   const ulKF =
     `@keyframes vt-ul{` +
-    `0%,${p(ulS)}{stroke-dashoffset:9999;opacity:0}` +
-    `${p(ulS + 1)}{stroke-dashoffset:9999;opacity:1}` +
+    `0%,${p(ulS)}{stroke-dashoffset:${tw};opacity:0}` +
+    `${p(ulS + 1)}{stroke-dashoffset:${tw};opacity:1}` +
     `${p(ulE)}{stroke-dashoffset:0;opacity:1}` +
     `${p(fsMs)}{stroke-dashoffset:0;opacity:1}` +
     `${p(feMs)}{stroke-dashoffset:0;opacity:0}` +
-    `100%{stroke-dashoffset:9999;opacity:0}}`;
+    `100%{stroke-dashoffset:${tw};opacity:0}}`;
 
   return [...lKFs, ulKF].join('');
 }
-
-const KEYFRAME_CSS = buildCSS();
 
 export function VantageLogo({ onClick, onPointerDown, onPointerUp, onPointerLeave }) {
   const measureRef = useRef(null);
@@ -78,13 +82,16 @@ export function VantageLogo({ onClick, onPointerDown, onPointerUp, onPointerLeav
 
   const handlers = { onClick, onPointerDown, onPointerUp, onPointerLeave };
 
-  // Derive SVG viewport from measured bbox; fall back to estimates before measurement.
   const bbox  = m?.bbox;
-  const vbY   = bbox ? Math.floor(bbox.y) - 2          : -2;
-  const vbH   = bbox ? Math.ceil(bbox.height) + 14      : FONT_PX + 14;
-  const vbW   = bbox ? Math.ceil(bbox.width) + 4        : Math.round(FONT_PX * 5.5);
-  const ulY   = bbox ? bbox.y + bbox.height + 5         : BASELINE + 5;
-  const ulX2  = bbox ? bbox.width + 2                   : vbW - 2;
+  const vbY   = bbox ? Math.floor(bbox.y) - 2     : -2;
+  const vbH   = bbox ? Math.ceil(bbox.height) + 14 : FONT_PX + 14;
+  const vbW   = bbox ? Math.ceil(bbox.width) + 4   : Math.round(FONT_PX * 5.5);
+  const ulY   = bbox ? bbox.y + bbox.height + 5    : BASELINE + 5;
+  const ulX2  = bbox ? bbox.width + 2              : vbW - 2;
+  const totalW = bbox?.width ?? 0;
+
+  // CSS depends on measured underline width — computed after measurement.
+  const css = m ? buildCSS(totalW) : '';
 
   return (
     <svg
@@ -97,10 +104,9 @@ export function VantageLogo({ onClick, onPointerDown, onPointerUp, onPointerLeav
       role="img"
       {...handlers}
     >
-      {/* Keyframe animations (static CSS, injected once) */}
-      <style>{KEYFRAME_CSS}</style>
+      {css && <style>{css}</style>}
 
-      {/* Hidden measurement text — stays in DOM so ref remains valid after measurement */}
+      {/* Hidden measurement text */}
       <text
         ref={measureRef}
         x={2}
@@ -111,12 +117,12 @@ export function VantageLogo({ onClick, onPointerDown, onPointerUp, onPointerLeav
         VANTAGE
       </text>
 
-      {/* Static orange fill — always visible, unchanged */}
+      {/* Static orange fill — always visible */}
       <text x={2} y={BASELINE} fill="#f97316" style={FONT_OBJ}>
         VANTAGE
       </text>
 
-      {/* Animated white stroke overlay, one element per letter */}
+      {/* Animated white stroke — one element per letter */}
       {m && LETTERS.map((letter, i) => (
         <text
           key={i}
@@ -128,8 +134,8 @@ export function VantageLogo({ onClick, onPointerDown, onPointerUp, onPointerLeav
           style={{
             ...FONT_OBJ,
             letterSpacing: '0',
-            strokeDasharray: '9999',
-            strokeDashoffset: '9999',
+            strokeDasharray: LETTER_DASH,
+            strokeDashoffset: LETTER_DASH,
             opacity: 0,
             animation: `vt-l${i} ${CYCLE_S}s linear infinite`,
           }}
@@ -138,7 +144,7 @@ export function VantageLogo({ onClick, onPointerDown, onPointerUp, onPointerLeav
         </text>
       ))}
 
-      {/* Underline — draws left-to-right after all letters are traced */}
+      {/* Underline — draws left-to-right using exact measured width */}
       {m && (
         <line
           x1={2}    y1={ulY}
@@ -147,8 +153,8 @@ export function VantageLogo({ onClick, onPointerDown, onPointerUp, onPointerLeav
           strokeWidth="2"
           strokeLinecap="round"
           style={{
-            strokeDasharray: '9999',
-            strokeDashoffset: '9999',
+            strokeDasharray: totalW.toFixed(2),
+            strokeDashoffset: totalW.toFixed(2),
             opacity: 0,
             animation: `vt-ul ${CYCLE_S}s linear infinite`,
           }}
