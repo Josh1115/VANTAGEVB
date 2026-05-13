@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { VantageLogo } from '../components/ui/VantageLogo';
 import { STORAGE_KEYS, getStorageItem, getIntStorage } from '../utils/storage';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -818,16 +819,12 @@ export function HomePage() {
         ))}
 
         <h1 className="tracking-wide flex flex-col items-center gap-0.5">
-          <span
-            className="scoreboard-flicker text-4xl md:text-5xl cursor-pointer select-none"
-            style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 900, letterSpacing: '0.12em', color: '#f97316' }}
+          <VantageLogo
             onClick={handleLogoClick}
             onPointerDown={handleLogoPointerDown}
             onPointerUp={handleLogoPointerUp}
             onPointerLeave={handleLogoPointerUp}
-          >
-            VANTAGE
-          </span>
+          />
           <span className="text-slate-400 font-normal text-sm tracking-wide italic">
             powered by the SSE (Shua Stat Engine)
           </span>
