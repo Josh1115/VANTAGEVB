@@ -608,7 +608,12 @@ export function ReportsPage() {
                       if (val === 'reg-season') {
                         return on
                           ? prev.filter(v => v !== 'reg-season' && v !== 'tourney')
-                          : [...prev.filter(v => v !== 'tourney'), 'reg-season', 'tourney'];
+                          : [...prev.filter(v => v !== 'tourney' && v !== 'ihsa-playoffs'), 'reg-season', 'tourney'];
+                      }
+                      if (val === 'ihsa-playoffs') {
+                        return on
+                          ? prev.filter(v => v !== 'ihsa-playoffs')
+                          : [...prev.filter(v => v !== 'reg-season' && v !== 'tourney'), 'ihsa-playoffs'];
                       }
                       return on ? prev.filter(v => v !== val) : [...prev, val];
                     })}
