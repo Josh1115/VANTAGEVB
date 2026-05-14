@@ -26,7 +26,7 @@ const CORRECTION_FIELDS = [
   // Set
   { key: 'ast', label: 'AST',          action: 'set',              result: 'assist'             },
   { key: 'bhe', label: 'BHE',          action: 'set',              result: 'ball_handling_error'},
-  { key: 'fbe', label: 'FBE',          action: 'freeball_receive', result: 'free_ball_error'    },
+  { key: 'fbe', label: 'DROP',         action: 'freeball_receive', result: 'free_ball_error'    },
 ];
 
 const GROUPS = [

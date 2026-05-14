@@ -129,7 +129,7 @@ export const TAB_COLUMNS = {
     { key: 'ae',        label: 'AE',    fmt: fmtCount   },
     { key: 'se',        label: 'SE',    fmt: fmtCount   },
     { key: 'bhe',       label: 'BHE',   fmt: fmtCount   },
-    { key: 'fbe',       label: 'FBE',   fmt: fmtCount   },
+    { key: 'fbe',       label: 'DROP',   fmt: fmtCount   },
     { key: 'lift',      label: 'L',     fmt: fmtCount   },
     { key: 'net',       label: 'NET',   fmt: fmtCount   },
   ],
@@ -151,7 +151,7 @@ export const TAB_COLUMNS = {
     { key: 'dips',     label: 'DiPS',   fmt: fmtRate },
     { key: 'fbr',      label: 'FBR',    fmt: fmtCount },
     { key: 'fbs',      label: 'FBS',    fmt: fmtCount },
-    { key: 'fbe',      label: 'FBE',    fmt: fmtCount },
+    { key: 'fbe',      label: 'DROP',    fmt: fmtCount },
     { key: 'dg_k_pct', label: 'DG K%',  fmt: (v) => v != null ? `${Math.round(v * 100)}%` : '—' },
   ],
   setting: [

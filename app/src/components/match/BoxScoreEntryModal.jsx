@@ -14,7 +14,7 @@ const STAT_FIELDS = [
   { key: 'ae',  label: 'AE'  },
   { key: 'ast', label: 'AST' },
   { key: 'bhe', label: 'BHE' },
-  { key: 'fbe', label: 'FBE' },
+  { key: 'fbe', label: 'DROP' },
   { key: 'bs',  label: 'BS'  },
   { key: 'ba',  label: 'BA'  },
   { key: 'be',  label: 'BE'  },

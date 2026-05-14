@@ -345,7 +345,7 @@ function PlayerReportCard({ row, allRows = [], teamPoints = 0, oppPoints = 0 }) 
               </div>
               <div className="text-xs text-slate-400 mt-1">of Opp Points</div>
               <div className="text-[10px] text-slate-500 mt-0.5 tabular-nums">{playerFault} / {oppPoints} pts</div>
-              <div className="text-[10px] text-slate-600 mt-0.5">SE + AE + NET + L + BHE + FBE + P0</div>
+              <div className="text-[10px] text-slate-600 mt-0.5">SE + AE + NET + L + BHE + DROP + P0</div>
               {faultRank && (
                 <div className="text-[10px] text-slate-500 mt-1">
                   <span className="text-slate-300 font-semibold">{faultRank.rank}</span> of {faultRank.total} on team

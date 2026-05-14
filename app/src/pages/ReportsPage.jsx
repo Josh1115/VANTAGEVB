@@ -905,7 +905,7 @@ export function ReportsPage() {
                         </div>
                       ))}
                       <p className="text-[10px] text-slate-600 text-center pt-1">
-                        Team Pts: K+ACE+BLK &nbsp;·&nbsp; Opp Pts: SE+AE+NET+L+BHE+FBE+P0
+                        Team Pts: K+ACE+BLK &nbsp;·&nbsp; Opp Pts: SE+AE+NET+L+BHE+DROP+P0
                       </p>
                     </div>
                   );

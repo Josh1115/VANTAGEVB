@@ -590,7 +590,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
           <Btn label="DBL" onTap={() => tapAndScoreThem(ACTION.ERROR, RESULT.DOUBLE)}                  cls="bg-rose-950/60 text-rose-300 border border-rose-800/50 hover:bg-rose-900/70" />
           <Btn label="NET" onTap={() => tapAndScoreThem(ACTION.ERROR, RESULT.NET_TOUCH)}               cls="bg-rose-950/60 text-rose-300 border border-rose-800/50 hover:bg-rose-900/70" />
           <Btn label="BHE" onTap={() => tapAndScoreThem(ACTION.SET,               RESULT.BALL_HANDLING_ERROR)} cls="bg-rose-950/60 text-rose-300 border border-rose-800/50 hover:bg-rose-900/70" />
-          <Btn label="FBE" onTap={() => tapAndScoreThem(ACTION.FREEBALL_RECEIVE,  RESULT.FREE_BALL_ERROR)}     cls="bg-rose-950/60 text-rose-300 border border-rose-800/50 hover:bg-rose-900/70" />
+          <Btn label="DROP" onTap={() => tapAndScoreThem(ACTION.FREEBALL_RECEIVE,  RESULT.FREE_BALL_ERROR)}     cls="bg-rose-950/60 text-rose-300 border border-rose-800/50 hover:bg-rose-900/70" />
         </div>
 
 

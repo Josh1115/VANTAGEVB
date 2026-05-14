@@ -260,7 +260,7 @@ function DiagPlayerTile() {
     { y: 96,  h: 50,  label: 'Hitting: ATT · FREE · K (→ kill type) · AE (→ error type)', color: '#1a100a' },
     { y: 146, h: 48,  label: 'Defense: DIG · FREE · SBLK · HBLK',                      color: '#0a0f1a' },
     { y: 194, h: 48,  label: 'Serve Receive: 0 (aced) · 1 · 2 · 3 (perfect)',           color: '#0a1a0a' },
-    { y: 242, h: 48,  label: 'Errors (opponent scores): L · DBL · NET · BHE · FBE',    color: '#1a0a0a' },
+    { y: 242, h: 48,  label: 'Errors (opponent scores): L · DBL · NET · BHE · DROP',   color: '#1a0a0a' },
   ];
 
   return (
@@ -379,14 +379,14 @@ function DiagPlayerTile() {
         { l: 'DBL', x: 64  },
         { l: 'NET', x: 112 },
         { l: 'BHE', x: 160 },
-        { l: 'FBE', x: 208 },
+        { l: 'DROP', x: 208 },
       ].map(({ l, x }) => (
         <g key={l}>
           <rect x={x} y={10 + 242 + 14} width={40} height={22} rx="5" fill="#4c0519" stroke="#be185d" strokeWidth="0.8" />
           <text x={x + 20} y={10 + 242 + 28} fill={ROSE} fontSize="8.5" fontWeight="800" textAnchor="middle">{l}</text>
         </g>
       ))}
-      <text x="22" y={10 + 242 + 42} fill={TXT5} fontSize="6.5">All give opponent a point: L=lift · DBL=double · NET=net touch · BHE=set error · FBE=freeball err</text>
+      <text x="22" y={10 + 242 + 42} fill={TXT5} fontSize="6.5">All give opponent a point: L=lift · DBL=double · NET=net touch · BHE=set error · DROP=ball hit floor</text>
       <Badge x={10 + TW + 8} y={10 + 242 + rows[6].h / 2} n={7} color={ROSE} />
       <line x1={TW + 10} y1={10 + 242 + rows[6].h / 2} x2={TW + 14} y2={10 + 242 + rows[6].h / 2} stroke={ROSE} strokeWidth="0.8" />
       <text x={TW + 22} y={10 + 242 + rows[6].h / 2 + 3} fill={TXT3} fontSize="7.5">{rows[6].label}</text>
@@ -539,7 +539,7 @@ export function HelpLiveStatLabelsPage() {
               { n: 4, label: 'Hitting — ATT (attempt) · FREE (freeball) · K (kill) · AE (attack error)', color: PRIMARY },
               { n: 5, label: 'Defense — DIG · FREE receive · SBLK (solo) · HBLK (team block, tap 2 tiles)', color: BLUE },
               { n: 6, label: 'Serve Receive — 0 aced / 1 poor / 2 good / 3 perfect pass rating', color: GREEN },
-              { n: 7, label: 'Errors (all give opp a point) — L lift · DBL double · NET net touch · BHE set err · FBE freeball err', color: ROSE },
+              { n: 7, label: 'Errors (all give opp a point) — L lift · DBL double · NET net touch · BHE set err · DROP ball hit floor', color: ROSE },
             ]} />
           </div>
         </Section>
