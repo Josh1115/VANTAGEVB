@@ -503,10 +503,13 @@ export function ReportsPage() {
     const toRow = (rot, label, d) => ({
       rot,
       name:       label,
-      max_run:    d.max_run   > 0 ? d.max_run   : null,
+      max_run:    d.max_run > 0 ? d.max_run : null,
       avg_run:    d.avg_run,
+      total_runs: d.total_runs,
       runs_3plus: d.runs_3plus,
       runs_5plus: d.runs_5plus,
+      runs_7plus: d.runs_7plus,
+      runs_9plus: d.runs_9plus,
     });
     return [
       ...Object.entries(byRotation).map(([r, d]) => toRow(r, `R${r}`, d)),

@@ -944,40 +944,44 @@ describe('computePQ', () => {
     expect(q).toBe(0.42);
   });
 
-  it('returns fallback when sample is below threshold', () => {
-    // 9 rallies per side — below WP_MIN_SAMPLE (10)
+  it('blends small samples toward prior', () => {
+    // 9 serve wins / 9 serve rallies, 0 receive wins / 9 receive rallies
+    // p = (0.58*15 + 0) / (15+9) = 8.7/24 = 0.3625
+    // q = (0.42*15 + 9) / (15+9) = 15.3/24 = 0.6375
     const rallies = [
       ...Array.from({ length: 9 }, () => ({ serve_side: 'us',   point_winner: 'us'   })),
       ...Array.from({ length: 9 }, () => ({ serve_side: 'them', point_winner: 'them' })),
     ];
     const { p, q } = computePQ(rallies);
-    expect(p).toBe(0.58);
-    expect(q).toBe(0.42);
+    expect(p).toBeCloseTo(0.3625);
+    expect(q).toBeCloseTo(0.6375);
   });
 
-  it('computes observed rates once threshold is met', () => {
-    // 10 rallies each: we win all when receiving (p=1), none when serving (q=0)
+  it('blends extreme observed rates toward prior', () => {
+    // 10 receive wins, 10 serve losses — extreme observed rates are pulled toward prior
+    // p = (0.58*15 + 10) / (15+10) = 18.7/25 = 0.748
+    // q = (0.42*15 + 0)  / (15+10) = 6.3/25  = 0.252
     const rallies = [
       ...Array.from({ length: 10 }, () => ({ serve_side: 'them', point_winner: 'us'   })),
       ...Array.from({ length: 10 }, () => ({ serve_side: 'us',   point_winner: 'them' })),
     ];
     const { p, q } = computePQ(rallies);
-    expect(p).toBe(1);
-    expect(q).toBe(0);
+    expect(p).toBeCloseTo(0.748);
+    expect(q).toBeCloseTo(0.252);
   });
 
-  it('computes independent p and q rates', () => {
+  it('blends p and q independently toward observed', () => {
+    // 10 serve rallies: 4 wins → q = (0.42*15 + 4) / (15+10) = 10.3/25 = 0.412
+    // 10 receive rallies: 7 wins → p = (0.58*15 + 7) / (15+10) = 15.7/25 = 0.628
     const rallies = [
-      // 10 serve rallies: 4 wins (q = 0.4)
       ...Array.from({ length: 4 },  () => ({ serve_side: 'us',   point_winner: 'us'   })),
       ...Array.from({ length: 6 },  () => ({ serve_side: 'us',   point_winner: 'them' })),
-      // 10 receive rallies: 7 wins (p = 0.7)
       ...Array.from({ length: 7 },  () => ({ serve_side: 'them', point_winner: 'us'   })),
       ...Array.from({ length: 3 },  () => ({ serve_side: 'them', point_winner: 'them' })),
     ];
     const { p, q } = computePQ(rallies);
-    expect(p).toBeCloseTo(0.7);
-    expect(q).toBeCloseTo(0.4);
+    expect(p).toBeCloseTo(0.628);
+    expect(q).toBeCloseTo(0.412);
   });
 });
 

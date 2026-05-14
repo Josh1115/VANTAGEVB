@@ -554,7 +554,7 @@ export function computeRunsByRotation(rallies) {
     a.set_id !== b.set_id ? a.set_id - b.set_id : a.rally_number - b.rally_number
   );
 
-  const mkSlot = () => ({ max_run: 0, runs_3plus: 0, runs_5plus: 0, total_runs: 0, run_pts: 0 });
+  const mkSlot = () => ({ max_run: 0, total_runs: 0, run_pts: 0, runs_3plus: 0, runs_5plus: 0, runs_7plus: 0, runs_9plus: 0 });
   const byRotation = {};
   for (let r = 1; r <= 6; r++) byRotation[r] = mkSlot();
   const tot = mkSlot();
@@ -566,6 +566,8 @@ export function computeRunsByRotation(rallies) {
       s.total_runs++; s.run_pts += len;
       if (len >= 3) s.runs_3plus++;
       if (len >= 5) s.runs_5plus++;
+      if (len >= 7) s.runs_7plus++;
+      if (len >= 9) s.runs_9plus++;
     };
     if (rot >= 1 && rot <= 6) add(byRotation[rot]);
     add(tot);

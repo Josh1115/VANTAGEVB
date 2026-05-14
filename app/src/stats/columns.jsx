@@ -195,11 +195,14 @@ export const TRANS_COLS = [
 // Run-streak per-rotation table columns
 const fmtAvg = (val) => val == null ? '—' : val.toFixed(1);
 export const RUN_COLS = [
-  { key: 'name',       label: 'Rot' },
+  { key: 'name',       label: 'Rot'  },
   { key: 'max_run',    label: 'Best', fmt: fmtCount },
   { key: 'avg_run',    label: 'Avg',  fmt: fmtAvg   },
+  { key: 'total_runs', label: '2+',   fmt: fmtCount },
   { key: 'runs_3plus', label: '3+',   fmt: fmtCount },
   { key: 'runs_5plus', label: '5+',   fmt: fmtCount },
+  { key: 'runs_7plus', label: '7+',   fmt: fmtCount },
+  { key: 'runs_9plus', label: '9+',   fmt: fmtCount },
 ];
 
 export const ROTATION_COLS = [
