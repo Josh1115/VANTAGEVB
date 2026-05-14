@@ -860,6 +860,37 @@ const FAQ_TOPICS = [
     ],
   },
   {
+    id: 'recovering-deleted-match',
+    label: 'Recovering a Deleted Match',
+    icon: '🔄',
+    content: [
+      {
+        heading: 'How Auto-Recovery Works',
+        body: 'The app automatically saves a full snapshot every time you open it and whenever a match ends. Up to 5 snapshots are kept on a rolling basis. As long as the accidental deletion happened after at least one snapshot was taken, the deleted match can be recovered from that snapshot.',
+      },
+      {
+        heading: 'Step 1 — Export Your Current Data First',
+        body: 'Restoring a snapshot replaces everything — all teams, matches, and stats roll back to the moment that snapshot was taken. If you have recorded other data since the snapshot, export a manual backup first: Settings → Data Management → Export Full Backup (JSON). Save that file before you do anything else.',
+      },
+      {
+        heading: 'Step 2 — Find the Right Snapshot',
+        body: 'Go to Settings → Data Management → Auto-Saves. Each snapshot is timestamped. Identify the most recent one taken before the accidental deletion. The snapshot must pre-date the deletion — a snapshot taken after the deletion will not contain the deleted match.',
+      },
+      {
+        heading: 'Step 3 — Restore',
+        body: 'Tap Restore on that snapshot. The app reloads with all data as it existed at that point in time. Confirm the deleted match is back by checking your Home screen or History tab.',
+      },
+      {
+        heading: 'What Gets Restored',
+        body: 'Everything in the snapshot: all teams, players, seasons, matches, contacts, and settings. Any data recorded or changed after that snapshot was taken will not be present — which is why exporting your current data in Step 1 is important.',
+      },
+      {
+        heading: 'When There Is No Usable Snapshot',
+        body: 'If all 5 auto-saves were created after the deletion (or none exist yet), the only recovery option is a previously exported JSON backup file. This is why exporting a manual backup after every match is strongly recommended. Without a pre-deletion snapshot or file, the data cannot be recovered.',
+      },
+    ],
+  },
+  {
     id: 'win-correlation',
     label: 'Win Correlation (Insights)',
     icon: '📈',
