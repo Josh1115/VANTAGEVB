@@ -872,7 +872,7 @@ export function ReportsPage() {
                         <button className={`flex-1 text-left ${hdrCls('name')}`} onClick={() => toggleSort('name')}>
                           Player{sortArrow('name')}
                         </button>
-                        <div className="grid grid-cols-2 gap-2 shrink-0 w-[180px]">
+                        <div className="grid grid-cols-2 gap-6 shrink-0 w-[220px]">
                           <button className={`text-right ${hdrCls('ptPct')}`} onClick={() => toggleSort('ptPct')}>
                             % Team Pts{sortArrow('ptPct')}
                           </button>
@@ -884,7 +884,7 @@ export function ReportsPage() {
                       {rows.map(r => (
                         <div key={r.id} className="flex items-center gap-2 px-1">
                           <span className="flex-1 text-xs text-slate-300 truncate">{r.name}</span>
-                          <div className="grid grid-cols-2 gap-2 shrink-0 w-[180px]">
+                          <div className="grid grid-cols-2 gap-6 shrink-0 w-[220px]">
                             <div className="text-right">
                               <span className="text-xs font-bold text-emerald-400">
                                 {r.ptPct != null ? r.ptPct.toFixed(1) + '%' : '—'}
