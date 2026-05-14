@@ -18,15 +18,49 @@ export function useHistoricalPQ(matchId) {
     if (!matchId) return null;
     const match = await db.matches.get(matchId);
     if (!match?.season_id) return null;
-    const seasonMatches = await db.matches
-      .where('season_id').equals(match.season_id)
-      .filter((m) => m.id !== matchId && m.status === MATCH_STATUS.COMPLETE)
-      .toArray();
-    if (!seasonMatches.length) return null;
-    const rallies = await getRalliesForMatches(seasonMatches.map((m) => m.id));
-    if (!rallies.length) return null;
-    const { p, q } = computePQ(rallies);
-    return { p, q, rotationStats: computeRotationStats(rallies) };
+
+    // Load season history, H2H matches, and current match completed sets in parallel
+    const [seasonMatches, h2hMatches, completedSets] = await Promise.all([
+      db.matches
+        .where('season_id').equals(match.season_id)
+        .filter((m) => m.id !== matchId && m.status === MATCH_STATUS.COMPLETE)
+        .toArray(),
+      match.opponent_id
+        ? db.matches
+            .where('opponent_id').equals(match.opponent_id)
+            .filter((m) => m.id !== matchId && m.status === MATCH_STATUS.COMPLETE)
+            .toArray()
+        : Promise.resolve([]),
+      db.sets
+        .where('match_id').equals(matchId)
+        .filter((s) => s.status === 'complete')
+        .toArray(),
+    ]);
+
+    const [seasonRallies, currentMatchRallies] = await Promise.all([
+      getRalliesForMatches(seasonMatches.map((m) => m.id)),
+      completedSets.length
+        ? db.rallies.where('set_id').anyOf(completedSets.map((s) => s.id)).toArray()
+        : Promise.resolve([]),
+    ]);
+
+    // Layer 1: season rates as Bayesian baseline (falls back to global defaults if empty)
+    const { p: seasonP, q: seasonQ } = computePQ(seasonRallies);
+
+    // Layer 2: H2H evidence tightens prior toward opponent-specific performance.
+    // H2H rallies from all seasons are used as evidence on top of the season prior,
+    // intentionally giving head-to-head matches extra weight over the field average.
+    let p = seasonP, q = seasonQ;
+    if (h2hMatches.length) {
+      const h2hRallies = await getRalliesForMatches(h2hMatches.map((m) => m.id));
+      if (h2hRallies.length) ({ p, q } = computePQ(h2hRallies, seasonP, seasonQ));
+    }
+
+    return {
+      p, q,
+      rotationStats: seasonRallies.length ? computeRotationStats(seasonRallies) : null,
+      currentMatchRallies,
+    };
   }, [matchId]);
 }
 
@@ -60,11 +94,17 @@ export function useWinProbability() {
     const decidingSet = format === FORMAT.BEST_OF_3 ? 3 : 5;
     const isDecider   = setNumber === decidingSet;
 
-    // Bayesian-blended global rates (season prior + current-set evidence)
-    const { p, q } = computePQ(committedRallies, historicalPQ?.p, historicalPQ?.q);
+    // [#1] Recency-weighted p/q for current set — recent rallies count more (alpha=0.93),
+    // so momentum shifts register faster without discarding the season prior entirely.
+    const { p, q } = computePQ(committedRallies, historicalPQ?.p, historicalPQ?.q, 0.93);
+
+    // [#2] Match-level p/q for future-set projection: blend all completed-set rallies
+    // from this match (equal weight) with the current set. This makes future-set win%
+    // reflect how the team is actually performing today, not just the season average.
+    const allMatchRallies = [...(historicalPQ?.currentMatchRallies ?? []), ...committedRallies];
+    const { p: matchP, q: matchQ } = computePQ(allMatchRallies, historicalPQ?.p, historicalPQ?.q);
 
     // Determine current rotation from the last committed rally.
-    // Rotation advances when we sideout (win on their serve).
     const lastRally = committedRallies[committedRallies.length - 1];
     let currentRotation = lastRally?.our_rotation ?? 1;
     if (lastRally?.point_winner === 'us' && lastRally?.serve_side === 'them') {
@@ -72,7 +112,6 @@ export function useWinProbability() {
     }
 
     // Per-rotation Bayesian rates — season prior blended with live-set rallies.
-    // Falls back to flat p,q model when no season rotation history exists.
     const rotationRates = historicalPQ?.rotationStats
       ? computeRotationPQ(historicalPQ.rotationStats, committedRallies, p, q)
       : null;
@@ -82,8 +121,9 @@ export function useWinProbability() {
       ? computeSetWinProbRotation(rotationRates, ourScore, oppScore, currentRotation, serveSide, isDecider)
       : computeSetWinProb(p, q, ourScore, oppScore, serveSide, isDecider);
 
-    // Future sets: use global blended rates (rotation unknown for future sets)
-    const pFutureSet   = computeSetWinProb(p, q, 0, 0, 'them', false);
+    // [#2] Future sets use match-level rates — today's performance is stronger evidence
+    // for upcoming sets than the season average alone.
+    const pFutureSet   = computeSetWinProb(matchP, matchQ, 0, 0, 'them', false);
     const matchWinProb = computeMatchWinProb(setWinProb, pFutureSet, ourSetsWon, oppSetsWon, setsToWin);
 
     return { matchWinProb, setWinProb, p, q };

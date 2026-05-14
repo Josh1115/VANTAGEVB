@@ -182,12 +182,14 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
   const currentWinProbs = useMemo(() => {
     const setsToWin = format === FORMAT.BEST_OF_5 ? 3 : 2;
     const isDecider = setNumber === (format === FORMAT.BEST_OF_5 ? 5 : 3);
-    const { p, q } = computePQ(committedRallies, historicalPQ?.p, historicalPQ?.q);
+    const { p, q } = computePQ(committedRallies, historicalPQ?.p, historicalPQ?.q, 0.93);
     const setWinProb = computeSetWinProb(p, q, ourScore, oppScore, serveSide, isDecider);
-    const pFutureSet = computeSetWinProb(p, q, 0, 0, 'them', false);
+    const allMatchRallies = [...(historicalPQ?.currentMatchRallies ?? []), ...committedRallies];
+    const { p: matchP, q: matchQ } = computePQ(allMatchRallies, historicalPQ?.p, historicalPQ?.q);
+    const pFutureSet = computeSetWinProb(matchP, matchQ, 0, 0, 'them', false);
     const mwp = computeMatchWinProb(setWinProb, pFutureSet, ourSetsWon, oppSetsWon, setsToWin);
     return { setWinProb, matchWinProb: mwp, p, q };
-  }, [committedRallies, ourScore, oppScore, serveSide, setNumber, format, ourSetsWon, oppSetsWon]);
+  }, [committedRallies, historicalPQ, ourScore, oppScore, serveSide, setNumber, format, ourSetsWon, oppSetsWon]);
 
   const xkByPass = useMemo(() => {
     const raw = computeXKByPassRating(setContacts);

@@ -1085,23 +1085,32 @@ const ROT_BAYES_K = 8;  // per-rotation blend (fewer rallies per rotation)
 // prior; when omitted, the global HS fallback is used. The blend is continuous:
 // at 0 live rallies the estimate equals the prior; it converges to observed data
 // as rallies accumulate. No hard cutoff — estimates are always calibrated.
-export function computePQ(rallies, priorP = WP_FALLBACK_P, priorQ = WP_FALLBACK_Q) {
+// alpha < 1 applies exponential recency decay so recent rallies carry more weight.
+// alpha = 1 (default) gives equal weight to all rallies — backward-compatible for
+// historical / report contexts. For live set estimation use alpha = 0.93.
+export function computePQ(rallies, priorP = WP_FALLBACK_P, priorQ = WP_FALLBACK_Q, alpha = 1) {
   const pp = priorP ?? WP_FALLBACK_P;
   const pq = priorQ ?? WP_FALLBACK_Q;
   if (!rallies?.length) return { p: pp, q: pq };
-  let recvTotal = 0, recvWin = 0, servTotal = 0, servWin = 0;
-  for (const r of rallies) {
+  const sorted = alpha < 1
+    ? [...rallies].sort((a, b) =>
+        a.set_id !== b.set_id ? a.set_id - b.set_id : a.rally_number - b.rally_number)
+    : rallies;
+  const n = sorted.length;
+  let recvTotalW = 0, recvWinW = 0, servTotalW = 0, servWinW = 0;
+  sorted.forEach((r, i) => {
+    const w = alpha < 1 ? Math.pow(alpha, n - 1 - i) : 1;
     if (r.serve_side === 'them') {
-      recvTotal++;
-      if (r.point_winner === 'us') recvWin++;
+      recvTotalW += w;
+      if (r.point_winner === 'us') recvWinW += w;
     } else if (r.serve_side === 'us') {
-      servTotal++;
-      if (r.point_winner === 'us') servWin++;
+      servTotalW += w;
+      if (r.point_winner === 'us') servWinW += w;
     }
-  }
+  });
   // Posterior mean of Beta(α₀ + wins, β₀ + losses) where α₀ = pp*K, β₀ = (1-pp)*K
-  const p = (pp * BAYES_K + recvWin) / (BAYES_K + recvTotal);
-  const q = (pq * BAYES_K + servWin) / (BAYES_K + servTotal);
+  const p = (pp * BAYES_K + recvWinW) / (BAYES_K + recvTotalW);
+  const q = (pq * BAYES_K + servWinW) / (BAYES_K + servTotalW);
   return { p, q };
 }
 
