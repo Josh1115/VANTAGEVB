@@ -1908,13 +1908,18 @@ export function SettingsPage() {
         </section>
 
         {/* About */}
-        <section className="bg-surface rounded-xl p-4">
-          <h2 className="font-semibold mb-1">About</h2>
-          <p className="text-sm text-white">VANTAGE — Volleyball Stat Tracker</p>
-          <p className="text-sm text-white mt-2 leading-relaxed">
+        <section className="bg-surface rounded-xl p-5">
+          <div className="text-center mb-4">
+            <h2 className="text-2xl font-black tracking-[0.25em] uppercase text-white">VANTAGE</h2>
+            <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-400 mt-1">Volleyball Stat Tracker</p>
+          </div>
+          <div className="border-t border-slate-700 mb-4" />
+          <p className="text-sm text-slate-200 leading-relaxed italic text-center">
             VANTAGE is a comprehensive volleyball statistics platform built for coaches who want a competitive edge. Record every contact live during a match — serves, passes, attacks, blocks, and digs — and instantly access deep analytics: rotation efficiency, player VER ratings, win correlation insights, and real-time performance alerts. All data lives on your device, works offline, and requires no account or subscription. From pre-match lineup prep to post-match film review, VANTAGE gives your program the same data-driven tools used at the highest levels of the sport.
           </p>
-          <p className="text-xs text-white mt-2">All data stored locally on this device. No account required.</p>
+          <div className="border-t border-slate-700 mt-4 pt-3">
+            <p className="text-[11px] text-slate-500 text-center tracking-wide">All data stored locally on this device. No account required.</p>
+          </div>
 
           <div className="flex items-baseline gap-2 mt-4 flex-wrap">
             <Link to="/terms" className="text-xs text-primary hover:text-orange-300 transition-colors underline underline-offset-2">
