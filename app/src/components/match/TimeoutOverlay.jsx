@@ -10,6 +10,7 @@ import {
   computePQ, computeSetWinProb, computeMatchWinProb,
 } from '../../stats/engine';
 import { FORMAT } from '../../constants';
+import { fmtWinProb } from '../../stats/formatters';
 import { TAB_COLUMNS, SERVING_COLS, ROTATION_COLS } from '../../stats/columns';
 import { StatTable } from '../stats/StatTable';
 import { SubToggle } from '../stats/SubToggle';
@@ -710,7 +711,7 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
                 currentWinProbs.setWinProb >= 0.60 ? 'text-emerald-400' :
                 currentWinProbs.setWinProb <= 0.40 ? 'text-red-400' : 'text-slate-200'
               }`}>
-                {Math.round(currentWinProbs.setWinProb * 100)}%
+                {fmtWinProb(currentWinProbs.setWinProb)}
               </div>
               <div className="text-[9px] text-slate-500 mt-0.5">THIS SET</div>
             </div>

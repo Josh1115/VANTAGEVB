@@ -4,6 +4,7 @@ import { useMatchStats } from '../../hooks/useMatchStats';
 import { useWinProbability } from '../../hooks/useWinProbability';
 import { SIDE, FORMAT, NFHS } from '../../constants';
 import { LiberoBox } from './LiberoBox';
+import { fmtWinProb } from '../../stats/formatters';
 
 const HOLD_MS = 3000;
 
@@ -77,7 +78,7 @@ function WinProbBadge({ matchWinProb }) {
   return (
     <span className={`flex items-baseline gap-[0.2vmin] shrink-0 ${color}`}>
       <span className="text-slate-500 text-[1.5vmin] font-medium">WIN</span>
-      <span className="text-[1.9vmin] font-black tabular-nums">{pct}%</span>
+      <span className="text-[1.9vmin] font-black tabular-nums">{fmtWinProb(matchWinProb)}</span>
     </span>
   );
 }

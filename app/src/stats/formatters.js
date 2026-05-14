@@ -11,6 +11,17 @@ export const fmtPassRating = (val) => fmt(val, v => v.toFixed(2));
 // 18.3%  (ace%, SO%, BP%, etc.)
 export const fmtPct = (val) => fmt(val, v => (v * 100).toFixed(1) + '%');
 
+// Live match win probability — shows <1% / >99% instead of 0% / 100% while play
+// is ongoing; exact 0% and 100% are reserved for concluded sets/matches.
+export function fmtWinProb(prob) {
+  if (prob === 0) return '0%';
+  if (prob === 1) return '100%';
+  const pct = Math.round(prob * 100);
+  if (pct === 0)   return '<1%';
+  if (pct === 100) return '>99%';
+  return `${pct}%`;
+}
+
 // 45.6%  (manually entered percentage — stored as the percentage value directly)
 export const fmtRawPct = (val) => fmt(val, v => v.toFixed(1) + '%');
 
