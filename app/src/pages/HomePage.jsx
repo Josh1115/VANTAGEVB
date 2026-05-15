@@ -1565,7 +1565,7 @@ export function HomePage() {
 
             {/* Date + Time */}
             <div className="flex gap-2">
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Date</label>
                 <input
                   type="date"
@@ -1574,7 +1574,7 @@ export function HomePage() {
                   className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
                 />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Start Time <span className="normal-case font-normal text-slate-500">(optional)</span></label>
                 <input
                   type="time"
