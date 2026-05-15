@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, useCallback } from 'react';
 
 const LETTERS = 'VANTAGE'.split('');
-const FONT_PX = 36;
+const FONT_PX = 54;
 const BASELINE = FONT_PX + 4; // SVG y coordinate of text baseline
 
 // Animation timing (ms)
@@ -15,7 +15,7 @@ const CYCLE_S = (CYCLE / 1000).toFixed(4);
 
 // Safe upper-bound for any Orbitron Bold uppercase glyph outline perimeter at 36px.
 // Must be >= the longest glyph path so the full draw spans the animation duration.
-const LETTER_DASH = 400;
+const LETTER_DASH = 600;
 
 const FONT_OBJ = {
   fontFamily: "'Orbitron', sans-serif",
@@ -130,7 +130,7 @@ export function VantageLogo({ onClick, onPointerDown, onPointerUp, onPointerLeav
           y={BASELINE}
           fill="none"
           stroke="white"
-          strokeWidth="1.5"
+          strokeWidth="2.25"
           style={{
             ...FONT_OBJ,
             letterSpacing: '0',
@@ -150,7 +150,7 @@ export function VantageLogo({ onClick, onPointerDown, onPointerUp, onPointerLeav
           x1={2}    y1={ulY}
           x2={ulX2} y2={ulY}
           stroke="white"
-          strokeWidth="2"
+          strokeWidth="3"
           strokeLinecap="round"
           style={{
             strokeDasharray: totalW.toFixed(2),
