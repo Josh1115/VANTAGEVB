@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, useCallback } from 'react';
 
 const LETTERS = 'VANTAGE'.split('');
-const FONT_PX = 54;
+const FONT_PX = 81;
 const BASELINE = FONT_PX + 4; // SVG y coordinate of text baseline
 
 // Animation timing (ms)
@@ -21,7 +21,7 @@ const FONT_OBJ = {
   fontFamily: "'Orbitron', sans-serif",
   fontWeight: '900',
   fontSize: `${FONT_PX}px`,
-  letterSpacing: '0.12em',
+  letterSpacing: '0.132em',
 };
 
 // totalWidth is the measured SVG text width — used for the underline dash.

@@ -762,7 +762,7 @@ export function HomePage() {
   return (
     <div>
       {/* ── Header ── */}
-      <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 pt-safe pb-6 text-center relative">
+      <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 pt-safe pb-10 text-center relative">
 
         {/* Volleyball net watermark (mesh sways via .net-wave CSS) */}
         <svg
@@ -825,11 +825,11 @@ export function HomePage() {
             onPointerUp={handleLogoPointerUp}
             onPointerLeave={handleLogoPointerUp}
           />
-          <span className="text-slate-400 font-normal text-sm tracking-wide italic">
+          <span className="text-slate-400 font-normal text-[17.5px] tracking-wide italic">
             powered by the SSE (Shua Stat Engine)
           </span>
         </h1>
-        <div className="text-base font-semibold tracking-[0.22em] text-slate-600 uppercase mt-1">
+        <div className="absolute bottom-2 left-0 right-0 text-center text-[17.5px] font-semibold tracking-[0.22em] text-slate-300 uppercase">
           Precision Sideline Analytics
         </div>
       </header>

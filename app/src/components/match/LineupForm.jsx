@@ -205,6 +205,38 @@ export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions,
         </select>
       </div>
 
+      {/* ROT 1 Server */}
+      <div>
+        <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+          ROT 1 Server
+        </label>
+        <p className="text-[11px] text-slate-500 mb-2">
+          Who serves first? The setter serves ROT 1 by default — pick a different player to override. Selecting here moves that player into serve slot I.
+        </p>
+        <select
+          value={lineup[0]}
+          onChange={(e) => {
+            const newId = e.target.value;
+            if (!newId) return;
+            const fromIdx = lineup.indexOf(newId);
+            if (fromIdx <= 0) return;
+            const rotate = (arr) => [...arr.slice(fromIdx), ...arr.slice(0, fromIdx)];
+            setLineup((prev) => rotate(prev));
+            setSlotPositions((prev) => rotate(prev));
+          }}
+          className="w-full bg-surface border border-slate-600 text-white rounded px-2 py-2 text-sm focus:outline-none focus:border-primary"
+        >
+          {!lineup[0] && <option value="">— assign serve order above first —</option>}
+          {sortedPlayers
+            .filter((p) => lineup.includes(String(p.id)))
+            .map((p) => (
+              <option key={p.id} value={String(p.id)}>
+                #{p.jersey_number} {p.name}{p.position ? ` (${p.position})` : ''}
+              </option>
+            ))}
+        </select>
+      </div>
+
       {/* Starting zone picker */}
       <div>
         <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
