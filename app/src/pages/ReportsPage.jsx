@@ -1076,6 +1076,38 @@ export function ReportsPage() {
                 {playerStatView === 'passing' && (
                   <>
                     <StatTable columns={TAB_COLUMNS.passing} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} />
+                    {(() => {
+                      const aprs = [1,2,3,4,5,6].map(r => rotationContactStats[r]?.apr);
+                      const valid = aprs.filter(v => v != null);
+                      if (valid.length === 0) return null;
+                      const maxApr = Math.max(...valid);
+                      const minApr = Math.min(...valid);
+                      return (
+                        <div className="bg-surface rounded-xl p-3">
+                          <SectionHeader>APR by Rotation</SectionHeader>
+                          <p className="text-[11px] text-slate-500 -mt-1 mb-3">Average pass rating (0–3) in each rotation. Higher is better.</p>
+                          <div className="grid grid-cols-6 gap-px bg-slate-700 rounded-lg overflow-hidden text-center text-xs">
+                            {[1,2,3,4,5,6].map(r => (
+                              <div key={r} className="bg-slate-800 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wide">R{r}</div>
+                            ))}
+                            {aprs.map((apr, i) => (
+                              <div
+                                key={i + 1}
+                                className={`py-2 font-black tabular-nums ${
+                                  apr == null    ? 'bg-slate-900 text-slate-700'
+                                : apr === maxApr ? 'bg-emerald-900/40 text-emerald-300'
+                                : apr === minApr ? 'bg-red-900/30 text-red-400'
+                                :                  'bg-slate-900 text-slate-200'
+                                }`}
+                              >
+                                {apr != null ? apr.toFixed(2) : '—'}
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-[10px] text-slate-600 text-center mt-2">Green = best · Red = worst</p>
+                        </div>
+                      );
+                    })()}
                     <PassDistributionChart totals={playerTotalsRow} />
                   </>
                 )}
