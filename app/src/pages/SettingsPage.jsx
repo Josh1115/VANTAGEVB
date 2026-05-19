@@ -1269,6 +1269,38 @@ export function SettingsPage() {
 
       <div className="p-4 space-y-4">
 
+        {/* About */}
+        <section className="bg-surface rounded-xl p-5">
+          <div className="text-center mb-4">
+            <h2 className="text-2xl font-black tracking-[0.25em] uppercase text-white">VANTAGE</h2>
+            <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-400 mt-1">Volleyball Stat Tracker</p>
+          </div>
+          <div className="border-t border-slate-700 mb-4" />
+          <p className="text-sm text-slate-200 leading-relaxed italic text-center">
+            VANTAGE is a comprehensive volleyball statistics platform built for coaches who want a competitive edge. Record every contact live during a match — serves, passes, attacks, blocks, and digs — and instantly access deep analytics: rotation efficiency, player VER ratings, win correlation insights, and real-time performance alerts. All data lives on your device, works offline, and requires no account or subscription. From pre-match lineup prep to post-match film review, VANTAGE gives your program the same data-driven tools used at the highest levels of the sport.
+          </p>
+          <div className="border-t border-slate-700 mt-4 pt-3">
+            <p className="text-[11px] text-slate-500 text-center tracking-wide">All data stored locally on this device. No account required.</p>
+          </div>
+
+          <div className="flex items-baseline gap-2 mt-4 flex-wrap">
+            <Link to="/terms" className="text-xs text-primary hover:text-orange-300 transition-colors underline underline-offset-2">
+              Terms &amp; Conditions
+            </Link>
+            {(() => {
+              try {
+                const raw = localStorage.getItem(TERMS_STORAGE_KEY);
+                if (!raw) return null;
+                let acceptedAt = null;
+                try { acceptedAt = JSON.parse(raw).acceptedAt ?? null; } catch { /* old plain-string format */ }
+                if (!acceptedAt) return <span className="text-xs text-slate-500">Agreed (date not recorded)</span>;
+                const fmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+                return <span className="text-xs text-slate-500">Agreed {fmt.format(new Date(acceptedAt))}</span>;
+              } catch { return null; }
+            })()}
+          </div>
+        </section>
+
         {/* Storage warning */}
         {showStorageWarning && (
           <div className="bg-red-900/40 border border-red-700 rounded-xl px-4 py-3 text-sm">
@@ -1935,38 +1967,6 @@ export function SettingsPage() {
             <Button className="w-full" variant="danger" onClick={() => setConfirmClear(true)}>
               Clear All Data
             </Button>
-          </div>
-        </section>
-
-        {/* About */}
-        <section className="bg-surface rounded-xl p-5">
-          <div className="text-center mb-4">
-            <h2 className="text-2xl font-black tracking-[0.25em] uppercase text-white">VANTAGE</h2>
-            <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-400 mt-1">Volleyball Stat Tracker</p>
-          </div>
-          <div className="border-t border-slate-700 mb-4" />
-          <p className="text-sm text-slate-200 leading-relaxed italic text-center">
-            VANTAGE is a comprehensive volleyball statistics platform built for coaches who want a competitive edge. Record every contact live during a match — serves, passes, attacks, blocks, and digs — and instantly access deep analytics: rotation efficiency, player VER ratings, win correlation insights, and real-time performance alerts. All data lives on your device, works offline, and requires no account or subscription. From pre-match lineup prep to post-match film review, VANTAGE gives your program the same data-driven tools used at the highest levels of the sport.
-          </p>
-          <div className="border-t border-slate-700 mt-4 pt-3">
-            <p className="text-[11px] text-slate-500 text-center tracking-wide">All data stored locally on this device. No account required.</p>
-          </div>
-
-          <div className="flex items-baseline gap-2 mt-4 flex-wrap">
-            <Link to="/terms" className="text-xs text-primary hover:text-orange-300 transition-colors underline underline-offset-2">
-              Terms &amp; Conditions
-            </Link>
-            {(() => {
-              try {
-                const raw = localStorage.getItem(TERMS_STORAGE_KEY);
-                if (!raw) return null;
-                let acceptedAt = null;
-                try { acceptedAt = JSON.parse(raw).acceptedAt ?? null; } catch { /* old plain-string format */ }
-                if (!acceptedAt) return <span className="text-xs text-slate-500">Agreed (date not recorded)</span>;
-                const fmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-                return <span className="text-xs text-slate-500">Agreed {fmt.format(new Date(acceptedAt))}</span>;
-              } catch { return null; }
-            })()}
           </div>
         </section>
 
