@@ -6,7 +6,7 @@ import { useMatchStore } from '../store/matchStore';
 import { useUiStore } from '../store/uiStore';
 import { useShallow } from 'zustand/react/shallow';
 import { computePlayerStats, computeTeamStats, computeSeasonStats } from '../stats/engine';
-import { SET_STATUS, FORMAT, SIDE } from '../constants';
+import { SET_STATUS, FORMAT, SIDE, MATCH_STATUS } from '../constants';
 import { useMatchStats } from '../hooks/useMatchStats';
 import { useRecordAlerts } from '../hooks/useRecordAlerts';
 import { useWakeLock } from '../hooks/useWakeLock';
@@ -220,6 +220,10 @@ export function LiveMatchPage() {
           : db.sets.where('match_id').equals(matchId).filter((s) => s.status === SET_STATUS.IN_PROGRESS).first(),
       ]);
       if (!match) return;
+      if (match.status === MATCH_STATUS.COMPLETE) {
+        navigate(`/matches/${matchId}/summary`);
+        return;
+      }
 
       // If no in-progress set, fall back to last set
       let currentSet = currentSetOrNull;

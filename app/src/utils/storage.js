@@ -22,6 +22,7 @@ export const STORAGE_KEYS = {
   MAXPREPS_TEAM_ID:   'vbstat_maxpreps_id',
   WIN_MESSAGE:        'vbstat_win_message',
   ROSTER_SORT:        'vbstat_roster_sort',
+  PLAYOFF_ORG:        'vbstat_playoff_org',
 };
 
 export function getStorageItem(key, defaultValue = null) {
@@ -67,4 +68,10 @@ export function getIntStorage(key, defaultValue = NaN) {
   } catch {
     return defaultValue;
   }
+}
+
+// Returns the full playoff label, e.g. "IHSA Playoffs" or "NCAA Playoffs".
+export function getPlayoffLabel() {
+  const org = getStorageItem(STORAGE_KEYS.PLAYOFF_ORG, 'IHSA').trim();
+  return org ? `${org} Playoffs` : 'IHSA Playoffs';
 }

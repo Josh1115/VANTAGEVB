@@ -31,7 +31,7 @@ class ErrorBoundary extends Component {
           <div className="min-h-screen bg-bg flex flex-col items-center justify-center gap-4 p-8 text-center">
             <p className="text-5xl">🔄</p>
             <p className="text-white font-bold text-lg">App Update Available</p>
-            <p className="text-slate-400 text-sm">Close the app completely, connect to the internet, and reopen to get the latest version.</p>
+            <p className="text-slate-400 text-sm">COMPLETELY CLOSE THE APP FOR NEW UPDATE!</p>
             <button
               className="mt-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold"
               onClick={() => window.location.reload()}

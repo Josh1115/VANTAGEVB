@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback, Fragment } from 'rea
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { buildPlayerMaps } from '../utils/players';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { getIntStorage, STORAGE_KEYS } from '../utils/storage';
+import { getIntStorage, STORAGE_KEYS, getPlayoffLabel } from '../utils/storage';
 import { db } from '../db/schema';
 import { computeSeasonStats, computePQ, computeSetWinProb, computeExpectedPts, aggregateXKTeamStats, computeRotationContactStats } from '../stats/engine';
 import { InsightsPanel } from '../components/stats/InsightsPanel';
@@ -259,6 +259,7 @@ const chipClass = (active) =>
 
 export function ReportsPage() {
   const navigate = useNavigate();
+  const playoffLabel = getPlayoffLabel();
   const [tab, setTab] = useState('team');
   const [teamView,              setTeamView]              = useState('totals');
   const [playerStatView,        setPlayerStatView]        = useState('serving');
@@ -608,7 +609,7 @@ export function ReportsPage() {
               <div className="flex gap-1.5 flex-wrap items-center">
                 <span className="text-[10px] text-slate-500 uppercase tracking-wide mr-1">Type</span>
                 <button onClick={() => setMatchTypes([])} className={chipClass(matchTypes.length === 0)}>All</button>
-                {[['reg-season', 'Reg Season'], ['tourney', 'Tourney'], ['ihsa-playoffs', 'Playoffs'], ['exhibition', 'Exhibition']].map(([val, label]) => (
+                {[['reg-season', 'Reg Season'], ['tourney', 'Tourney'], ['ihsa-playoffs', playoffLabel], ['exhibition', 'Exhibition']].map(([val, label]) => (
                   <button
                     key={val}
                     onClick={() => setMatchTypes(prev => {

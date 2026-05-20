@@ -680,7 +680,7 @@ export const useMatchStore = create((set, get) => ({
       (contactData.result === RESULT.IN || contactData.result === RESULT.ACE) &&
       s.serveSide === SIDE.US
     ) {
-      set({ pendingServeContact: { contactId: id, result: contactData.result } });
+      set({ pendingServeContact: { contactId: id, result: contactData.result, player_id: contactData.player_id } });
     }
 
     return id;
@@ -994,6 +994,7 @@ export const useMatchStore = create((set, get) => ({
       set_id:           s.currentSetId,
       player_id:        null,
       rally_number:     s.rallyCount,
+      rotation_num:     s.rotationNum,
       action,
       result,
       opponent_contact: true,

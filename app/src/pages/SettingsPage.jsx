@@ -1179,8 +1179,9 @@ export function SettingsPage() {
     () => defaultTeamId ? db.seasons.where('team_id').equals(defaultTeamId).sortBy('year') : Promise.resolve([]),
     [defaultTeamId]
   );
-  const [maxPrepsId,  saveMaxPrepsId]  = useTrimSetting(STORAGE_KEYS.MAXPREPS_TEAM_ID);
+  const [maxPrepsId,   saveMaxPrepsId]  = useTrimSetting(STORAGE_KEYS.MAXPREPS_TEAM_ID);
   const [winMessage,   saveWinMessage]  = useTrimSetting(STORAGE_KEYS.WIN_MESSAGE);
+  const [playoffOrg,   savePlayoffOrg]  = useTrimSetting(STORAGE_KEYS.PLAYOFF_ORG);
   const [programName,  saveProgramName] = useTrimSetting(STORAGE_KEYS.PROGRAM_NAME);
   const [coachName,    saveCoachName]   = useTrimSetting(STORAGE_KEYS.COACH_NAME);
   const [wakeLock,     saveWakeLock]    = useToggleSetting('vbstat_wake_lock');
@@ -1529,6 +1530,25 @@ export function SettingsPage() {
                 maxLength={60}
                 className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
               />
+            </div>
+
+            {/* Playoff organization label */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Playoff Organization</label>
+              <div className="text-xs text-slate-400 mb-2">
+                Shown on playoff match bars and in match type dropdowns. Enter your governing body abbreviation — the app appends "Playoffs" automatically (e.g. "IHSA" → "IHSA Playoffs").
+              </div>
+              <input
+                type="text"
+                value={playoffOrg}
+                onChange={(e) => savePlayoffOrg(e.target.value)}
+                placeholder="IHSA"
+                maxLength={20}
+                className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
+              />
+              {playoffOrg.trim() && (
+                <p className="text-xs text-slate-500 mt-1">Displays as: <span className="text-slate-300">{playoffOrg.trim()} Playoffs</span></p>
+              )}
             </div>
 
             {/* Win message */}

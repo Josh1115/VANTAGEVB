@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { VantageLogo } from '../components/ui/VantageLogo';
-import { STORAGE_KEYS, getStorageItem, getIntStorage } from '../utils/storage';
+import { STORAGE_KEYS, getStorageItem, getIntStorage, getPlayoffLabel } from '../utils/storage';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
@@ -213,6 +213,9 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
                       {match.match_type === 'tourney' && match.tournament_name && (
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide">{match.tournament_name}</span>
                       )}
+                      {match.match_type === 'ihsa-playoffs' && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-900/50 text-cyan-400 uppercase tracking-wide">{match.playoff_round || playoffLabel}</span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       {match.location && (
@@ -265,6 +268,9 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
                       )}
                       {match.match_type === 'tourney' && match.tournament_name && (
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide">{match.tournament_name}</span>
+                      )}
+                      {match.match_type === 'ihsa-playoffs' && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-900/50 text-cyan-400 uppercase tracking-wide">{match.playoff_round || playoffLabel}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -328,7 +334,8 @@ export function HomePage() {
     const v = getStorageItem(STORAGE_KEYS.MATCH_VIEW_DEFAULT, 'closest');
     return v === 'recent' ? 'closest' : v;
   });
-  const scoreDetail = getStorageItem(STORAGE_KEYS.SCORE_DETAIL, 'sets');
+  const scoreDetail  = getStorageItem(STORAGE_KEYS.SCORE_DETAIL, 'sets');
+  const playoffLabel = getPlayoffLabel();
 
   // ── Schedule-edit modal state ─────────────────────────────────────────────
   const [schedOpen,      setSchedOpen]      = useState(false);
@@ -466,9 +473,11 @@ export function HomePage() {
       homeW, homeL, awayW, awayL, neutW, neutL, confW, confL, tourneyW, tourneyL, last5W, last5L, last5Count: last5.length,
       hasLocData: (homeW + homeL + awayW + awayL + neutW + neutL) > 0,
       matchProgress: { completed: matches.length, total: allSeasonMatches.length },
-      stateRank:    historyEntry?.state_rank    ?? null,
-      nationalRank: historyEntry?.national_rank ?? null,
-      teamState:    team.state ?? null,
+      stateRank:        historyEntry?.state_rank         ?? null,
+      nationalRank:     historyEntry?.national_rank      ?? null,
+      prevStateRank:    historyEntry?.prev_state_rank    ?? null,
+      prevNationalRank: historyEntry?.prev_national_rank ?? null,
+      teamState:        team.state ?? null,
     };
   }, [defaultTeamId, defaultSeasonId]);
 
@@ -896,12 +905,28 @@ export function HomePage() {
                   <span className="text-xs font-black text-amber-400 tracking-wide">
                     #{seasonRecord.stateRank} {seasonRecord.teamState ?? 'STATE'}
                   </span>
+                  {seasonRecord.prevStateRank != null && seasonRecord.prevStateRank !== seasonRecord.stateRank && (() => {
+                    const delta = seasonRecord.prevStateRank - seasonRecord.stateRank;
+                    return (
+                      <span className={`text-[10px] font-bold ml-1 ${delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`}
+                      </span>
+                    );
+                  })()}
                 </>
               )}
               {seasonRecord.nationalRank != null && (
                 <>
                   <span className="text-slate-600 mx-2">·</span>
                   <span className="text-xs font-black text-amber-400 tracking-wide">#{seasonRecord.nationalRank} NATIONAL</span>
+                  {seasonRecord.prevNationalRank != null && seasonRecord.prevNationalRank !== seasonRecord.nationalRank && (() => {
+                    const delta = seasonRecord.prevNationalRank - seasonRecord.nationalRank;
+                    return (
+                      <span className={`text-[10px] font-bold ml-1 ${delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`}
+                      </span>
+                    );
+                  })()}
                 </>
               )}
             </div>
@@ -1271,7 +1296,7 @@ export function HomePage() {
                 </button>
               </div>
               {displayMatches.length > 0 && (
-                <button onClick={() => navigate('/seasons')} className="text-xs text-primary hover:text-orange-300 transition-colors">
+                <button onClick={() => navigate(defaultSeasonId ? `/seasons/${defaultSeasonId}` : '/seasons')} className="text-xs text-primary hover:text-orange-300 transition-colors">
                   See all →
                 </button>
               )}
@@ -1323,6 +1348,9 @@ export function HomePage() {
                       </span>
                       {match.match_type === 'tourney' && match.tournament_name && (
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide">{match.tournament_name}</span>
+                      )}
+                      {match.match_type === 'ihsa-playoffs' && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-900/50 text-cyan-400 uppercase tracking-wide">{match.playoff_round || playoffLabel}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -1392,6 +1420,9 @@ export function HomePage() {
                       </span>
                       {match.match_type === 'tourney' && match.tournament_name && (
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide">{match.tournament_name}</span>
+                      )}
+                      {match.match_type === 'ihsa-playoffs' && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-900/50 text-cyan-400 uppercase tracking-wide">{match.playoff_round || playoffLabel}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -1629,7 +1660,7 @@ export function HomePage() {
             <div>
               <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Match Type</label>
               <div className="flex gap-2">
-                {[['reg-season', 'Reg Season'], ['tourney', 'Tourney'], ['ihsa-playoffs', 'IHSA Playoffs'], ['exhibition', 'Exhibition']].map(([val, label]) => (
+                {[['reg-season', 'Reg Season'], ['tourney', 'Tourney'], ['ihsa-playoffs', playoffLabel], ['exhibition', 'Exhibition']].map(([val, label]) => (
                   <button
                     key={val}
                     onClick={() => setSchedMatchType(val)}

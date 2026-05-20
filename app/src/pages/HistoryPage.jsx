@@ -37,6 +37,18 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
     if (!yearStr) { setError('Season year is required.'); return; }
     setSaving(true);
     try {
+      const newStateRank    = form.state_rank    ? Number(form.state_rank)    : null;
+      const newNationalRank = form.national_rank ? Number(form.national_rank) : null;
+      let prevRanks = {};
+      if (editId) {
+        const existing = await db.season_history.get(editId);
+        if (existing) {
+          if (newStateRank !== existing.state_rank)
+            prevRanks.prev_state_rank = existing.state_rank ?? null;
+          if (newNationalRank !== existing.national_rank)
+            prevRanks.prev_national_rank = existing.national_rank ?? null;
+        }
+      }
       const fields = {
         team_id:        teamId,
         year:           yearStr,
@@ -48,8 +60,8 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
         games:          form.games        ? Number(form.games)        : null,
         wins:           form.wins         ? Number(form.wins)         : null,
         losses:         form.losses       ? Number(form.losses)       : null,
-        state_rank:     form.state_rank    ? Number(form.state_rank)    : null,
-        national_rank:  form.national_rank ? Number(form.national_rank) : null,
+        state_rank:     newStateRank,
+        national_rank:  newNationalRank,
         class_rank:     (form.class_rank ?? '').trim()   || null,
         playoff_seed:   form.playoff_seed.trim()         || null,
         regional:       form.regional.trim()             || null,
@@ -57,6 +69,7 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
         state_finish:   form.state_finish.trim()         || null,
         playoff_result: form.playoff_result.trim()       || null,
         playoff_rounds: (form.playoff_rounds ?? []).filter(r => r.round?.trim() || r.opponent?.trim()),
+        ...prevRanks,
       };
       if (editId) { await db.season_history.update(editId, fields); }
       else        { await db.season_history.add(fields); }

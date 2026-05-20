@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getStorageItem, getIntStorage, STORAGE_KEYS } from '../utils/storage';
+import { getStorageItem, getIntStorage, STORAGE_KEYS, getPlayoffLabel } from '../utils/storage';
 import { useUiStore, selectShowToast } from '../store/uiStore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -12,9 +12,10 @@ import { serveOrderToZone } from '../components/court/CourtZonePicker';
 import { LineupForm } from '../components/match/LineupForm';
 
 export function MatchSetupPage() {
-  const navigate   = useNavigate();
-  const showToast  = useUiStore(selectShowToast);
-  const resetMatch = useMatchStore((s) => s.resetMatch);
+  const navigate     = useNavigate();
+  const showToast    = useUiStore(selectShowToast);
+  const resetMatch   = useMatchStore((s) => s.resetMatch);
+  const playoffLabel = getPlayoffLabel();
   const [searchParams] = useSearchParams();
 
   const scheduledMatchId = searchParams.get('match') ? Number(searchParams.get('match')) : null;
@@ -287,8 +288,11 @@ export function MatchSetupPage() {
         .filter((s) => s.status === SET_STATUS.IN_PROGRESS)
         .toArray();
       for (const orphan of orphanedSets) {
-        const hasContacts = await db.contacts.where('set_id').equals(orphan.id).count();
-        if (!hasContacts) {
+        const [hasContacts, hasRallies] = await Promise.all([
+          db.contacts.where('set_id').equals(orphan.id).count(),
+          db.rallies.where('set_id').equals(orphan.id).count(),
+        ]);
+        if (!hasContacts && !hasRallies) {
           await db.lineups.where('set_id').equals(orphan.id).delete();
           await db.sets.delete(orphan.id);
         }
@@ -500,7 +504,7 @@ export function MatchSetupPage() {
             Match Type
           </label>
           <div className="flex gap-2">
-            {[['reg-season', 'Reg Season'], ['tourney', 'Tourney'], ['ihsa-playoffs', 'IHSA Playoffs'], ['exhibition', 'Exhibition']].map(([val, label]) => (
+            {[['reg-season', 'Reg Season'], ['tourney', 'Tourney'], ['ihsa-playoffs', playoffLabel], ['exhibition', 'Exhibition']].map(([val, label]) => (
               <button
                 key={val}
                 onClick={() => setMatchType(val)}

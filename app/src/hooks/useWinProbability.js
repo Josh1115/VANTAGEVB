@@ -48,11 +48,13 @@ export function useHistoricalPQ(matchId) {
     const { p: seasonP, q: seasonQ } = computePQ(seasonRallies);
 
     // Layer 2: H2H evidence tightens prior toward opponent-specific performance.
-    // H2H rallies from all seasons are used as evidence on top of the season prior,
-    // intentionally giving head-to-head matches extra weight over the field average.
+    // Exclude matches already counted in seasonRallies to avoid double-counting rallies
+    // from H2H games played in the current season.
+    const seasonMatchIds = new Set(seasonMatches.map((m) => m.id));
+    const uniqueH2hMatches = h2hMatches.filter((m) => !seasonMatchIds.has(m.id));
     let p = seasonP, q = seasonQ;
-    if (h2hMatches.length) {
-      const h2hRallies = await getRalliesForMatches(h2hMatches.map((m) => m.id));
+    if (uniqueH2hMatches.length) {
+      const h2hRallies = await getRalliesForMatches(uniqueH2hMatches.map((m) => m.id));
       if (h2hRallies.length) ({ p, q } = computePQ(h2hRallies, seasonP, seasonQ));
     }
 

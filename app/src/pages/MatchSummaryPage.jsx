@@ -8,7 +8,8 @@ import { computeMatchStats,
          computeServeZoneStats, computeISvsOOS, computeTransitionAttack,
          computeServingPoints, computeRunsByRotation,
          computePQ, computeSetWinProb, computeMatchWinProb,
-         aggregateXKTeamStats, computeWinCorrelation, pickMetricVal } from '../stats/engine';
+         aggregateXKTeamStats, computeWinCorrelation, pickMetricVal,
+         computeTimeoutEffectiveness } from '../stats/engine';
 import { getRalliesForMatch, getRalliesForMatches } from '../stats/queries';
 import { exportMatchCSV, exportMatchPDF, exportMaxPrepsCSV } from '../stats/export';
 import { fmtHitting, fmtPassRating, fmtPct, fmtCount, fmtDate } from '../stats/formatters';
@@ -36,7 +37,7 @@ import { BoxScoreEntryModal } from '../components/match/BoxScoreEntryModal';
 import { VideoCorrectionsModal } from '../components/match/VideoCorrectionsModal';
 import { Modal } from '../components/ui/Modal';
 import { FORMAT, MATCH_STATUS } from '../constants';
-import { getStorageItem, STORAGE_KEYS } from '../utils/storage';
+import { getStorageItem, STORAGE_KEYS, getPlayoffLabel } from '../utils/storage';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
   ResponsiveContainer,
@@ -710,6 +711,7 @@ export function MatchSummaryPage() {
   const { matchId } = useParams();
   const navigate = useNavigate();
   const id = Number(matchId);
+  const playoffLabel = getPlayoffLabel();
 
   const [tab, setTab] = useState('scoring');
   const [serveView,     setServeView]     = useState('all');
@@ -902,6 +904,7 @@ export function MatchSummaryPage() {
     if (!selectedSetId) return stats;
     const fc = stats.contacts.filter(c => c.set_id === selectedSetId);
     const fr = rawRallies.filter(r => r.set_id === selectedSetId);
+    const ft = (stats.timeouts ?? []).filter(t => t.set_id === selectedSetId);
     return {
       ...stats,
       contacts:         fc,
@@ -914,6 +917,7 @@ export function MatchSummaryPage() {
       transitionAttack: computeTransitionAttack(fc, fr),
       runs:             computeRunsByRotation(fr),
       servingPoints:    computeServingPoints(fr),
+      timeoutEffect:    computeTimeoutEffectiveness(ft, fr),
     };
   }, [stats, rawRallies, selectedSetId]);
 
@@ -1362,7 +1366,7 @@ export function MatchSummaryPage() {
                     <span className="ml-2 text-slate-500">· {match.conference === 'conference' ? 'Conference' : 'Non-Con'}</span>
                   )}
                   {match.match_type && (
-                    <span className="ml-2 text-slate-500">· {{ 'reg-season': 'Reg Season', 'tourney': 'Tourney', 'ihsa-playoffs': 'IHSA Playoffs', 'exhibition': 'Exhibition' }[match.match_type]}</span>
+                    <span className="ml-2 text-slate-500">· {{ 'reg-season': 'Reg Season', 'tourney': 'Tourney', 'ihsa-playoffs': playoffLabel, 'exhibition': 'Exhibition' }[match.match_type]}</span>
                   )}
                 </p>
                 {sets && sets.length > 0 && (
@@ -1557,6 +1561,45 @@ export function MatchSummaryPage() {
                     )}
                   </>
                 )}
+                {/* Timeout Effectiveness */}
+                {(() => {
+                  const EMPTY = { count: 0, win3: 0, total3: 0, win_pct: null };
+                  const te = displayStats.timeoutEffect ?? { us: EMPTY, them: EMPTY };
+                  const noData = te.us.count === 0 && te.them.count === 0;
+                  return (
+                    <div className="bg-surface rounded-xl p-3 space-y-2">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Timeout Effectiveness</p>
+                      <p className="text-[11px] text-slate-500 -mt-1 mb-2">Win % in the 3 rallies immediately following each timeout</p>
+                      {noData ? (
+                        <p className="text-xs text-slate-500 text-center py-2">No timeout data</p>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-3">
+                          {[
+                            { label: 'Our Timeouts', d: te.us   },
+                            { label: 'Opp Timeouts', d: te.them },
+                          ].map(({ label, d }) => {
+                            const pct   = d.win_pct != null ? Math.round(d.win_pct * 100) : null;
+                            const color = pct == null ? 'text-slate-400'
+                              : pct >= 55 ? 'text-emerald-400'
+                              : pct >= 40 ? 'text-yellow-400'
+                              : 'text-red-400';
+                            return (
+                              <div key={label} className="bg-slate-800/60 rounded-lg p-3 text-center">
+                                <div className="text-[11px] text-slate-400 mb-1">{label}</div>
+                                <div className={`text-2xl font-black ${color}`}>
+                                  {pct != null ? `${pct}%` : '—'}
+                                </div>
+                                <div className="text-[10px] text-slate-500 mt-1">
+                                  {d.win3}/{d.total3} pts · {d.count} TO{d.count !== 1 ? 's' : ''}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 {scoringView === 'teamvsopp' && displayStats.team && displayStats.opp && (
                   <TeamComparison
                     team={displayStats.team}
@@ -2239,7 +2282,7 @@ export function MatchSummaryPage() {
             <div>
               <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Type</label>
               <div className="grid grid-cols-2 gap-2">
-                {[['reg-season', 'Reg Season'], ['tourney', 'Tourney'], ['ihsa-playoffs', 'IHSA Playoffs'], ['exhibition', 'Exhibition']].map(([val, label]) => (
+                {[['reg-season', 'Reg Season'], ['tourney', 'Tourney'], ['ihsa-playoffs', playoffLabel], ['exhibition', 'Exhibition']].map(([val, label]) => (
                   <button key={val} onClick={() => setEditMatchType(val)}
                     className={`py-2 rounded-lg text-sm font-semibold transition-colors
                       ${editMatchType === val ? 'bg-primary text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>

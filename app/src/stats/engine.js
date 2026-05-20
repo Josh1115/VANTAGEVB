@@ -837,11 +837,12 @@ export function aggregateXKTeamStats(rows) {
  * Returns { players, team, rotation, freeball, setsPlayed }
  */
 export async function computeMatchStats(matchId) {
-  const [contacts, rallies, setsPlayed, playerPositions] = await Promise.all([
+  const [contacts, rallies, setsPlayed, playerPositions, timeouts] = await Promise.all([
     getContactsForMatch(matchId),
     getRalliesForMatch(matchId),
     getSetsPlayedCount(matchId),
     getPlayerPositionsForMatches([matchId]),
+    getTimeoutsForMatches([matchId]),
   ]);
   const rallyMap = buildRallyMap(rallies);
   const players = computePlayerStats(contacts, setsPlayed, playerPositions);
@@ -872,6 +873,8 @@ export async function computeMatchStats(matchId) {
     runs:             computeRunsByRotation(rallies),
     pointQuality:     computePointQuality(contacts),
     servingPoints:    computeServingPoints(rallies),
+    timeoutEffect:    computeTimeoutEffectiveness(timeouts, rallies),
+    timeouts,
     setsPlayed,
     contacts,
   };
@@ -1360,7 +1363,7 @@ export function computePlayerWPA(contacts, rallies, p = WP_FALLBACK_P, q = WP_FA
  * rallies:  array of { set_id, rally_number, point_winner }
  * Returns { us: { count, win3, total3, win_pct }, them: { count, win3, total3, win_pct } }
  */
-function computeTimeoutEffectiveness(timeouts, rallies) {
+export function computeTimeoutEffectiveness(timeouts, rallies) {
   // Index rallies by set_id → sorted array for fast range lookup
   const bySet = {};
   for (const r of rallies) {

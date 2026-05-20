@@ -6,7 +6,7 @@ import { MATCH_STATUS } from '../constants';
 import { fmtDate } from '../stats/formatters';
 import { computeMatchStats } from '../stats/engine';
 import { exportMaxPrepsCSV } from '../stats/export';
-import { getStorageItem, STORAGE_KEYS } from '../utils/storage';
+import { getStorageItem, STORAGE_KEYS, getPlayoffLabel } from '../utils/storage';
 import { deleteMatch } from '../stats/queries';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
@@ -19,6 +19,7 @@ export function SeasonDetailPage() {
   const { seasonId } = useParams();
   const navigate = useNavigate();
   const id = Number(seasonId);
+  const playoffLabel = getPlayoffLabel();
 
   const data = useLiveQuery(async () => {
     const season = await db.seasons.get(id);
@@ -187,12 +188,41 @@ export function SeasonDetailPage() {
                       <div className="w-full bg-surface rounded-xl px-4 py-3 flex items-center justify-between">
                         <div>
                           <div className="font-semibold flex items-center gap-1.5 flex-wrap">
-                            {match.opponent_name}
+                            <span>
+                              {match.opponent_name}
+                              {match.opponent_maxpreps_rank != null && (
+                                <span className="text-slate-400 font-normal"> #{match.opponent_maxpreps_rank}</span>
+                              )}
+                            </span>
                             {match.match_type === 'tourney' && match.tournament_name && (
                               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide">{match.tournament_name}</span>
                             )}
+                            {match.match_type === 'ihsa-playoffs' && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-900/50 text-cyan-400 uppercase tracking-wide">{match.playoff_round || playoffLabel}</span>
+                            )}
                           </div>
-                          <div className="text-xs text-slate-400">{fmtDate(match.date)}</div>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            {match.location && (
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                                match.location === 'home' ? 'bg-emerald-900/50 text-emerald-400' :
+                                match.location === 'away' ? 'bg-red-900/50 text-red-400' :
+                                                             'bg-slate-700 text-slate-400'
+                              }`}>
+                                {match.location === 'home' ? 'H' : match.location === 'away' ? 'A' : 'N'}
+                              </span>
+                            )}
+                            {match.conference && (
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                                match.conference === 'conference' ? 'bg-blue-900/50 text-blue-400' : 'bg-slate-700 text-slate-400'
+                              }`}>
+                                {match.conference === 'conference' ? 'CON' : 'NC'}
+                              </span>
+                            )}
+                            {match.opponent_record && (
+                              <span className="text-[10px] font-semibold text-slate-500">{match.opponent_record}</span>
+                            )}
+                            <span className="text-xs text-slate-400">{fmtDate(match.date)}</span>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
@@ -226,8 +256,34 @@ export function SeasonDetailPage() {
                     className="w-full bg-surface rounded-xl px-4 py-3 text-left flex items-center justify-between hover:bg-slate-700 transition-colors"
                   >
                     <div>
-                      <div className="font-semibold">{match.opponent_name}</div>
-                      <div className="text-xs text-slate-400">{fmtDate(match.date)}</div>
+                      <div className="font-semibold">
+                        {match.opponent_name}
+                        {match.opponent_maxpreps_rank != null && (
+                          <span className="text-slate-400 font-normal"> #{match.opponent_maxpreps_rank}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        {match.location && (
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                            match.location === 'home' ? 'bg-emerald-900/50 text-emerald-400' :
+                            match.location === 'away' ? 'bg-red-900/50 text-red-400' :
+                                                         'bg-slate-700 text-slate-400'
+                          }`}>
+                            {match.location === 'home' ? 'H' : match.location === 'away' ? 'A' : 'N'}
+                          </span>
+                        )}
+                        {match.conference && (
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                            match.conference === 'conference' ? 'bg-blue-900/50 text-blue-400' : 'bg-slate-700 text-slate-400'
+                          }`}>
+                            {match.conference === 'conference' ? 'CON' : 'NC'}
+                          </span>
+                        )}
+                        {match.opponent_record && (
+                          <span className="text-[10px] font-semibold text-slate-500">{match.opponent_record}</span>
+                        )}
+                        <span className="text-xs text-slate-400">{fmtDate(match.date)}</span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-3">
                       {match.status === MATCH_STATUS.COMPLETE && (
@@ -374,7 +430,7 @@ export function SeasonDetailPage() {
             <div>
               <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Match Type</label>
               <div className="flex gap-2">
-                {[['reg-season', 'Reg Season'], ['tourney', 'Tourney'], ['ihsa-playoffs', 'IHSA Playoffs'], ['exhibition', 'Exhibition']].map(([val, label]) => (
+                {[['reg-season', 'Reg Season'], ['tourney', 'Tourney'], ['ihsa-playoffs', playoffLabel], ['exhibition', 'Exhibition']].map(([val, label]) => (
                   <button
                     key={val}
                     onClick={() => setSchedMatchType(val)}
