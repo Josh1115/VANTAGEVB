@@ -739,6 +739,8 @@ export const useMatchStore = create((set, get) => ({
       set_id:           s.currentSetId,
       player_id:        null,
       rally_number:     s.rallyCount,
+      rotation_num:     s.rotationNum,
+      serve_side:       s.serveSide,
       action:           ACTION.BLOCK,
       result:           RESULT.SOLO,
       opponent_contact: true,

@@ -33,9 +33,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icons/*.png', 'offline.html'],
       manifest: {
-        name: 'VBAPPv.2',
-        short_name: 'VBAPPv2',
-        description: 'Volleyball stat tracking app',
+        name: 'VANTAGE',
+        short_name: 'VANTAGE',
+        description: 'Precision sideline analytics for volleyball coaches',
         theme_color: '#f97316',
         background_color: '#0f172a',
         display: 'standalone',

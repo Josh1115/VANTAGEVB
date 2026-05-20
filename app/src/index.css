@@ -117,6 +117,7 @@
 
 .animate-page-enter {
   animation: page-enter 200ms var(--ease-out) backwards;
+  will-change: transform, opacity;
 }
 
 /* ── Item 3: CRT scan-line overlay ── */
@@ -138,6 +139,7 @@
 
 .animate-slide-up-fade {
   animation: slide-up-fade var(--duration-base) var(--ease-out) both;
+  will-change: transform, opacity;
 }
 
 /* ── Item 7: Match list slide-in-right ── */
@@ -148,6 +150,7 @@
 
 .animate-slide-in-right {
   animation: slide-in-right var(--duration-base) var(--ease-out) both;
+  will-change: transform, opacity;
 }
 
 /* ── Item 5: Run strip flame glow ── */
@@ -196,6 +199,7 @@
 }
 .animate-slide-down {
   animation: slide-down 280ms var(--ease-spring) both;
+  will-change: transform;
 }
 
 /* ── Item 25: NavBar icon bounce on activate ── */
@@ -208,6 +212,7 @@
 
 .animate-icon-bounce {
   animation: icon-bounce 220ms var(--ease-spring) forwards;
+  will-change: transform;
 }
 
 /* ── NavBar idle icon animations ── */

@@ -127,6 +127,7 @@ export function TeamDetailPage() {
   const [editSeason, setEditSeason]           = useState(null);
   const [showCoachModal, setShowCoachModal]   = useState(false);
   const [deletePlayer, setDeletePlayer]       = useState(null);
+  const [confirmArchive, setConfirmArchive]   = useState(false);
   const [showLineupModal, setShowLineupModal] = useState(false);
   const [editLineup, setEditLineup]           = useState(null);
   const [deleteLineup, setDeleteLineup]       = useState(null);
@@ -144,6 +145,18 @@ export function TeamDetailPage() {
       setDeletePlayer(null);
     } catch (err) {
       showToast(`Remove failed: ${err.message}`, 'error');
+    }
+  };
+
+  const archiveRoster = async () => {
+    try {
+      const ids = activePlayers.map((p) => p.id);
+      await Promise.all(ids.map((id) => db.players.update(id, { is_active: false })));
+      showToast(`${ids.length} player${ids.length !== 1 ? 's' : ''} archived`, 'success');
+    } catch (err) {
+      showToast(`Archive failed: ${err.message}`, 'error');
+    } finally {
+      setConfirmArchive(false);
     }
   };
 
@@ -210,6 +223,9 @@ export function TeamDetailPage() {
           <div className="flex justify-between items-center mb-3">
             <span className="text-sm text-slate-400">{activePlayers.length} active</span>
             <div className="flex gap-2">
+              {activePlayers.length > 0 && (
+                <Button size="sm" variant="ghost" onClick={() => setConfirmArchive(true)}>Archive All</Button>
+              )}
               <Button size="sm" variant="ghost" onClick={() => setShowImportModal(true)}>↑ Import</Button>
               <Button size="sm" onClick={() => setShowPlayerModal(true)}>+ Player</Button>
             </div>
@@ -698,6 +714,17 @@ export function TeamDetailPage() {
           danger
           onConfirm={removePlayer}
           onCancel={() => setDeletePlayer(null)}
+        />
+      )}
+
+      {confirmArchive && (
+        <ConfirmDialog
+          title="Archive Entire Roster"
+          message={`Mark all ${activePlayers.length} active players as inactive? Use this at the end of a season to start fresh. Players and their stats are preserved — you can reactivate them anytime.`}
+          confirmLabel="Archive All"
+          danger
+          onConfirm={archiveRoster}
+          onCancel={() => setConfirmArchive(false)}
         />
       )}
 

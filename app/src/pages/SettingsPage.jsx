@@ -420,7 +420,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: '4. Add Opponents',
-        body: 'Go to Opponents (bottom nav) → + Add Opponent. You only need to add each school or team once — they\'re shared across all your teams and seasons.',
+        body: 'From the Home screen, tap the Opponents card → + Add Opponent. You only need to add each school or team once — they\'re shared across all your teams and seasons.',
       },
       {
         heading: '5. Schedule or Start a Match',
@@ -1273,8 +1273,8 @@ export function SettingsPage() {
         {/* About */}
         <section className="bg-surface rounded-xl p-5">
           <div className="text-center mb-4">
-            <h2 className="text-2xl font-black tracking-[0.25em] uppercase text-white">VANTAGE</h2>
-            <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-400 mt-1">Volleyball Stat Tracker</p>
+            <h2 className="text-2xl font-black tracking-[0.25em] uppercase text-[#f97316]">VANTAGE</h2>
+            <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-400 mt-1">Precision Sideline Analytics</p>
           </div>
           <div className="border-t border-slate-700 mb-4" />
           <p className="text-sm text-slate-200 leading-relaxed italic text-center">
@@ -1318,7 +1318,7 @@ export function SettingsPage() {
           <section className="bg-surface rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-700">
               <h2 className="font-semibold">Install App</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Add VBAPPv.2 to your home screen for the best experience</p>
+              <p className="text-xs text-slate-400 mt-0.5">Add VANTAGE to your home screen for the best experience</p>
             </div>
             <div className="p-4">
               {canInstall && (
@@ -1911,7 +1911,7 @@ export function SettingsPage() {
           <div className="p-4">
             <label className="block text-sm font-medium mb-1">MaxPreps Team ID</label>
             <div className="text-xs text-slate-400 mb-2">
-              Required for MaxPreps .txt export. Find it in your team's MaxPreps URL or stat import settings.
+              Required for MaxPreps .txt export. To find your ID: go to your team's MaxPreps page → Roster/Stats → Import Stats → the UUID in that page's URL is your Team ID.
             </div>
             <input
               type="text"

@@ -13,6 +13,64 @@ function fmtWinPct(wins, games) {
   return (wins / games * 100).toFixed(1) + '%';
 }
 
+// ── Championship Banner ───────────────────────────────────────────────────────
+// Renders a hanging gym-banner pennant for seasons with a title or notable finish.
+
+function ChampionshipBanner({ title, year }) {
+  const label = title ?? '';
+  return (
+    <div className="relative flex justify-center pt-3 pb-1 select-none" aria-hidden="true">
+      <svg viewBox="0 0 220 64" className="w-48" style={{ filter: 'drop-shadow(0 2px 8px rgba(249,115,22,0.45))' }}>
+        {/* Hanging cables */}
+        <line x1="55"  y1="0" x2="55"  y2="10" stroke="#f97316" strokeWidth="1.5" opacity="0.6" />
+        <line x1="165" y1="0" x2="165" y2="10" stroke="#f97316" strokeWidth="1.5" opacity="0.6" />
+        {/* Banner body — pentagon shape */}
+        <path
+          d="M 40,10 L 180,10 L 180,50 L 110,62 L 40,50 Z"
+          fill="#f97316"
+          fillOpacity="0.12"
+          stroke="#f97316"
+          strokeWidth="1.5"
+        />
+        {/* Inner border line */}
+        <path
+          d="M 48,17 L 172,17 L 172,46 L 110,56 L 48,46 Z"
+          fill="none"
+          stroke="#f97316"
+          strokeWidth="0.75"
+          strokeOpacity="0.5"
+        />
+        {/* Year */}
+        <text
+          x="110" y="32"
+          fill="#f97316"
+          fontSize="11"
+          fontWeight="900"
+          textAnchor="middle"
+          fontFamily="system-ui, sans-serif"
+          letterSpacing="1"
+          opacity="0.9"
+        >
+          {year}
+        </text>
+        {/* Title — truncated to fit */}
+        <text
+          x="110" y="47"
+          fill="#f97316"
+          fontSize="7.5"
+          fontWeight="700"
+          textAnchor="middle"
+          fontFamily="system-ui, sans-serif"
+          letterSpacing="0.5"
+          opacity="0.75"
+        >
+          {label.length > 22 ? label.slice(0, 21) + '…' : label}
+        </text>
+      </svg>
+    </div>
+  );
+}
+
 // ── Add / Edit Modal ──────────────────────────────────────────────────────────
 
 const EMPTY_ROUND = { round: '', opponent: '', result: 'W', score: '', opp_seed: '' };
@@ -624,7 +682,10 @@ function SeasonCard({ entry, onEdit, onDelete }) {
   const hasPlayoffs = entry.playoff_seed || entry.state_finish || entry.playoff_result || (entry.playoff_rounds?.length > 0);
 
   return (
-    <div className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700/50">
+    <div className={`bg-slate-800 rounded-xl overflow-hidden ${entry.title ? 'border border-primary/40' : 'border border-slate-700/50'}`}>
+      {/* Championship banner — only when title set */}
+      {entry.title && <ChampionshipBanner title={entry.title} year={entry.year} />}
+
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-slate-700/40">
         <div className="flex items-center gap-3">
@@ -654,12 +715,6 @@ function SeasonCard({ entry, onEdit, onDelete }) {
           </button>
         </div>
       </div>
-
-      {entry.title && (
-        <div className="px-4 pt-3 pb-0">
-          <p className="text-base font-black text-primary tracking-wide">{entry.title}</p>
-        </div>
-      )}
 
       <div className="px-4 py-3 space-y-2.5">
         {/* Rankings */}

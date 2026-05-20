@@ -54,7 +54,7 @@ export async function exportBackup() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `vbappv2-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `vantage-backup-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }

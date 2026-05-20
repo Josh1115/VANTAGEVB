@@ -13,9 +13,10 @@ const CYCLE = LETTERS.length * PER_LETTER + UL_DUR + HOLD + FADE + 240; // 5600m
 
 const CYCLE_S = (CYCLE / 1000).toFixed(4);
 
-// Safe upper-bound for any Orbitron Bold uppercase glyph outline perimeter at 36px.
+// Safe upper-bound for any Orbitron Bold uppercase glyph outline perimeter at 81px.
 // Must be >= the longest glyph path so the full draw spans the animation duration.
-const LETTER_DASH = 600;
+// N, G, E have the longest perimeters at this size (~1200–1350px scaled from reference).
+const LETTER_DASH = 1400;
 
 const FONT_OBJ = {
   fontFamily: "'Orbitron', sans-serif",

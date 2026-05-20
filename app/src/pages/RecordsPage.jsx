@@ -75,21 +75,8 @@ function mergeAndRank(computed, historical) {
     .map((e, i) => ({ ...e, rank: i + 1 }));
 }
 
-async function computeLeaderboards(tab, teamId, currentSeasonId) {
-  const statsForTab = tab === 'team_season' ? TEAM_SEASON_STATS : RECORD_STATS;
-
-  const players = await db.players.where('team_id').equals(teamId).toArray();
-  const { playerNames } = buildPlayerMaps(players);
-  const positions = Object.fromEntries(players.map(p => [p.id, p.position]));
-  const activePlayerIds = new Set(players.filter(p => p.is_active).map(p => p.id));
-  const playerYears = Object.fromEntries(players.filter(p => p.year).map(p => [p.id, p.year]));
-
-  const historicalAll = await db.historical_records
-    .where('team_id').equals(teamId)
-    .filter(r => r.category === tab)
-    .toArray();
-
-  function historicalRows(statKey) {
+function makeHistoricalRows(historicalAll) {
+  return function historicalRows(statKey) {
     return historicalAll
       .filter(r => r.stat === statKey)
       .map(r => ({
@@ -104,7 +91,30 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
         career_year_end:   r.career_year_end   ?? null,
         active:            r.career_year_start != null && !r.career_year_end,
       }));
+  };
+}
+
+async function computeLeaderboards(tab, teamId, currentSeasonId) {
+  const statsForTab = tab === 'team_season' ? TEAM_SEASON_STATS : RECORD_STATS;
+
+  const historicalAll = await db.historical_records
+    .where('team_id').equals(teamId)
+    .filter(r => r.category === tab)
+    .toArray();
+  const historicalRows = makeHistoricalRows(historicalAll);
+
+  // career is historical-only — skip all match/contact queries
+  if (tab === 'career') {
+    return Object.fromEntries(
+      CAREER_STATS.map(({ key }) => [key, mergeAndRank([], historicalRows(key))])
+    );
   }
+
+  const players = await db.players.where('team_id').equals(teamId).toArray();
+  const { playerNames } = buildPlayerMaps(players);
+  const positions = Object.fromEntries(players.map(p => [p.id, p.position]));
+  const activePlayerIds = new Set(players.filter(p => p.is_active).map(p => p.id));
+  const playerYears = Object.fromEntries(players.filter(p => p.year).map(p => [p.id, p.year]));
 
   const seasons = await db.seasons.where('team_id').equals(teamId).toArray();
   if (!seasons.length) return Object.fromEntries(statsForTab.map(s => [s.key, mergeAndRank([], historicalRows(s.key))]));
@@ -186,13 +196,6 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
         }));
         return [key, mergeAndRank(computed, historicalRows(key))];
       })
-    );
-  }
-
-  // career tab — manual entries only, no DB computation
-  if (tab === 'career') {
-    return Object.fromEntries(
-      CAREER_STATS.map(({ key }) => [key, mergeAndRank([], historicalRows(key))])
     );
   }
 
@@ -866,12 +869,14 @@ export function RecordsPage() {
 
   useEffect(() => {
     if (!teamId || tab === 'tourney') return;
+    let cancelled = false;
     setLoading(true);
     setBoards(null);
     computeLeaderboards(tab, teamId, getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID))
-      .then(setBoards)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      .then(result => { if (!cancelled) setBoards(result); })
+      .catch(err => { if (!cancelled) console.error(err); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [tab, teamId, historicalCount, refreshKey]);
 
   async function handleDelete(id) {
