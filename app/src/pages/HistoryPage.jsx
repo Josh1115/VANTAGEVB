@@ -1146,8 +1146,12 @@ export function HistoryPage() {
   const orgColors = Array.isArray(currentOrg?.colors) ? currentOrg.colors : [];
 
   const titledSeasons = useMemo(() => {
-    const stateDivision = currentOrg?.state_division ?? '';
-    const isCollege = currentOrg?.type === 'college';
+    const orgType = currentOrg?.type;
+    const isCollege = orgType === 'college';
+    const isHS      = orgType === 'high_school' || orgType === 'school';
+    const stateName = currentOrg?.state ?? currentOrg?.state_division ?? '';
+    const divLabel  = currentOrg?.division ?? currentOrg?.state_division ?? '';
+
     const items = [];
     for (const h of (history ?? [])) {
       for (const t of toTitleArr(h.title)) {
@@ -1157,11 +1161,14 @@ export function HistoryPage() {
     for (const t of (tourneyEntries ?? [])) {
       const isState = t.name?.toLowerCase().includes('state');
       if (isState) {
-        const label = stateDivision
-          ? isCollege
-            ? `${ordinal(t.placing)} in ${stateDivision}`
-            : `${ordinal(t.placing)} State ${stateDivision}`
-          : `${ordinal(t.placing)} — ${t.name}`;
+        let label;
+        if (isCollege && divLabel) {
+          label = `${ordinal(t.placing)} in ${divLabel}`;
+        } else if (isHS && stateName) {
+          label = `${ordinal(t.placing)} State ${stateName}`;
+        } else {
+          label = `${ordinal(t.placing)} — ${t.name}`;
+        }
         items.push({ year: String(t.year), title: label, priority: 5 });
       } else if (t.placing === 1) {
         items.push({ year: String(t.year), title: `${t.name} Champions`, priority: 0 });

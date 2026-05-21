@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
@@ -27,14 +27,34 @@ const ORG_COLORS = [
   { id: 'green',  label: 'Green',  bg: '#16a34a', border: '#22c55e' },
 ];
 
+const ORG_TYPES = [
+  { value: 'high_school', label: 'High School' },
+  { value: 'college',     label: 'College'     },
+  { value: 'club',        label: 'Club'        },
+];
+const COLLEGE_DIVISIONS = ['NCAA D1', 'NCAA D2', 'NCAA D3', 'NAIA', 'JC'];
+const CLUB_ASSOCIATIONS = ['USAV', 'AAU'];
+
+const inputCls = 'w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm';
+
 function OrgFormModal({ onClose, org }) {
-  const [name, setName] = useState(org?.name ?? '');
-  const [type, setType] = useState(org?.type ?? 'school');
-  const [stateDivision, setStateDivision] = useState(org?.state_division ?? '');
+  const rawType = org?.type ?? 'high_school';
+  const [type,        setType]        = useState(rawType === 'school' ? 'high_school' : rawType);
+  const [name,        setName]        = useState(org?.name ?? '');
+  const [state,       setState]       = useState(org?.state ?? org?.state_division ?? '');
+  const [conference,  setConference]  = useState(org?.conference ?? '');
+  const [division,    setDivision]    = useState(org?.division ?? '');
+  const [association, setAssociation] = useState(org?.association ?? '');
   const [logoDataUrl, setLogoDataUrl] = useState(org?.logo_data_url ?? null);
-  const [colors, setColors] = useState(Array.isArray(org?.colors) ? org.colors : []);
+  const [colors,      setColors]      = useState(Array.isArray(org?.colors) ? org.colors : []);
   const [showLogoPicker, setShowLogoPicker] = useState(false);
   const showToast = useUiStore(selectShowToast);
+
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
 
   function toggleColor(id) {
     setColors(prev =>
@@ -45,7 +65,16 @@ function OrgFormModal({ onClose, org }) {
   const save = async () => {
     if (!name.trim()) return;
     try {
-      const fields = { name: name.trim(), type, state_division: stateDivision.trim() || null, logo_data_url: logoDataUrl ?? null, colors };
+      const fields = {
+        name: name.trim(),
+        type,
+        state:       (type === 'high_school' || type === 'college') ? state.trim() || null : null,
+        conference:  type === 'college' ? conference.trim() || null : null,
+        division:    type === 'college' ? division || null : null,
+        association: type === 'club'    ? association || null : null,
+        logo_data_url: logoDataUrl ?? null,
+        colors,
+      };
       if (org) {
         await db.organizations.update(org.id, fields);
       } else {
@@ -57,83 +86,126 @@ function OrgFormModal({ onClose, org }) {
     }
   };
 
+  const PillBtn = ({ active, onClick, children }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+        active ? 'bg-primary text-white' : 'bg-slate-700 text-slate-300 hover:text-white'
+      }`}
+    >
+      {children}
+    </button>
+  );
+
   return (
     <>
-      <Modal
-        title={org ? 'Edit Organization' : 'New Organization'}
-        onClose={onClose}
-        footer={
-          <>
-            <Button variant="secondary" onClick={onClose}>Cancel</Button>
-            <Button onClick={save}>Save</Button>
-          </>
-        }
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       >
-        <div className="space-y-3">
+        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-md space-y-3">
+
+          {/* header */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold">{org ? 'Edit Organization' : 'New Organization'}</h2>
+            <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+          </div>
+
+          {/* logo + name */}
           <div className="flex items-center gap-3">
             <div
-              className="w-14 h-14 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center overflow-hidden shrink-0"
+              className="w-11 h-11 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer"
               style={logoDataUrl ? { backgroundImage: 'repeating-conic-gradient(#334155 0% 25%, #1e293b 0% 50%)', backgroundSize: '8px 8px' } : {}}
+              onClick={() => setShowLogoPicker(true)}
             >
               {logoDataUrl
                 ? <img src={logoDataUrl} alt="logo" className="max-w-full max-h-full object-contain" />
-                : <span className="text-2xl text-slate-500">🏫</span>
+                : <span className="text-xl text-slate-500">🏫</span>
               }
             </div>
-            <div className="flex flex-col gap-1">
-              <Button size="sm" variant="ghost" onClick={() => setShowLogoPicker(true)}>
-                {logoDataUrl ? 'Change Logo' : 'Add Logo'}
-              </Button>
-              {logoDataUrl && (
-                <button
-                  type="button"
-                  onClick={() => setLogoDataUrl(null)}
-                  className="text-xs text-slate-500 hover:text-red-400 text-left"
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm text-slate-400 mb-1">Name</label>
             <input
-              className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
+              className={inputCls + ' flex-1'}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Lincoln High School"
+              placeholder="Organization name"
               autoFocus
             />
           </div>
+
+          {/* type */}
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Type</label>
-            <select
-              className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-            >
-              <option value="school">School (High School)</option>
-              <option value="college">College</option>
-              <option value="club">Club</option>
-            </select>
+            <label className="block text-xs text-slate-400 mb-1.5">Type</label>
+            <div className="flex gap-1.5 bg-slate-800 rounded-xl p-1">
+              {ORG_TYPES.map(t => (
+                <PillBtn key={t.value} active={type === t.value} onClick={() => setType(t.value)}>
+                  {t.label}
+                </PillBtn>
+              ))}
+            </div>
           </div>
+
+          {/* high school: state */}
+          {type === 'high_school' && (
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">State</label>
+              <input className={inputCls} value={state} onChange={e => setState(e.target.value)} placeholder="Illinois" />
+            </div>
+          )}
+
+          {/* college: state + conference in a row, then division pills */}
+          {type === 'college' && (
+            <>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-xs text-slate-400 mb-1">State</label>
+                  <input className={inputCls} value={state} onChange={e => setState(e.target.value)} placeholder="Illinois" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-slate-400 mb-1">Conference <span className="text-slate-600">(optional)</span></label>
+                  <input className={inputCls} value={conference} onChange={e => setConference(e.target.value)} placeholder="Big Ten" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1.5">Division</label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {COLLEGE_DIVISIONS.map(d => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setDivision(division === d ? '' : d)}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
+                        division === d ? 'bg-primary text-white' : 'bg-slate-700 text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* club: association */}
+          {type === 'club' && (
+            <div>
+              <label className="block text-xs text-slate-400 mb-1.5">Association</label>
+              <div className="flex gap-2">
+                {CLUB_ASSOCIATIONS.map(a => (
+                  <PillBtn key={a} active={association === a} onClick={() => setAssociation(association === a ? '' : a)}>
+                    {a}
+                  </PillBtn>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* colors */}
           <div>
-            <label className="block text-sm text-slate-400 mb-1">
-              {type === 'college' ? 'Division' : 'State'}
-              <span className="text-slate-600 text-xs ml-1">(used on state/tournament placement banners)</span>
+            <label className="block text-xs text-slate-400 mb-1.5">
+              Colors <span className="text-slate-600">(up to 3, used on banners)</span>
             </label>
-            <input
-              className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
-              value={stateDivision}
-              onChange={(e) => setStateDivision(e.target.value)}
-              placeholder={type === 'college' ? 'NCAA D1' : 'Illinois'}
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-slate-400 mb-1">
-              School Colors <span className="text-slate-600 text-xs">(up to 3 — used on championship banners)</span>
-            </label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {ORG_COLORS.map(c => {
                 const selected = colors.includes(c.id);
                 const order    = colors.indexOf(c.id);
@@ -142,16 +214,16 @@ function OrgFormModal({ onClose, org }) {
                     key={c.id}
                     type="button"
                     onClick={() => toggleColor(c.id)}
-                    className="flex flex-col items-center gap-1 py-2 px-3 rounded-lg border transition-colors relative"
+                    className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg border transition-colors relative"
                     style={{
                       borderColor: selected ? 'var(--color-primary)' : c.border,
                       boxShadow:   selected ? '0 0 0 2px var(--color-primary)' : 'none',
                     }}
                   >
-                    <span className="w-6 h-6 rounded-full block" style={{ background: c.bg, border: `1px solid ${c.border}` }} />
-                    <span className="text-[11px] text-slate-400 leading-none">{c.label}</span>
+                    <span className="w-5 h-5 rounded-full block" style={{ background: c.bg, border: `1px solid ${c.border}` }} />
+                    <span className="text-[10px] text-slate-400 leading-none">{c.label}</span>
                     {selected && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary text-white text-[9px] font-black flex items-center justify-center leading-none">
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-primary text-white text-[8px] font-black flex items-center justify-center leading-none">
                         {order + 1}
                       </span>
                     )}
@@ -160,15 +232,19 @@ function OrgFormModal({ onClose, org }) {
               })}
             </div>
             {colors.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setColors([])}
-                className="mt-1.5 text-xs text-slate-500 hover:text-red-400 transition-colors"
-              >Clear colors</button>
+              <button type="button" onClick={() => setColors([])} className="mt-1 text-xs text-slate-500 hover:text-red-400 transition-colors">
+                Clear colors
+              </button>
             )}
           </div>
+
+          {/* footer */}
+          <div className="flex gap-2 justify-end pt-1">
+            <Button variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button onClick={save}>Save</Button>
+          </div>
         </div>
-      </Modal>
+      </div>
 
       {showLogoPicker && (
         <LogoPickerModal
