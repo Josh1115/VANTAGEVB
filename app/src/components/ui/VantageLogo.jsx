@@ -5,7 +5,7 @@ const FONT_PX = 81;
 const BASELINE = FONT_PX + 4; // SVG y coordinate of text baseline
 
 // Animation timing (ms)
-const PER_LETTER = 550;   // trace one letter
+const PER_LETTER = 2322;  // trace one letter
 const UL_DUR    = 480;    // draw underline
 const HOLD      = 650;    // hold complete state
 const FADE      = 380;    // fade out

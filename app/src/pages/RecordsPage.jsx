@@ -859,9 +859,17 @@ export function RecordsPage() {
     else if (matching.length === 0) setTeamId(null);
   }, [gender, genderTeams]);
 
+  // One-time auto-select: jump to the default team when page opens with nothing selected
+  const defaultTeamId = useMemo(() => getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID), []);
   useEffect(() => {
-    setGender(null); setTeamId(null); setBoards(null);
-  }, [orgId]);
+    if (!defaultTeamId || orgId) return;
+    db.teams.get(defaultTeamId).then(team => {
+      if (!team) return;
+      setOrgId(team.org_id);
+      setGender(team.gender ?? null);
+      setTeamId(team.id);
+    });
+  }, [defaultTeamId]); // eslint-disable-line react-hooks/exhaustive-deps -- run only on mount
 
   useEffect(() => {
     setBoards(null);
@@ -924,7 +932,7 @@ export function RecordsPage() {
 
       <div className="p-4 space-y-4">
         {orgs && orgs.length > 1 && (
-          <select value={orgId ?? ''} onChange={e => setOrgId(Number(e.target.value))} className={selectCls}>
+          <select value={orgId ?? ''} onChange={e => { setOrgId(Number(e.target.value)); setGender(null); setTeamId(null); setBoards(null); }} className={selectCls}>
             <option value="">Select a school…</option>
             {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
           </select>

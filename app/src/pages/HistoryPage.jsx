@@ -950,7 +950,6 @@ export function HistoryPage() {
     else if (matching.length === 0) setTeamId(null);
   }, [gender, genderTeams]);
 
-  useMemo(() => { setGender(null); setTeamId(null); }, [orgId]);
 
   // One-time auto-select: jump to the default team when page opens with nothing selected
   useEffect(() => {
@@ -1163,7 +1162,7 @@ export function HistoryPage() {
 
       <div className="p-4 space-y-4">
         {orgs && orgs.length > 1 && (
-          <select value={orgId ?? ''} onChange={e => setOrgId(Number(e.target.value))} className={selectCls}>
+          <select value={orgId ?? ''} onChange={e => { setOrgId(Number(e.target.value)); setGender(null); setTeamId(null); }} className={selectCls}>
             <option value="">Select a school…</option>
             {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
           </select>
