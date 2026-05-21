@@ -14,59 +14,89 @@ function fmtWinPct(wins, games) {
 }
 
 // ── Championship Banner ───────────────────────────────────────────────────────
-// Renders a hanging gym-banner pennant for seasons with a title or notable finish.
 
-function ChampionshipBanner({ title, year }) {
-  const label = title ?? '';
+const BANNER_COLORS = {
+  black:  { bg: '#0f172a', trim: '#fbbf24', text: '#fbbf24', bright: '#94a3b8' },
+  white:  { bg: '#e2e8f0', trim: '#334155', text: '#1e293b', bright: '#f8fafc' },
+  gray:   { bg: '#374151', trim: '#fbbf24', text: '#fbbf24', bright: '#94a3b8' },
+  red:    { bg: '#7f1d1d', trim: '#fca5a5', text: '#fef2f2', bright: '#ef4444' },
+  orange: { bg: '#7c2d12', trim: '#fdba74', text: '#fff7ed', bright: '#f97316' },
+  yellow: { bg: '#713f12', trim: '#fde047', text: '#fefce8', bright: '#eab308' },
+  green:  { bg: '#14532d', trim: '#86efac', text: '#f0fdf4', bright: '#22c55e' },
+  blue:   { bg: '#1e3a8a', trim: '#93c5fd', text: '#eff6ff', bright: '#3b82f6' },
+  purple: { bg: '#3b0764', trim: '#d8b4fe', text: '#faf5ff', bright: '#a855f7' },
+  pink:   { bg: '#831843', trim: '#f9a8d4', text: '#fdf2f8', bright: '#ec4899' },
+};
+const BANNER_DEFAULT = { bg: '#1e3a8a', trim: '#fbbf24', text: '#fef9c3', bright: '#93c5fd' };
+
+function ChampionshipBanner({ title, year, orgName, primaryColorId, secondaryColorId }) {
+  const primary   = BANNER_COLORS[primaryColorId] ?? BANNER_DEFAULT;
+  const trimColor = secondaryColorId && BANNER_COLORS[secondaryColorId]
+    ? BANNER_COLORS[secondaryColorId].bright
+    : primary.trim;
+
+  const yearStr      = String(year ?? '');
+  const yearFontSize = yearStr.length <= 4 ? 28 : yearStr.length <= 5 ? 22 : 16;
+  const yearY        = yearStr.length <= 4 ? 102 : 100;
+  const orgLabel     = (orgName ?? '').length > 20 ? (orgName ?? '').slice(0, 19) + '…' : (orgName ?? '');
+  const titleLabel   = (title  ?? '').length > 24 ? (title  ?? '').slice(0, 23) + '…' : (title  ?? '');
+
   return (
-    <div className="relative flex justify-center pt-3 pb-1 select-none" aria-hidden="true">
-      <svg viewBox="0 0 220 64" className="w-48" style={{ filter: 'drop-shadow(0 2px 8px rgba(249,115,22,0.45))' }}>
-        {/* Hanging cables */}
-        <line x1="55"  y1="0" x2="55"  y2="10" stroke="#f97316" strokeWidth="1.5" opacity="0.6" />
-        <line x1="165" y1="0" x2="165" y2="10" stroke="#f97316" strokeWidth="1.5" opacity="0.6" />
-        {/* Banner body — pentagon shape */}
-        <path
-          d="M 40,10 L 180,10 L 180,50 L 110,62 L 40,50 Z"
-          fill="#f97316"
-          fillOpacity="0.12"
-          stroke="#f97316"
-          strokeWidth="1.5"
-        />
-        {/* Inner border line */}
-        <path
-          d="M 48,17 L 172,17 L 172,46 L 110,56 L 48,46 Z"
-          fill="none"
-          stroke="#f97316"
-          strokeWidth="0.75"
-          strokeOpacity="0.5"
-        />
-        {/* Year */}
-        <text
-          x="110" y="32"
-          fill="#f97316"
-          fontSize="11"
-          fontWeight="900"
-          textAnchor="middle"
-          fontFamily="system-ui, sans-serif"
-          letterSpacing="1"
-          opacity="0.9"
-        >
-          {year}
-        </text>
-        {/* Title — truncated to fit */}
-        <text
-          x="110" y="47"
-          fill="#f97316"
-          fontSize="7.5"
-          fontWeight="700"
-          textAnchor="middle"
-          fontFamily="system-ui, sans-serif"
-          letterSpacing="0.5"
-          opacity="0.75"
-        >
-          {label.length > 22 ? label.slice(0, 21) + '…' : label}
-        </text>
-      </svg>
+    <svg viewBox="0 0 120 190" className="w-20" aria-hidden="true"
+      style={{ filter: `drop-shadow(0 4px 16px ${primary.bg}cc)` }}>
+      {/* Rod */}
+      <line x1="10" y1="12" x2="110" y2="12" stroke={trimColor} strokeWidth="2.5" strokeLinecap="round"/>
+      {/* Hanging rings */}
+      <circle cx="22" cy="12" r="6" fill={primary.bg} stroke={trimColor} strokeWidth="1.8"/>
+      <circle cx="98" cy="12" r="6" fill={primary.bg} stroke={trimColor} strokeWidth="1.8"/>
+      {/* Banner body */}
+      <path d="M 10,18 L 110,18 L 110,145 L 60,170 L 10,145 Z" fill={primary.bg}/>
+      {/* Inner trim border */}
+      <path d="M 18,26 L 102,26 L 102,138 L 60,160 L 18,138 Z"
+        fill="none" stroke={trimColor} strokeWidth="1.4" strokeOpacity="0.7"/>
+      {/* Org / school name */}
+      <text x="60" y="47" fill={primary.text} fontSize="8" fontWeight="800"
+        textAnchor="middle" fontFamily="system-ui, sans-serif" letterSpacing="0.5">
+        {orgLabel}
+      </text>
+      {/* Separator */}
+      <line x1="24" y1="55" x2="96" y2="55" stroke={trimColor} strokeWidth="0.8" strokeOpacity="0.5"/>
+      {/* Year */}
+      <text x="60" y={yearY} fill={primary.text} fontSize={yearFontSize} fontWeight="900"
+        textAnchor="middle" fontFamily="system-ui, sans-serif">
+        {yearStr}
+      </text>
+      {/* Separator */}
+      <line x1="24" y1="113" x2="96" y2="113" stroke={trimColor} strokeWidth="0.8" strokeOpacity="0.5"/>
+      {/* Title */}
+      <text x="60" y="128" fill={primary.text} fontSize="8" fontWeight="700"
+        textAnchor="middle" fontFamily="system-ui, sans-serif" letterSpacing="0.3" opacity="0.9">
+        {titleLabel}
+      </text>
+    </svg>
+  );
+}
+
+// ── Championship Banners Section ──────────────────────────────────────────────
+
+function ChampionshipBannersSection({ titledSeasons, orgName, primaryColorId, secondaryColorId }) {
+  if (!titledSeasons.length) return null;
+  return (
+    <div className="bg-surface rounded-xl px-4 py-3">
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4">Championships</p>
+      <div className="flex gap-4 overflow-x-auto pb-1">
+        {titledSeasons.map(s => (
+          <div key={`${s.year}-${s.title}`} className="shrink-0">
+            <ChampionshipBanner
+              title={s.title}
+              year={s.year}
+              orgName={orgName}
+              primaryColorId={primaryColorId}
+              secondaryColorId={secondaryColorId}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -683,9 +713,6 @@ function SeasonCard({ entry, onEdit, onDelete }) {
 
   return (
     <div className={`bg-slate-800 rounded-xl overflow-hidden ${entry.title ? 'border border-primary/40' : 'border border-slate-700/50'}`}>
-      {/* Championship banner — only when title set */}
-      {entry.title && <ChampionshipBanner title={entry.title} year={entry.year} />}
-
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-slate-700/40">
         <div className="flex items-center gap-3">
@@ -1023,6 +1050,20 @@ export function HistoryPage() {
       .sort((a, b) => b.maxYear - a.maxYear);
   }, [sortedHistory, activeMatches, showLiveCard, liveHistoryEntry, activeSeason]);
 
+  const currentTeam = useMemo(
+    () => (orgTeams ?? []).find(t => t.id === teamId) ?? null,
+    [orgTeams, teamId]
+  );
+
+  const titledSeasons = useMemo(() => {
+    return [...(history ?? [])]
+      .filter(h => h.title)
+      .sort((a, b) => String(a.year).localeCompare(String(b.year)));
+  }, [history]);
+
+  const teamPrimaryColor   = currentTeam?.team_jersey_color?.[0] ?? null;
+  const teamSecondaryColor = currentTeam?.team_jersey_color?.[1] ?? null;
+
   return (
     <div className="pb-24">
       <PageHeader
@@ -1169,6 +1210,14 @@ export function HistoryPage() {
                     )}
                   </div>
                 )}
+
+                {/* Championship Banners */}
+                <ChampionshipBannersSection
+                  titledSeasons={titledSeasons}
+                  orgName={orgName}
+                  primaryColorId={teamPrimaryColor}
+                  secondaryColorId={teamSecondaryColor}
+                />
 
                 {/* Season History */}
                 <div className="space-y-3">
