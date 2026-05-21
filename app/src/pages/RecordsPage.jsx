@@ -47,6 +47,11 @@ const TABS = [
 
 const RANK_ICONS = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
+function toTitleArr(val) {
+  if (Array.isArray(val)) return val.filter(Boolean);
+  return val ? [String(val)] : [];
+}
+
 // ── computation ───────────────────────────────────────────────────────────────
 
 function groupByMatch(contacts) {
@@ -389,7 +394,7 @@ function SeasonTitleRow({ entry }) {
     <div className="flex items-center gap-3 bg-slate-800 rounded-xl px-3 py-2">
       <span className="text-xs font-bold text-slate-400 shrink-0 w-16 tabular-nums">{entry.year}</span>
       <span className="flex-1 text-sm text-slate-100">
-        {entry.title || <span className="text-slate-600 italic">No title set</span>}
+        {toTitleArr(entry.title).join(', ') || <span className="text-slate-600 italic">No title set</span>}
       </span>
     </div>
   );
@@ -962,10 +967,10 @@ export function RecordsPage() {
               <EmptyState icon="📋" title={gender ? 'Select a team' : 'Select Girls or Boys'} description="" />
             ) : (
               <>
-                {seasonHistories?.some(e => e.title) && (
+                {seasonHistories?.some(e => toTitleArr(e.title).length > 0) && (
                   <div className="space-y-1.5">
                     <p className="text-xs font-black uppercase tracking-widest text-slate-500">Season Titles</p>
-                    {seasonHistories.filter(e => e.title).map(entry => (
+                    {seasonHistories.filter(e => toTitleArr(e.title).length > 0).map(entry => (
                       <SeasonTitleRow key={entry.id} entry={entry} />
                     ))}
                   </div>
