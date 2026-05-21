@@ -637,6 +637,23 @@
   transform-origin: center;
 }
 
+/* ── Championship banner flag-wave ── */
+@keyframes bannerFlagWave {
+  0%   { transform: skewX(0deg)  skewY(0deg);   }
+  12%  { transform: skewX(4deg)  skewY(0.4deg); }
+  25%  { transform: skewX(-3deg) skewY(-0.3deg);}
+  40%  { transform: skewX(5deg)  skewY(0.5deg); }
+  55%  { transform: skewX(-4deg) skewY(-0.4deg);}
+  70%  { transform: skewX(2deg)  skewY(0.2deg); }
+  85%  { transform: skewX(-2deg) skewY(-0.2deg);}
+  100% { transform: skewX(0deg)  skewY(0deg);   }
+}
+.banner-flag-wave {
+  transform-origin: 50% 5.5%; /* pivot at the rod — top centre of the SVG */
+  animation: bannerFlagWave 3.6s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+  overflow: visible;
+}
+
 /* ── CRT scanlines for live match (intensity via CSS variable) ── */
 .crt-scanlines-live {
   background: repeating-linear-gradient(
