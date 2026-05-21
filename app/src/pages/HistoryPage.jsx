@@ -50,7 +50,7 @@ const BANNER_COLORS = {
 };
 const BANNER_DEFAULT = { bg: '#1e3a8a', trim: '#fbbf24', text: '#fef9c3', bright: '#93c5fd' };
 
-function ChampionshipBanner({ title, year, orgName, primaryColorId, secondaryColorId, swayDelay = 0 }) {
+function ChampionshipBanner({ title, year, orgName, primaryColorId, secondaryColorId }) {
   const primary   = BANNER_COLORS[primaryColorId] ?? BANNER_DEFAULT;
   const trimColor = secondaryColorId && BANNER_COLORS[secondaryColorId]
     ? BANNER_COLORS[secondaryColorId].bright
@@ -70,12 +70,9 @@ function ChampionshipBanner({ title, year, orgName, primaryColorId, secondaryCol
   return (
     <svg
       viewBox="0 0 120 220"
-      className="w-40 banner-flag-wave"
+      className="w-40"
       aria-hidden="true"
-      style={{
-        filter: `drop-shadow(0 6px 20px ${primary.bg}cc)`,
-        animationDelay: `-${swayDelay.toFixed(2)}s`,
-      }}
+      style={{ filter: `drop-shadow(0 6px 20px ${primary.bg}cc)` }}
     >
       {/* Rod */}
       <line x1="10" y1="12" x2="110" y2="12" stroke={trimColor} strokeWidth="2.5" strokeLinecap="round"/>
@@ -130,7 +127,6 @@ function ChampionshipBannersSection({ titledSeasons, orgName, primaryColorId, se
             orgName={orgName}
             primaryColorId={primaryColorId}
             secondaryColorId={secondaryColorId}
-            swayDelay={idx * 0.85}
           />
         ))}
       </div>
