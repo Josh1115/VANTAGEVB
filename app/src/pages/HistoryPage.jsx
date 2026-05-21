@@ -907,6 +907,12 @@ export function HistoryPage() {
       : Promise.resolve([]),
     [teamId]
   );
+  const tourneyEntries = useLiveQuery(
+    () => teamId
+      ? db.tourney_entries.where('team_id').equals(teamId).toArray()
+      : Promise.resolve([]),
+    [teamId]
+  );
 
   // Live data for the active default season (only when viewing the default team)
   const isDefaultTeam = teamId != null && teamId === defaultTeamId;
@@ -1129,11 +1135,16 @@ export function HistoryPage() {
     const items = [];
     for (const h of (history ?? [])) {
       for (const t of toTitleArr(h.title)) {
-        items.push({ year: h.year, title: t });
+        items.push({ year: String(h.year), title: t });
       }
     }
-    return items.sort((a, b) => String(a.year).localeCompare(String(b.year)));
-  }, [history]);
+    for (const t of (tourneyEntries ?? [])) {
+      if (t.placing === 1) {
+        items.push({ year: String(t.year), title: `${t.name} Champions` });
+      }
+    }
+    return items.sort((a, b) => a.year.localeCompare(b.year));
+  }, [history, tourneyEntries]);
 
   const currentOrg  = useMemo(
     () => (orgs ?? []).find(o => o.id === orgId) ?? null,
