@@ -30,6 +30,7 @@ const ORG_COLORS = [
 function OrgFormModal({ onClose, org }) {
   const [name, setName] = useState(org?.name ?? '');
   const [type, setType] = useState(org?.type ?? 'school');
+  const [stateDivision, setStateDivision] = useState(org?.state_division ?? '');
   const [logoDataUrl, setLogoDataUrl] = useState(org?.logo_data_url ?? null);
   const [colors, setColors] = useState(Array.isArray(org?.colors) ? org.colors : []);
   const [showLogoPicker, setShowLogoPicker] = useState(false);
@@ -44,7 +45,7 @@ function OrgFormModal({ onClose, org }) {
   const save = async () => {
     if (!name.trim()) return;
     try {
-      const fields = { name: name.trim(), type, logo_data_url: logoDataUrl ?? null, colors };
+      const fields = { name: name.trim(), type, state_division: stateDivision.trim() || null, logo_data_url: logoDataUrl ?? null, colors };
       if (org) {
         await db.organizations.update(org.id, fields);
       } else {
@@ -111,9 +112,22 @@ function OrgFormModal({ onClose, org }) {
               value={type}
               onChange={(e) => setType(e.target.value)}
             >
-              <option value="school">School</option>
+              <option value="school">School (High School)</option>
+              <option value="college">College</option>
               <option value="club">Club</option>
             </select>
+          </div>
+          <div>
+            <label className="block text-sm text-slate-400 mb-1">
+              {type === 'college' ? 'Division' : 'State'}
+              <span className="text-slate-600 text-xs ml-1">(used on state/tournament placement banners)</span>
+            </label>
+            <input
+              className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
+              value={stateDivision}
+              onChange={(e) => setStateDivision(e.target.value)}
+              placeholder={type === 'college' ? 'NCAA D1' : 'Illinois'}
+            />
           </div>
           <div>
             <label className="block text-sm text-slate-400 mb-1">

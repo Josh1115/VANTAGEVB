@@ -34,6 +34,22 @@ function wrapSvgText(text, maxChars) {
   return lines.length ? lines : [''];
 }
 
+function ordinal(n) {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function titlePriority(title) {
+  const t = String(title).toLowerCase();
+  if (t.includes('super sectional') || t.includes('supersectional')) return 4;
+  if (t.includes('state'))      return 5;
+  if (t.includes('sectional'))  return 3;
+  if (t.includes('regional'))   return 2;
+  if (t.includes('conference')) return 1;
+  return 6;
+}
+
 // ── Championship Banner ───────────────────────────────────────────────────────
 
 const BANNER_COLORS = {
@@ -1123,26 +1139,39 @@ export function HistoryPage() {
     [orgTeams, teamId]
   );
 
-  const titledSeasons = useMemo(() => {
-    const items = [];
-    for (const h of (history ?? [])) {
-      for (const t of toTitleArr(h.title)) {
-        items.push({ year: String(h.year), title: t });
-      }
-    }
-    for (const t of (tourneyEntries ?? [])) {
-      if (t.placing === 1) {
-        items.push({ year: String(t.year), title: `${t.name} Champions` });
-      }
-    }
-    return items.sort((a, b) => a.year.localeCompare(b.year));
-  }, [history, tourneyEntries]);
-
-  const currentOrg  = useMemo(
+  const currentOrg = useMemo(
     () => (orgs ?? []).find(o => o.id === orgId) ?? null,
     [orgs, orgId]
   );
   const orgColors = Array.isArray(currentOrg?.colors) ? currentOrg.colors : [];
+
+  const titledSeasons = useMemo(() => {
+    const stateDivision = currentOrg?.state_division ?? '';
+    const isCollege = currentOrg?.type === 'college';
+    const items = [];
+    for (const h of (history ?? [])) {
+      for (const t of toTitleArr(h.title)) {
+        items.push({ year: String(h.year), title: t, priority: titlePriority(t) });
+      }
+    }
+    for (const t of (tourneyEntries ?? [])) {
+      const isState = t.name?.toLowerCase().includes('state');
+      if (isState) {
+        const label = stateDivision
+          ? isCollege
+            ? `${ordinal(t.placing)} in ${stateDivision}`
+            : `${ordinal(t.placing)} State ${stateDivision}`
+          : `${ordinal(t.placing)} — ${t.name}`;
+        items.push({ year: String(t.year), title: label, priority: 5 });
+      } else if (t.placing === 1) {
+        items.push({ year: String(t.year), title: `${t.name} Champions`, priority: 0 });
+      }
+    }
+    return items.sort((a, b) => {
+      const yCmp = a.year.localeCompare(b.year);
+      return yCmp !== 0 ? yCmp : a.priority - b.priority;
+    });
+  }, [history, tourneyEntries, currentOrg]);
   const teamPrimaryColor   = orgColors[0] ?? currentTeam?.team_jersey_color?.[0] ?? null;
   const teamSecondaryColor = orgColors[1] ?? currentTeam?.team_jersey_color?.[1] ?? null;
 
