@@ -50,7 +50,7 @@ const BANNER_COLORS = {
 };
 const BANNER_DEFAULT = { bg: '#1e3a8a', trim: '#fbbf24', text: '#fef9c3', bright: '#93c5fd' };
 
-function ChampionshipBanner({ title, year, orgName, primaryColorId, secondaryColorId }) {
+function ChampionshipBanner({ title, year, orgName, primaryColorId, secondaryColorId, swayDelay = 0 }) {
   const primary   = BANNER_COLORS[primaryColorId] ?? BANNER_DEFAULT;
   const trimColor = secondaryColorId && BANNER_COLORS[secondaryColorId]
     ? BANNER_COLORS[secondaryColorId].bright
@@ -62,50 +62,64 @@ function ChampionshipBanner({ title, year, orgName, primaryColorId, secondaryCol
   const orgLines   = wrapSvgText(orgName,  13);
   const titleLines = wrapSvgText(title,    13);
 
-  // Vertically center the org-name block within its zone (y=26–72)
-  const orgBlockH  = orgLines.length * 13;
-  const orgStartY  = Math.round(26 + (46 - orgBlockH) / 2) + 11;
-
-  // Vertically center the title block within its zone (y=132–165)
+  const orgBlockH   = orgLines.length * 13;
+  const orgStartY   = Math.round(26 + (46 - orgBlockH) / 2) + 11;
   const titleBlockH = titleLines.length * 13;
   const titleStartY = Math.round(132 + (33 - titleBlockH) / 2) + 10;
 
+  // Rotation pivot is the rod centre (x=60, y=12) so the bottom swings more than the top,
+  // exactly like a real hanging banner in the breeze.
+  const swayValues = `-1.8,60,12; 0.4,60,12; 2,60,12; -0.6,60,12; -1.8,60,12`;
+
   return (
     <svg viewBox="0 0 120 220" className="w-40" aria-hidden="true"
-      style={{ filter: `drop-shadow(0 6px 20px ${primary.bg}cc)` }}>
-      {/* Rod */}
-      <line x1="10" y1="12" x2="110" y2="12" stroke={trimColor} strokeWidth="2.5" strokeLinecap="round"/>
-      {/* Hanging rings */}
-      <circle cx="22" cy="12" r="6" fill={primary.bg} stroke={trimColor} strokeWidth="1.8"/>
-      <circle cx="98" cy="12" r="6" fill={primary.bg} stroke={trimColor} strokeWidth="1.8"/>
-      {/* Banner body */}
-      <path d="M 10,18 L 110,18 L 110,168 L 60,200 L 10,168 Z" fill={primary.bg}/>
-      {/* Inner trim border */}
-      <path d="M 18,26 L 102,26 L 102,161 L 60,188 L 18,161 Z"
-        fill="none" stroke={trimColor} strokeWidth="1.4" strokeOpacity="0.7"/>
-      {/* School / org name */}
-      <text x="60" y={orgStartY} fill={primary.text} fontSize="8" fontWeight="900"
-        textAnchor="middle" fontFamily="system-ui, sans-serif" letterSpacing="0.5">
-        {orgLines.map((line, i) => (
-          <tspan key={i} x="60" dy={i === 0 ? 0 : 13}>{line}</tspan>
-        ))}
-      </text>
-      {/* Separator */}
-      <line x1="24" y1="74" x2="96" y2="74" stroke={trimColor} strokeWidth="0.8" strokeOpacity="0.5"/>
-      {/* Year */}
-      <text x="60" y="116" fill={primary.text} fontSize={yearFontSize} fontWeight="900"
-        textAnchor="middle" fontFamily="system-ui, sans-serif">
-        {yearStr}
-      </text>
-      {/* Separator */}
-      <line x1="24" y1="130" x2="96" y2="130" stroke={trimColor} strokeWidth="0.8" strokeOpacity="0.5"/>
-      {/* Title */}
-      <text x="60" y={titleStartY} fill={primary.text} fontSize="8" fontWeight="900"
-        textAnchor="middle" fontFamily="system-ui, sans-serif" letterSpacing="0.3">
-        {titleLines.map((line, i) => (
-          <tspan key={i} x="60" dy={i === 0 ? 0 : 13}>{line}</tspan>
-        ))}
-      </text>
+      style={{ filter: `drop-shadow(0 6px 20px ${primary.bg}cc)`, overflow: 'visible' }}>
+      <g>
+        <animateTransform
+          attributeName="transform"
+          type="rotate"
+          values={swayValues}
+          keyTimes="0; 0.28; 0.55; 0.8; 1"
+          dur="5s"
+          begin={`${swayDelay.toFixed(2)}s`}
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines="0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1"
+        />
+        {/* Rod */}
+        <line x1="10" y1="12" x2="110" y2="12" stroke={trimColor} strokeWidth="2.5" strokeLinecap="round"/>
+        {/* Hanging rings */}
+        <circle cx="22" cy="12" r="6" fill={primary.bg} stroke={trimColor} strokeWidth="1.8"/>
+        <circle cx="98" cy="12" r="6" fill={primary.bg} stroke={trimColor} strokeWidth="1.8"/>
+        {/* Banner body */}
+        <path d="M 10,18 L 110,18 L 110,168 L 60,200 L 10,168 Z" fill={primary.bg}/>
+        {/* Inner trim border */}
+        <path d="M 18,26 L 102,26 L 102,161 L 60,188 L 18,161 Z"
+          fill="none" stroke={trimColor} strokeWidth="1.4" strokeOpacity="0.7"/>
+        {/* School / org name */}
+        <text x="60" y={orgStartY} fill={primary.text} fontSize="8" fontWeight="900"
+          textAnchor="middle" fontFamily="system-ui, sans-serif" letterSpacing="0.5">
+          {orgLines.map((line, i) => (
+            <tspan key={i} x="60" dy={i === 0 ? 0 : 13}>{line}</tspan>
+          ))}
+        </text>
+        {/* Separator */}
+        <line x1="24" y1="74" x2="96" y2="74" stroke={trimColor} strokeWidth="0.8" strokeOpacity="0.5"/>
+        {/* Year */}
+        <text x="60" y="116" fill={primary.text} fontSize={yearFontSize} fontWeight="900"
+          textAnchor="middle" fontFamily="system-ui, sans-serif">
+          {yearStr}
+        </text>
+        {/* Separator */}
+        <line x1="24" y1="130" x2="96" y2="130" stroke={trimColor} strokeWidth="0.8" strokeOpacity="0.5"/>
+        {/* Title */}
+        <text x="60" y={titleStartY} fill={primary.text} fontSize="8" fontWeight="900"
+          textAnchor="middle" fontFamily="system-ui, sans-serif" letterSpacing="0.3">
+          {titleLines.map((line, i) => (
+            <tspan key={i} x="60" dy={i === 0 ? 0 : 13}>{line}</tspan>
+          ))}
+        </text>
+      </g>
     </svg>
   );
 }
@@ -126,6 +140,7 @@ function ChampionshipBannersSection({ titledSeasons, orgName, primaryColorId, se
             orgName={orgName}
             primaryColorId={primaryColorId}
             secondaryColorId={secondaryColorId}
+            swayDelay={idx * 0.85}
           />
         ))}
       </div>
