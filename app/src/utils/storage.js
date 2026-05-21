@@ -23,6 +23,7 @@ export const STORAGE_KEYS = {
   WIN_MESSAGE:        'vbstat_win_message',
   ROSTER_SORT:        'vbstat_roster_sort',
   PLAYOFF_ORG:        'vbstat_playoff_org',
+  ASSUME_SETTER_ROT1: 'vbstat_assume_setter_rot1',
 };
 
 export function getStorageItem(key, defaultValue = null) {
@@ -46,6 +47,16 @@ export function getBoolStorage(key) {
     return localStorage.getItem(key) === '1';
   } catch {
     return false;
+  }
+}
+
+// Like getBoolStorage but defaults to true when the key is absent.
+export function getBoolStorageDefaultTrue(key) {
+  try {
+    const v = localStorage.getItem(key);
+    return v !== '0';
+  } catch {
+    return true;
   }
 }
 

@@ -31,6 +31,7 @@ export function SetLineupPage() {
   // slotPositions[i] = position label override for serve slot i
   const [slotPositions, setSlotPositions] = useState(Array(6).fill(''));
   const [startZone, setStartZone]  = useState(1);
+  const [startRotation, setStartRotation] = useState(1);
   const [liberoId,  setLiberoId]   = useState('');
   const [servingSide, setServingSide] = useState(storeServeSide ?? SIDE.US);
   const [saving,    setSaving]     = useState(false);
@@ -133,6 +134,7 @@ export function SetLineupPage() {
         libero_player_id:         liberoId ? Number(liberoId) : null,
         serve_receive_formations: (useFormations  && pendingFormations)  ? pendingFormations  : null,
         planned_subs:             (usePlannedSubs && pendingPlannedSubs) ? pendingPlannedSubs : null,
+        start_rotation:           startRotation,
       });
 
       // Replace existing lineup rows for this set
@@ -164,8 +166,7 @@ export function SetLineupPage() {
         })
         .sort((a, b) => a.position - b.position);
 
-      const initialRotNum = ((1 - startZone + 6) % 6) + 1;
-      setLineup(storeLineup, initialRotNum);
+      setLineup(storeLineup, startRotation);
       if (liberoId) setLibero(Number(liberoId));
       useMatchStore.setState({ serveSide: servingSide });
 
@@ -308,6 +309,8 @@ export function SetLineupPage() {
           setSlotPositions={setSlotPositions}
           startZone={startZone}
           setStartZone={setStartZone}
+          startRotation={startRotation}
+          setStartRotation={setStartRotation}
           liberoId={liberoId}
           setLiberoId={setLiberoId}
           players={players}

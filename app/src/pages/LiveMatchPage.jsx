@@ -265,7 +265,8 @@ export function LiveMatchPage() {
           .sort((a, b) => a.position - b.position);
         const so1Row = lineupRows.find(r => r.serve_order === 1);
         const sz = so1Row?.position ?? 1;
-        const initialRotNum = ((1 - sz + 6) % 6) + 1;
+        const zoneRotNum = ((1 - sz + 6) % 6) + 1;
+        const initialRotNum = currentSet.start_rotation ?? zoneRotNum;
         setLineup(lineup, initialRotNum);
       }
 

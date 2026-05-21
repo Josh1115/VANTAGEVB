@@ -15,6 +15,7 @@ import { FORMAT, ACCENT_COLORS } from '../constants';
 import {
   getStorageItem, setStorageItem,
   getBoolStorage, setBoolStorage,
+  getBoolStorageDefaultTrue,
   getIntStorage, STORAGE_KEYS,
 } from '../utils/storage';
 
@@ -1188,6 +1189,8 @@ export function SettingsPage() {
   const [hapticOn,     saveHaptic]      = useToggleSetting('vbstat_haptic');
   const [soundsOn,     saveSounds]      = useToggleSetting(STORAGE_KEYS.SOUNDS);
   const [flipLayout,   saveFlipLayout]  = useToggleSetting('vbstat_flip_layout');
+  const [assumeSetterRot1, setAssumeSetterRot1Raw] = useState(() => getBoolStorageDefaultTrue(STORAGE_KEYS.ASSUME_SETTER_ROT1));
+  const saveAssumeSetterRot1 = (next) => { setBoolStorage(STORAGE_KEYS.ASSUME_SETTER_ROT1, next); setAssumeSetterRot1Raw(next); };
   const [confirmClear,   setConfirmClear]   = useState(false);
   const [confirmImport,  setConfirmImport]  = useState(false);
   const [pendingFile,    setPendingFile]    = useState(null);
@@ -1828,6 +1831,22 @@ export function SettingsPage() {
                 role="switch"
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${flipLayout ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+
+            {/* Assume Setter Rotation 1 */}
+            <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+              <div>
+                <div className="text-sm font-medium">Assume Setter is Rotation 1</div>
+                <div className="text-xs text-slate-400 mt-0.5">Auto-fill the starting rotation so the setter is always considered ROT 1 during match setup</div>
+              </div>
+              <button
+                onClick={() => saveAssumeSetterRot1(!assumeSetterRot1)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${assumeSetterRot1 ? 'bg-primary' : 'bg-slate-600'}`}
+                aria-checked={assumeSetterRot1}
+                role="switch"
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${assumeSetterRot1 ? 'translate-x-5' : ''}`} />
               </button>
             </div>
 

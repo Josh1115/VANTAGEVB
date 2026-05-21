@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { CourtZonePicker, ROMAN } from '../court/CourtZonePicker';
-import { getStorageItem, STORAGE_KEYS } from '../../utils/storage';
+import { getStorageItem, getBoolStorageDefaultTrue, STORAGE_KEYS } from '../../utils/storage';
 
 const POSITION_OPTIONS = ['OH', 'OPP', 'MB', 'S', 'L', 'DS', 'RS'];
 
@@ -8,17 +8,19 @@ const POSITION_OPTIONS = ['OH', 'OPP', 'MB', 'S', 'L', 'DS', 'RS'];
  * Shared lineup builder UI — serve order list, libero picker, starting zone picker.
  *
  * Props:
- *   lineup         — string[6], playerId per serve slot ('' = unassigned)
- *   setLineup      — setter for lineup
- *   slotPositions  — string[6], position label per serve slot ('' = unassigned)
- *   setSlotPositions — setter for slotPositions
- *   startZone      — number (1-6), court zone where Player I starts
- *   setStartZone   — setter for startZone
- *   liberoId       — string, selected libero player id ('' = none)
- *   setLiberoId    — setter for liberoId
- *   players        — Player[] from DB (active roster)
+ *   lineup            — string[6], playerId per serve slot ('' = unassigned)
+ *   setLineup         — setter for lineup
+ *   slotPositions     — string[6], position label per serve slot ('' = unassigned)
+ *   setSlotPositions  — setter for slotPositions
+ *   startZone         — number (1-6), court zone where Player I starts
+ *   setStartZone      — setter for startZone
+ *   startRotation     — number (1-6), rotation label for Player I (the first server)
+ *   setStartRotation  — setter for startRotation
+ *   liberoId          — string, selected libero player id ('' = none)
+ *   setLiberoId       — setter for liberoId
+ *   players           — Player[] from DB (active roster)
  */
-export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions, startZone, setStartZone, liberoId, setLiberoId, players }) {
+export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions, startZone, setStartZone, startRotation, setStartRotation, liberoId, setLiberoId, players }) {
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [dragOverIdx, setDragOverIdx] = useState(null);
   const containerRef = useRef(null);
@@ -79,6 +81,16 @@ export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions,
       return changed ? next : prev;
     });
   }, [players, lineup]);
+
+  // When "Assume Setter Rotation 1" is on, auto-set startRotation so the setter = ROT 1.
+  useEffect(() => {
+    if (!getBoolStorageDefaultTrue(STORAGE_KEYS.ASSUME_SETTER_ROT1)) return;
+    const setterIdx = slotPositions.findIndex((pos) => pos === 'S');
+    if (setterIdx === -1) return;
+    // Setter in serve slot k → current rotation is ((6 - k) % 6) + 1
+    const autoRot = ((6 - setterIdx) % 6) + 1;
+    setStartRotation(autoRot);
+  }, [slotPositions]);
 
   const assignPlayer = (slotIdx, playerId) => {
     setLineup((prev) => {
@@ -205,36 +217,33 @@ export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions,
         </select>
       </div>
 
-      {/* ROT 1 Server */}
+      {/* Starting Rotation label */}
       <div>
         <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
-          ROT 1 Server
+          Starting Rotation
         </label>
         <p className="text-[11px] text-slate-500 mb-2">
-          Who serves first? The setter serves ROT 1 by default — pick a different player to override. Selecting here moves that player into serve slot I.
+          What rotation would you like to consider as your first server? App defaults to the setter serving in Rotation 1.
         </p>
-        <select
-          value={lineup[0]}
-          onChange={(e) => {
-            const newId = e.target.value;
-            if (!newId) return;
-            const fromIdx = lineup.indexOf(newId);
-            if (fromIdx <= 0) return;
-            const rotate = (arr) => [...arr.slice(fromIdx), ...arr.slice(0, fromIdx)];
-            setLineup((prev) => rotate(prev));
-            setSlotPositions((prev) => rotate(prev));
-          }}
-          className="w-full bg-surface border border-slate-600 text-white rounded px-2 py-2 text-sm focus:outline-none focus:border-primary"
-        >
-          {!lineup[0] && <option value="">— assign serve order above first —</option>}
-          {sortedPlayers
-            .filter((p) => lineup.includes(String(p.id)))
-            .map((p) => (
-              <option key={p.id} value={String(p.id)}>
-                #{p.jersey_number} {p.name}{p.position ? ` (${p.position})` : ''}
-              </option>
-            ))}
-        </select>
+        <div className="flex gap-1.5">
+          {[1, 2, 3, 4, 5, 6].map((rot) => (
+            <button
+              key={rot}
+              type="button"
+              onClick={() => setStartRotation(rot)}
+              className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-colors
+                ${startRotation === rot
+                  ? 'bg-primary/20 text-primary border-primary/50'
+                  : 'bg-surface text-slate-400 border-slate-600 hover:border-slate-400 hover:text-slate-200'
+                }`}
+            >
+              {rot}
+            </button>
+          ))}
+        </div>
+        {getBoolStorageDefaultTrue(STORAGE_KEYS.ASSUME_SETTER_ROT1) && slotPositions.some((p) => p === 'S') && (
+          <p className="text-[11px] text-slate-500 mt-1.5">Auto-set from setter position. Adjust if needed.</p>
+        )}
       </div>
 
       {/* Starting zone picker */}

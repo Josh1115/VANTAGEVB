@@ -43,6 +43,8 @@ export function MatchSetupPage() {
   const [slotPositions,  setSlotPositions]  = useState(Array(6).fill(''));
   // startZone = court zone (1-6) where Player I starts; default 1 = back right
   const [startZone, setStartZone]  = useState(1);
+  // startRotation = rotation label (1-6) for Player I; independent of court position
+  const [startRotation, setStartRotation] = useState(1);
   // liberoId = player designated as libero (optional)
   const [liberoId,  setLiberoId]   = useState('');
   const [startFormations, setStartFormations] = useState(null);
@@ -306,6 +308,7 @@ export function MatchSetupPage() {
         our_score:        0,
         opp_score:        0,
         libero_player_id: liberoId ? Number(liberoId) : null,
+        start_rotation:   startRotation,
         ...(startFormations ? { serve_receive_formations: startFormations } : {}),
       });
 
@@ -717,6 +720,8 @@ export function MatchSetupPage() {
                 setSlotPositions={setSlotPositions}
                 startZone={startZone}
                 setStartZone={setStartZone}
+                startRotation={startRotation}
+                setStartRotation={setStartRotation}
                 liberoId={liberoId}
                 setLiberoId={setLiberoId}
                 players={players}
