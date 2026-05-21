@@ -644,11 +644,7 @@ function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit }) {
 
       <div className="bg-slate-800 px-4 py-3 space-y-2.5">
         {toTitleArr(historyEntry?.title).length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {toTitleArr(historyEntry.title).map((t, i) => (
-              <span key={i} className="text-base font-black text-primary tracking-wide">{t}</span>
-            ))}
-          </div>
+          <p className="text-base font-black text-primary tracking-wide">{toTitleArr(historyEntry.title).join(', ')}</p>
         )}
 
         {hasRankings && (
@@ -809,11 +805,7 @@ function SeasonCard({ entry, onEdit, onDelete }) {
 
       <div className="px-4 py-3 space-y-2.5">
         {titleArr.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {titleArr.map((t, i) => (
-              <span key={i} className="text-sm font-black text-primary tracking-wide">{t}</span>
-            ))}
-          </div>
+          <p className="text-sm font-black text-primary tracking-wide">{titleArr.join(', ')}</p>
         )}
         {/* Rankings */}
         {(entry.class_rank != null || entry.state_rank != null || entry.national_rank != null) && (
