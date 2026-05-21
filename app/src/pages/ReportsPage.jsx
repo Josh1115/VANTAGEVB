@@ -253,6 +253,43 @@ function SectionHeader({ children }) {
   return <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-2">{children}</h3>;
 }
 
+function AprByRotationChart({ rotationContactStats }) {
+  const aprs = [1,2,3,4,5,6].map(r => rotationContactStats[r]?.apr ?? null);
+  const pas  = [1,2,3,4,5,6].map(r => rotationContactStats[r]?.pa  ?? 0);
+  const valid = aprs.filter(v => v != null);
+  if (valid.length === 0) return null;
+  const maxApr = Math.max(...valid);
+  const minApr = Math.min(...valid);
+  return (
+    <div className="bg-surface rounded-xl p-3">
+      <SectionHeader>APR by Rotation</SectionHeader>
+      <p className="text-[11px] text-slate-500 -mt-1 mb-3">Average pass rating (0–3) in each rotation. Higher is better.</p>
+      <div className="grid grid-cols-6 gap-px bg-slate-700 rounded-lg overflow-hidden text-center text-xs">
+        {[1,2,3,4,5,6].map(r => (
+          <div key={r} className="bg-slate-800 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wide">R{r}</div>
+        ))}
+        {aprs.map((apr, i) => (
+          <div
+            key={i + 1}
+            className={`py-2 font-black tabular-nums flex flex-col items-center gap-0.5 ${
+              apr == null    ? 'bg-slate-900 text-slate-700'
+            : apr === maxApr ? 'bg-emerald-900/40 text-emerald-300'
+            : apr === minApr ? 'bg-red-900/30 text-red-400'
+            :                  'bg-slate-900 text-slate-200'
+            }`}
+          >
+            <span>{apr != null ? apr.toFixed(2) : '—'}</span>
+            {pas[i] > 0 && (
+              <span className="text-[9px] font-semibold opacity-60 tabular-nums">{pas[i]}att</span>
+            )}
+          </div>
+        ))}
+      </div>
+      <p className="text-[10px] text-slate-600 text-center mt-2">Green = best · Red = worst</p>
+    </div>
+  );
+}
+
 const CHIP = 'px-3 py-1 rounded-full text-xs font-semibold transition-colors';
 const chipClass = (active) =>
   active ? `${CHIP} bg-primary text-white` : `${CHIP} bg-surface text-slate-400 hover:text-white`;
@@ -1077,38 +1114,7 @@ export function ReportsPage() {
                 {playerStatView === 'passing' && (
                   <>
                     <StatTable columns={TAB_COLUMNS.passing} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} />
-                    {(() => {
-                      const aprs = [1,2,3,4,5,6].map(r => rotationContactStats[r]?.apr);
-                      const valid = aprs.filter(v => v != null);
-                      if (valid.length === 0) return null;
-                      const maxApr = Math.max(...valid);
-                      const minApr = Math.min(...valid);
-                      return (
-                        <div className="bg-surface rounded-xl p-3">
-                          <SectionHeader>APR by Rotation</SectionHeader>
-                          <p className="text-[11px] text-slate-500 -mt-1 mb-3">Average pass rating (0–3) in each rotation. Higher is better.</p>
-                          <div className="grid grid-cols-6 gap-px bg-slate-700 rounded-lg overflow-hidden text-center text-xs">
-                            {[1,2,3,4,5,6].map(r => (
-                              <div key={r} className="bg-slate-800 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wide">R{r}</div>
-                            ))}
-                            {aprs.map((apr, i) => (
-                              <div
-                                key={i + 1}
-                                className={`py-2 font-black tabular-nums ${
-                                  apr == null    ? 'bg-slate-900 text-slate-700'
-                                : apr === maxApr ? 'bg-emerald-900/40 text-emerald-300'
-                                : apr === minApr ? 'bg-red-900/30 text-red-400'
-                                :                  'bg-slate-900 text-slate-200'
-                                }`}
-                              >
-                                {apr != null ? apr.toFixed(2) : '—'}
-                              </div>
-                            ))}
-                          </div>
-                          <p className="text-[10px] text-slate-600 text-center mt-2">Green = best · Red = worst</p>
-                        </div>
-                      );
-                    })()}
+                    <AprByRotationChart rotationContactStats={rotationContactStats} />
                     <PassDistributionChart totals={playerTotalsRow} />
                   </>
                 )}
@@ -1354,38 +1360,7 @@ export function ReportsPage() {
                 })()}
 
                 {/* APR by Rotation */}
-                {(() => {
-                  const aprs = [1,2,3,4,5,6].map(r => rotationContactStats[r]?.apr);
-                  const valid = aprs.filter(v => v != null);
-                  if (valid.length === 0) return null;
-                  const maxApr = Math.max(...valid);
-                  const minApr = Math.min(...valid);
-                  return (
-                    <div className="bg-surface rounded-xl p-3">
-                      <SectionHeader>APR by Rotation</SectionHeader>
-                      <p className="text-[11px] text-slate-500 -mt-1 mb-3">Average pass rating (0–3) in each rotation. Higher is better.</p>
-                      <div className="grid grid-cols-6 gap-px bg-slate-700 rounded-lg overflow-hidden text-center text-xs">
-                        {[1,2,3,4,5,6].map(r => (
-                          <div key={r} className="bg-slate-800 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wide">R{r}</div>
-                        ))}
-                        {aprs.map((apr, i) => (
-                          <div
-                            key={i + 1}
-                            className={`py-2 font-black tabular-nums ${
-                              apr == null        ? 'bg-slate-900 text-slate-700'
-                            : apr === maxApr     ? 'bg-emerald-900/40 text-emerald-300'
-                            : apr === minApr     ? 'bg-red-900/30 text-red-400'
-                            :                      'bg-slate-900 text-slate-200'
-                            }`}
-                          >
-                            {apr != null ? apr.toFixed(2) : '—'}
-                          </div>
-                        ))}
-                      </div>
-                      <p className="text-[10px] text-slate-600 text-center mt-2">Green = best · Red = worst</p>
-                    </div>
-                  );
-                })()}
+                <AprByRotationChart rotationContactStats={rotationContactStats} />
 
                 <StatTable columns={ROTATION_COLS} rows={rotationRows} />
 
