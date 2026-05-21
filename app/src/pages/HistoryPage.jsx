@@ -1205,6 +1205,14 @@ export function HistoryPage() {
               <EmptyState icon="📋" title={gender ? 'Select a team' : 'Select Girls or Boys'} description="" />
             ) : (
               <>
+                {/* Championship Banners */}
+                <ChampionshipBannersSection
+                  titledSeasons={titledSeasons}
+                  orgName={orgName}
+                  primaryColorId={teamPrimaryColor}
+                  secondaryColorId={teamSecondaryColor}
+                />
+
                 {/* College Commits */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
@@ -1305,14 +1313,6 @@ export function HistoryPage() {
                     )}
                   </div>
                 )}
-
-                {/* Championship Banners */}
-                <ChampionshipBannersSection
-                  titledSeasons={titledSeasons}
-                  orgName={orgName}
-                  primaryColorId={teamPrimaryColor}
-                  secondaryColorId={teamSecondaryColor}
-                />
 
                 {/* Season History */}
                 <div className="space-y-3">
