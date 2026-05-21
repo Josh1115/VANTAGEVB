@@ -13,6 +13,27 @@ function fmtWinPct(wins, games) {
   return (wins / games * 100).toFixed(1) + '%';
 }
 
+// Normalize title field: supports legacy string or new array format
+function toTitleArr(val) {
+  if (Array.isArray(val)) return val.filter(Boolean);
+  return val ? [String(val)] : [];
+}
+
+// Word-wrap helper for SVG text — returns array of uppercase lines
+function wrapSvgText(text, maxChars) {
+  if (!text) return [];
+  const words = String(text).toUpperCase().split(' ');
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (test.length > maxChars && line) { lines.push(line); line = word; }
+    else { line = test; }
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines : [''];
+}
+
 // ── Championship Banner ───────────────────────────────────────────────────────
 
 const BANNER_COLORS = {
@@ -35,43 +56,55 @@ function ChampionshipBanner({ title, year, orgName, primaryColorId, secondaryCol
     ? BANNER_COLORS[secondaryColorId].bright
     : primary.trim;
 
-  const yearStr      = String(year ?? '');
+  const yearStr      = String(year ?? '').toUpperCase();
   const yearFontSize = yearStr.length <= 4 ? 28 : yearStr.length <= 5 ? 22 : 16;
-  const yearY        = yearStr.length <= 4 ? 102 : 100;
-  const orgLabel     = (orgName ?? '').length > 20 ? (orgName ?? '').slice(0, 19) + '…' : (orgName ?? '');
-  const titleLabel   = (title  ?? '').length > 24 ? (title  ?? '').slice(0, 23) + '…' : (title  ?? '');
+
+  const orgLines   = wrapSvgText(orgName,  13);
+  const titleLines = wrapSvgText(title,    13);
+
+  // Vertically center the org-name block within its zone (y=26–72)
+  const orgBlockH  = orgLines.length * 13;
+  const orgStartY  = Math.round(26 + (46 - orgBlockH) / 2) + 11;
+
+  // Vertically center the title block within its zone (y=132–165)
+  const titleBlockH = titleLines.length * 13;
+  const titleStartY = Math.round(132 + (33 - titleBlockH) / 2) + 10;
 
   return (
-    <svg viewBox="0 0 120 190" className="w-20" aria-hidden="true"
-      style={{ filter: `drop-shadow(0 4px 16px ${primary.bg}cc)` }}>
+    <svg viewBox="0 0 120 220" className="w-40" aria-hidden="true"
+      style={{ filter: `drop-shadow(0 6px 20px ${primary.bg}cc)` }}>
       {/* Rod */}
       <line x1="10" y1="12" x2="110" y2="12" stroke={trimColor} strokeWidth="2.5" strokeLinecap="round"/>
       {/* Hanging rings */}
       <circle cx="22" cy="12" r="6" fill={primary.bg} stroke={trimColor} strokeWidth="1.8"/>
       <circle cx="98" cy="12" r="6" fill={primary.bg} stroke={trimColor} strokeWidth="1.8"/>
       {/* Banner body */}
-      <path d="M 10,18 L 110,18 L 110,145 L 60,170 L 10,145 Z" fill={primary.bg}/>
+      <path d="M 10,18 L 110,18 L 110,168 L 60,200 L 10,168 Z" fill={primary.bg}/>
       {/* Inner trim border */}
-      <path d="M 18,26 L 102,26 L 102,138 L 60,160 L 18,138 Z"
+      <path d="M 18,26 L 102,26 L 102,161 L 60,188 L 18,161 Z"
         fill="none" stroke={trimColor} strokeWidth="1.4" strokeOpacity="0.7"/>
-      {/* Org / school name */}
-      <text x="60" y="47" fill={primary.text} fontSize="8" fontWeight="800"
+      {/* School / org name */}
+      <text x="60" y={orgStartY} fill={primary.text} fontSize="8" fontWeight="900"
         textAnchor="middle" fontFamily="system-ui, sans-serif" letterSpacing="0.5">
-        {orgLabel}
+        {orgLines.map((line, i) => (
+          <tspan key={i} x="60" dy={i === 0 ? 0 : 13}>{line}</tspan>
+        ))}
       </text>
       {/* Separator */}
-      <line x1="24" y1="55" x2="96" y2="55" stroke={trimColor} strokeWidth="0.8" strokeOpacity="0.5"/>
+      <line x1="24" y1="74" x2="96" y2="74" stroke={trimColor} strokeWidth="0.8" strokeOpacity="0.5"/>
       {/* Year */}
-      <text x="60" y={yearY} fill={primary.text} fontSize={yearFontSize} fontWeight="900"
+      <text x="60" y="116" fill={primary.text} fontSize={yearFontSize} fontWeight="900"
         textAnchor="middle" fontFamily="system-ui, sans-serif">
         {yearStr}
       </text>
       {/* Separator */}
-      <line x1="24" y1="113" x2="96" y2="113" stroke={trimColor} strokeWidth="0.8" strokeOpacity="0.5"/>
+      <line x1="24" y1="130" x2="96" y2="130" stroke={trimColor} strokeWidth="0.8" strokeOpacity="0.5"/>
       {/* Title */}
-      <text x="60" y="128" fill={primary.text} fontSize="8" fontWeight="700"
-        textAnchor="middle" fontFamily="system-ui, sans-serif" letterSpacing="0.3" opacity="0.9">
-        {titleLabel}
+      <text x="60" y={titleStartY} fill={primary.text} fontSize="8" fontWeight="900"
+        textAnchor="middle" fontFamily="system-ui, sans-serif" letterSpacing="0.3">
+        {titleLines.map((line, i) => (
+          <tspan key={i} x="60" dy={i === 0 ? 0 : 13}>{line}</tspan>
+        ))}
       </text>
     </svg>
   );
@@ -82,19 +115,18 @@ function ChampionshipBanner({ title, year, orgName, primaryColorId, secondaryCol
 function ChampionshipBannersSection({ titledSeasons, orgName, primaryColorId, secondaryColorId }) {
   if (!titledSeasons.length) return null;
   return (
-    <div className="bg-surface rounded-xl px-4 py-3">
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4">Championships</p>
-      <div className="flex gap-4 overflow-x-auto pb-1">
-        {titledSeasons.map(s => (
-          <div key={`${s.year}-${s.title}`} className="shrink-0">
-            <ChampionshipBanner
-              title={s.title}
-              year={s.year}
-              orgName={orgName}
-              primaryColorId={primaryColorId}
-              secondaryColorId={secondaryColorId}
-            />
-          </div>
+    <div className="bg-surface rounded-xl px-4 py-4">
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 text-center">Titles &amp; Championships</p>
+      <div className="flex flex-wrap gap-5 justify-center">
+        {titledSeasons.map((s, idx) => (
+          <ChampionshipBanner
+            key={`${s.year}-${s.title}-${idx}`}
+            title={s.title}
+            year={s.year}
+            orgName={orgName}
+            primaryColorId={primaryColorId}
+            secondaryColorId={secondaryColorId}
+          />
         ))}
       </div>
     </div>
@@ -106,7 +138,7 @@ function ChampionshipBannersSection({ titledSeasons, orgName, primaryColorId, se
 const EMPTY_ROUND = { round: '', opponent: '', result: 'W', score: '', opp_seed: '' };
 
 const EMPTY_FORM = {
-  year: '', title: '', classification: '', head_coach: '', tenure_year: '', asst_coach: '',
+  year: '', title: [], classification: '', head_coach: '', tenure_year: '', asst_coach: '',
   games: '', wins: '', losses: '',
   state_rank: '', national_rank: '', class_rank: '',
   playoff_seed: '', regional: '', sectional: '', state_finish: '', playoff_result: '',
@@ -140,7 +172,7 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
       const fields = {
         team_id:        teamId,
         year:           yearStr,
-        title:          form.title.trim()                || null,
+        title:          (() => { const arr = toTitleArr(form.title).map(s => s.trim()).filter(Boolean); return arr.length ? arr : null; })(),
         classification: (form.classification ?? '').trim() || null,
         head_coach:     form.head_coach.trim()           || null,
         asst_coach:     form.asst_coach.trim()           || null,
@@ -198,15 +230,41 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className={lbl}>Season Title</label>
-              <input className={inp} placeholder="Conference Champions" value={form.title} onChange={e => set('title', e.target.value)} />
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className={lbl}>Titles &amp; Championships</label>
             </div>
-            <div>
-              <label className={lbl}>Class <span className="text-slate-600 font-normal">(optional)</span></label>
-              <input className={inp} placeholder="e.g. 4A" value={form.classification} onChange={e => set('classification', e.target.value)} />
+            <div className="space-y-1.5">
+              {(form.title ?? []).map((t, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    className={`${inp} flex-1`}
+                    placeholder="e.g. Conference Champions"
+                    value={t}
+                    onChange={e => {
+                      const updated = [...(form.title ?? [])];
+                      updated[i] = e.target.value;
+                      set('title', updated);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => set('title', (form.title ?? []).filter((_, j) => j !== i))}
+                    className="text-slate-500 hover:text-red-400 text-xl leading-none px-1 shrink-0"
+                  >×</button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => set('title', [...(form.title ?? []), ''])}
+                className="w-full py-1.5 rounded-lg border border-dashed border-slate-600 text-xs text-slate-400 hover:text-white hover:border-slate-400 transition-colors"
+              >+ Add Title</button>
             </div>
+          </div>
+
+          <div>
+            <label className={lbl}>Class <span className="text-slate-600 font-normal">(optional)</span></label>
+            <input className={inp} placeholder="e.g. 4A" value={form.classification} onChange={e => set('classification', e.target.value)} />
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -584,8 +642,12 @@ function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit }) {
       </div>
 
       <div className="bg-slate-800 px-4 py-3 space-y-2.5">
-        {historyEntry?.title && (
-          <p className="text-base font-black text-primary tracking-wide">{historyEntry.title}</p>
+        {toTitleArr(historyEntry?.title).length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {toTitleArr(historyEntry.title).map((t, i) => (
+              <span key={i} className="text-base font-black text-primary tracking-wide">{t}</span>
+            ))}
+          </div>
         )}
 
         {hasRankings && (
@@ -710,9 +772,10 @@ function SeasonCard({ entry, onEdit, onDelete }) {
   const hasCoach   = entry.head_coach || entry.asst_coach;
   const hasRecord  = entry.wins != null || entry.losses != null;
   const hasPlayoffs = entry.playoff_seed || entry.state_finish || entry.playoff_result || (entry.playoff_rounds?.length > 0);
+  const titleArr   = toTitleArr(entry.title);
 
   return (
-    <div className={`bg-slate-800 rounded-xl overflow-hidden ${entry.title ? 'border border-primary/40' : 'border border-slate-700/50'}`}>
+    <div className={`bg-slate-800 rounded-xl overflow-hidden ${titleArr.length > 0 ? 'border border-primary/40' : 'border border-slate-700/50'}`}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-slate-700/40">
         <div className="flex items-center gap-3">
@@ -744,6 +807,13 @@ function SeasonCard({ entry, onEdit, onDelete }) {
       </div>
 
       <div className="px-4 py-3 space-y-2.5">
+        {titleArr.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {titleArr.map((t, i) => (
+              <span key={i} className="text-sm font-black text-primary tracking-wide">{t}</span>
+            ))}
+          </div>
+        )}
         {/* Rankings */}
         {(entry.class_rank != null || entry.state_rank != null || entry.national_rank != null) && (
           <div className="flex gap-4">
@@ -945,7 +1015,7 @@ export function HistoryPage() {
   // Initial data for the live card's edit modal
   const liveEditInitial = liveHistoryEntry ? {
     year:           String(liveHistoryEntry.year ?? activeSeason?.year ?? ''),
-    title:          liveHistoryEntry.title          ?? '',
+    title:          toTitleArr(liveHistoryEntry.title),
     classification: liveHistoryEntry.classification ?? '',
     class_rank:     liveHistoryEntry.class_rank     ?? '',
     state_rank:     liveHistoryEntry.state_rank     != null ? String(liveHistoryEntry.state_rank)    : '',
@@ -1056,13 +1126,22 @@ export function HistoryPage() {
   );
 
   const titledSeasons = useMemo(() => {
-    return [...(history ?? [])]
-      .filter(h => h.title)
-      .sort((a, b) => String(a.year).localeCompare(String(b.year)));
+    const items = [];
+    for (const h of (history ?? [])) {
+      for (const t of toTitleArr(h.title)) {
+        items.push({ year: h.year, title: t });
+      }
+    }
+    return items.sort((a, b) => String(a.year).localeCompare(String(b.year)));
   }, [history]);
 
-  const teamPrimaryColor   = currentTeam?.team_jersey_color?.[0] ?? null;
-  const teamSecondaryColor = currentTeam?.team_jersey_color?.[1] ?? null;
+  const currentOrg  = useMemo(
+    () => (orgs ?? []).find(o => o.id === orgId) ?? null,
+    [orgs, orgId]
+  );
+  const orgColors = Array.isArray(currentOrg?.colors) ? currentOrg.colors : [];
+  const teamPrimaryColor   = orgColors[0] ?? currentTeam?.team_jersey_color?.[0] ?? null;
+  const teamSecondaryColor = orgColors[1] ?? currentTeam?.team_jersey_color?.[1] ?? null;
 
   return (
     <div className="pb-24">
@@ -1284,7 +1363,7 @@ export function HistoryPage() {
           editId={editEntry.id}
           initialData={{
             year:           editEntry.year           ?? '',
-            title:          editEntry.title          ?? '',
+            title:          toTitleArr(editEntry.title),
             classification: editEntry.classification ?? '',
             class_rank:     editEntry.class_rank     ?? '',
             state_rank:     editEntry.state_rank     != null ? String(editEntry.state_rank)    : '',

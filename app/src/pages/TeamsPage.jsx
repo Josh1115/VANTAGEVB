@@ -14,17 +14,37 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { LogoPickerModal } from '../components/team/LogoPickerModal';
 
 
+const ORG_COLORS = [
+  { id: 'red',    label: 'Red',    bg: '#dc2626', border: '#ef4444' },
+  { id: 'orange', label: 'Orange', bg: '#ea580c', border: '#f97316' },
+  { id: 'yellow', label: 'Yellow', bg: '#ca8a04', border: '#eab308' },
+  { id: 'blue',   label: 'Blue',   bg: '#1d4ed8', border: '#3b82f6' },
+  { id: 'purple', label: 'Purple', bg: '#7c3aed', border: '#a855f7' },
+  { id: 'pink',   label: 'Pink',   bg: '#db2777', border: '#ec4899' },
+  { id: 'white',  label: 'White',  bg: '#f8fafc', border: '#94a3b8' },
+  { id: 'black',  label: 'Black',  bg: '#111827', border: '#374151' },
+  { id: 'gray',   label: 'Gray',   bg: '#94a3b8', border: '#64748b' },
+  { id: 'green',  label: 'Green',  bg: '#16a34a', border: '#22c55e' },
+];
+
 function OrgFormModal({ onClose, org }) {
   const [name, setName] = useState(org?.name ?? '');
   const [type, setType] = useState(org?.type ?? 'school');
   const [logoDataUrl, setLogoDataUrl] = useState(org?.logo_data_url ?? null);
+  const [colors, setColors] = useState(Array.isArray(org?.colors) ? org.colors : []);
   const [showLogoPicker, setShowLogoPicker] = useState(false);
   const showToast = useUiStore(selectShowToast);
+
+  function toggleColor(id) {
+    setColors(prev =>
+      prev.includes(id) ? prev.filter(c => c !== id) : prev.length < 3 ? [...prev, id] : prev
+    );
+  }
 
   const save = async () => {
     if (!name.trim()) return;
     try {
-      const fields = { name: name.trim(), type, logo_data_url: logoDataUrl ?? null };
+      const fields = { name: name.trim(), type, logo_data_url: logoDataUrl ?? null, colors };
       if (org) {
         await db.organizations.update(org.id, fields);
       } else {
@@ -94,6 +114,44 @@ function OrgFormModal({ onClose, org }) {
               <option value="school">School</option>
               <option value="club">Club</option>
             </select>
+          </div>
+          <div>
+            <label className="block text-sm text-slate-400 mb-1">
+              School Colors <span className="text-slate-600 text-xs">(up to 3 — used on championship banners)</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {ORG_COLORS.map(c => {
+                const selected = colors.includes(c.id);
+                const order    = colors.indexOf(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => toggleColor(c.id)}
+                    className="flex flex-col items-center gap-1 py-2 px-3 rounded-lg border transition-colors relative"
+                    style={{
+                      borderColor: selected ? 'var(--color-primary)' : c.border,
+                      boxShadow:   selected ? '0 0 0 2px var(--color-primary)' : 'none',
+                    }}
+                  >
+                    <span className="w-6 h-6 rounded-full block" style={{ background: c.bg, border: `1px solid ${c.border}` }} />
+                    <span className="text-[11px] text-slate-400 leading-none">{c.label}</span>
+                    {selected && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary text-white text-[9px] font-black flex items-center justify-center leading-none">
+                        {order + 1}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {colors.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setColors([])}
+                className="mt-1.5 text-xs text-slate-500 hover:text-red-400 transition-colors"
+              >Clear colors</button>
+            )}
           </div>
         </div>
       </Modal>
