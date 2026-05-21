@@ -654,7 +654,9 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
             </div>
           )}
           <span className="font-semibold">{org.name}</span>
-          <Badge color={org.type === 'school' ? 'blue' : 'orange'}>{org.type}</Badge>
+          <Badge color={org.type === 'college' ? 'orange' : org.type === 'club' ? 'green' : 'blue'}>
+            {{ high_school: 'High School', college: 'College', club: 'Club', school: 'High School' }[org.type] ?? org.type}
+          </Badge>
           <button onClick={onEditOrg} className="text-slate-500 hover:text-slate-300 transition-colors p-0.5" title="Edit organization">
             <IconEdit />
           </button>

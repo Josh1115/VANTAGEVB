@@ -1149,7 +1149,7 @@ export function HistoryPage() {
     const orgType = currentOrg?.type;
     const isCollege = orgType === 'college';
     const isHS      = orgType === 'high_school' || orgType === 'school';
-    const stateName = currentOrg?.state ?? currentOrg?.state_division ?? '';
+    const stateName = currentOrg?.state ?? currentTeam?.state ?? currentOrg?.state_division ?? '';
     const divLabel  = currentOrg?.division ?? currentOrg?.state_division ?? '';
 
     const items = [];
@@ -1178,7 +1178,7 @@ export function HistoryPage() {
       const yCmp = a.year.localeCompare(b.year);
       return yCmp !== 0 ? yCmp : a.priority - b.priority;
     });
-  }, [history, tourneyEntries, currentOrg]);
+  }, [history, tourneyEntries, currentOrg, currentTeam]);
   const teamPrimaryColor   = orgColors[0] ?? currentTeam?.team_jersey_color?.[0] ?? null;
   const teamSecondaryColor = orgColors[1] ?? currentTeam?.team_jersey_color?.[1] ?? null;
 
