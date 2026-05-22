@@ -31,9 +31,9 @@ const TABS = [
   { value: 'players',  label: 'Player Stats'       },
   { value: 'rotation', label: 'Rotation Analysis'  },
   { value: 'trends',   label: 'Trends'             },
+  { value: 'insights', label: 'Insights'            },
   { value: 'heatmap',  label: 'Heat Map'           },
   { value: 'oppo',     label: 'Opp Stats'          },
-  { value: 'insights', label: 'Insights'             },
 ];
 
 const TAB_VALUES = TABS.map(t => t.value);

@@ -614,7 +614,7 @@ function CommitCard({ entry, onEdit, onDelete }) {
 // season_history entry if one exists; otherwise those sections are blank.
 // activeSeason: the season DB record (may have head_coach/asst_coach from the roster tab)
 // historyEntry: matching season_history row (has title, rankings, playoffs, and possibly coach overrides)
-function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit }) {
+function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit, isWinRecord }) {
   const completed = (matches ?? []).filter(m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition');
   const wins      = completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
   const losses    = completed.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
@@ -649,6 +649,11 @@ function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit }) {
           <span className="text-[10px] font-black uppercase tracking-widest text-primary border border-primary/40 px-2 py-0.5 rounded-full">
             CURRENT
           </span>
+          {isWinRecord && (
+            <span className="text-[9px] font-black uppercase tracking-wide text-amber-400 border border-amber-500/50 px-1.5 py-0.5 rounded-full">
+              Most Wins
+            </span>
+          )}
         </div>
         <button
           onClick={onEdit}
@@ -780,7 +785,7 @@ function PlayoffRoundsDisplay({ entry }) {
 
 // ── Static Season Card ────────────────────────────────────────────────────────
 
-function SeasonCard({ entry, onEdit, onDelete }) {
+function SeasonCard({ entry, onEdit, onDelete, isWinRecord }) {
   const winPct     = fmtWinPct(entry.wins, entry.games);
   const hasCoach   = entry.head_coach || entry.asst_coach;
   const hasRecord  = entry.wins != null || entry.losses != null;
@@ -788,9 +793,12 @@ function SeasonCard({ entry, onEdit, onDelete }) {
   const titleArr   = toTitleArr(entry.title);
 
   return (
-    <div className={`bg-slate-800 rounded-xl overflow-hidden ${titleArr.length > 0 ? 'border border-primary/40' : 'border border-slate-700/50'}`}>
+    <div className={`bg-slate-800 rounded-xl overflow-hidden ${
+      isWinRecord ? 'border border-amber-500/50' :
+      titleArr.length > 0 ? 'border border-primary/40' : 'border border-slate-700/50'
+    }`}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-700/40">
+      <div className={`flex items-center justify-between px-4 py-3 ${isWinRecord ? 'bg-amber-900/15' : 'bg-slate-700/40'}`}>
         <div className="flex items-center gap-3">
           <span className="text-base font-black text-white">{entry.year}</span>
           {entry.classification && (
@@ -800,6 +808,11 @@ function SeasonCard({ entry, onEdit, onDelete }) {
             <span className="text-sm font-bold text-slate-200 tabular-nums">
               {entry.wins ?? '—'}–{entry.losses ?? '—'}
               {winPct && <span className="text-xs text-slate-400 font-semibold ml-1.5">{winPct}</span>}
+            </span>
+          )}
+          {isWinRecord && (
+            <span className="text-[9px] font-black uppercase tracking-wide text-amber-400 border border-amber-500/50 px-1.5 py-0.5 rounded-full">
+              Most Wins
             </span>
           )}
         </div>
@@ -1052,6 +1065,20 @@ export function HistoryPage() {
   };
 
   const showLiveCard = isDefaultTeam && activeSeason != null;
+
+  const liveCardWins = useMemo(() => {
+    if (!showLiveCard) return 0;
+    const completed = (activeMatches ?? []).filter(
+      m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition'
+    );
+    return completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
+  }, [activeMatches, showLiveCard]);
+
+  const maxWins = useMemo(() => {
+    const vals = (history ?? []).map(h => h.wins).filter(w => w != null && w > 0);
+    if (showLiveCard && liveCardWins > 0) vals.push(liveCardWins);
+    return vals.length ? Math.max(...vals) : 0;
+  }, [history, liveCardWins, showLiveCard]);
 
   const programRecord = useMemo(() => {
     let wins = 0;
@@ -1347,6 +1374,7 @@ export function HistoryPage() {
                       historyEntry={liveHistoryEntry}
                       activeSeason={activeSeason}
                       onEdit={() => setLiveEditOpen(true)}
+                      isWinRecord={maxWins > 0 && liveCardWins === maxWins}
                     />
                   )}
 
@@ -1364,6 +1392,7 @@ export function HistoryPage() {
                         entry={entry}
                         onEdit={setEditEntry}
                         onDelete={handleDelete}
+                        isWinRecord={maxWins > 0 && entry.wins === maxWins}
                       />
                     ))
                   )}

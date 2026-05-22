@@ -703,7 +703,7 @@ export function HomePage() {
       const t = step / steps;
       setDisplaySeasonRecord({ wins: Math.round(wins * t), losses: Math.round(losses * t) });
       if (step >= steps) { setDisplaySeasonRecord({ wins, losses }); return; }
-      const delay = t >= 0.95 ? 130 : t >= 0.75 ? 55 : 18;
+      const delay = t >= 0.95 ? 260 : t >= 0.75 ? 110 : 36;
       setTimeout(tick, delay);
     }
 
