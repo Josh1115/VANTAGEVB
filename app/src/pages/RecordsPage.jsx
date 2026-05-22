@@ -11,6 +11,8 @@ import { STORAGE_KEYS, getIntStorage } from '../utils/storage';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Spinner } from '../components/ui/Spinner';
 import { EmptyState } from '../components/ui/EmptyState';
+import { toTitleArr, ordinal, titlePriority } from '../utils/historyUtils';
+import { ChampionshipBannersSection } from '../components/shared/ChampionshipBanner';
 
 const RECORD_STATS = [
   { key: 'k',   label: 'Kills',   fmt: fmtCount },
@@ -46,114 +48,6 @@ const TABS = [
 ];
 
 const RANK_ICONS = { 1: '🥇', 2: '🥈', 3: '🥉' };
-
-function toTitleArr(val) {
-  if (Array.isArray(val)) return val.filter(Boolean);
-  return val ? [String(val)] : [];
-}
-
-function wrapSvgText(text, maxChars) {
-  if (!text) return [];
-  const words = String(text).toUpperCase().split(' ');
-  const lines = [];
-  let line = '';
-  for (const word of words) {
-    const test = line ? `${line} ${word}` : word;
-    if (test.length > maxChars && line) { lines.push(line); line = word; }
-    else { line = test; }
-  }
-  if (line) lines.push(line);
-  return lines.length ? lines : [''];
-}
-
-function titlePriority(title) {
-  const t = String(title).toLowerCase();
-  if (t.includes('super sectional') || t.includes('supersectional')) return 4;
-  if (t.includes('state'))      return 5;
-  if (t.includes('sectional'))  return 3;
-  if (t.includes('regional'))   return 2;
-  if (t.includes('conference')) return 1;
-  return 6;
-}
-
-const BANNER_COLORS = {
-  black:  { bg: '#0f172a', trim: '#fbbf24', text: '#fbbf24', bright: '#94a3b8' },
-  white:  { bg: '#e2e8f0', trim: '#334155', text: '#1e293b', bright: '#f8fafc' },
-  gray:   { bg: '#374151', trim: '#fbbf24', text: '#fbbf24', bright: '#94a3b8' },
-  red:    { bg: '#7f1d1d', trim: '#fca5a5', text: '#fef2f2', bright: '#ef4444' },
-  orange: { bg: '#7c2d12', trim: '#fdba74', text: '#fff7ed', bright: '#f97316' },
-  yellow: { bg: '#713f12', trim: '#fde047', text: '#fefce8', bright: '#eab308' },
-  green:  { bg: '#14532d', trim: '#86efac', text: '#f0fdf4', bright: '#22c55e' },
-  blue:   { bg: '#1e3a8a', trim: '#93c5fd', text: '#eff6ff', bright: '#3b82f6' },
-  purple: { bg: '#3b0764', trim: '#d8b4fe', text: '#faf5ff', bright: '#a855f7' },
-  pink:   { bg: '#831843', trim: '#f9a8d4', text: '#fdf2f8', bright: '#ec4899' },
-};
-const BANNER_DEFAULT = { bg: '#1e3a8a', trim: '#fbbf24', text: '#fef9c3', bright: '#93c5fd' };
-
-function ChampionshipBanner({ title, year, orgName, primaryColorId, secondaryColorId }) {
-  const primary   = BANNER_COLORS[primaryColorId] ?? BANNER_DEFAULT;
-  const trimColor = secondaryColorId && BANNER_COLORS[secondaryColorId]
-    ? BANNER_COLORS[secondaryColorId].bright
-    : primary.trim;
-
-  const yearStr      = String(year ?? '').toUpperCase();
-  const yearFontSize = yearStr.length <= 4 ? 28 : yearStr.length <= 5 ? 22 : 16;
-
-  const orgLines   = wrapSvgText(orgName, 13);
-  const titleLines = wrapSvgText(title,   13);
-
-  const orgBlockH   = orgLines.length * 13;
-  const orgStartY   = Math.round(26 + (46 - orgBlockH) / 2) + 11;
-  const titleBlockH = titleLines.length * 13;
-  const titleStartY = Math.round(132 + (33 - titleBlockH) / 2) + 10;
-
-  return (
-    <svg viewBox="0 0 120 220" className="w-[104px]" aria-hidden="true"
-      style={{ filter: `drop-shadow(0 6px 20px ${primary.bg}cc)` }}>
-      <line x1="10" y1="12" x2="110" y2="12" stroke={trimColor} strokeWidth="2.5" strokeLinecap="round"/>
-      <circle cx="22" cy="12" r="6" fill={primary.bg} stroke={trimColor} strokeWidth="1.8"/>
-      <circle cx="98" cy="12" r="6" fill={primary.bg} stroke={trimColor} strokeWidth="1.8"/>
-      <path d="M 10,18 L 110,18 L 110,168 L 60,200 L 10,168 Z" fill={primary.bg}/>
-      <path d="M 18,26 L 102,26 L 102,161 L 60,188 L 18,161 Z"
-        fill="none" stroke={trimColor} strokeWidth="1.4" strokeOpacity="0.7"/>
-      <text x="60" y={orgStartY} fill={primary.text} fontSize="8" fontWeight="900"
-        textAnchor="middle" fontFamily="system-ui, sans-serif" letterSpacing="0.5">
-        {orgLines.map((line, i) => <tspan key={i} x="60" dy={i === 0 ? 0 : 13}>{line}</tspan>)}
-      </text>
-      <line x1="24" y1="74" x2="96" y2="74" stroke={trimColor} strokeWidth="0.8" strokeOpacity="0.5"/>
-      <text x="60" y="116" fill={primary.text} fontSize={yearFontSize} fontWeight="900"
-        textAnchor="middle" fontFamily="system-ui, sans-serif">
-        {yearStr}
-      </text>
-      <line x1="24" y1="130" x2="96" y2="130" stroke={trimColor} strokeWidth="0.8" strokeOpacity="0.5"/>
-      <text x="60" y={titleStartY} fill={primary.text} fontSize="8" fontWeight="900"
-        textAnchor="middle" fontFamily="system-ui, sans-serif" letterSpacing="0.3">
-        {titleLines.map((line, i) => <tspan key={i} x="60" dy={i === 0 ? 0 : 13}>{line}</tspan>)}
-      </text>
-    </svg>
-  );
-}
-
-function ChampionshipBannersSection({ titledSeasons, orgName, primaryColorId, secondaryColorId }) {
-  if (!titledSeasons.length) return null;
-  return (
-    <div className="bg-surface rounded-xl px-4 py-4">
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 text-center">Titles &amp; Championships</p>
-      <div className="flex flex-wrap gap-5 justify-center">
-        {titledSeasons.map((s, idx) => (
-          <ChampionshipBanner
-            key={`${s.year}-${s.title}-${idx}`}
-            title={s.title}
-            year={s.year}
-            orgName={orgName}
-            primaryColorId={primaryColorId}
-            secondaryColorId={secondaryColorId}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 // ── computation ───────────────────────────────────────────────────────────────
 
@@ -490,19 +384,6 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
   );
 }
 
-// ── Season Title Panel ────────────────────────────────────────────────────────
-
-function SeasonTitleRow({ entry }) {
-  return (
-    <div className="flex items-center gap-3 bg-slate-800 rounded-xl px-3 py-2">
-      <span className="text-xs font-bold text-slate-400 shrink-0 w-16 tabular-nums">{entry.year}</span>
-      <span className="flex-1 text-sm text-slate-100">
-        {toTitleArr(entry.title).join(', ') || <span className="text-slate-600 italic">No title set</span>}
-      </span>
-    </div>
-  );
-}
-
 // ── LeaderboardRow ────────────────────────────────────────────────────────────
 
 function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, teamId }) {
@@ -629,13 +510,6 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, teamId }) {
 }
 
 // ── Tourney helpers ───────────────────────────────────────────────────────────
-
-function ordinal(n) {
-  if (n === 1) return '1st';
-  if (n === 2) return '2nd';
-  if (n === 3) return '3rd';
-  return `${n}th`;
-}
 
 const EMPTY_MATCH = () => ({ opponent: '', phase: 'pool', result: 'W', sets: [{ our: '', their: '' }] });
 const EMPTY_TOURNEY = { name: '', year: '', seed: '', placing: '', matches: [EMPTY_MATCH()] };
@@ -1189,6 +1063,7 @@ export function RecordsPage() {
                   orgName={orgName}
                   primaryColorId={teamPrimaryColor}
                   secondaryColorId={teamSecondaryColor}
+                  bannerClassName="w-[104px]"
                 />
 
                 <div className="flex bg-slate-800 rounded-xl p-1 gap-1">
@@ -1247,7 +1122,7 @@ export function RecordsPage() {
                         </p>
                         {rows.map(row => (
                           <LeaderboardRow
-                            key={row.rank}
+                            key={row.id ?? `live-${row.player_id ?? 'team'}-${row.year ?? ''}-${row.opp ?? ''}-${row.date ?? ''}`}
                             row={row}
                             tab={tab}
                             fmt={statDef?.fmt ?? fmtCount}
