@@ -23,7 +23,8 @@ export const STORAGE_KEYS = {
   WIN_MESSAGE:        'vbstat_win_message',
   ROSTER_SORT:        'vbstat_roster_sort',
   PLAYOFF_ORG:        'vbstat_playoff_org',
-  ASSUME_SETTER_ROT1: 'vbstat_assume_setter_rot1',
+  ASSUME_SETTER_ROT1:   'vbstat_assume_setter_rot1',
+  CLOSEST_SORT_ASC:     'vbstat_closest_sort_asc',
 };
 
 export function getStorageItem(key, defaultValue = null) {

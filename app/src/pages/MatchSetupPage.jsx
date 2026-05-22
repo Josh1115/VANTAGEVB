@@ -32,6 +32,7 @@ export function MatchSetupPage() {
   const [tournamentRound, setTournamentRound] = useState('pool');
   const [tourneySet3, setTourneySet3] = useState(25);
   const [playoffRound, setPlayoffRound] = useState('');
+  const [oppPlayoffSeed, setOppPlayoffSeed] = useState('');
   const [format,    setFormat]    = useState(() => {
     const saved = getStorageItem(STORAGE_KEYS.DEFAULT_FORMAT);
     return saved === FORMAT.BEST_OF_5 ? FORMAT.BEST_OF_5 : FORMAT.BEST_OF_3;
@@ -122,6 +123,7 @@ export function MatchSetupPage() {
       setTournamentRound(scheduledMatch.tournament_round ?? 'pool');
       if (scheduledMatch.match_type === 'tourney') setTourneySet3(scheduledMatch.last_set_score ?? 25);
       setPlayoffRound(scheduledMatch.playoff_round ?? '');
+      setOppPlayoffSeed(scheduledMatch.opponent_playoff_seed != null ? String(scheduledMatch.opponent_playoff_seed) : '');
       setOpponentRecord(scheduledMatch.opponent_record ?? '');
       setOpponentMaxprepsRank(scheduledMatch.opponent_maxpreps_rank != null ? String(scheduledMatch.opponent_maxpreps_rank) : '');
       setPrefilled(true);
@@ -191,6 +193,7 @@ export function MatchSetupPage() {
         tournament_name:        matchType === 'tourney' ? tournamentName.trim() || null : null,
         tournament_round:       matchType === 'tourney' ? tournamentRound : null,
         playoff_round:          matchType === 'ihsa-playoffs' ? playoffRound.trim() || null : null,
+        opponent_playoff_seed:  matchType === 'ihsa-playoffs' && oppPlayoffSeed !== '' ? parseInt(oppPlayoffSeed, 10) : null,
         date:                   new Date().toISOString(),
         our_sets_won:           ourSetsWon,
         opp_sets_won:           oppSetsWon,
@@ -260,6 +263,7 @@ export function MatchSetupPage() {
           tournament_name:       matchType === 'tourney' ? tournamentName.trim() || null : null,
           tournament_round:      matchType === 'tourney' ? tournamentRound : null,
           playoff_round:         matchType === 'ihsa-playoffs' ? playoffRound.trim() || null : null,
+          opponent_playoff_seed: matchType === 'ihsa-playoffs' && oppPlayoffSeed !== '' ? parseInt(oppPlayoffSeed, 10) : null,
           date:                  scheduledMatch?.date ?? new Date().toISOString(),
         });
         effectiveMatchId = scheduledMatchId;
@@ -280,6 +284,7 @@ export function MatchSetupPage() {
           tournament_name:       matchType === 'tourney' ? tournamentName.trim() || null : null,
           tournament_round:      matchType === 'tourney' ? tournamentRound : null,
           playoff_round:         matchType === 'ihsa-playoffs' ? playoffRound.trim() || null : null,
+          opponent_playoff_seed: matchType === 'ihsa-playoffs' && oppPlayoffSeed !== '' ? parseInt(oppPlayoffSeed, 10) : null,
           date:                  new Date().toISOString(),
         });
       }
@@ -592,6 +597,22 @@ export function MatchSetupPage() {
               value={playoffRound}
               onChange={(e) => setPlayoffRound(e.target.value)}
               placeholder="e.g. Regional, Sectional, Super-Sectional, State…"
+              className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
+            />
+          </div>
+        )}
+
+        {matchType === 'ihsa-playoffs' && (
+          <div>
+            <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+              Opponent Playoff Seed
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={oppPlayoffSeed}
+              onChange={(e) => setOppPlayoffSeed(e.target.value)}
+              placeholder="e.g. 3"
               className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
             />
           </div>

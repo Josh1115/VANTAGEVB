@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { VantageLogo } from '../components/ui/VantageLogo';
-import { STORAGE_KEYS, getStorageItem, getIntStorage, getPlayoffLabel } from '../utils/storage';
+import { STORAGE_KEYS, getStorageItem, setStorageItem, getIntStorage, getPlayoffLabel } from '../utils/storage';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
@@ -209,7 +209,12 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
                 <div className="w-full bg-surface rounded-xl px-4 py-3 flex items-center justify-between border-l-4 border-transparent">
                   <div>
                     <div className="font-semibold flex items-center gap-1.5 flex-wrap">
-                      {match.opponent_name ?? 'vs. Unknown'}
+                      <span>
+                        {match.opponent_name ?? 'vs. Unknown'}
+                        {match.match_type === 'ihsa-playoffs' && match.opponent_playoff_seed != null && (
+                          <span className="text-slate-400 font-normal"> (#{match.opponent_playoff_seed})</span>
+                        )}
+                      </span>
                       {match.match_type === 'tourney' && match.tournament_name && (
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide">{match.tournament_name}</span>
                       )}
@@ -262,10 +267,15 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
                 >
                   <div>
                     <div className="font-semibold flex items-center gap-1.5 flex-wrap">
-                      {match.opponent_name ?? 'vs. Unknown'}
-                      {match.opponent_maxpreps_rank != null && (
-                        <span className="text-slate-400 font-normal"> #{match.opponent_maxpreps_rank}</span>
-                      )}
+                      <span>
+                        {match.opponent_name ?? 'vs. Unknown'}
+                        {match.opponent_maxpreps_rank != null && (
+                          <span className="text-slate-400 font-normal"> #{match.opponent_maxpreps_rank}</span>
+                        )}
+                        {match.match_type === 'ihsa-playoffs' && match.opponent_playoff_seed != null && (
+                          <span className="text-slate-400 font-normal"> (#{match.opponent_playoff_seed})</span>
+                        )}
+                      </span>
                       {match.match_type === 'tourney' && match.tournament_name && (
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide">{match.tournament_name}</span>
                       )}
@@ -351,6 +361,7 @@ export function HomePage() {
   const [schedPlayoffRound, setSchedPlayoffRound] = useState('');
   const [schedOppRecord,    setSchedOppRecord]    = useState('');
   const [schedOppRank,      setSchedOppRank]      = useState('');
+  const [schedOppSeed,      setSchedOppSeed]      = useState('');
   const [schedTime,         setSchedTime]         = useState('');
   const [schedSaving,    setSchedSaving]    = useState(false);
 
@@ -701,6 +712,9 @@ export function HomePage() {
   }, [seasonRecord]);
 
   const inProgress    = recentMatches?.find((m) => m.status === MATCH_STATUS.IN_PROGRESS);
+  const [closestSortAsc, setClosestSortAsc] = useState(
+    () => getStorageItem(STORAGE_KEYS.CLOSEST_SORT_ASC, 'true') !== 'false'
+  );
   const displayMatches = recentMatches ?? [];
 
   function openEditMatch(match) {
@@ -716,6 +730,7 @@ export function HomePage() {
     setSchedPlayoffRound(match.playoff_round ?? '');
     setSchedOppRecord(match.opponent_record ?? '');
     setSchedOppRank(match.opponent_maxpreps_rank != null ? String(match.opponent_maxpreps_rank) : '');
+    setSchedOppSeed(match.opponent_playoff_seed != null ? String(match.opponent_playoff_seed) : '');
     setSchedTime(match.match_time ?? '');
     setSchedOpen(true);
   }
@@ -741,7 +756,8 @@ export function HomePage() {
         match_type:       schedMatchType,
         tournament_name:  schedMatchType === 'tourney' ? schedTourneyName.trim() || null : null,
         tournament_round: schedMatchType === 'tourney' ? schedTourneyRound : null,
-        playoff_round:    schedMatchType === 'ihsa-playoffs' ? schedPlayoffRound.trim() || null : null,
+        playoff_round:         schedMatchType === 'ihsa-playoffs' ? schedPlayoffRound.trim() || null : null,
+        opponent_playoff_seed: schedMatchType === 'ihsa-playoffs' && schedOppSeed !== '' ? parseInt(schedOppSeed, 10) : null,
         match_time:       schedTime || null,
       };
       await db.matches.update(editMatchId, fields);
@@ -764,6 +780,7 @@ export function HomePage() {
     setSchedPlayoffRound('');
     setSchedOppRecord('');
     setSchedOppRank('');
+    setSchedOppSeed('');
     setSchedTime('');
     setSchedOpen(false);
   }
@@ -1092,13 +1109,14 @@ export function HomePage() {
           const mc  = seasonLeaders?.matchCount ?? 0;
           const Delta = ({ val, fmt }) => {
             if (val == null) return null;
-            if (val === 0) return (
-              <span className="text-[8px] font-bold leading-none text-yellow-400">—</span>
+            const absFormatted = fmt ? fmt(Math.abs(val)) : String(Math.abs(val));
+            if (val === 0 || parseFloat(absFormatted) === 0) return (
+              <span className="text-[8px] font-bold leading-none tabular-nums text-yellow-400">-{absFormatted}</span>
             );
             const pos = val > 0;
             return (
               <span className={`flex items-center gap-px text-[8px] font-bold leading-none tabular-nums ${pos ? 'text-emerald-400' : 'text-red-400'}`}>
-                {pos ? '▲' : '▼'}{fmt ? fmt(Math.abs(val)) : Math.abs(val)}
+                {pos ? '▲' : '▼'}{absFormatted}
               </span>
             );
           };
@@ -1205,6 +1223,9 @@ export function HomePage() {
                   {nextMatch.opponent_maxpreps_rank != null && (
                     <span className="text-slate-400 font-normal"> #{nextMatch.opponent_maxpreps_rank}</span>
                   )}
+                  {nextMatch.match_type === 'ihsa-playoffs' && nextMatch.opponent_playoff_seed != null && (
+                    <span className="text-slate-400 font-normal"> (#{nextMatch.opponent_playoff_seed})</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                   {nextMatch.location && (
@@ -1274,10 +1295,17 @@ export function HomePage() {
           </svg>
 
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">
+            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
               {matchView === 'schedule' ? 'Schedule' : 'Closest'} Matches
-              {displayMatches.length > 0 && (
-                <span className="ml-1.5 text-[10px] font-bold bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded-full">{displayMatches.length}</span>
+              {matchView === 'closest' && displayMatches.length > 0 && (
+                <button
+                  onClick={() => setClosestSortAsc(v => { const next = !v; setStorageItem(STORAGE_KEYS.CLOSEST_SORT_ASC, String(next)); return next; })}
+                  className="flex flex-col items-center leading-none text-slate-500 hover:text-slate-300 transition-colors"
+                  aria-label={closestSortAsc ? 'Sort newest first' : 'Sort oldest first'}
+                >
+                  <span className={`text-[9px] leading-none ${closestSortAsc ? 'text-slate-400' : 'text-slate-600'}`}>▲</span>
+                  <span className={`text-[9px] leading-none ${!closestSortAsc ? 'text-slate-400' : 'text-slate-600'}`}>▼</span>
+                </button>
               )}
             </h2>
             <div className="flex items-center gap-2">
@@ -1330,7 +1358,7 @@ export function HomePage() {
             />
           )}
 
-          {matchView !== 'schedule' && displayMatches.map((match, idx) => (
+          {matchView !== 'schedule' && (closestSortAsc ? displayMatches : [...displayMatches].reverse()).map((match, idx) => (
             <SwipeableMatchCard
               key={match.id}
               onDeleteConfirm={() => setConfirmDelete(match)}
@@ -1344,6 +1372,9 @@ export function HomePage() {
                         {match.opponent_name ?? 'vs. Unknown'}
                         {match.opponent_maxpreps_rank != null && (
                           <span className="text-slate-400 font-normal"> #{match.opponent_maxpreps_rank}</span>
+                        )}
+                        {match.match_type === 'ihsa-playoffs' && match.opponent_playoff_seed != null && (
+                          <span className="text-slate-400 font-normal"> (#{match.opponent_playoff_seed})</span>
                         )}
                       </span>
                       {match.match_type === 'tourney' && match.tournament_name && (
@@ -1416,6 +1447,9 @@ export function HomePage() {
                         {match.opponent_name ?? 'vs. Unknown'}
                         {match.opponent_maxpreps_rank != null && (
                           <span className="text-slate-400 font-normal"> #{match.opponent_maxpreps_rank}</span>
+                        )}
+                        {match.match_type === 'ihsa-playoffs' && match.opponent_playoff_seed != null && (
+                          <span className="text-slate-400 font-normal"> (#{match.opponent_playoff_seed})</span>
                         )}
                       </span>
                       {match.match_type === 'tourney' && match.tournament_name && (
@@ -1721,6 +1755,20 @@ export function HomePage() {
                   value={schedPlayoffRound}
                   onChange={(e) => setSchedPlayoffRound(e.target.value)}
                   placeholder="e.g. Regional, Sectional, Super-Sectional, State…"
+                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
+                />
+              </div>
+            )}
+
+            {schedMatchType === 'ihsa-playoffs' && (
+              <div>
+                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Opponent Playoff Seed</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={schedOppSeed}
+                  onChange={(e) => setSchedOppSeed(e.target.value)}
+                  placeholder="e.g. 3"
                   className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
                 />
               </div>

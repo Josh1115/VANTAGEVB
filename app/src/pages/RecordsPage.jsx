@@ -52,6 +52,109 @@ function toTitleArr(val) {
   return val ? [String(val)] : [];
 }
 
+function wrapSvgText(text, maxChars) {
+  if (!text) return [];
+  const words = String(text).toUpperCase().split(' ');
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (test.length > maxChars && line) { lines.push(line); line = word; }
+    else { line = test; }
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines : [''];
+}
+
+function titlePriority(title) {
+  const t = String(title).toLowerCase();
+  if (t.includes('super sectional') || t.includes('supersectional')) return 4;
+  if (t.includes('state'))      return 5;
+  if (t.includes('sectional'))  return 3;
+  if (t.includes('regional'))   return 2;
+  if (t.includes('conference')) return 1;
+  return 6;
+}
+
+const BANNER_COLORS = {
+  black:  { bg: '#0f172a', trim: '#fbbf24', text: '#fbbf24', bright: '#94a3b8' },
+  white:  { bg: '#e2e8f0', trim: '#334155', text: '#1e293b', bright: '#f8fafc' },
+  gray:   { bg: '#374151', trim: '#fbbf24', text: '#fbbf24', bright: '#94a3b8' },
+  red:    { bg: '#7f1d1d', trim: '#fca5a5', text: '#fef2f2', bright: '#ef4444' },
+  orange: { bg: '#7c2d12', trim: '#fdba74', text: '#fff7ed', bright: '#f97316' },
+  yellow: { bg: '#713f12', trim: '#fde047', text: '#fefce8', bright: '#eab308' },
+  green:  { bg: '#14532d', trim: '#86efac', text: '#f0fdf4', bright: '#22c55e' },
+  blue:   { bg: '#1e3a8a', trim: '#93c5fd', text: '#eff6ff', bright: '#3b82f6' },
+  purple: { bg: '#3b0764', trim: '#d8b4fe', text: '#faf5ff', bright: '#a855f7' },
+  pink:   { bg: '#831843', trim: '#f9a8d4', text: '#fdf2f8', bright: '#ec4899' },
+};
+const BANNER_DEFAULT = { bg: '#1e3a8a', trim: '#fbbf24', text: '#fef9c3', bright: '#93c5fd' };
+
+function ChampionshipBanner({ title, year, orgName, primaryColorId, secondaryColorId }) {
+  const primary   = BANNER_COLORS[primaryColorId] ?? BANNER_DEFAULT;
+  const trimColor = secondaryColorId && BANNER_COLORS[secondaryColorId]
+    ? BANNER_COLORS[secondaryColorId].bright
+    : primary.trim;
+
+  const yearStr      = String(year ?? '').toUpperCase();
+  const yearFontSize = yearStr.length <= 4 ? 28 : yearStr.length <= 5 ? 22 : 16;
+
+  const orgLines   = wrapSvgText(orgName, 13);
+  const titleLines = wrapSvgText(title,   13);
+
+  const orgBlockH   = orgLines.length * 13;
+  const orgStartY   = Math.round(26 + (46 - orgBlockH) / 2) + 11;
+  const titleBlockH = titleLines.length * 13;
+  const titleStartY = Math.round(132 + (33 - titleBlockH) / 2) + 10;
+
+  return (
+    <svg viewBox="0 0 120 220" className="w-[104px]" aria-hidden="true"
+      style={{ filter: `drop-shadow(0 6px 20px ${primary.bg}cc)` }}>
+      <line x1="10" y1="12" x2="110" y2="12" stroke={trimColor} strokeWidth="2.5" strokeLinecap="round"/>
+      <circle cx="22" cy="12" r="6" fill={primary.bg} stroke={trimColor} strokeWidth="1.8"/>
+      <circle cx="98" cy="12" r="6" fill={primary.bg} stroke={trimColor} strokeWidth="1.8"/>
+      <path d="M 10,18 L 110,18 L 110,168 L 60,200 L 10,168 Z" fill={primary.bg}/>
+      <path d="M 18,26 L 102,26 L 102,161 L 60,188 L 18,161 Z"
+        fill="none" stroke={trimColor} strokeWidth="1.4" strokeOpacity="0.7"/>
+      <text x="60" y={orgStartY} fill={primary.text} fontSize="8" fontWeight="900"
+        textAnchor="middle" fontFamily="system-ui, sans-serif" letterSpacing="0.5">
+        {orgLines.map((line, i) => <tspan key={i} x="60" dy={i === 0 ? 0 : 13}>{line}</tspan>)}
+      </text>
+      <line x1="24" y1="74" x2="96" y2="74" stroke={trimColor} strokeWidth="0.8" strokeOpacity="0.5"/>
+      <text x="60" y="116" fill={primary.text} fontSize={yearFontSize} fontWeight="900"
+        textAnchor="middle" fontFamily="system-ui, sans-serif">
+        {yearStr}
+      </text>
+      <line x1="24" y1="130" x2="96" y2="130" stroke={trimColor} strokeWidth="0.8" strokeOpacity="0.5"/>
+      <text x="60" y={titleStartY} fill={primary.text} fontSize="8" fontWeight="900"
+        textAnchor="middle" fontFamily="system-ui, sans-serif" letterSpacing="0.3">
+        {titleLines.map((line, i) => <tspan key={i} x="60" dy={i === 0 ? 0 : 13}>{line}</tspan>)}
+      </text>
+    </svg>
+  );
+}
+
+function ChampionshipBannersSection({ titledSeasons, orgName, primaryColorId, secondaryColorId }) {
+  if (!titledSeasons.length) return null;
+  return (
+    <div className="bg-surface rounded-xl px-4 py-4">
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 text-center">Titles &amp; Championships</p>
+      <div className="flex flex-wrap gap-5 justify-center">
+        {titledSeasons.map((s, idx) => (
+          <ChampionshipBanner
+            key={`${s.year}-${s.title}-${idx}`}
+            title={s.title}
+            year={s.year}
+            orgName={orgName}
+            primaryColorId={primaryColorId}
+            secondaryColorId={secondaryColorId}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── computation ───────────────────────────────────────────────────────────────
 
 function groupByMatch(contacts) {
@@ -795,6 +898,38 @@ function TourneyEntryCard({ entry, onEdit, onDelete }) {
   );
 }
 
+// ── Current season leaders (shown below record board on Season tab) ───────────
+
+const SEASON_STAT_KEYS = new Set(['k', 'ace', 'blk', 'ast', 'dig']);
+
+function CurrentSeasonLeaders({ leaders, statKey, statDef }) {
+  if (!leaders || !SEASON_STAT_KEYS.has(statKey)) return null;
+
+  const sorted = leaders.players
+    .map(p => ({ ...p, val: p[statKey] }))
+    .filter(p => p.val > 0)
+    .sort((a, b) => b.val - a.val);
+
+  if (!sorted.length) return null;
+
+  const fmt = statDef?.fmt ?? fmtCount;
+
+  return (
+    <div className="space-y-1.5 pt-2">
+      <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+        {leaders.year} · This Season
+      </p>
+      {sorted.map((p, i) => (
+        <div key={p.pid} className="flex items-center gap-3 bg-slate-800 rounded-xl px-4 py-2.5">
+          <span className="text-xs font-bold text-slate-600 w-5 text-right tabular-nums">{i + 1}</span>
+          <span className="flex-1 text-sm text-slate-100 font-medium">{p.name}</span>
+          <span className="text-sm font-black tabular-nums text-primary">{fmt(p.val)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── page ─────────────────────────────────────────────────────────────────────
 
 export function RecordsPage() {
@@ -836,6 +971,51 @@ export function RecordsPage() {
       : Promise.resolve([]),
     [teamId]
   );
+
+  const currentSeasonLeaders = useLiveQuery(async () => {
+    if (!teamId || tab !== 'season') return null;
+
+    const storedSeasonId = getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID);
+    let seasonId = storedSeasonId;
+    if (!seasonId) {
+      const seasons = await db.seasons.where('team_id').equals(teamId).toArray();
+      if (!seasons.length) return null;
+      seasonId = seasons.sort((a, b) => String(b.year).localeCompare(String(a.year)))[0].id;
+    }
+
+    const season = await db.seasons.get(seasonId);
+    if (!season || season.team_id !== teamId) return null;
+
+    const matches = await db.matches
+      .where('season_id').equals(seasonId)
+      .filter(m => m.status !== MATCH_STATUS.SCHEDULED && m.match_type !== 'exhibition')
+      .toArray();
+    if (!matches.length) return { year: season.year, players: [] };
+
+    const matchIds = matches.map(m => m.id);
+    const [contacts, setsMap] = await Promise.all([
+      getContactsForMatches(matchIds),
+      getBatchSetsPlayedCount(matchIds),
+    ]);
+    const totalSets = Math.max(1, matches.reduce((a, m) => a + (setsMap[m.id] ?? 1), 0));
+
+    const players = await db.players.where('team_id').equals(teamId).toArray();
+    const { playerNames } = buildPlayerMaps(players);
+    const positions = Object.fromEntries(players.map(p => [p.id, p.position]));
+
+    const stats = computePlayerStats(contacts, totalSets, positions);
+    const playerRows = Object.entries(stats).map(([pid, s]) => ({
+      pid: Number(pid),
+      name: playerNames[pid] ?? '?',
+      k:   s.k   ?? 0,
+      ace: s.ace  ?? 0,
+      blk: (s.bs ?? 0) + (s.ba ?? 0) * 0.5,
+      ast: s.ast  ?? 0,
+      dig: s.dig  ?? 0,
+    }));
+
+    return { year: season.year, players: playerRows };
+  }, [teamId, tab]);
 
   useEffect(() => {
     if (orgs?.length === 1 && !orgId) setOrgId(orgs[0].id);
@@ -905,6 +1085,43 @@ export function RecordsPage() {
   const multiTeam = gender ? (genderTeams[gender]?.length ?? 0) > 1 : false;
   const orgName   = orgs?.find(o => o.id === orgId)?.name ?? '';
 
+  const currentOrg  = useMemo(() => (orgs ?? []).find(o => o.id === orgId) ?? null, [orgs, orgId]);
+  const orgColors   = Array.isArray(currentOrg?.colors) ? currentOrg.colors : [];
+  const currentTeam = useMemo(() => (orgTeams ?? []).find(t => t.id === teamId) ?? null, [orgTeams, teamId]);
+
+  const titledSeasons = useMemo(() => {
+    const orgType  = currentOrg?.type;
+    const isCollege = orgType === 'college';
+    const isHS      = orgType === 'high_school' || orgType === 'school';
+    const stateName = currentOrg?.state ?? currentTeam?.state ?? currentOrg?.state_division ?? '';
+    const divLabel  = currentOrg?.division ?? currentOrg?.state_division ?? '';
+    const items = [];
+    for (const h of (seasonHistories ?? [])) {
+      for (const t of toTitleArr(h.title)) {
+        items.push({ year: String(h.year), title: t, priority: titlePriority(t) });
+      }
+    }
+    for (const t of (tourneyEntries ?? [])) {
+      const isState = t.name?.toLowerCase().includes('state');
+      if (isState) {
+        let label;
+        if (isCollege && divLabel)   label = `${ordinal(t.placing)} in ${divLabel}`;
+        else if (isHS && stateName)  label = `${ordinal(t.placing)} State ${stateName}`;
+        else                         label = `${ordinal(t.placing)} — ${t.name}`;
+        items.push({ year: String(t.year), title: label, priority: 5 });
+      } else if (t.placing === 1) {
+        items.push({ year: String(t.year), title: `${t.name} Champions`, priority: 0 });
+      }
+    }
+    return items.sort((a, b) => {
+      const yCmp = a.year.localeCompare(b.year);
+      return yCmp !== 0 ? yCmp : a.priority - b.priority;
+    });
+  }, [seasonHistories, tourneyEntries, currentOrg, currentTeam]);
+
+  const teamPrimaryColor   = orgColors[0] ?? currentTeam?.team_jersey_color?.[0] ?? null;
+  const teamSecondaryColor = orgColors[1] ?? currentTeam?.team_jersey_color?.[1] ?? null;
+
   const selectCls = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary';
 
   const GenderPill = ({ value, label }) => {
@@ -967,14 +1184,12 @@ export function RecordsPage() {
               <EmptyState icon="📋" title={gender ? 'Select a team' : 'Select Girls or Boys'} description="" />
             ) : (
               <>
-                {seasonHistories?.some(e => toTitleArr(e.title).length > 0) && (
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-black uppercase tracking-widest text-slate-500">Season Titles</p>
-                    {seasonHistories.filter(e => toTitleArr(e.title).length > 0).map(entry => (
-                      <SeasonTitleRow key={entry.id} entry={entry} />
-                    ))}
-                  </div>
-                )}
+                <ChampionshipBannersSection
+                  titledSeasons={titledSeasons}
+                  orgName={orgName}
+                  primaryColorId={teamPrimaryColor}
+                  secondaryColorId={teamSecondaryColor}
+                />
 
                 <div className="flex bg-slate-800 rounded-xl p-1 gap-1">
                   {TABS.map(t => (
@@ -1043,6 +1258,12 @@ export function RecordsPage() {
                         ))}
                       </div>
                     )}
+
+                    <CurrentSeasonLeaders
+                      leaders={currentSeasonLeaders}
+                      statKey={statKey}
+                      statDef={statDef}
+                    />
                   </>
                 )}
               </>

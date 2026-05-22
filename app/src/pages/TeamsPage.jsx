@@ -560,7 +560,7 @@ export function TeamsPage() {
 // Pencil icon
 function IconEdit() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
     </svg>
@@ -570,7 +570,7 @@ function IconEdit() {
 // Trash icon
 function IconTrash() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="3 6 5 6 21 6" />
       <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
       <path d="M10 11v6M14 11v6" />
@@ -587,19 +587,19 @@ function TeamRow({ team, onSelectTeam, onEditTeam, onDeleteTeam }) {
     <div className="flex items-center hover:bg-slate-700 transition-colors">
       <button
         onClick={() => onSelectTeam(team.id)}
-        className="flex-1 px-4 py-3 flex items-center justify-between"
+        className="flex-1 px-5 py-4 flex items-center justify-between"
       >
-        <div className="font-medium">{team.name}</div>
-        <div className="flex items-center gap-2">
+        <div className="font-semibold text-base">{team.name}</div>
+        <div className="flex items-center gap-2.5">
           <Badge color="gray">{LEVEL_LABELS[team.level] ?? team.level}</Badge>
           {team.classification && <Badge color="purple">{team.classification}</Badge>}
           <span className="text-slate-400">→</span>
         </div>
       </button>
-      <button onClick={() => onEditTeam(team)} className="px-3 py-3 text-slate-500 hover:text-slate-300 transition-colors" title="Edit team">
+      <button onClick={() => onEditTeam(team)} className="px-4 py-4 text-slate-500 hover:text-slate-300 transition-colors" title="Edit team">
         <IconEdit />
       </button>
-      <button onClick={() => onDeleteTeam(team)} className="px-3 py-3 text-slate-600 hover:text-red-400 transition-colors" title="Delete team">
+      <button onClick={() => onDeleteTeam(team)} className="px-4 py-4 text-slate-600 hover:text-red-400 transition-colors" title="Delete team">
         <IconTrash />
       </button>
     </div>
@@ -645,15 +645,15 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
 
   return (
     <div className="bg-surface rounded-xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
+        <div className="flex items-center gap-3">
           {org.logo_data_url && (
-            <div className="w-7 h-7 rounded overflow-hidden shrink-0 flex items-center justify-center"
+            <div className="w-9 h-9 rounded overflow-hidden shrink-0 flex items-center justify-center"
               style={{ backgroundImage: 'repeating-conic-gradient(#334155 0% 25%, #1e293b 0% 50%)', backgroundSize: '6px 6px' }}>
               <img src={org.logo_data_url} alt="" className="max-w-full max-h-full object-contain" />
             </div>
           )}
-          <span className="font-semibold">{org.name}</span>
+          <span className="font-bold text-base">{org.name}</span>
           <Badge color={org.type === 'college' ? 'orange' : org.type === 'club' ? 'green' : 'blue'}>
             {{ high_school: 'High School', college: 'College', club: 'Club', school: 'High School' }[org.type] ?? org.type}
           </Badge>
@@ -668,18 +668,18 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
       </div>
 
       {(teams ?? []).length === 0 ? (
-        <p className="text-slate-500 text-sm px-4 py-3">No teams yet</p>
+        <p className="text-slate-500 px-5 py-5">No teams yet</p>
       ) : multiGender ? (
         genderGroups.map(({ gender, teams: gTeams }) => {
           const info = yearRangeInfo(gTeams.map((t) => t.id), yearsByTeam);
           return (
           <div key={gender ?? 'other'}>
-            <div className="px-4 py-1.5 border-b border-slate-700/60 bg-slate-800/40 flex items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+            <div className="px-5 py-2 border-b border-slate-700/60 bg-slate-800/40 flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
                 {GENDER_LABELS[gender] ?? 'Other'}
               </span>
-              {info && <span className="text-[11px] text-slate-500 font-medium">{info.label}</span>}
-              {info && <span className="text-[11px] text-slate-600">{info.count} {info.count === 1 ? 'season' : 'seasons'}</span>}
+              {info && <span className="text-xs text-slate-500 font-medium">{info.label}</span>}
+              {info && <span className="text-xs text-slate-600">{info.count} {info.count === 1 ? 'season' : 'seasons'}</span>}
             </div>
             {gTeams.map((team) => (
               <TeamRow
@@ -698,9 +698,9 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
           return (
             <>
               {info && (
-                <div className="px-4 py-1.5 border-b border-slate-700/60 bg-slate-800/40 flex items-center gap-2">
-                  <span className="text-[11px] text-slate-500 font-medium">{info.label}</span>
-                  <span className="text-[11px] text-slate-600">{info.count} {info.count === 1 ? 'season' : 'seasons'}</span>
+                <div className="px-5 py-2 border-b border-slate-700/60 bg-slate-800/40 flex items-center gap-2">
+                  <span className="text-xs text-slate-500 font-medium">{info.label}</span>
+                  <span className="text-xs text-slate-600">{info.count} {info.count === 1 ? 'season' : 'seasons'}</span>
                 </div>
               )}
               {(teams ?? []).map((team) => (
