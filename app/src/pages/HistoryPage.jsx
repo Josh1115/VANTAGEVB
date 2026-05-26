@@ -1385,7 +1385,7 @@ export function HistoryPage() {
                   ) : (
                     <>
                       {/* Award type pill row */}
-                      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                      <div className="flex flex-wrap gap-2">
                         {sortedAwardTypes.map(type => {
                           const isActive = activeAwardId === type.id;
                           return (
