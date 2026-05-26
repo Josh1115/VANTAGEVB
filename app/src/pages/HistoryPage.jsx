@@ -472,6 +472,172 @@ function CommitCard({ entry, onEdit, onDelete }) {
   );
 }
 
+// ── Individual Awards ─────────────────────────────────────────────────────────
+
+const SCHOOL_YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior'];
+const EMPTY_AWARD_TYPE = { name: '' };
+const EMPTY_WINNER = { player_name: '', year: '', school_year: '', times_won: '1' };
+
+function AwardTypeModal({ teamId, onClose, editId, initialData }) {
+  const [form, setForm] = useState(initialData ?? EMPTY_AWARD_TYPE);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const inp = 'w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-primary';
+  const lbl = 'block text-xs font-semibold text-slate-400 mb-1';
+
+  async function handleSave() {
+    const name = (form.name ?? '').trim();
+    if (!name) { setError('Award name is required.'); return; }
+    setSaving(true);
+    try {
+      if (editId) { await db.accolade_types.update(editId, { name }); }
+      else        { await db.accolade_types.add({ team_id: teamId, name, sort_order: Date.now() }); }
+      onClose();
+    } catch { setError('Failed to save. Please try again.'); }
+    finally  { setSaving(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-slate-100">{editId ? 'Rename Award' : 'New Award'}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
+        </div>
+        <div>
+          <label className={lbl}>Award Name *</label>
+          <input
+            className={inp}
+            placeholder="e.g. All Conference"
+            value={form.name}
+            onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setError(''); }}
+            autoFocus
+          />
+        </div>
+        {error && <p className="text-xs text-red-400">{error}</p>}
+        <button onClick={handleSave} disabled={saving} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold active:scale-95 disabled:opacity-50">
+          {saving ? 'Saving…' : editId ? 'Save Changes' : 'Create Award'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AwardWinnerModal({ teamId, typeId, onClose, editId, initialData }) {
+  const [form, setForm] = useState(initialData ?? EMPTY_WINNER);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  function set(field, val) { setForm(f => ({ ...f, [field]: val })); setError(''); }
+
+  const inp = 'w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-primary';
+  const lbl = 'block text-xs font-semibold text-slate-400 mb-1';
+
+  async function handleSave() {
+    if (!form.player_name.trim()) { setError('Player name is required.'); return; }
+    if (!form.year.trim())        { setError('Year won is required.'); return; }
+    setSaving(true);
+    const fields = {
+      type_id:     typeId,
+      team_id:     teamId,
+      player_name: form.player_name.trim(),
+      year:        form.year.trim(),
+      school_year: form.school_year || null,
+      times_won:   form.times_won ? Number(form.times_won) : 1,
+    };
+    try {
+      if (editId) { await db.accolade_winners.update(editId, fields); }
+      else        { await db.accolade_winners.add(fields); }
+      onClose();
+    } catch { setError('Failed to save. Please try again.'); }
+    finally  { setSaving(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-slate-100">{editId ? 'Edit Winner' : 'Add Winner'}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className={lbl}>Player Name *</label>
+            <input className={inp} placeholder="Jane Smith" value={form.player_name} onChange={e => set('player_name', e.target.value)} />
+          </div>
+          <div>
+            <label className={lbl}>Year Won *</label>
+            <input className={inp} placeholder="2024-25" value={form.year} onChange={e => set('year', e.target.value)} />
+          </div>
+          <div>
+            <label className={lbl}>Year in School</label>
+            <select className={inp} value={form.school_year} onChange={e => set('school_year', e.target.value)}>
+              <option value="">— Select —</option>
+              {SCHOOL_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>Times Won</label>
+            <input className={inp} type="number" min="1" placeholder="1" value={form.times_won} onChange={e => set('times_won', e.target.value)} />
+          </div>
+        </div>
+        {error && <p className="text-xs text-red-400">{error}</p>}
+        <button onClick={handleSave} disabled={saving} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold active:scale-95 disabled:opacity-50">
+          {saving ? 'Saving…' : editId ? 'Save Changes' : 'Add Winner'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function WinnerCard({ entry, onEdit, onDelete }) {
+  const [offset, setOffset]     = useState(0);
+  const [isSnapping, setIsSnapping] = useState(false);
+  const touchStartX = useRef(null);
+  const hasSwiped   = useRef(false);
+  const REVEAL = 130;
+
+  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; hasSwiped.current = false; setIsSnapping(false); };
+  const handleTouchMove  = (e) => {
+    if (touchStartX.current === null) return;
+    const dx = touchStartX.current - e.touches[0].clientX;
+    if (Math.abs(dx) > 5) hasSwiped.current = true;
+    if (dx < 0) { setOffset(0); return; }
+    setOffset(Math.min(dx, REVEAL + 16));
+  };
+  const handleTouchEnd = () => { setIsSnapping(true); setOffset(offset > REVEAL * 0.45 ? REVEAL : 0); touchStartX.current = null; };
+
+  return (
+    <div className="relative overflow-hidden rounded-xl">
+      <div className="absolute inset-y-0 right-0 flex" style={{ width: REVEAL }}>
+        <button onClick={() => { setOffset(0); setIsSnapping(true); onEdit(entry); }} className="flex-1 flex items-center justify-center bg-primary text-white text-xs font-bold">Edit</button>
+        <button onClick={() => onDelete(entry.id)} className="flex-1 flex items-center justify-center bg-red-600 rounded-r-xl text-white text-xs font-bold">Delete</button>
+      </div>
+      <div
+        style={{ transform: `translateX(-${offset}px)`, transition: isSnapping ? 'transform 280ms cubic-bezier(0.25, 1, 0.5, 1)' : 'none', willChange: 'transform' }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onClickCapture={e => { if (hasSwiped.current) { hasSwiped.current = false; e.stopPropagation(); } }}
+      >
+        <div className="bg-slate-800 rounded-xl px-4 py-3 border border-slate-700/50">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-bold text-slate-100">{entry.player_name}</span>
+            <span className="text-xs text-slate-500">'{String(entry.year).slice(-2)}</span>
+            {entry.school_year && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-slate-700/60 text-slate-300 border-slate-600/50">{entry.school_year}</span>
+            )}
+            {entry.times_won > 1 && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-primary/20 text-primary border-primary/30">×{entry.times_won}</span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Live Season Card ──────────────────────────────────────────────────────────
 
 // Shows the active season's W/L computed live from match data.
@@ -769,6 +935,11 @@ export function HistoryPage() {
   const [showAddCommit, setShowAddCommit] = useState(false);
   const [editCommit,    setEditCommit]    = useState(null);
   const [liveEditOpen,  setLiveEditOpen]  = useState(false);
+  const [activeAwardId,  setActiveAwardId]  = useState(null);
+  const [showAddAward,   setShowAddAward]   = useState(false);
+  const [editAward,      setEditAward]      = useState(null);
+  const [showAddWinner,  setShowAddWinner]  = useState(false);
+  const [editWinner,     setEditWinner]     = useState(null);
 
   // Default team/season from settings (read once — localStorage is synchronous)
   const defaultTeamId   = useMemo(() => getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID),   []);
@@ -793,6 +964,18 @@ export function HistoryPage() {
       ? db.player_commits.where('team_id').equals(teamId).toArray()
       : Promise.resolve([]),
     [teamId]
+  );
+  const awardTypes = useLiveQuery(
+    () => teamId
+      ? db.accolade_types.where('team_id').equals(teamId).toArray()
+      : Promise.resolve([]),
+    [teamId]
+  );
+  const awardWinners = useLiveQuery(
+    () => activeAwardId != null
+      ? db.accolade_winners.where('type_id').equals(activeAwardId).toArray()
+      : Promise.resolve([]),
+    [activeAwardId]
   );
   const tourneyEntries = useLiveQuery(
     () => teamId
@@ -845,6 +1028,17 @@ export function HistoryPage() {
   }, [gender, genderTeams]);
 
 
+  // Auto-select first award type when the list loads or team changes
+  useEffect(() => {
+    if (!awardTypes) return;
+    const sorted = [...awardTypes].sort((a, b) => a.sort_order - b.sort_order);
+    if (sorted.length > 0 && (activeAwardId == null || !sorted.find(t => t.id === activeAwardId))) {
+      setActiveAwardId(sorted[0].id);
+    } else if (sorted.length === 0) {
+      setActiveAwardId(null);
+    }
+  }, [awardTypes]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // One-time auto-select: jump to the default team when page opens with nothing selected
   useEffect(() => {
     if (!defaultTeamId || orgId) return;
@@ -874,12 +1068,31 @@ export function HistoryPage() {
     [commits]
   );
 
+  const sortedAwardTypes = useMemo(
+    () => [...(awardTypes ?? [])].sort((a, b) => a.sort_order - b.sort_order),
+    [awardTypes]
+  );
+
+  const sortedAwardWinners = useMemo(
+    () => [...(awardWinners ?? [])].sort((a, b) => String(b.year).localeCompare(String(a.year))),
+    [awardWinners]
+  );
+
   async function handleDelete(id) {
     await db.season_history.delete(id);
   }
 
   async function handleDeleteCommit(id) {
     await db.player_commits.delete(id);
+  }
+
+  async function handleDeleteAwardType(id) {
+    await db.accolade_winners.where('type_id').equals(id).delete();
+    await db.accolade_types.delete(id);
+  }
+
+  async function handleDeleteWinner(id) {
+    await db.accolade_winners.delete(id);
   }
 
   const multiTeam = gender ? (genderTeams[gender]?.length ?? 0) > 1 : false;
@@ -1155,6 +1368,84 @@ export function HistoryPage() {
                   )}
                 </div>
 
+                {/* Individual Awards */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">Individual Awards</h3>
+                    <button
+                      onClick={() => setShowAddAward(true)}
+                      className="text-xs text-primary font-semibold px-2 py-1 rounded-lg hover:bg-slate-700/50 transition-colors"
+                    >
+                      + Award
+                    </button>
+                  </div>
+
+                  {sortedAwardTypes.length === 0 ? (
+                    <p className="text-xs text-slate-500 italic">No awards created yet.</p>
+                  ) : (
+                    <>
+                      {/* Award type pill row */}
+                      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                        {sortedAwardTypes.map(type => {
+                          const isActive = activeAwardId === type.id;
+                          return (
+                            <div key={type.id} className="flex items-center shrink-0">
+                              <button
+                                onClick={() => setActiveAwardId(type.id)}
+                                className={`px-3 py-1.5 text-xs font-bold transition-colors ${
+                                  isActive
+                                    ? 'bg-primary text-white rounded-l-full'
+                                    : 'bg-slate-700 text-slate-400 hover:text-slate-200 rounded-full'
+                                }`}
+                              >
+                                {type.name}
+                              </button>
+                              {isActive && (
+                                <>
+                                  <button
+                                    onClick={() => setEditAward(type)}
+                                    className="px-2 py-1.5 bg-primary/80 text-white text-xs font-bold hover:bg-primary transition-colors"
+                                    title="Rename"
+                                  >✎</button>
+                                  <button
+                                    onClick={() => handleDeleteAwardType(type.id)}
+                                    className="px-2 py-1.5 bg-red-700/80 text-white text-xs font-bold rounded-r-full hover:bg-red-600 transition-colors"
+                                    title="Delete award"
+                                  >×</button>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Winner list for active award */}
+                      {activeAwardId != null && (
+                        <div className="mt-2 space-y-2">
+                          {sortedAwardWinners.length === 0 ? (
+                            <p className="text-xs text-slate-500 italic">No winners recorded yet.</p>
+                          ) : (
+                            sortedAwardWinners.map(w => (
+                              <WinnerCard
+                                key={w.id}
+                                entry={w}
+                                onEdit={setEditWinner}
+                                onDelete={handleDeleteWinner}
+                              />
+                            ))
+                          )}
+                          <button
+                            onClick={() => setShowAddWinner(true)}
+                            className="w-full py-1.5 rounded-lg border border-dashed border-slate-600 text-xs text-slate-400 hover:text-white hover:border-slate-400 transition-colors"
+                          >
+                            + Winner
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
                 {/* Program Overall Record */}
                 {programRecord.total > 0 && (
                   <div className="bg-surface rounded-xl px-4 py-3">
@@ -1315,6 +1606,42 @@ export function HistoryPage() {
             playoff_rounds: editEntry.playoff_rounds ?? [],
           }}
           onClose={() => setEditEntry(null)}
+        />
+      )}
+
+      {showAddAward && teamId && (
+        <AwardTypeModal teamId={teamId} onClose={() => setShowAddAward(false)} />
+      )}
+
+      {editAward && teamId && (
+        <AwardTypeModal
+          teamId={teamId}
+          editId={editAward.id}
+          initialData={{ name: editAward.name ?? '' }}
+          onClose={() => setEditAward(null)}
+        />
+      )}
+
+      {showAddWinner && teamId && activeAwardId != null && (
+        <AwardWinnerModal
+          teamId={teamId}
+          typeId={activeAwardId}
+          onClose={() => setShowAddWinner(false)}
+        />
+      )}
+
+      {editWinner && teamId && (
+        <AwardWinnerModal
+          teamId={teamId}
+          typeId={editWinner.type_id}
+          editId={editWinner.id}
+          initialData={{
+            player_name: editWinner.player_name ?? '',
+            year:        editWinner.year        ?? '',
+            school_year: editWinner.school_year ?? '',
+            times_won:   editWinner.times_won   != null ? String(editWinner.times_won) : '1',
+          }}
+          onClose={() => setEditWinner(null)}
         />
       )}
 
