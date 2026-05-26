@@ -292,11 +292,11 @@ export function RotationOptimizerPage() {
       {/* ── Player picker sheet ── */}
       {pickerCell !== null && (
         <div
-          className="fixed inset-0 bg-black/60 z-50 flex flex-col justify-end"
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
           onClick={() => setPickerCell(null)}
         >
           <div
-            className="bg-bg rounded-t-2xl max-h-[65dvh] flex flex-col"
+            className="bg-bg rounded-2xl max-h-[80dvh] w-full max-w-sm flex flex-col"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-slate-800 shrink-0">

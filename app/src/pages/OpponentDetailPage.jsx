@@ -292,7 +292,7 @@ function NotesTab({ opp }) {
 // ── Delete confirmation modal ────────────────────────────────────────────────
 function DeleteOppModal({ opp, matchCount, onConfirm, onCancel, deleting }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm px-4 pb-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
       <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-sm space-y-4">
         <div className="space-y-1">
           <p className="text-white font-bold text-base">Delete {opp.name}?</p>

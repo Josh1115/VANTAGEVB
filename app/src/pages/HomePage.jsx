@@ -1111,7 +1111,7 @@ export function HomePage() {
             if (val == null) return null;
             const absFormatted = fmt ? fmt(Math.abs(val)) : String(Math.abs(val));
             if (val === 0 || parseFloat(absFormatted) === 0) return (
-              <span className="text-[8px] font-bold leading-none tabular-nums text-yellow-400">-{absFormatted}</span>
+              <span className="text-[8px] font-bold leading-none tabular-nums text-slate-500">—</span>
             );
             const pos = val > 0;
             return (

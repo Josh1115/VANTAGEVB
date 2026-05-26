@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
@@ -59,7 +59,74 @@ export function SeasonDetailPage() {
   const [schedTourneyName,  setSchedTourneyName]  = useState('');
   const [schedTourneyRound, setSchedTourneyRound] = useState('pool');
   const [schedPlayoffRound, setSchedPlayoffRound] = useState('');
+  const [schedOppRecord,    setSchedOppRecord]    = useState('');
+  const [schedOppRank,      setSchedOppRank]      = useState('');
+  const [schedOppSeed,      setSchedOppSeed]      = useState('');
+  const [schedTime,         setSchedTime]         = useState('');
   const [schedSaving,    setSchedSaving]    = useState(false);
+
+  // Auto-sync completed playoff matches into season_history.playoff_rounds.
+  // Idempotent: matches already present (by round+opponent) are skipped.
+  const syncedMatchIds = useRef(new Set());
+  useEffect(() => {
+    if (!data) return;
+    const { season, matches } = data;
+
+    const ROUND_ORDER = ['regional','sectional','super-sectional','quarterfinal','semifinal','state championship'];
+
+    const completed = matches.filter(
+      m => m.status === MATCH_STATUS.COMPLETE && m.match_type === 'ihsa-playoffs'
+        && !syncedMatchIds.current.has(m.id)
+    );
+    if (completed.length === 0) return;
+
+    (async () => {
+      const existing = await db.season_history
+        .where('team_id').equals(season.team_id)
+        .filter(h => String(h.year) === String(season.year))
+        .first();
+
+      const existingRounds = existing?.playoff_rounds ?? [];
+
+      const newRounds = completed
+        .filter(m => {
+          const rName = (m.playoff_round ?? '').trim().toLowerCase();
+          const oName = (m.opponent_name ?? '').trim().toLowerCase();
+          return !existingRounds.some(
+            r => r.round?.trim().toLowerCase() === rName && r.opponent?.trim().toLowerCase() === oName
+          );
+        })
+        .map(m => ({
+          round:    m.playoff_round ?? '',
+          opponent: m.opponent_name ?? '',
+          result:   (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0) ? 'W' : 'L',
+          score:    `${m.our_sets_won ?? 0}-${m.opp_sets_won ?? 0}`,
+          opp_seed: m.opponent_playoff_seed != null ? String(m.opponent_playoff_seed) : '',
+        }));
+
+      if (newRounds.length === 0) {
+        completed.forEach(m => syncedMatchIds.current.add(m.id));
+        return;
+      }
+
+      const merged = [...existingRounds, ...newRounds].sort((a, b) => {
+        const ai = ROUND_ORDER.indexOf(a.round?.toLowerCase() ?? '');
+        const bi = ROUND_ORDER.indexOf(b.round?.toLowerCase() ?? '');
+        if (ai === -1 && bi === -1) return 0;
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      });
+
+      if (existing) {
+        await db.season_history.update(existing.id, { playoff_rounds: merged });
+      } else {
+        await db.season_history.add({ team_id: season.team_id, year: season.year, playoff_rounds: merged });
+      }
+
+      completed.forEach(m => syncedMatchIds.current.add(m.id));
+    })();
+  }, [data]);
 
   if (!data) return null;
   const { season, team, matches, playerNames, playerJerseys } = data;
@@ -82,6 +149,10 @@ export function SeasonDetailPage() {
     setSchedTourneyName('');
     setSchedTourneyRound('pool');
     setSchedPlayoffRound('');
+    setSchedOppRecord('');
+    setSchedOppRank('');
+    setSchedOppSeed('');
+    setSchedTime('');
     setSchedOpen(false);
   }
 
@@ -96,6 +167,10 @@ export function SeasonDetailPage() {
     setSchedTourneyName(match.tournament_name ?? '');
     setSchedTourneyRound(match.tournament_round ?? 'pool');
     setSchedPlayoffRound(match.playoff_round ?? '');
+    setSchedOppRecord(match.opponent_record ?? '');
+    setSchedOppRank(match.opponent_maxpreps_rank != null ? String(match.opponent_maxpreps_rank) : '');
+    setSchedOppSeed(match.opponent_playoff_seed != null ? String(match.opponent_playoff_seed) : '');
+    setSchedTime(match.match_time ?? '');
     setSchedOpen(true);
   }
 
@@ -111,14 +186,18 @@ export function SeasonDetailPage() {
       const fields = {
         opponent_id:   oppRecord.id,
         opponent_name: oppRecord.name,
-        opponent_abbr: schedOppAbbr.trim().toUpperCase() || null,
+        opponent_abbr:          schedOppAbbr.trim().toUpperCase() || null,
+        opponent_record:        schedOppRecord.trim() || null,
+        opponent_maxpreps_rank: schedOppRank !== '' ? parseInt(schedOppRank, 10) : null,
         date:          schedDate ? new Date(schedDate + 'T12:00:00').toISOString() : new Date().toISOString(),
+        match_time:    schedTime || null,
         location:      schedLoc,
         conference:    schedConf,
         match_type:       schedMatchType,
         tournament_name:  schedMatchType === 'tourney' ? schedTourneyName.trim() || null : null,
         tournament_round: schedMatchType === 'tourney' ? schedTourneyRound : null,
-        playoff_round:    schedMatchType === 'ihsa-playoffs' ? schedPlayoffRound.trim() || null : null,
+        playoff_round:         schedMatchType === 'ihsa-playoffs' ? schedPlayoffRound.trim() || null : null,
+        opponent_playoff_seed: schedMatchType === 'ihsa-playoffs' && schedOppSeed !== '' ? parseInt(schedOppSeed, 10) : null,
       };
       if (editMatchId) {
         await db.matches.update(editMatchId, fields);
@@ -163,10 +242,7 @@ export function SeasonDetailPage() {
             <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">
               Matches ({matches.length})
             </h2>
-            <div className="flex gap-2">
-              <Button size="sm" variant="secondary" onClick={() => setSchedOpen(true)}>+ Schedule</Button>
-              <Button size="sm" onClick={() => navigate(`/matches/new?season=${id}`)}>+ Match</Button>
-            </div>
+            <Button size="sm" variant="secondary" className="bg-blue-600 border-blue-600 text-white hover:bg-blue-500 hover:border-blue-500" onClick={() => setSchedOpen(true)}>+ Schedule</Button>
           </div>
 
           {matches.length === 0 ? (
@@ -375,15 +451,57 @@ export function SeasonDetailPage() {
               </div>
             </div>
 
-            {/* Date */}
-            <div>
-              <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Date</label>
-              <input
-                type="date"
-                value={schedDate}
-                onChange={(e) => setSchedDate(e.target.value)}
-                className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
-              />
+            {/* Opponent record + rank */}
+            <div className="flex gap-2">
+              <div className="flex-1 min-w-0">
+                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+                  Record <span className="normal-case font-normal">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={schedOppRecord}
+                  onChange={(e) => setSchedOppRecord(e.target.value)}
+                  placeholder="e.g. 12-3"
+                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+                  Rank <span className="normal-case font-normal">(optional)</span>
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={schedOppRank}
+                  onChange={(e) => setSchedOppRank(e.target.value)}
+                  placeholder="e.g. 42"
+                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
+                />
+              </div>
+            </div>
+
+            {/* Date + Time */}
+            <div className="flex gap-2">
+              <div className="flex-1 min-w-0">
+                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Date</label>
+                <input
+                  type="date"
+                  value={schedDate}
+                  onChange={(e) => setSchedDate(e.target.value)}
+                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+                  Start Time <span className="normal-case font-normal text-slate-500">(optional)</span>
+                </label>
+                <input
+                  type="time"
+                  value={schedTime}
+                  onChange={(e) => setSchedTime(e.target.value)}
+                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                />
+              </div>
             </div>
 
             {/* Location */}
@@ -482,17 +600,32 @@ export function SeasonDetailPage() {
               </>
             )}
 
-            {/* Playoff Round */}
+            {/* Playoff Round + Opponent Seed */}
             {schedMatchType === 'ihsa-playoffs' && (
-              <div>
-                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Playoff Round</label>
-                <input
-                  type="text"
-                  value={schedPlayoffRound}
-                  onChange={(e) => setSchedPlayoffRound(e.target.value)}
-                  placeholder="e.g. Regional, Sectional, Super-Sectional, State…"
-                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
-                />
+              <div className="flex gap-2">
+                <div className="flex-1 min-w-0">
+                  <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Playoff Round</label>
+                  <input
+                    type="text"
+                    value={schedPlayoffRound}
+                    onChange={(e) => setSchedPlayoffRound(e.target.value)}
+                    placeholder="e.g. Regional, Sectional…"
+                    className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
+                  />
+                </div>
+                <div className="w-28 shrink-0">
+                  <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+                    Opp Seed <span className="normal-case font-normal">(opt)</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={schedOppSeed}
+                    onChange={(e) => setSchedOppSeed(e.target.value)}
+                    placeholder="e.g. 4"
+                    className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
+                  />
+                </div>
               </div>
             )}
 
