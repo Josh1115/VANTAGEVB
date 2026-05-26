@@ -629,7 +629,7 @@ function WinnerCard({ entry, onEdit, onDelete }) {
       >
         <div className="bg-slate-800 rounded-xl px-4 py-3 border border-slate-700/50">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-bold text-slate-100">{entry.player_name}</span>
+            <span className="text-xs font-bold text-slate-100">{entry.player_name}</span>
             <span className="text-xs text-slate-500">'{String(entry.year).slice(-2)}</span>
             {entry.school_year && (
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${SCHOOL_YEAR_CLS[entry.school_year] ?? 'bg-slate-700/60 text-slate-300 border-slate-600/50'}`}>{entry.school_year}</span>
