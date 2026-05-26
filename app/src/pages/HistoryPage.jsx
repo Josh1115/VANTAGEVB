@@ -1428,6 +1428,12 @@ export function HistoryPage() {
                       {/* Winner list for active award */}
                       {activeAwardId != null && (
                         <div className="mt-2 space-y-2">
+                          <button
+                            onClick={() => setShowAddWinner(true)}
+                            className="w-full py-1.5 rounded-lg border border-dashed border-slate-600 text-xs text-slate-400 hover:text-white hover:border-slate-400 transition-colors"
+                          >
+                            + Winner
+                          </button>
                           {sortedAwardWinners.length === 0 ? (
                             <p className="text-xs text-slate-500 italic">No winners recorded yet.</p>
                           ) : (
@@ -1440,12 +1446,6 @@ export function HistoryPage() {
                               />
                             ))
                           )}
-                          <button
-                            onClick={() => setShowAddWinner(true)}
-                            className="w-full py-1.5 rounded-lg border border-dashed border-slate-600 text-xs text-slate-400 hover:text-white hover:border-slate-400 transition-colors"
-                          >
-                            + Winner
-                          </button>
                         </div>
                       )}
                     </>
