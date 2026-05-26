@@ -13,7 +13,7 @@ const REQUIRED_TABLES = [
 const OPTIONAL_TABLES = [
   'saved_lineups', 'records', 'practice_sessions',
   'opp_tendencies', 'timeouts', 'historical_records', 'season_history',
-  'tourney_entries', 'player_commits',
+  'tourney_entries', 'player_commits', 'accolade_types', 'accolade_winners',
 ];
 
 const ALL_TABLES = [...REQUIRED_TABLES, ...OPTIONAL_TABLES];
