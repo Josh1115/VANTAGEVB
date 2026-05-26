@@ -475,6 +475,12 @@ function CommitCard({ entry, onEdit, onDelete }) {
 // ── Individual Awards ─────────────────────────────────────────────────────────
 
 const SCHOOL_YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior'];
+const SCHOOL_YEAR_CLS = {
+  Freshman:  'bg-white text-black border-white/30',
+  Sophomore: 'bg-teal-400 text-black border-teal-300/50',
+  Junior:    'bg-blue-600 text-white border-blue-500/50',
+  Senior:    'bg-black text-white border-slate-600',
+};
 const EMPTY_AWARD_TYPE = { name: '' };
 const EMPTY_WINNER = { player_name: '', year: '', school_year: '', times_won: '1' };
 
@@ -626,7 +632,7 @@ function WinnerCard({ entry, onEdit, onDelete }) {
             <span className="font-bold text-slate-100">{entry.player_name}</span>
             <span className="text-xs text-slate-500">'{String(entry.year).slice(-2)}</span>
             {entry.school_year && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-slate-700/60 text-slate-300 border-slate-600/50">{entry.school_year}</span>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${SCHOOL_YEAR_CLS[entry.school_year] ?? 'bg-slate-700/60 text-slate-300 border-slate-600/50'}`}>{entry.school_year}</span>
             )}
             {entry.times_won > 1 && (
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-primary/20 text-primary border-primary/30">×{entry.times_won}</span>
