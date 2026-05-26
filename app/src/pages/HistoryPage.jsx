@@ -1074,27 +1074,6 @@ export function HistoryPage() {
     [commits]
   );
 
-  const [displayProgramRecord, setDisplayProgramRecord] = useState({ wins: 0, losses: 0 });
-
-  useEffect(() => {
-    const { wins, losses, total } = programRecord;
-    if (total === 0) { setDisplayProgramRecord({ wins: 0, losses: 0 }); return; }
-    let step = 0;
-    const steps = 30;
-    let cancelled = false;
-    function tick() {
-      if (cancelled) return;
-      step++;
-      const t = step / steps;
-      setDisplayProgramRecord({ wins: Math.round(wins * t), losses: Math.round(losses * t) });
-      if (step >= steps) { setDisplayProgramRecord({ wins, losses }); return; }
-      const delay = t >= 0.95 ? 260 : t >= 0.75 ? 110 : 36;
-      setTimeout(tick, delay);
-    }
-    setTimeout(tick, 18);
-    return () => { cancelled = true; };
-  }, [programRecord.wins, programRecord.losses]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const sortedAwardTypes = useMemo(
     () => [...(awardTypes ?? [])].sort((a, b) => a.sort_order - b.sort_order),
     [awardTypes]
@@ -1203,6 +1182,27 @@ export function HistoryPage() {
     const winPct = total > 0 ? fmtWinPct(wins, total) : null;
     return { wins, losses, total, winPct };
   }, [sortedHistory, activeMatches, showLiveCard]);
+
+  const [displayProgramRecord, setDisplayProgramRecord] = useState({ wins: 0, losses: 0 });
+
+  useEffect(() => {
+    const { wins, losses, total } = programRecord;
+    if (total === 0) { setDisplayProgramRecord({ wins: 0, losses: 0 }); return; }
+    let step = 0;
+    const steps = 30;
+    let cancelled = false;
+    function tick() {
+      if (cancelled) return;
+      step++;
+      const t = step / steps;
+      setDisplayProgramRecord({ wins: Math.round(wins * t), losses: Math.round(losses * t) });
+      if (step >= steps) { setDisplayProgramRecord({ wins, losses }); return; }
+      const delay = t >= 0.95 ? 260 : t >= 0.75 ? 110 : 36;
+      setTimeout(tick, delay);
+    }
+    setTimeout(tick, 18);
+    return () => { cancelled = true; };
+  }, [programRecord.wins, programRecord.losses]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const coachRecords = useMemo(() => {
     const map = {};
