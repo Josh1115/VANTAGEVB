@@ -1074,6 +1074,27 @@ export function HistoryPage() {
     [commits]
   );
 
+  const [displayProgramRecord, setDisplayProgramRecord] = useState({ wins: 0, losses: 0 });
+
+  useEffect(() => {
+    const { wins, losses, total } = programRecord;
+    if (total === 0) { setDisplayProgramRecord({ wins: 0, losses: 0 }); return; }
+    let step = 0;
+    const steps = 30;
+    let cancelled = false;
+    function tick() {
+      if (cancelled) return;
+      step++;
+      const t = step / steps;
+      setDisplayProgramRecord({ wins: Math.round(wins * t), losses: Math.round(losses * t) });
+      if (step >= steps) { setDisplayProgramRecord({ wins, losses }); return; }
+      const delay = t >= 0.95 ? 260 : t >= 0.75 ? 110 : 36;
+      setTimeout(tick, delay);
+    }
+    setTimeout(tick, 18);
+    return () => { cancelled = true; };
+  }, [programRecord.wins, programRecord.losses]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const sortedAwardTypes = useMemo(
     () => [...(awardTypes ?? [])].sort((a, b) => a.sort_order - b.sort_order),
     [awardTypes]
@@ -1472,15 +1493,19 @@ export function HistoryPage() {
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Program Overall Record</p>
                     <div className="grid grid-cols-3 divide-x divide-slate-700/60">
                       <div className="text-center pr-3">
-                        <div className="text-2xl font-black text-emerald-400 tabular-nums leading-none">{programRecord.wins}</div>
+                        <div className="text-4xl font-black text-emerald-400 tabular-nums leading-none">{displayProgramRecord.wins}</div>
                         <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 mt-1">Wins</div>
                       </div>
                       <div className="text-center px-3">
-                        <div className="text-2xl font-black text-red-400 tabular-nums leading-none">{programRecord.losses}</div>
+                        <div className="text-4xl font-black text-red-400 tabular-nums leading-none">{displayProgramRecord.losses}</div>
                         <div className="text-[10px] font-bold uppercase tracking-widest text-red-800 mt-1">Losses</div>
                       </div>
                       <div className="text-center pl-3">
-                        <div className="text-2xl font-black text-primary tabular-nums leading-none">{programRecord.winPct ?? '—'}</div>
+                        <div className="text-4xl font-black text-primary tabular-nums leading-none">
+                          {displayProgramRecord.wins + displayProgramRecord.losses > 0
+                            ? fmtWinPct(displayProgramRecord.wins, displayProgramRecord.wins + displayProgramRecord.losses)
+                            : '—'}
+                        </div>
                         <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">Win%</div>
                       </div>
                     </div>
