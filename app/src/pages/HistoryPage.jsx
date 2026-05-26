@@ -1436,16 +1436,30 @@ export function HistoryPage() {
                           </button>
                           {sortedAwardWinners.length === 0 ? (
                             <p className="text-xs text-slate-500 italic">No winners recorded yet.</p>
-                          ) : (
-                            sortedAwardWinners.map(w => (
-                              <WinnerCard
-                                key={w.id}
-                                entry={w}
-                                onEdit={setEditWinner}
-                                onDelete={handleDeleteWinner}
-                              />
-                            ))
-                          )}
+                          ) : (() => {
+                            const groups = [];
+                            for (const w of sortedAwardWinners) {
+                              const last = groups[groups.length - 1];
+                              if (!last || last.year !== w.year) groups.push({ year: w.year, winners: [w] });
+                              else last.winners.push(w);
+                            }
+                            return groups.map((g, gi) => (
+                              <div key={g.year ?? gi}>
+                                {gi > 0 && <div className="border-t border-slate-700/60 my-1" />}
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{g.year}</p>
+                                <div className="space-y-2">
+                                  {g.winners.map(w => (
+                                    <WinnerCard
+                                      key={w.id}
+                                      entry={w}
+                                      onEdit={setEditWinner}
+                                      onDelete={handleDeleteWinner}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            ));
+                          })()}
                         </div>
                       )}
                     </>
