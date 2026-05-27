@@ -320,7 +320,7 @@ export const NavBar = memo(function NavBar() {
   const pillWidth = `${100 / TABS.length}%`;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 bg-surface border-t border-slate-700 pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 bg-slate-900/80 backdrop-blur-md border-t border-slate-700/60 pb-safe">
       <div className="max-w-2xl md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto relative flex items-center">
         {/* Sliding pill indicator */}
         {activeIdx >= 0 && (

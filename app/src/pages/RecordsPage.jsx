@@ -61,7 +61,7 @@ function groupByMatch(contacts) {
 }
 
 function getStatValue(stats, key) {
-  if (key === 'blk') return (stats.bs ?? 0) + (stats.ba ?? 0) * 0.5 || null;
+  if (key === 'blk') return (stats.bs ?? 0) + (stats.ba ?? 0) || null;
   return stats[key] ?? null;
 }
 
@@ -883,7 +883,7 @@ export function RecordsPage() {
       name: playerNames[pid] ?? '?',
       k:   s.k   ?? 0,
       ace: s.ace  ?? 0,
-      blk: (s.bs ?? 0) + (s.ba ?? 0) * 0.5,
+      blk: (s.bs ?? 0) + (s.ba ?? 0),
       ast: s.ast  ?? 0,
       dig: s.dig  ?? 0,
     }));
@@ -1070,7 +1070,18 @@ export function RecordsPage() {
                   {TABS.map(t => (
                     <button
                       key={t.value}
-                      onClick={() => setTab(t.value)}
+                      onClick={() => {
+                        if (t.value === tab) return;
+                        setTab(t.value);
+                        if (t.value !== 'tourney') {
+                          const newStats = t.value === 'team_season' ? TEAM_SEASON_STATS
+                            : t.value === 'career' ? CAREER_STATS
+                            : RECORD_STATS;
+                          if (!newStats.some(s => s.key === statKey)) setStatKey(newStats[0].key);
+                          setBoards(null);
+                          setLoading(true);
+                        }
+                      }}
                       className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                         tab === t.value ? 'bg-primary text-white' : 'text-slate-400 hover:text-slate-200'
                       }`}
