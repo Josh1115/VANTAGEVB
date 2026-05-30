@@ -121,6 +121,8 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
   const seasons = await db.seasons.where('team_id').equals(teamId).toArray();
   if (!seasons.length) return Object.fromEntries(statsForTab.map(s => [s.key, mergeAndRank([], historicalRows(s.key))]));
 
+  const currentSeasonEnded = seasons.find(s => s.id === currentSeasonId)?.status === 'ended';
+
   const allMatches = await db.matches
     .where('season_id').anyOf(seasons.map(s => s.id))
     .filter(m => m.status !== MATCH_STATUS.SCHEDULED && m.match_type !== 'exhibition')
@@ -152,18 +154,18 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
       const totalSets = Math.max(1, sMatches.reduce((a, m) => a + (setsMap[m.id] ?? 1), 0));
       const stats = computePlayerStats(sContacts, totalSets, positions);
       for (const [pid, s] of Object.entries(stats)) {
-        seasonRows.push({ pid, stats: s, year: season.year });
+        seasonRows.push({ pid, stats: s, year: season.year, seasonId: season.id });
       }
     }
 
     return Object.fromEntries(
       RECORD_STATS.map(({ key }) => {
-        const computed = seasonRows.map(({ pid, stats, year }) => ({
+        const computed = seasonRows.map(({ pid, stats, year, seasonId }) => ({
           name:       playerNames[pid] ?? '?',
           val:        getStatValue(stats, key),
           year,
           class_year: playerYears[Number(pid)] ?? '',
-          active:     activePlayerIds.has(Number(pid)),
+          active:     activePlayerIds.has(Number(pid)) && seasonId === currentSeasonId && !currentSeasonEnded,
           player_id:  Number(pid),
         }));
         return [key, mergeAndRank(computed, historicalRows(key))];
@@ -186,7 +188,7 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
       const sContacts = sMatches.flatMap(m => byMatch.get(m.id) ?? []);
       const totalSets = Math.max(1, sMatches.reduce((a, m) => a + (setsMap[m.id] ?? 1), 0));
       const ts = computeTeamStats(sContacts, totalSets);
-      seasonRows.push({ ts, year: season.year, currentSeason: currentSeasonId != null && season.id === currentSeasonId });
+      seasonRows.push({ ts, year: season.year, currentSeason: currentSeasonId != null && season.id === currentSeasonId && !currentSeasonEnded });
     }
 
     return Object.fromEntries(
@@ -204,17 +206,19 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
   // match tab — best single-match individual performance
   if (tab === 'match') {
     const perMatch = allMatches.map(m => ({
-      opp:  m.opponent_name ?? 'Unknown',
-      date: m.date,
-      ps:   computePlayerStats(byMatch.get(m.id) ?? [], setsMap[m.id] || 1, positions),
+      opp:      m.opponent_name ?? 'Unknown',
+      date:     m.date,
+      seasonId: m.season_id,
+      ps:       computePlayerStats(byMatch.get(m.id) ?? [], setsMap[m.id] || 1, positions),
     }));
     return Object.fromEntries(
       RECORD_STATS.map(({ key }) => {
         const computed = [];
-        for (const { opp, date, ps } of perMatch) {
+        for (const { opp, date, seasonId, ps } of perMatch) {
+          const isCurrentMatch = seasonId === currentSeasonId && !currentSeasonEnded;
           for (const [pid, s] of Object.entries(ps)) {
             const val = getStatValue(s, key);
-            if (val != null) computed.push({ name: playerNames[pid] ?? '?', val, opp, date, class_year: playerYears[Number(pid)] ?? '', active: activePlayerIds.has(Number(pid)), player_id: Number(pid) });
+            if (val != null) computed.push({ name: playerNames[pid] ?? '?', val, opp, date, class_year: playerYears[Number(pid)] ?? '', active: activePlayerIds.has(Number(pid)) && isCurrentMatch, player_id: Number(pid) });
           }
         }
         return [key, mergeAndRank(computed, historicalRows(key))];
@@ -226,7 +230,7 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
   const perMatch = allMatches.map(m => ({
     opp:           m.opponent_name ?? 'Unknown',
     date:          m.date,
-    currentSeason: currentSeasonId != null && m.season_id === currentSeasonId,
+    currentSeason: currentSeasonId != null && m.season_id === currentSeasonId && !currentSeasonEnded,
     ts:            computeTeamStats(byMatch.get(m.id) ?? [], setsMap[m.id] || 1),
   }));
   return Object.fromEntries(
@@ -859,6 +863,7 @@ export function RecordsPage() {
 
     const season = await db.seasons.get(seasonId);
     if (!season || season.team_id !== teamId) return null;
+    if (season.status === 'ended') return null;
 
     const matches = await db.matches
       .where('season_id').equals(seasonId)

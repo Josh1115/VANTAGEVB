@@ -2,17 +2,55 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { COLLEGE_DIVISIONS, MATCH_STATUS } from '../constants';
-import { STORAGE_KEYS, getIntStorage } from '../utils/storage';
+import { STORAGE_KEYS, getIntStorage, getStorageItem } from '../utils/storage';
 import { PageHeader } from '../components/layout/PageHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { toTitleArr, wrapSvgText, ordinal, titlePriority } from '../utils/historyUtils';
 import { BANNER_COLORS, ChampionshipBanner, ChampionshipBannersSection } from '../components/shared/ChampionshipBanner';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { PostSeasonModal } from '../components/shared/PostSeasonModal';
+import { applyInferredSeasonFinish } from '../utils/seasonUtils';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function fmtWinPct(wins, games) {
   if (wins == null || !games) return null;
   return (wins / games * 100).toFixed(1) + '%';
+}
+
+const PLAYOFF_ROUND_ORDER = ['regional', 'sectional', 'super-sectional', 'quarterfinal', 'semifinal', 'state championship'];
+
+function roundOrderIndex(roundName) {
+  const lower = (roundName ?? '').toLowerCase();
+  const exact = PLAYOFF_ROUND_ORDER.findIndex(r => lower === r);
+  if (exact !== -1) return exact;
+  return PLAYOFF_ROUND_ORDER.findIndex(r => lower.includes(r));
+}
+
+function inferFinishFromPlayoffRounds(playoffRounds) {
+  if (!playoffRounds?.length) return '';
+  const sorted = [...playoffRounds]
+    .filter(r => r.round?.trim())
+    .sort((a, b) => {
+      const ai = roundOrderIndex(a.round);
+      const bi = roundOrderIndex(b.round);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
+  const last = sorted[sorted.length - 1];
+  if (!last?.round) return '';
+  return last.result === 'W' ? `Won ${last.round}` : last.round;
+}
+
+function inferFinishFromMatches(matches) {
+  const playoffs = (matches ?? []).filter(
+    m => m.status === MATCH_STATUS.COMPLETE && m.match_type === 'ihsa-playoffs' && m.playoff_round
+  );
+  if (!playoffs.length) return '';
+  const rounds = playoffs.map(m => ({
+    round:  m.playoff_round,
+    result: (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0) ? 'W' : 'L',
+  }));
+  return inferFinishFromPlayoffRounds(rounds);
 }
 
 // ── Add / Edit Modal ──────────────────────────────────────────────────────────
@@ -651,7 +689,7 @@ function WinnerCard({ entry, onEdit, onDelete }) {
 // season_history entry if one exists; otherwise those sections are blank.
 // activeSeason: the season DB record (may have head_coach/asst_coach from the roster tab)
 // historyEntry: matching season_history row (has title, rankings, playoffs, and possibly coach overrides)
-function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit, isWinRecord }) {
+function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit, onEndSeason, isWinRecord }) {
   const completed = (matches ?? []).filter(m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition');
   const wins      = completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
   const losses    = completed.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
@@ -683,9 +721,23 @@ function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit, isW
               {winPct && <span className="text-xs text-slate-400 font-semibold ml-1.5">{winPct}</span>}
             </span>
           )}
-          <span className="text-[10px] font-black uppercase tracking-widest text-primary border border-primary/40 px-2 py-0.5 rounded-full">
-            CURRENT
-          </span>
+          {activeSeason?.status !== 'ended' ? (
+            <span className="text-[10px] font-black uppercase tracking-widest text-primary border border-primary/40 px-2 py-0.5 rounded-full">
+              CURRENT
+            </span>
+          ) : (
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 border border-slate-600 px-2 py-0.5 rounded-full">
+              DONE
+            </span>
+          )}
+          {activeSeason?.status !== 'ended' && onEndSeason && (
+            <button
+              onClick={onEndSeason}
+              className="text-[10px] font-semibold text-slate-500 hover:text-red-400 border border-slate-600 hover:border-red-700/60 px-2 py-0.5 rounded-full transition-colors"
+            >
+              End Season
+            </button>
+          )}
           {isWinRecord && (
             <span className="text-[9px] font-black uppercase tracking-wide text-amber-400 border border-amber-500/50 px-1.5 py-0.5 rounded-full">
               Most Wins
@@ -940,7 +992,12 @@ export function HistoryPage() {
   const [editEntry, setEditEntry] = useState(null);
   const [showAddCommit, setShowAddCommit] = useState(false);
   const [editCommit,    setEditCommit]    = useState(null);
-  const [liveEditOpen,  setLiveEditOpen]  = useState(false);
+  const [liveEditOpen,       setLiveEditOpen]       = useState(false);
+  const [confirmEndSeason,   setConfirmEndSeason]   = useState(false);
+  const [showPostSeason,     setShowPostSeason]     = useState(false);
+  const [commitsOpen,        setCommitsOpen]        = useState(() => getStorageItem(STORAGE_KEYS.HISTORY_COMMITS_OPEN, 'true') !== 'false');
+  const [awardsOpen,         setAwardsOpen]         = useState(() => getStorageItem(STORAGE_KEYS.HISTORY_AWARDS_OPEN,  'true') !== 'false');
+  const [programHistoryOpen, setProgramHistoryOpen] = useState(() => getStorageItem(STORAGE_KEYS.HISTORY_PROGRAM_OPEN, 'true') !== 'false');
   const [activeAwardId,  setActiveAwardId]  = useState(null);
   const [showAddAward,   setShowAddAward]   = useState(false);
   const [editAward,      setEditAward]      = useState(null);
@@ -1063,9 +1120,13 @@ export function HistoryPage() {
   }, [activeSeason, history]);
 
   const sortedHistory = useMemo(() => {
-    const activeYear = activeSeason?.year ? String(activeSeason.year) : null;
+    // Only suppress the current year from sortedHistory while the season is still active.
+    // Once ended, activeSeason is no longer shown as a live card, so the history entry can display.
+    const activeYear = (activeSeason?.status !== 'ended' && activeSeason?.year != null)
+      ? String(activeSeason.year)
+      : null;
     return [...(history ?? [])]
-      .filter(h => !activeYear || String(h.year) !== activeYear) // live card covers current year
+      .filter(h => !activeYear || String(h.year) !== activeYear)
       .sort((a, b) => String(b.year).localeCompare(String(a.year)));
   }, [history, activeSeason]);
 
@@ -1140,38 +1201,44 @@ export function HistoryPage() {
     playoff_seed:   liveHistoryEntry.playoff_seed   ?? '',
     regional:       liveHistoryEntry.regional       ?? '',
     sectional:      liveHistoryEntry.sectional      ?? '',
-    state_finish:   liveHistoryEntry.state_finish   ?? '',
+    state_finish:   liveHistoryEntry.state_finish
+                      || inferFinishFromPlayoffRounds(liveHistoryEntry.playoff_rounds)
+                      || '',
     playoff_result: liveHistoryEntry.playoff_result ?? '',
     playoff_rounds: liveHistoryEntry.playoff_rounds ?? [],
   } : {
     ...EMPTY_FORM,
-    year: activeSeason?.year != null ? String(activeSeason.year) : '',
+    year:         activeSeason?.year != null ? String(activeSeason.year) : '',
+    state_finish: activeSeason?.status === 'ended' ? inferFinishFromMatches(activeMatches) : '',
   };
 
-  const showLiveCard = isDefaultTeam && activeSeason != null;
+  const showLiveCard = isDefaultTeam && activeSeason != null && activeSeason.status !== 'ended';
+  const hasActiveSeason = isDefaultTeam && activeSeason != null;
+  const activeSeasonYear = hasActiveSeason ? String(activeSeason.year) : null;
 
   const liveCardWins = useMemo(() => {
-    if (!showLiveCard) return 0;
+    if (!hasActiveSeason) return 0;
     const completed = (activeMatches ?? []).filter(
       m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition'
     );
     return completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
-  }, [activeMatches, showLiveCard]);
+  }, [activeMatches, hasActiveSeason]);
 
   const maxWins = useMemo(() => {
     const vals = (history ?? []).map(h => h.wins).filter(w => w != null && w > 0);
-    if (showLiveCard && liveCardWins > 0) vals.push(liveCardWins);
+    if (hasActiveSeason && liveCardWins > 0) vals.push(liveCardWins);
     return vals.length ? Math.max(...vals) : 0;
-  }, [history, liveCardWins, showLiveCard]);
+  }, [history, liveCardWins, hasActiveSeason]);
 
   const programRecord = useMemo(() => {
     let wins = 0;
     let losses = 0;
     for (const h of sortedHistory) {
+      if (activeSeasonYear && String(h.year) === activeSeasonYear) continue;
       wins   += h.wins   ?? 0;
       losses += h.losses ?? 0;
     }
-    if (showLiveCard) {
+    if (hasActiveSeason) {
       const completed = (activeMatches ?? []).filter(
         m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition'
       );
@@ -1181,7 +1248,7 @@ export function HistoryPage() {
     const total  = wins + losses;
     const winPct = total > 0 ? fmtWinPct(wins, total) : null;
     return { wins, losses, total, winPct };
-  }, [sortedHistory, activeMatches, showLiveCard]);
+  }, [sortedHistory, activeMatches, hasActiveSeason, activeSeasonYear]);
 
   const [displayProgramRecord, setDisplayProgramRecord] = useState({ wins: 0, losses: 0 });
 
@@ -1207,18 +1274,24 @@ export function HistoryPage() {
   const coachRecords = useMemo(() => {
     const map = {};
     for (const h of sortedHistory) {
+      if (activeSeasonYear && String(h.year) === activeSeasonYear) continue;
       const name = h.head_coach?.trim();
       if (!name) continue;
-      if (!map[name]) map[name] = { wins: 0, losses: 0, maxYear: 0 };
+      if (!map[name]) map[name] = { wins: 0, losses: 0, minYear: Infinity, maxYear: 0, isPresent: false };
       map[name].wins    += h.wins   ?? 0;
       map[name].losses  += h.losses ?? 0;
-      map[name].maxYear  = Math.max(map[name].maxYear, Number(h.year) || 0);
+      const yr = Number(h.year) || 0;
+      map[name].minYear  = Math.min(map[name].minYear, yr);
+      map[name].maxYear  = Math.max(map[name].maxYear, yr);
     }
-    if (showLiveCard) {
+    if (hasActiveSeason) {
       const name = (liveHistoryEntry?.head_coach ?? activeSeason?.head_coach)?.trim();
       if (name) {
-        if (!map[name]) map[name] = { wins: 0, losses: 0, maxYear: 0 };
-        map[name].maxYear = Math.max(map[name].maxYear, Number(activeSeason?.year) || 9999);
+        if (!map[name]) map[name] = { wins: 0, losses: 0, minYear: Infinity, maxYear: 0, isPresent: false };
+        const yr = Number(activeSeason?.year) || 0;
+        map[name].minYear  = Math.min(map[name].minYear, yr);
+        map[name].maxYear  = Math.max(map[name].maxYear, yr || 9999);
+        map[name].isPresent = true;
         const completed = (activeMatches ?? []).filter(
           m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition'
         );
@@ -1227,29 +1300,41 @@ export function HistoryPage() {
       }
     }
     return Object.entries(map)
-      .map(([name, { wins, losses, maxYear }]) => ({
-        name, wins, losses, maxYear,
-        total:  wins + losses,
-        winPct: wins + losses > 0 ? fmtWinPct(wins, wins + losses) : null,
-      }))
+      .map(([name, { wins, losses, minYear, maxYear, isPresent }]) => {
+        const min = minYear === Infinity ? 0 : minYear;
+        const yearLabel = isPresent
+          ? (min && min !== maxYear ? `${min}–present` : 'present')
+          : (min && min !== maxYear ? `${min}–${maxYear}` : (min ? String(min) : null));
+        return {
+          name, wins, losses, maxYear, yearLabel,
+          total:  wins + losses,
+          winPct: wins + losses > 0 ? fmtWinPct(wins, wins + losses) : null,
+        };
+      })
       .sort((a, b) => b.maxYear - a.maxYear);
-  }, [sortedHistory, activeMatches, showLiveCard, liveHistoryEntry, activeSeason]);
+  }, [sortedHistory, activeMatches, hasActiveSeason, activeSeasonYear, liveHistoryEntry, activeSeason]);
 
   const asstCoachRecords = useMemo(() => {
     const map = {};
     for (const h of sortedHistory) {
+      if (activeSeasonYear && String(h.year) === activeSeasonYear) continue;
       const name = h.asst_coach?.trim();
       if (!name) continue;
-      if (!map[name]) map[name] = { wins: 0, losses: 0, maxYear: 0 };
+      if (!map[name]) map[name] = { wins: 0, losses: 0, minYear: Infinity, maxYear: 0, isPresent: false };
       map[name].wins    += h.wins   ?? 0;
       map[name].losses  += h.losses ?? 0;
-      map[name].maxYear  = Math.max(map[name].maxYear, Number(h.year) || 0);
+      const yr = Number(h.year) || 0;
+      map[name].minYear  = Math.min(map[name].minYear, yr);
+      map[name].maxYear  = Math.max(map[name].maxYear, yr);
     }
-    if (showLiveCard) {
+    if (hasActiveSeason) {
       const name = (liveHistoryEntry?.asst_coach ?? activeSeason?.asst_coach)?.trim();
       if (name) {
-        if (!map[name]) map[name] = { wins: 0, losses: 0, maxYear: 0 };
-        map[name].maxYear = Math.max(map[name].maxYear, Number(activeSeason?.year) || 9999);
+        if (!map[name]) map[name] = { wins: 0, losses: 0, minYear: Infinity, maxYear: 0, isPresent: false };
+        const yr = Number(activeSeason?.year) || 0;
+        map[name].minYear  = Math.min(map[name].minYear, yr);
+        map[name].maxYear  = Math.max(map[name].maxYear, yr || 9999);
+        map[name].isPresent = true;
         const completed = (activeMatches ?? []).filter(
           m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition'
         );
@@ -1258,13 +1343,19 @@ export function HistoryPage() {
       }
     }
     return Object.entries(map)
-      .map(([name, { wins, losses, maxYear }]) => ({
-        name, wins, losses, maxYear,
-        total:  wins + losses,
-        winPct: wins + losses > 0 ? fmtWinPct(wins, wins + losses) : null,
-      }))
+      .map(([name, { wins, losses, minYear, maxYear, isPresent }]) => {
+        const min = minYear === Infinity ? 0 : minYear;
+        const yearLabel = isPresent
+          ? (min && min !== maxYear ? `${min}–present` : 'present')
+          : (min && min !== maxYear ? `${min}–${maxYear}` : (min ? String(min) : null));
+        return {
+          name, wins, losses, maxYear, yearLabel,
+          total:  wins + losses,
+          winPct: wins + losses > 0 ? fmtWinPct(wins, wins + losses) : null,
+        };
+      })
       .sort((a, b) => b.maxYear - a.maxYear);
-  }, [sortedHistory, activeMatches, showLiveCard, liveHistoryEntry, activeSeason]);
+  }, [sortedHistory, activeMatches, hasActiveSeason, activeSeasonYear, liveHistoryEntry, activeSeason]);
 
   const currentTeam = useMemo(
     () => (orgTeams ?? []).find(t => t.id === teamId) ?? null,
@@ -1370,234 +1461,297 @@ export function HistoryPage() {
 
                 {/* College Commits */}
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">College Commits</h3>
-                    <button
-                      onClick={() => setShowAddCommit(true)}
-                      className="text-xs text-primary font-semibold px-2 py-1 rounded-lg hover:bg-slate-700/50 transition-colors"
-                    >
-                      + Add
-                    </button>
-                  </div>
-                  {sortedCommits.length === 0 ? (
-                    <p className="text-xs text-slate-500 italic">No commits recorded yet.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {sortedCommits.map(c => (
-                        <CommitCard
-                          key={c.id}
-                          entry={c}
-                          onEdit={setEditCommit}
-                          onDelete={handleDeleteCommit}
-                        />
-                      ))}
+                  <button
+                    onClick={() => setCommitsOpen(o => { const next = !o; localStorage.setItem(STORAGE_KEYS.HISTORY_COMMITS_OPEN, String(next)); return next; })}
+                    className="w-full flex items-center justify-between bg-black rounded-xl px-4 py-3 border border-slate-800 hover:border-slate-700 transition-colors"
+                    style={{ marginBottom: commitsOpen ? '0.75rem' : '0' }}
+                  >
+                    <div className="text-left">
+                      <h3 className="text-sm font-bold text-white">College Commits</h3>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Player commitments &amp; signings</p>
                     </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div
+                        onClick={e => { e.stopPropagation(); setShowAddCommit(true); }}
+                        className="text-xs font-bold px-2.5 py-1.5 rounded-lg text-black bg-[#f97316] hover:brightness-110 transition-all"
+                      >
+                        + Add
+                      </div>
+                      <svg
+                        width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                        className={`text-slate-500 transition-transform duration-200 ${commitsOpen ? 'rotate-90' : 'rotate-0'}`}
+                      >
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    </div>
+                  </button>
+                  {commitsOpen && (
+                    sortedCommits.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic">No commits recorded yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {sortedCommits.map(c => (
+                          <CommitCard
+                            key={c.id}
+                            entry={c}
+                            onEdit={setEditCommit}
+                            onDelete={handleDeleteCommit}
+                          />
+                        ))}
+                      </div>
+                    )
                   )}
                 </div>
 
                 {/* Individual Awards */}
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">Individual Awards</h3>
-                    <button
-                      onClick={() => setShowAddAward(true)}
-                      className="text-xs text-primary font-semibold px-2 py-1 rounded-lg hover:bg-slate-700/50 transition-colors"
-                    >
-                      + Award
-                    </button>
-                  </div>
-
-                  {sortedAwardTypes.length === 0 ? (
-                    <p className="text-xs text-slate-500 italic">No awards created yet.</p>
-                  ) : (
-                    <>
-                      {/* Award type pill row */}
-                      <div className="flex flex-wrap gap-2">
-                        {sortedAwardTypes.map(type => {
-                          const isActive = activeAwardId === type.id;
-                          return (
-                            <div key={type.id} className="flex items-center shrink-0">
-                              <button
-                                onClick={() => setActiveAwardId(type.id)}
-                                className={`px-3 py-1.5 text-xs font-bold transition-colors ${
-                                  isActive
-                                    ? 'bg-primary text-white rounded-l-full'
-                                    : 'bg-slate-700 text-slate-400 hover:text-slate-200 rounded-full'
-                                }`}
-                              >
-                                {type.name}
-                              </button>
-                              {isActive && (
-                                <>
-                                  <button
-                                    onClick={() => setEditAward(type)}
-                                    className="px-2 py-1.5 bg-primary/80 text-white text-xs font-bold hover:bg-primary transition-colors"
-                                    title="Rename"
-                                  >✎</button>
-                                  <button
-                                    onClick={() => handleDeleteAwardType(type.id)}
-                                    className="px-2 py-1.5 bg-red-700/80 text-white text-xs font-bold rounded-r-full hover:bg-red-600 transition-colors"
-                                    title="Delete award"
-                                  >×</button>
-                                </>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Winner list for active award */}
-                      {activeAwardId != null && (
-                        <div className="mt-2 space-y-2">
-                          <button
-                            onClick={() => setShowAddWinner(true)}
-                            className="w-full py-1.5 rounded-lg border border-dashed border-slate-600 text-xs text-slate-400 hover:text-white hover:border-slate-400 transition-colors"
-                          >
-                            + Winner
-                          </button>
-                          {sortedAwardWinners.length === 0 ? (
-                            <p className="text-xs text-slate-500 italic">No winners recorded yet.</p>
-                          ) : (() => {
-                            const groups = [];
-                            for (const w of sortedAwardWinners) {
-                              const last = groups[groups.length - 1];
-                              if (!last || last.year !== w.year) groups.push({ year: w.year, winners: [w] });
-                              else last.winners.push(w);
-                            }
-                            return groups.map((g, gi) => (
-                              <div key={g.year ?? gi}>
-                                {gi > 0 && <div className="border-t border-slate-700/60 my-1" />}
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{g.year}</p>
-                                <div className="space-y-2">
-                                  {g.winners.map(w => (
-                                    <WinnerCard
-                                      key={w.id}
-                                      entry={w}
-                                      onEdit={setEditWinner}
-                                      onDelete={handleDeleteWinner}
-                                    />
-                                  ))}
-                                </div>
-                              </div>
-                            ));
-                          })()}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Program Overall Record */}
-                {programRecord.total > 0 && (
-                  <div className="bg-surface rounded-xl px-4 py-3">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Program Overall Record</p>
-                    <div className="grid grid-cols-3 divide-x divide-slate-700/60">
-                      <div className="text-center pr-3">
-                        <div className="text-4xl font-black text-emerald-400 tabular-nums leading-none">{displayProgramRecord.wins}</div>
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 mt-1">Wins</div>
-                      </div>
-                      <div className="text-center px-3">
-                        <div className="text-4xl font-black text-red-400 tabular-nums leading-none">{displayProgramRecord.losses}</div>
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-red-800 mt-1">Losses</div>
-                      </div>
-                      <div className="text-center pl-3">
-                        <div className="text-4xl font-black text-primary tabular-nums leading-none">
-                          {displayProgramRecord.wins + displayProgramRecord.losses > 0
-                            ? fmtWinPct(displayProgramRecord.wins, displayProgramRecord.wins + displayProgramRecord.losses)
-                            : '—'}
-                        </div>
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">Win%</div>
-                      </div>
+                  <button
+                    onClick={() => setAwardsOpen(o => { const next = !o; localStorage.setItem(STORAGE_KEYS.HISTORY_AWARDS_OPEN, String(next)); return next; })}
+                    className="w-full flex items-center justify-between bg-black rounded-xl px-4 py-3 border border-slate-800 hover:border-slate-700 transition-colors"
+                    style={{ marginBottom: awardsOpen ? '0.75rem' : '0' }}
+                  >
+                    <div className="text-left">
+                      <h3 className="text-sm font-bold text-white">Individual Awards</h3>
+                      <p className="text-[11px] text-slate-500 mt-0.5">All-conference, all-state &amp; team honors</p>
                     </div>
-                  </div>
-                )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div
+                        onClick={e => { e.stopPropagation(); setShowAddAward(true); }}
+                        className="text-xs font-bold px-2.5 py-1.5 rounded-lg text-black bg-[#f97316] hover:brightness-110 transition-all"
+                      >
+                        + Award
+                      </div>
+                      <svg
+                        width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                        className={`text-slate-500 transition-transform duration-200 ${awardsOpen ? 'rotate-90' : 'rotate-0'}`}
+                      >
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    </div>
+                  </button>
 
-                {/* Head Coach + Asst Coach Records */}
-                {(coachRecords.length > 0 || asstCoachRecords.length > 0) && (
-                  <div className="bg-surface rounded-xl px-4 py-3 space-y-3">
-                    {coachRecords.length > 0 && (
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Head Coach Records</p>
-                        <div className="space-y-2">
-                          {coachRecords.map(({ name, wins, losses, winPct }) => (
-                            <div key={name} className="flex items-center justify-between gap-2">
-                              <span className="text-sm font-semibold text-slate-200 truncate">{name}</span>
-                              <div className="flex items-center gap-3 shrink-0">
-                                <span className="text-sm font-black tabular-nums">
-                                  <span className="text-emerald-400">{wins}</span>
-                                  <span className="text-slate-600 mx-0.5">–</span>
-                                  <span className="text-red-400">{losses}</span>
-                                </span>
-                                {winPct && (
-                                  <span className="text-xs font-bold text-primary tabular-nums w-14 text-right">{winPct}</span>
+                  {awardsOpen && (
+                    sortedAwardTypes.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic">No awards created yet.</p>
+                    ) : (
+                      <>
+                        {/* Award type pill row */}
+                        <div className="flex flex-wrap gap-2">
+                          {sortedAwardTypes.map(type => {
+                            const isActive = activeAwardId === type.id;
+                            return (
+                              <div key={type.id} className="flex items-center shrink-0">
+                                <button
+                                  onClick={() => setActiveAwardId(type.id)}
+                                  className={`px-3 py-1.5 text-xs font-bold transition-colors ${
+                                    isActive
+                                      ? 'bg-primary text-white rounded-l-full'
+                                      : 'bg-slate-700 text-slate-400 hover:text-slate-200 rounded-full'
+                                  }`}
+                                >
+                                  {type.name}
+                                </button>
+                                {isActive && (
+                                  <>
+                                    <button
+                                      onClick={() => setEditAward(type)}
+                                      className="px-2 py-1.5 bg-primary/80 text-white text-xs font-bold hover:bg-primary transition-colors"
+                                      title="Rename"
+                                    >✎</button>
+                                    <button
+                                      onClick={() => handleDeleteAwardType(type.id)}
+                                      className="px-2 py-1.5 bg-red-700/80 text-white text-xs font-bold rounded-r-full hover:bg-red-600 transition-colors"
+                                      title="Delete award"
+                                    >×</button>
+                                  </>
                                 )}
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
-                      </div>
-                    )}
-                    {coachRecords.length > 0 && asstCoachRecords.length > 0 && (
-                      <div className="border-t border-slate-700/60" />
-                    )}
-                    {asstCoachRecords.length > 0 && (
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Assistant Coach Records</p>
-                        <div className="space-y-2">
-                          {asstCoachRecords.map(({ name, wins, losses, winPct }) => (
-                            <div key={name} className="flex items-center justify-between gap-2">
-                              <span className="text-sm font-semibold text-slate-200 truncate">{name}</span>
-                              <div className="flex items-center gap-3 shrink-0">
-                                <span className="text-sm font-black tabular-nums">
-                                  <span className="text-emerald-400">{wins}</span>
-                                  <span className="text-slate-600 mx-0.5">–</span>
-                                  <span className="text-red-400">{losses}</span>
-                                </span>
-                                {winPct && (
-                                  <span className="text-xs font-bold text-primary tabular-nums w-14 text-right">{winPct}</span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
 
-                {/* Season History */}
-                <div className="space-y-3">
-                  {/* Live card for the active/default season */}
-                  {showLiveCard && (
-                    <LiveSeasonCard
-                      year={activeSeason.year}
-                      matches={activeMatches}
-                      historyEntry={liveHistoryEntry}
-                      activeSeason={activeSeason}
-                      onEdit={() => setLiveEditOpen(true)}
-                      isWinRecord={maxWins > 0 && liveCardWins === maxWins}
-                    />
-                  )}
-
-                  {/* Manually-entered past seasons (active year is folded into the live card) */}
-                  {sortedHistory.length === 0 && !showLiveCard ? (
-                    <EmptyState
-                      icon="📖"
-                      title="No seasons recorded"
-                      description="Tap + Season to start building your program's history"
-                    />
-                  ) : sortedHistory.length === 0 && showLiveCard ? null : (
-                    sortedHistory.map(entry => (
-                      <SeasonCard
-                        key={entry.id}
-                        entry={entry}
-                        onEdit={setEditEntry}
-                        onDelete={handleDelete}
-                        isWinRecord={maxWins > 0 && entry.wins === maxWins}
-                      />
-                    ))
+                        {/* Winner list for active award */}
+                        {activeAwardId != null && (
+                          <div className="mt-2 space-y-2">
+                            <button
+                              onClick={() => setShowAddWinner(true)}
+                              className="w-full py-1.5 rounded-lg border border-dashed border-slate-600 text-xs text-slate-400 hover:text-white hover:border-slate-400 transition-colors"
+                            >
+                              + Winner
+                            </button>
+                            {sortedAwardWinners.length === 0 ? (
+                              <p className="text-xs text-slate-500 italic">No winners recorded yet.</p>
+                            ) : (() => {
+                              const groups = [];
+                              for (const w of sortedAwardWinners) {
+                                const last = groups[groups.length - 1];
+                                if (!last || last.year !== w.year) groups.push({ year: w.year, winners: [w] });
+                                else last.winners.push(w);
+                              }
+                              return groups.map((g, gi) => (
+                                <div key={g.year ?? gi}>
+                                  {gi > 0 && <div className="border-t border-slate-700/60 my-1" />}
+                                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{g.year}</p>
+                                  <div className="space-y-2">
+                                    {g.winners.map(w => (
+                                      <WinnerCard
+                                        key={w.id}
+                                        entry={w}
+                                        onEdit={setEditWinner}
+                                        onDelete={handleDeleteWinner}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                              ));
+                            })()}
+                          </div>
+                        )}
+                      </>
+                    )
                   )}
                 </div>
+
+                {/* Program History header */}
+                <button
+                  onClick={() => setProgramHistoryOpen(o => { const next = !o; localStorage.setItem(STORAGE_KEYS.HISTORY_PROGRAM_OPEN, String(next)); return next; })}
+                  className="w-full flex items-center justify-between bg-black rounded-xl px-4 py-3 border border-slate-800 hover:border-slate-700 transition-colors"
+                >
+                  <div className="text-left">
+                    <h3 className="text-sm font-bold text-white">Program History</h3>
+                    <p className="text-[11px] text-slate-500 mt-0.5">All-time record, coaching staff &amp; season log</p>
+                  </div>
+                  <svg
+                    width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                    className={`text-slate-500 transition-transform duration-200 shrink-0 ${programHistoryOpen ? 'rotate-90' : 'rotate-0'}`}
+                  >
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
+                </button>
+
+                {programHistoryOpen && (
+                  <>
+                    {/* Program Overall Record */}
+                    {programRecord.total > 0 && (
+                      <div className="bg-surface rounded-xl px-4 py-3">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Program Overall Record</p>
+                        <div className="grid grid-cols-3 divide-x divide-slate-700/60">
+                          <div className="text-center pr-3">
+                            <div className="text-4xl font-black text-emerald-400 tabular-nums leading-none">{displayProgramRecord.wins}</div>
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 mt-1">Wins</div>
+                          </div>
+                          <div className="text-center px-3">
+                            <div className="text-4xl font-black text-red-400 tabular-nums leading-none">{displayProgramRecord.losses}</div>
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-red-800 mt-1">Losses</div>
+                          </div>
+                          <div className="text-center pl-3">
+                            <div className="text-4xl font-black text-primary tabular-nums leading-none">
+                              {displayProgramRecord.wins + displayProgramRecord.losses > 0
+                                ? fmtWinPct(displayProgramRecord.wins, displayProgramRecord.wins + displayProgramRecord.losses)
+                                : '—'}
+                            </div>
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">Win%</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Head Coach + Asst Coach Records */}
+                    {(coachRecords.length > 0 || asstCoachRecords.length > 0) && (
+                      <div className="bg-surface rounded-xl px-4 py-3 space-y-3">
+                        {coachRecords.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Head Coach Records</p>
+                            <div className="space-y-2">
+                              {coachRecords.map(({ name, wins, losses, winPct, yearLabel }) => (
+                                <div key={name} className="flex items-center justify-between gap-2">
+                                  <span className="text-sm font-semibold text-slate-200 truncate">
+                                    {name}
+                                    {yearLabel && <span className="text-xs font-normal text-slate-500 ml-1.5">({yearLabel})</span>}
+                                  </span>
+                                  <div className="flex items-center gap-3 shrink-0">
+                                    <span className="text-sm font-black tabular-nums">
+                                      <span className="text-emerald-400">{wins}</span>
+                                      <span className="text-slate-600 mx-0.5">–</span>
+                                      <span className="text-red-400">{losses}</span>
+                                    </span>
+                                    {winPct && (
+                                      <span className="text-xs font-bold text-primary tabular-nums w-14 text-right">{winPct}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {coachRecords.length > 0 && asstCoachRecords.length > 0 && (
+                          <div className="border-t border-slate-700/60" />
+                        )}
+                        {asstCoachRecords.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Assistant Coach Records</p>
+                            <div className="space-y-2">
+                              {asstCoachRecords.map(({ name, wins, losses, winPct, yearLabel }) => (
+                                <div key={name} className="flex items-center justify-between gap-2">
+                                  <span className="text-sm font-semibold text-slate-200 truncate">
+                                    {name}
+                                    {yearLabel && <span className="text-xs font-normal text-slate-500 ml-1.5">({yearLabel})</span>}
+                                  </span>
+                                  <div className="flex items-center gap-3 shrink-0">
+                                    <span className="text-sm font-black tabular-nums">
+                                      <span className="text-emerald-400">{wins}</span>
+                                      <span className="text-slate-600 mx-0.5">–</span>
+                                      <span className="text-red-400">{losses}</span>
+                                    </span>
+                                    {winPct && (
+                                      <span className="text-xs font-bold text-primary tabular-nums w-14 text-right">{winPct}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Season History */}
+                    <div className="space-y-3">
+                      {showLiveCard && (
+                        <LiveSeasonCard
+                          year={activeSeason.year}
+                          matches={activeMatches}
+                          historyEntry={liveHistoryEntry}
+                          activeSeason={activeSeason}
+                          onEdit={() => setLiveEditOpen(true)}
+                          onEndSeason={() => setConfirmEndSeason(true)}
+                          isWinRecord={maxWins > 0 && liveCardWins === maxWins}
+                        />
+                      )}
+
+                      {sortedHistory.length === 0 && !showLiveCard ? (
+                        <EmptyState
+                          icon="📖"
+                          title="No seasons recorded"
+                          description="Tap + Season to start building your program's history"
+                        />
+                      ) : sortedHistory.length === 0 && showLiveCard ? null : (
+                        sortedHistory.map(entry => (
+                          <SeasonCard
+                            key={entry.id}
+                            entry={entry}
+                            onEdit={setEditEntry}
+                            onDelete={handleDelete}
+                            isWinRecord={maxWins > 0 && entry.wins === maxWins}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
               </>
             )}
           </>
@@ -1646,7 +1800,9 @@ export function HistoryPage() {
             playoff_seed:   editEntry.playoff_seed   ?? '',
             regional:       editEntry.regional       ?? '',
             sectional:      editEntry.sectional      ?? '',
-            state_finish:   editEntry.state_finish   ?? '',
+            state_finish:   editEntry.state_finish
+                              || inferFinishFromPlayoffRounds(editEntry.playoff_rounds)
+                              || '',
             playoff_result: editEntry.playoff_result ?? '',
             playoff_rounds: editEntry.playoff_rounds ?? [],
           }}
@@ -1687,6 +1843,30 @@ export function HistoryPage() {
             times_won:   editWinner.times_won   != null ? String(editWinner.times_won) : '1',
           }}
           onClose={() => setEditWinner(null)}
+        />
+      )}
+
+      {confirmEndSeason && activeSeason && (
+        <ConfirmDialog
+          title="End Season?"
+          message="Mark this season as complete. Any unplayed scheduled matches will stay on the schedule but the season will show as Done."
+          confirmLabel="End Season"
+          danger
+          onConfirm={async () => {
+            await db.seasons.update(activeSeason.id, { status: 'ended' });
+            await applyInferredSeasonFinish(activeSeason.id, activeSeason.team_id, activeSeason.year);
+            setConfirmEndSeason(false);
+            setShowPostSeason(true);
+          }}
+          onCancel={() => setConfirmEndSeason(false)}
+        />
+      )}
+
+      {showPostSeason && activeSeason && (
+        <PostSeasonModal
+          teamId={activeSeason.team_id}
+          year={activeSeason.year}
+          onClose={() => setShowPostSeason(false)}
         />
       )}
 

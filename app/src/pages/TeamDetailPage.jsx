@@ -19,6 +19,8 @@ import { PlayerFormModal } from '../components/team/PlayerFormModal';
 import { SeasonFormModal } from '../components/team/SeasonFormModal';
 import { SavedLineupModal } from '../components/team/SavedLineupModal';
 import { RosterImportModal } from '../components/team/RosterImportModal';
+import { PostSeasonModal } from '../components/shared/PostSeasonModal';
+import { applyInferredSeasonFinish } from '../utils/seasonUtils';
 
 const POS_COLOR = { S: 'blue', OH: 'orange', OPP: 'orange', MB: 'green', L: 'gray', DS: 'gray', RS: 'orange' };
 
@@ -125,7 +127,9 @@ export function TeamDetailPage() {
   const [editPlayer, setEditPlayer]           = useState(null);
   const [showSeasonModal, setShowSeasonModal] = useState(false);
   const [editSeason, setEditSeason]           = useState(null);
-  const [showCoachModal, setShowCoachModal]   = useState(false);
+  const [showCoachModal,     setShowCoachModal]     = useState(false);
+  const [confirmEndSeasonId, setConfirmEndSeasonId] = useState(null);
+  const [postSeasonInfo,     setPostSeasonInfo]     = useState(null); // { teamId, year }
   const [deletePlayer, setDeletePlayer]       = useState(null);
   const [confirmArchive, setConfirmArchive]   = useState(false);
   const [showLineupModal, setShowLineupModal] = useState(false);
@@ -522,13 +526,27 @@ export function TeamDetailPage() {
                     className="flex-1 px-4 py-3 text-left flex items-center justify-between"
                   >
                     <div>
-                      <div className="font-semibold capitalize">{season.name}</div>
+                      <div className="font-semibold capitalize flex items-center gap-2">
+                        {season.name}
+                        {season.status === 'ended' && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-600/60 text-slate-400">DONE</span>
+                        )}
+                      </div>
                       <div className="text-sm text-slate-400">{season.year}</div>
                     </div>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500">
                       <path d="M9 18l6-6-6-6" />
                     </svg>
                   </button>
+                  {season.status !== 'ended' && (
+                    <button
+                      onClick={() => setConfirmEndSeasonId(season.id)}
+                      className="px-2 py-3 text-xs font-semibold text-slate-500 hover:text-red-400 transition-colors"
+                      title="End season"
+                    >
+                      End
+                    </button>
+                  )}
                   <button
                     onClick={() => setEditSeason(season)}
                     className="px-3 py-3 text-slate-500 hover:text-slate-300 transition-colors"
@@ -714,6 +732,33 @@ export function TeamDetailPage() {
           danger
           onConfirm={removePlayer}
           onCancel={() => setDeletePlayer(null)}
+        />
+      )}
+
+      {confirmEndSeasonId != null && (
+        <ConfirmDialog
+          title="End Season?"
+          message="Mark this season as complete. Any unplayed scheduled matches will stay on the schedule but the season will show as Done."
+          confirmLabel="End Season"
+          danger
+          onConfirm={async () => {
+            const endedSeason = (seasons ?? []).find(s => s.id === confirmEndSeasonId);
+            await db.seasons.update(confirmEndSeasonId, { status: 'ended' });
+            if (endedSeason) {
+              await applyInferredSeasonFinish(confirmEndSeasonId, endedSeason.team_id, endedSeason.year);
+              setPostSeasonInfo({ teamId: id, year: endedSeason.year });
+            }
+            setConfirmEndSeasonId(null);
+          }}
+          onCancel={() => setConfirmEndSeasonId(null)}
+        />
+      )}
+
+      {postSeasonInfo && (
+        <PostSeasonModal
+          teamId={postSeasonInfo.teamId}
+          year={postSeasonInfo.year}
+          onClose={() => setPostSeasonInfo(null)}
         />
       )}
 

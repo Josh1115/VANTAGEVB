@@ -127,7 +127,7 @@ export function SeasonsPage() {
       const completed = matches.filter((m) => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition');
       const wins   = completed.filter((m) => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
       const losses = completed.length - wins;
-      const isActive = matches.some(
+      const isActive = s.status !== 'ended' && matches.some(
         (m) => m.status === MATCH_STATUS.SCHEDULED || m.status === MATCH_STATUS.IN_PROGRESS || m.status === MATCH_STATUS.SETUP
       );
       return {

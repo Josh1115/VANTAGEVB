@@ -13,6 +13,8 @@ import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { SwipeableMatchCard } from '../components/ui/SwipeableMatchCard';
+import { PostSeasonModal } from '../components/shared/PostSeasonModal';
+import { applyInferredSeasonFinish } from '../utils/seasonUtils';
 
 
 export function SeasonDetailPage() {
@@ -47,6 +49,8 @@ export function SeasonDetailPage() {
 
   // Schedule-game modal state (must be before early return)
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [confirmEndSeason, setConfirmEndSeason] = useState(false);
+  const [showPostSeason,   setShowPostSeason]   = useState(false);
 
   const [schedOpen,      setSchedOpen]      = useState(false);
   const [editMatchId,    setEditMatchId]    = useState(null);
@@ -396,7 +400,32 @@ export function SeasonDetailPage() {
             </div>
           )}
         </section>
+
+        {season.status !== 'ended' && (
+          <button
+            onClick={() => setConfirmEndSeason(true)}
+            className="w-full py-2.5 rounded-xl border border-slate-600 text-slate-400 text-sm font-semibold hover:border-red-700/60 hover:text-red-400 hover:bg-red-900/10 transition-colors"
+          >
+            End Season
+          </button>
+        )}
       </div>
+
+      {confirmEndSeason && (
+        <ConfirmDialog
+          title="End Season?"
+          message="Mark this season as complete. Any unplayed scheduled matches will stay on the schedule but the season will show as Done."
+          confirmLabel="End Season"
+          danger
+          onConfirm={async () => {
+            await db.seasons.update(id, { status: 'ended' });
+            await applyInferredSeasonFinish(id, season.team_id, season.year);
+            setConfirmEndSeason(false);
+            setShowPostSeason(true);
+          }}
+          onCancel={() => setConfirmEndSeason(false)}
+        />
+      )}
 
       {confirmDelete && (
         <ConfirmDialog
@@ -415,6 +444,14 @@ export function SeasonDetailPage() {
             setConfirmDelete(null);
           }}
           onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {showPostSeason && (
+        <PostSeasonModal
+          teamId={season.team_id}
+          year={season.year}
+          onClose={() => setShowPostSeason(false)}
         />
       )}
 
