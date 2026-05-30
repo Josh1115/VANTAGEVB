@@ -105,10 +105,96 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
     .toArray();
   const historicalRows = makeHistoricalRows(historicalAll);
 
-  // career is historical-only — skip all match/contact queries
+  // career — compute from all seasons' contacts, with manual historical as offsets
   if (tab === 'career') {
+    const players = await db.players.where('team_id').equals(teamId).toArray();
+    const playerNamesMap = Object.fromEntries(players.map(p => [p.id, p.name]));
+    const nameToPlayerId = Object.fromEntries(
+      players.map(p => [p.name?.toLowerCase().trim() ?? '', p.id])
+    );
+    const positions       = Object.fromEntries(players.map(p => [p.id, p.position]));
+    const activePlayerIds = new Set(players.filter(p => p.is_active).map(p => p.id));
+    const playerClassYears = Object.fromEntries(players.filter(p => p.year).map(p => [p.id, p.year]));
+
+    const seasons = await db.seasons.where('team_id').equals(teamId).toArray();
+    const seasonYearById = Object.fromEntries(seasons.map(s => [s.id, s.year]));
+
+    let careerStats = {};
+    let playerYearRange = {}; // player_id -> { min, max }
+
+    if (seasons.length) {
+      const allMatches = await db.matches
+        .where('season_id').anyOf(seasons.map(s => s.id))
+        .filter(m => m.status !== MATCH_STATUS.SCHEDULED && m.match_type !== 'exhibition')
+        .toArray();
+
+      if (allMatches.length) {
+        const matchIds = allMatches.map(m => m.id);
+        const matchSeasonMap = Object.fromEntries(allMatches.map(m => [m.id, m.season_id]));
+        const contacts = await getContactsForMatches(matchIds);
+
+        // Sum all contacts across all seasons per player
+        careerStats = computePlayerStats(contacts, 1, positions);
+
+        // Derive year range from which seasons each player appeared in
+        for (const c of contacts) {
+          if (!c.player_id || c.opponent_contact) continue;
+          const year = seasonYearById[matchSeasonMap[c.match_id]];
+          if (year == null) continue;
+          const r = playerYearRange[c.player_id];
+          if (!r) { playerYearRange[c.player_id] = { min: year, max: year }; }
+          else { r.min = Math.min(r.min, year); r.max = Math.max(r.max, year); }
+        }
+      }
+    }
+
+    // Split historical records into linked (matched to a player) vs standalone
+    const COUNT_STATS = new Set(['k', 'ace', 'blk', 'ast', 'dig', 'sp']);
+    const offsetsByPid = {}; // player_id -> stat -> value (pre-app offset)
+    const standaloneHistorical = [];
+
+    for (const r of historicalAll) {
+      const pid = r.player_id
+        ?? nameToPlayerId[r.player_name?.toLowerCase().trim() ?? ''];
+      if (pid && playerNamesMap[pid] && COUNT_STATS.has(r.stat)) {
+        if (!offsetsByPid[pid]) offsetsByPid[pid] = {};
+        offsetsByPid[pid][r.stat] = (offsetsByPid[pid][r.stat] ?? 0) + (r.value ?? 0);
+      } else {
+        standaloneHistorical.push(r);
+      }
+    }
+
+    // Build player rows: all players with contacts OR with pre-app offsets
+    const allPids = new Set([
+      ...Object.keys(careerStats).map(Number),
+      ...Object.keys(offsetsByPid).map(Number),
+    ]);
+
     return Object.fromEntries(
-      CAREER_STATS.map(({ key }) => [key, mergeAndRank([], historicalRows(key))])
+      CAREER_STATS.map(({ key }) => {
+        const computed = [...allPids]
+          .map(pid => {
+            const fromContacts = getStatValue(careerStats[pid] ?? {}, key) ?? 0;
+            const offset       = offsetsByPid[pid]?.[key] ?? 0;
+            const val          = fromContacts + offset;
+            if (!val) return null;
+            const yearRange = playerYearRange[pid] ?? null;
+            const isActive  = activePlayerIds.has(pid);
+            return {
+              name:              playerNamesMap[pid] ?? '?',
+              val,
+              class_year:        playerClassYears[pid] ?? '',
+              career_year_start: yearRange?.min ?? null,
+              career_year_end:   isActive ? null : (yearRange?.max ?? null),
+              active:            isActive,
+              player_id:         pid,
+            };
+          })
+          .filter(Boolean);
+
+        const historical = makeHistoricalRows(standaloneHistorical)(key);
+        return [key, mergeAndRank(computed, historical)];
+      })
     );
   }
 
@@ -1025,8 +1111,8 @@ export function RecordsPage() {
       <PageHeader
         title={orgName ? `Records — ${orgName}` : 'Records'}
         action={teamId && (
-          <button onClick={() => setShowAdd(true)} className="px-3 py-1 rounded-lg bg-primary text-white text-sm font-bold">
-            + Add
+          <button onClick={() => setShowAdd(true)} className="px-3 py-1 rounded-lg bg-primary text-white text-sm font-bold record-btn-pulse">
+            + Record
           </button>
         )}
       />

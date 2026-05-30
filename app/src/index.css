@@ -1078,6 +1078,15 @@
   pointer-events: none;
 }
 
+/* ── + Record button glow pulse ── */
+@keyframes record-btn-pulse {
+  0%, 100% { box-shadow: 0 0 6px 1px rgba(249,115,22,0.3); }
+  50%       { box-shadow: 0 0 20px 6px rgba(249,115,22,0.7); }
+}
+.record-btn-pulse {
+  animation: record-btn-pulse 1.8s ease-in-out infinite;
+}
+
 /* ── Medal pulse on Records leaderboard ── */
 @keyframes medal-pulse {
   0%, 100% { transform: scale(1); }
