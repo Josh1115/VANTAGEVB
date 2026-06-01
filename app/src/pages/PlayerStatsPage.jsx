@@ -28,6 +28,13 @@ import { VER_TIERS } from '../components/stats/VERBadge';
 
 const POS_COLOR = { S: 'blue', OH: 'orange', OPP: 'orange', MB: 'green', L: 'gray', DS: 'gray', RS: 'orange' };
 
+const SCHOOL_YEAR_CLS = {
+  Freshman:  'bg-white text-black border-white/30',
+  Sophomore: 'bg-teal-400 text-black border-teal-300/50',
+  Junior:    'bg-blue-600 text-white border-blue-500/50',
+  Senior:    'bg-black text-white border-slate-600',
+};
+
 // ── Per-game trend chart ──────────────────────────────────────────────────────
 
 function calcLinearTrend(data, key) {
@@ -441,6 +448,15 @@ export function PlayerStatsPage() {
 
   const player = useLiveQuery(() => db.players.get(pid), [pid]);
 
+  const awardTypes = useLiveQuery(
+    () => db.accolade_types.where('team_id').equals(tid).toArray(),
+    [tid]
+  );
+  const allTeamWinners = useLiveQuery(
+    () => db.accolade_winners.where('team_id').equals(tid).toArray(),
+    [tid]
+  );
+
   const seasons = useLiveQuery(
     () => db.seasons.where('team_id').equals(tid).toArray(),
     [tid]
@@ -540,6 +556,22 @@ export function PlayerStatsPage() {
     [statTab, servingCols]
   );
 
+  const playerAwardGroups = useMemo(() => {
+    if (!allTeamWinners?.length || !player?.name || !awardTypes?.length) return [];
+    const normalized = player.name.trim().toLowerCase();
+    const typeMap = Object.fromEntries(awardTypes.map(t => [t.id, t]));
+    const groups = {};
+    for (const w of allTeamWinners) {
+      if (w.player_name?.trim().toLowerCase() !== normalized) continue;
+      if (!groups[w.type_id]) groups[w.type_id] = { type: typeMap[w.type_id], winners: [] };
+      groups[w.type_id].winners.push(w);
+    }
+    return Object.values(groups)
+      .filter(g => g.type)
+      .sort((a, b) => (a.type.sort_order ?? 0) - (b.type.sort_order ?? 0))
+      .map(g => ({ ...g, winners: [...g.winners].sort((a, b) => String(b.year).localeCompare(String(a.year))) }));
+  }, [allTeamWinners, player?.name, awardTypes]);
+
   if (!player) {
     return (
       <div className="flex items-center justify-center h-48">
@@ -571,6 +603,7 @@ export function PlayerStatsPage() {
           { value: 'season',      label: 'Season Stats' },
           { value: 'bygame',      label: 'By Game'       },
           { value: 'report_card', label: 'Report Card'   },
+          { value: 'awards',      label: 'Awards'        },
         ]}
         active={mainTab}
         onChange={setMainTab}
@@ -614,7 +647,7 @@ export function PlayerStatsPage() {
             oppPoints={stats.oppPoints ?? 0}
           />
         )
-      ) : (
+      ) : mainTab === 'bygame' ? (
         // By Game tab
         byGameRows.length === 0 ? (
           <EmptyState title="No matches" description="No matches recorded this season." />
@@ -657,6 +690,34 @@ export function PlayerStatsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )
+      ) : (
+        // Awards tab
+        playerAwardGroups.length === 0 ? (
+          <EmptyState title="No awards" description="Awards entered in the History page will appear here when the player name matches." />
+        ) : (
+          <div className="px-4 py-4 space-y-5">
+            {playerAwardGroups.map(({ type, winners }) => (
+              <div key={type.id}>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white mb-2">{type.name}</p>
+                <div className="space-y-2">
+                  {winners.map(w => (
+                    <div key={w.id} className="bg-surface rounded-xl px-4 py-3 border border-slate-700/50 flex items-center gap-3 flex-wrap">
+                      <span className="text-sm font-bold text-white tabular-nums">{w.year}</span>
+                      {w.school_year && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${SCHOOL_YEAR_CLS[w.school_year] ?? 'bg-slate-700/60 text-slate-300 border-slate-600/50'}`}>
+                          {w.school_year}
+                        </span>
+                      )}
+                      {w.times_won > 1 && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-primary/20 text-primary border-primary/30">×{w.times_won}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )
       )}

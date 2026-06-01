@@ -112,6 +112,8 @@ export function TeamDetailPage() {
     () => db.practice_sessions.where('team_id').equals(id).reverse().toArray(),
     [id]
   );
+  const activePracticeSessions   = useMemo(() => (practiceSessions ?? []).filter(s => !s.archived), [practiceSessions]);
+  const archivedPracticeSessions = useMemo(() => (practiceSessions ?? []).filter(s => s.archived),  [practiceSessions]);
 
   // Most recent season for this team — used to store coaching staff
   const currentSeason = useLiveQuery(
@@ -141,6 +143,7 @@ export function TeamDetailPage() {
   const [draftPlannedSubs,    setDraftPlannedSubs]    = useState(null); // Array | null
   const [expandedRotation,    setExpandedRotation]    = useState(1);
   const [savingLineupConfig,  setSavingLineupConfig]  = useState(false);
+  const [showArchivedPractice, setShowArchivedPractice] = useState(false);
   const showToast = useUiStore(selectShowToast);
 
   const removePlayer = async () => {
@@ -566,7 +569,7 @@ export function TeamDetailPage() {
 
       {tab === 'practice' && (
         <div className="p-4 md:p-6 space-y-6">
-          {practiceSessions?.length === 0 ? (
+          {activePracticeSessions.length === 0 && archivedPracticeSessions.length === 0 ? (
             <EmptyState
               icon="🏟️"
               title="No practice sessions yet"
@@ -575,10 +578,11 @@ export function TeamDetailPage() {
           ) : (
             <>
               {['practice_game', 'serve_receive', 'serve_tracker'].map((toolType) => {
-                const sessions = (practiceSessions ?? []).filter((s) => s.tool_type === toolType);
-                if (sessions.length === 0) return null;
+                const sessions        = activePracticeSessions.filter(s => s.tool_type === toolType);
+                const archivedForType = archivedPracticeSessions.filter(s => s.tool_type === toolType);
+                if (sessions.length === 0 && archivedForType.length === 0) return null;
                 const titles = { practice_game: 'Practice Games', serve_receive: 'Serve Receive', serve_tracker: 'Serve Tracker' };
-                const srSummary = toolType === 'serve_receive' ? (() => {
+                const srSummary = toolType === 'serve_receive' && sessions.length > 0 ? (() => {
                   const totalPasses = sessions.reduce((s, sess) => s + (sess.data?.totalPasses ?? 0), 0);
                   const sumRatings  = sessions.reduce((s, sess) => {
                     const passes = (sess.data?.players ?? []).flatMap((p) => p.passes ?? []);
@@ -632,39 +636,77 @@ export function TeamDetailPage() {
                         )}
                       </div>
                     )}
-                    <div className="space-y-2">
-                      {sessions.map((s) => (
-                        <div key={s.id} className="bg-surface rounded-xl px-4 py-3 cursor-pointer hover:bg-slate-700 active:scale-[0.98] transition-[transform,background-color] duration-75" onClick={() => setSelectedSession(s)}>
-                          <div className="flex items-baseline justify-between gap-2">
-                            <span className="font-semibold text-sm truncate">{s.label}</span>
-                            <span className="text-xs text-slate-500 flex-shrink-0">
-                              {new Date(s.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </span>
+                    {sessions.length > 0 && (
+                      <div className="space-y-2">
+                        {sessions.map((s) => (
+                          <div key={s.id} className="bg-surface rounded-xl flex items-stretch">
+                            <div
+                              className="flex-1 px-4 py-3 cursor-pointer hover:bg-slate-700/70 active:scale-[0.98] transition-[transform,background-color] duration-75 rounded-l-xl"
+                              onClick={() => setSelectedSession(s)}
+                            >
+                              <div className="flex items-baseline justify-between gap-2">
+                                <span className="font-semibold text-sm truncate">{s.label}</span>
+                                <span className="text-xs text-slate-500 flex-shrink-0">
+                                  {new Date(s.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </span>
+                              </div>
+                              <div className="text-xs text-slate-400 mt-1">
+                                {toolType === 'practice_game' && (() => {
+                                  const { sets, players } = s.data;
+                                  const setStr = sets.map((st) => `${st.us}-${st.opp}`).join('  ');
+                                  const totalKills  = players?.reduce((a, p) => a + (p.kills  ?? 0), 0) ?? 0;
+                                  const totalErrors = players?.reduce((a, p) => a + (p.errors ?? 0), 0) ?? 0;
+                                  const totalDigs   = players?.reduce((a, p) => a + (p.digs   ?? 0), 0) ?? 0;
+                                  return <span>{setStr && <span className="mr-2">{setStr}</span>}K: {totalKills}  E: {totalErrors}  Digs: {totalDigs}</span>;
+                                })()}
+                                {toolType === 'serve_receive' && (() => {
+                                  const { overallAPR, totalPasses } = s.data;
+                                  return <span>{overallAPR} APR · {totalPasses} passes</span>;
+                                })()}
+                                {toolType === 'serve_tracker' && (() => {
+                                  const d = s.data;
+                                  const total   = d.mode === 'team' ? d.stats.total : d.players?.reduce((a, p) => a + p.stats.total, 0) ?? 0;
+                                  const inCount = d.mode === 'team' ? d.stats.inCount : d.players?.reduce((a, p) => a + p.stats.inCount, 0) ?? 0;
+                                  const pct     = total ? Math.round(inCount / total * 100) : 0;
+                                  return <span>{total} serves · {pct}% in</span>;
+                                })()}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => db.practice_sessions.update(s.id, { archived: true })}
+                              className="px-3 text-xs font-semibold text-slate-600 hover:text-yellow-400 transition-colors border-l border-slate-700/50 rounded-r-xl"
+                              title="Archive session"
+                            >
+                              Archive
+                            </button>
                           </div>
-                          <div className="text-xs text-slate-400 mt-1">
-                            {toolType === 'practice_game' && (() => {
-                              const { sets, players } = s.data;
-                              const setStr = sets.map((st) => `${st.us}-${st.opp}`).join('  ');
-                              const totalKills  = players?.reduce((a, p) => a + (p.kills  ?? 0), 0) ?? 0;
-                              const totalErrors = players?.reduce((a, p) => a + (p.errors ?? 0), 0) ?? 0;
-                              const totalDigs   = players?.reduce((a, p) => a + (p.digs   ?? 0), 0) ?? 0;
-                              return <span>{setStr && <span className="mr-2">{setStr}</span>}K: {totalKills}  E: {totalErrors}  Digs: {totalDigs}</span>;
-                            })()}
-                            {toolType === 'serve_receive' && (() => {
-                              const { overallAPR, totalPasses } = s.data;
-                              return <span>{overallAPR} APR · {totalPasses} passes</span>;
-                            })()}
-                            {toolType === 'serve_tracker' && (() => {
-                              const d = s.data;
-                              const total   = d.mode === 'team' ? d.stats.total : d.players?.reduce((a, p) => a + p.stats.total, 0) ?? 0;
-                              const inCount = d.mode === 'team' ? d.stats.inCount : d.players?.reduce((a, p) => a + p.stats.inCount, 0) ?? 0;
-                              const pct     = total ? Math.round(inCount / total * 100) : 0;
-                              return <span>{total} serves · {pct}% in</span>;
-                            })()}
+                        ))}
+                      </div>
+                    )}
+                    {archivedForType.length > 0 && (
+                      <div className="mt-2">
+                        <button
+                          onClick={() => setShowArchivedPractice(v => !v)}
+                          className="text-xs text-slate-500 hover:text-slate-300 transition-colors py-1"
+                        >
+                          {showArchivedPractice ? '▾' : '▸'} {archivedForType.length} archived
+                        </button>
+                        {showArchivedPractice && (
+                          <div className="space-y-2 mt-1">
+                            {archivedForType.map((s) => (
+                              <div key={s.id} className="bg-surface/60 rounded-xl px-4 py-3 cursor-pointer hover:bg-slate-700/50 active:scale-[0.98] transition-[transform,background-color] duration-75 opacity-60" onClick={() => setSelectedSession(s)}>
+                                <div className="flex items-baseline justify-between gap-2">
+                                  <span className="font-semibold text-sm truncate">{s.label}</span>
+                                  <span className="text-xs text-slate-500 flex-shrink-0">
+                                    {new Date(s.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        )}
+                      </div>
+                    )}
                   </section>
                 );
               })}

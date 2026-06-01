@@ -809,8 +809,8 @@ export const useMatchStore = create((set, get) => ({
 
         const slot1 = s.lineup.find((p) => p.playerId === pendingHblk.playerId);
         const slot2 = s.lineup.find((p) => p.playerId === playerId);
-        const n1 = slot1?.playerName.split(' ').pop() ?? '';
-        const n2 = slot2?.playerName.split(' ').pop() ?? '';
+        const n1 = slot1?.playerName?.split(' ').pop() ?? '';
+        const n2 = slot2?.playerName?.split(' ').pop() ?? '';
         setFeed(set, `+1 ${n1} & ${n2} Blk Ast`);
 
         await get().addPoint(SIDE.US);

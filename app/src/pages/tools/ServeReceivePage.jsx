@@ -57,11 +57,13 @@ function SetupView({ onStart, onResume, onDiscardDraft }) {
     [teamId]
   );
   const recentSessions = useLiveQuery(
-    () => db.practice_sessions.where('tool_type').equals('serve_receive').reverse().limit(10).toArray(),
+    () => db.practice_sessions.where('tool_type').equals('serve_receive').reverse().toArray()
+      .then(arr => arr.filter(s => !s.archived).slice(0, 10)),
     []
   );
   const allSessions = useLiveQuery(
-    () => db.practice_sessions.where('tool_type').equals('serve_receive').toArray(),
+    () => db.practice_sessions.where('tool_type').equals('serve_receive')
+      .filter(s => !s.archived).toArray(),
     []
   );
 

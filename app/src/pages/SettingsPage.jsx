@@ -1457,6 +1457,7 @@ export function SettingsPage() {
                 <div className="space-y-1">
                   {[
                     { to: '/help/season-history', icon: '🏆', label: 'Season History & Playoff Entry' },
+                    { to: '/help/end-season',     icon: '🏁', label: 'How to End a Season'             },
                   ].map(({ to, icon, label }) => (
                     <Link key={to} to={to}
                       className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors text-left"

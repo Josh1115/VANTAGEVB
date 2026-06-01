@@ -55,7 +55,8 @@ function SetupView({ onStart, onResume, onDiscardDraft }) {
     [teamId]
   );
   const recentSessions = useLiveQuery(
-    () => db.practice_sessions.where('tool_type').equals('practice_game').reverse().limit(10).toArray(),
+    () => db.practice_sessions.where('tool_type').equals('practice_game').reverse().toArray()
+      .then(arr => arr.filter(s => !s.archived).slice(0, 10)),
     []
   );
 

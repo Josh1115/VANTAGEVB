@@ -909,24 +909,24 @@ export function HomePage() {
             {/* Header */}
             <div className="px-4 py-2 border-b border-slate-700/60 text-center">
               <span
-                className="text-sm font-black tracking-widest text-white uppercase"
+                className="text-[17.5px] font-black tracking-widest text-white uppercase"
                 style={{ fontFamily: "'Orbitron', sans-serif" }}
               >
                 {seasonRecord.teamName}
               </span>
               <span className="text-slate-600 mx-2">·</span>
-              <span className="text-xs text-slate-400 font-semibold">{seasonRecord.seasonName}</span>
+              <span className="text-[15px] text-slate-400 font-semibold">{seasonRecord.seasonName}</span>
               {seasonRecord.stateRank != null && (
                 <>
                   <span className="text-slate-600 mx-2">·</span>
-                  <span className="text-xs font-black text-amber-400 tracking-wide">
-                    #{seasonRecord.stateRank} {seasonRecord.teamState ?? 'STATE'}
+                  <span className="text-[15px] font-black text-amber-400 tracking-wide">
+                    {seasonRecord.teamState ?? 'STATE'}: #{seasonRecord.stateRank}
                   </span>
                   {seasonRecord.prevStateRank != null && seasonRecord.prevStateRank !== seasonRecord.stateRank && (() => {
                     const delta = seasonRecord.prevStateRank - seasonRecord.stateRank;
                     return (
-                      <span className={`text-[10px] font-bold ml-1 ${delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`}
+                      <span className={`text-[12.5px] font-bold ml-1 ${delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        ({delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`})
                       </span>
                     );
                   })()}
@@ -935,12 +935,12 @@ export function HomePage() {
               {seasonRecord.nationalRank != null && (
                 <>
                   <span className="text-slate-600 mx-2">·</span>
-                  <span className="text-xs font-black text-amber-400 tracking-wide">#{seasonRecord.nationalRank} NATIONAL</span>
+                  <span className="text-[15px] font-black text-amber-400 tracking-wide">NATIONAL: #{seasonRecord.nationalRank}</span>
                   {seasonRecord.prevNationalRank != null && seasonRecord.prevNationalRank !== seasonRecord.nationalRank && (() => {
                     const delta = seasonRecord.prevNationalRank - seasonRecord.nationalRank;
                     return (
-                      <span className={`text-[10px] font-bold ml-1 ${delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`}
+                      <span className={`text-[12.5px] font-bold ml-1 ${delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        ({delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`})
                       </span>
                     );
                   })()}
@@ -955,24 +955,24 @@ export function HomePage() {
                 onClick={() => navigate('/reports?result=win')}
               >
                 <div
-                  className="text-7xl font-black text-emerald-400 tabular-nums leading-none tracking-[0.15em] scoreboard-flicker"
+                  className="text-[90px] font-black text-emerald-400 tabular-nums leading-none tracking-[0.15em] scoreboard-flicker"
                   style={{ fontFamily: "'Orbitron', sans-serif" }}
                 >
                   {displaySeasonRecord.wins}
                 </div>
-                <div className="text-xs font-black tracking-[0.2em] text-emerald-700 mt-2">WINS</div>
+                <div className="text-[15px] font-black tracking-[0.2em] text-emerald-700 mt-2">WINS</div>
               </button>
               <button
                 className="py-5 text-center hover:bg-red-900/20 active:bg-red-900/30 transition-colors"
                 onClick={() => navigate('/reports?result=loss')}
               >
                 <div
-                  className="text-7xl font-black text-red-400 tabular-nums leading-none tracking-[0.15em] scoreboard-flicker"
+                  className="text-[90px] font-black text-red-400 tabular-nums leading-none tracking-[0.15em] scoreboard-flicker"
                   style={{ fontFamily: "'Orbitron', sans-serif" }}
                 >
                   {displaySeasonRecord.losses}
                 </div>
-                <div className="text-xs font-black tracking-[0.2em] text-red-800 mt-2">LOSSES</div>
+                <div className="text-[15px] font-black tracking-[0.2em] text-red-800 mt-2">LOSSES</div>
               </button>
             </div>
 
@@ -989,47 +989,47 @@ export function HomePage() {
               {seasonRecord.hasLocData && (
                 <>
                   {(seasonRecord.homeW + seasonRecord.homeL) > 0 && (
-                    <span className="text-slate-400 font-semibold">
-                      {seasonRecord.homeW}–{seasonRecord.homeL} <span className="text-slate-500">HOME</span>
+                    <span className="text-white font-semibold">
+                      {seasonRecord.homeW}–{seasonRecord.homeL} <span className="text-white">HOME</span>
                     </span>
                   )}
                   {(seasonRecord.awayW + seasonRecord.awayL) > 0 && (
                     <>
-                      <span className="text-slate-400 font-black">·</span>
-                      <span className="text-slate-400 font-semibold">
-                        {seasonRecord.awayW}–{seasonRecord.awayL} <span className="text-slate-500">AWAY</span>
+                      <span className="text-white font-black">·</span>
+                      <span className="text-white font-semibold">
+                        {seasonRecord.awayW}–{seasonRecord.awayL} <span className="text-white">AWAY</span>
                       </span>
                     </>
                   )}
                   {(seasonRecord.neutW + seasonRecord.neutL) > 0 && (
                     <>
-                      <span className="text-slate-400 font-black">·</span>
-                      <span className="text-slate-400 font-semibold">
-                        {seasonRecord.neutW}–{seasonRecord.neutL} <span className="text-slate-500">NEUT</span>
+                      <span className="text-white font-black">·</span>
+                      <span className="text-white font-semibold">
+                        {seasonRecord.neutW}–{seasonRecord.neutL} <span className="text-white">NEUT</span>
                       </span>
                     </>
                   )}
                   {(seasonRecord.confW + seasonRecord.confL) > 0 && (
                     <>
-                      <span className="text-slate-400 font-black">·</span>
-                      <span className="text-slate-400 font-semibold">
-                        {seasonRecord.confW}–{seasonRecord.confL} <span className="text-slate-500">CONF</span>
+                      <span className="text-white font-black">·</span>
+                      <span className="text-white font-semibold">
+                        {seasonRecord.confW}–{seasonRecord.confL} <span className="text-white">CONF</span>
                       </span>
                     </>
                   )}
                   {(seasonRecord.tourneyW + seasonRecord.tourneyL) > 0 && (
                     <>
-                      <span className="text-slate-400 font-black">·</span>
-                      <span className="text-slate-400 font-semibold">
-                        {seasonRecord.tourneyW}–{seasonRecord.tourneyL} <span className="text-slate-500">TOURN</span>
+                      <span className="text-white font-black">·</span>
+                      <span className="text-white font-semibold">
+                        {seasonRecord.tourneyW}–{seasonRecord.tourneyL} <span className="text-white">TOURN</span>
                       </span>
                     </>
                   )}
                   {seasonRecord.last5Count > 0 && (
                     <>
-                      <span className="text-slate-400 font-black">·</span>
-                      <span className="text-slate-400 font-semibold">
-                        {seasonRecord.last5W}–{seasonRecord.last5L} <span className="text-slate-500">L{seasonRecord.last5Count}</span>
+                      <span className="text-white font-black">·</span>
+                      <span className="text-white font-semibold">
+                        {seasonRecord.last5W}–{seasonRecord.last5L} <span className="text-white">L{seasonRecord.last5Count}</span>
                       </span>
                     </>
                   )}
@@ -1040,7 +1040,7 @@ export function HomePage() {
             {/* Season progress bar */}
             {seasonRecord.matchProgress.total > 0 && (
               <div className="px-4 pt-2 pb-3 border-t border-slate-700/60">
-                <div className="flex justify-between text-[10px] font-bold tracking-[0.15em] text-slate-500 mb-1.5">
+                <div className="flex justify-between text-[10px] font-bold tracking-[0.15em] text-white mb-1.5">
                   <span>SEASON PROGRESS · {Math.round((seasonRecord.matchProgress.completed / seasonRecord.matchProgress.total) * 100)}%</span>
                   <span>{seasonRecord.matchProgress.completed} / {seasonRecord.matchProgress.total}</span>
                 </div>
@@ -1122,8 +1122,8 @@ export function HomePage() {
           };
           return (
             <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 px-0.5 animate-slide-up-fade" style={{ animationDelay: '250ms' }}>
-                Season Leaders{seasonRecord?.seasonName ? <span className="ml-1.5 normal-case font-semibold tracking-normal text-slate-600">· {seasonRecord.seasonName}</span> : ''}
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white px-0.5 animate-slide-up-fade" style={{ animationDelay: '250ms' }}>
+                Season Leaders{seasonRecord?.seasonName ? <span className="ml-1.5 normal-case font-semibold tracking-normal text-white">· {seasonRecord.seasonName}</span> : ''}
               </p>
               <div className="grid grid-cols-7 gap-2">
                 {LEADERS.map(({ label, key, ttKey, fmt }, i) => {
@@ -1137,7 +1137,7 @@ export function HomePage() {
                       className="bg-surface rounded-xl p-2 text-center flex flex-col items-center gap-1 animate-slide-up-fade active:scale-95 transition-transform disabled:active:scale-100"
                       style={{ animationDelay: `${260 + i * 45}ms` }}
                     >
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-white">{label}</span>
                       {leader ? (
                         <>
                           <span className="text-xl font-black text-primary tabular-nums leading-none">{fmt ? fmt(leader.val) : leader.val}</span>
@@ -1151,7 +1151,7 @@ export function HomePage() {
                   );
                 })}
               </div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 px-0.5 animate-slide-up-fade" style={{ animationDelay: `${260 + LEADERS.length * 45}ms` }}>Team Totals</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white px-0.5 animate-slide-up-fade" style={{ animationDelay: `${260 + LEADERS.length * 45}ms` }}>Team Totals</p>
               <div className="grid grid-cols-7 gap-2">
                 {LEADERS.map(({ label, ttKey, fmt, noAvg }, i) => {
                   const teamVal = tt?.[ttKey];
@@ -1170,13 +1170,13 @@ export function HomePage() {
                       className="bg-surface rounded-xl p-2 text-center flex flex-col items-center gap-1 animate-slide-up-fade active:scale-95 transition-transform disabled:active:scale-100"
                       style={{ animationDelay: `${320 + LEADERS.length * 45 + i * 45}ms` }}
                     >
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-white">{label}</span>
                       <span className="text-xl font-black text-primary tabular-nums leading-none">
                         {teamVal != null ? (fmt ? fmt(teamVal) : teamVal) : '—'}
                       </span>
                       <Delta val={td?.[ttKey]} fmt={fmt} />
                       {fmtPerMatch != null && (
-                        <span className="text-[9px] font-semibold text-white leading-none tabular-nums">{fmtPerMatch}<span className="text-slate-500">/MATCH</span></span>
+                        <span className="text-[9px] font-semibold text-white leading-none tabular-nums">{fmtPerMatch}<span className="text-white">/MATCH</span></span>
                       )}
                     </button>
                   );

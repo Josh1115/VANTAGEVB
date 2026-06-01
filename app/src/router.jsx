@@ -43,6 +43,7 @@ const HelpReportsPage          = lazy(() => import('./pages/HelpReportsPage').th
 const HelpRosterPage           = lazy(() => import('./pages/HelpRosterPage').then(m => ({ default: m.HelpRosterPage })));
 const HelpSeasonHistoryPage    = lazy(() => import('./pages/HelpSeasonHistoryPage').then(m => ({ default: m.HelpSeasonHistoryPage })));
 const HelpSubstitutionsPage    = lazy(() => import('./pages/HelpSubstitutionsPage').then(m => ({ default: m.HelpSubstitutionsPage })));
+const HelpEndSeasonPage        = lazy(() => import('./pages/HelpEndSeasonPage').then(m => ({ default: m.HelpEndSeasonPage })));
 
 function PageFallback() {
   return (
@@ -97,6 +98,7 @@ export const router = createBrowserRouter([
       { path: 'help/roster',                element: <S><HelpRosterPage /></S> },
       { path: 'help/season-history',        element: <S><HelpSeasonHistoryPage /></S> },
       { path: 'help/substitutions',         element: <S><HelpSubstitutionsPage /></S> },
+      { path: 'help/end-season',            element: <S><HelpEndSeasonPage /></S> },
       { path: '*',                           element: <NotFoundPage /> },
     ],
   },

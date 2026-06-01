@@ -5,8 +5,10 @@ import { db } from '../../db/schema';
 
 export function PostSeasonModal({ teamId, year, onClose }) {
   const navigate = useNavigate();
-  const [archived,  setArchived]  = useState(false);
-  const [archiving, setArchiving] = useState(false);
+  const [archived,          setArchived]          = useState(false);
+  const [archiving,         setArchiving]          = useState(false);
+  const [practiceArchived,  setPracticeArchived]   = useState(false);
+  const [archivingPractice, setArchivingPractice]  = useState(false);
 
   const activePlayers = useLiveQuery(
     () => db.players.where('team_id').equals(teamId).filter(p => p.is_active).toArray(),
@@ -20,7 +22,15 @@ export function PostSeasonModal({ teamId, year, onClose }) {
     [teamId, year]
   );
 
-  const activeCount = activePlayers?.length ?? 0;
+  const activePracticeSessions = useLiveQuery(
+    () => db.practice_sessions.where('team_id').equals(teamId)
+      .filter(s => !s.archived)
+      .toArray(),
+    [teamId]
+  );
+
+  const activeCount    = activePlayers?.length ?? 0;
+  const practiceCount  = activePracticeSessions?.length ?? 0;
   // Incomplete = no entry, or entry exists but has neither coach nor W/L recorded
   const historyIncomplete = !historyEntry || (!historyEntry.head_coach && historyEntry.wins == null);
 
@@ -38,7 +48,19 @@ export function PostSeasonModal({ teamId, year, onClose }) {
     }
   }
 
-  const allDone = (activeCount === 0 || archived) && !historyIncomplete;
+  async function handleArchivePractice() {
+    setArchivingPractice(true);
+    try {
+      const sessions = await db.practice_sessions.where('team_id').equals(teamId)
+        .filter(s => !s.archived).toArray();
+      await Promise.all(sessions.map(s => db.practice_sessions.update(s.id, { archived: true })));
+      setPracticeArchived(true);
+    } finally {
+      setArchivingPractice(false);
+    }
+  }
+
+  const allDone = (activeCount === 0 || archived) && !historyIncomplete && (practiceCount === 0 || practiceArchived);
 
   return (
     <div
@@ -101,6 +123,34 @@ export function PostSeasonModal({ teamId, year, onClose }) {
                 >
                   Go to History →
                 </button>
+              </div>
+            )}
+
+            {/* Archive Practice Sessions */}
+            {practiceCount > 0 && !practiceArchived && (
+              <div className="bg-slate-800 rounded-xl px-4 py-3 space-y-2.5">
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Archive Practice Sessions</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Archive {practiceCount} practice session{practiceCount !== 1 ? 's' : ''} from this season.
+                    Sessions stay visible in the Practice tab.
+                  </p>
+                </div>
+                <button
+                  onClick={handleArchivePractice}
+                  disabled={archivingPractice}
+                  className="w-full py-2 rounded-lg bg-slate-700 text-slate-200 text-sm font-semibold hover:bg-slate-600 transition-colors disabled:opacity-50"
+                >
+                  {archivingPractice ? 'Archiving…' : `Archive ${practiceCount} Session${practiceCount !== 1 ? 's' : ''}`}
+                </button>
+              </div>
+            )}
+
+            {/* Practice archived confirmation */}
+            {practiceArchived && (
+              <div className="bg-slate-800 rounded-xl px-4 py-3 flex items-center gap-2">
+                <span className="text-emerald-400 font-bold">✓</span>
+                <p className="text-sm text-slate-300">Practice sessions archived</p>
               </div>
             )}
           </div>
