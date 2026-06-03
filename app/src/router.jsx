@@ -8,7 +8,8 @@ import { HomePage } from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 // Lazily loaded — heavy pages only fetched when navigated to
-const TeamsPage        = lazy(() => import('./pages/TeamsPage').then(m => ({ default: m.TeamsPage })));
+const TeamsPage           = lazy(() => import('./pages/TeamsPage').then(m => ({ default: m.TeamsPage })));
+const AllTimeRosterPage   = lazy(() => import('./pages/AllTimeRosterPage').then(m => ({ default: m.AllTimeRosterPage })));
 const TeamDetailPage   = lazy(() => import('./pages/TeamDetailPage').then(m => ({ default: m.TeamDetailPage })));
 const PlayerStatsPage       = lazy(() => import('./pages/PlayerStatsPage').then(m => ({ default: m.PlayerStatsPage })));
 const RotationOptimizerPage = lazy(() => import('./pages/RotationOptimizerPage').then(m => ({ default: m.RotationOptimizerPage })));
@@ -64,6 +65,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true,                         element: <HomePage /> },
       { path: 'teams',                       element: <S><TeamsPage /></S> },
+      { path: 'orgs/:orgId/all-time-roster', element: <S><AllTimeRosterPage /></S> },
       { path: 'teams/:teamId',               element: <S><TeamDetailPage /></S> },
       { path: 'teams/:teamId/players/:playerId', element: <S><PlayerStatsPage /></S> },
       { path: 'teams/:teamId/optimizer',        element: <S><RotationOptimizerPage /></S> },

@@ -376,6 +376,102 @@ export async function executeMerge(preview, decisions) {
       if (toAdd.length) await db.historical_records.bulkAdd(toAdd);
     }
 
+    // ── 8. Tourney entries ─────────────────────────────────────────────────
+    if (Array.isArray(data.tourney_entries)) {
+      const exTourneys   = await db.tourney_entries.toArray();
+      const exTourneySet = new Set(exTourneys.map(t => `${t.team_id}|${norm(t.name)}|${t.year}`));
+      const toAdd = [];
+      for (const t of data.tourney_entries) {
+        const exTeamId = teamMap.get(t.team_id);
+        if (exTeamId == null) continue;
+        const key = `${exTeamId}|${norm(t.name)}|${t.year}`;
+        if (!exTourneySet.has(key)) {
+          const row = { ...t, team_id: exTeamId };
+          delete row.id;
+          toAdd.push(row);
+          exTourneySet.add(key);
+        }
+      }
+      if (toAdd.length) await db.tourney_entries.bulkAdd(toAdd);
+    }
+
+    // ── 9. Season history ──────────────────────────────────────────────────
+    // One row per team-year; skip when that team-year already exists (additive).
+    if (Array.isArray(data.season_history)) {
+      const exSeasonHist    = await db.season_history.toArray();
+      const exSeasonHistSet = new Set(exSeasonHist.map(h => `${h.team_id}|${h.year}`));
+      const toAdd = [];
+      for (const h of data.season_history) {
+        const exTeamId = teamMap.get(h.team_id);
+        if (exTeamId == null) continue;
+        const key = `${exTeamId}|${h.year}`;
+        if (!exSeasonHistSet.has(key)) {
+          const row = { ...h, team_id: exTeamId };
+          delete row.id;
+          toAdd.push(row);
+          exSeasonHistSet.add(key);
+        }
+      }
+      if (toAdd.length) await db.season_history.bulkAdd(toAdd);
+    }
+
+    // ── 10. Player commits ─────────────────────────────────────────────────
+    if (Array.isArray(data.player_commits)) {
+      const exCommits   = await db.player_commits.toArray();
+      const exCommitSet = new Set(exCommits.map(c => `${c.team_id}|${norm(c.player_name)}|${c.grad_year}`));
+      const toAdd = [];
+      for (const c of data.player_commits) {
+        const exTeamId = teamMap.get(c.team_id);
+        if (exTeamId == null) continue;
+        const key = `${exTeamId}|${norm(c.player_name)}|${c.grad_year}`;
+        if (!exCommitSet.has(key)) {
+          const row = { ...c, team_id: exTeamId };
+          delete row.id;
+          toAdd.push(row);
+          exCommitSet.add(key);
+        }
+      }
+      if (toAdd.length) await db.player_commits.bulkAdd(toAdd);
+    }
+
+    // ── 11. Accolade types ─────────────────────────────────────────────────
+    // Winners reference type_id, so build an imported→db type-id map first.
+    const accoladeTypeMap = new Map();
+    if (Array.isArray(data.accolade_types)) {
+      const exTypes     = await db.accolade_types.toArray();
+      const exTypeByKey = new Map(exTypes.map(t => [`${t.team_id}|${norm(t.name)}`, t]));
+      for (const t of data.accolade_types) {
+        const exTeamId = teamMap.get(t.team_id);
+        if (exTeamId == null) continue;
+        const ex = exTypeByKey.get(`${exTeamId}|${norm(t.name)}`);
+        if (ex) { accoladeTypeMap.set(t.id, ex.id); continue; }
+        const { id: _, team_id: __, ...rest } = t;
+        const newId = await db.accolade_types.add({ ...rest, team_id: exTeamId });
+        accoladeTypeMap.set(t.id, newId);
+        exTypeByKey.set(`${exTeamId}|${norm(t.name)}`, { ...rest, id: newId, team_id: exTeamId });
+      }
+    }
+
+    // ── 12. Accolade winners ───────────────────────────────────────────────
+    if (Array.isArray(data.accolade_winners)) {
+      const exWinners   = await db.accolade_winners.toArray();
+      const exWinnerSet = new Set(exWinners.map(w => `${w.type_id}|${norm(w.player_name)}|${w.year}`));
+      const toAdd = [];
+      for (const w of data.accolade_winners) {
+        const exTeamId = teamMap.get(w.team_id);
+        const exTypeId = accoladeTypeMap.get(w.type_id);
+        if (exTeamId == null || exTypeId == null) continue;
+        const key = `${exTypeId}|${norm(w.player_name)}|${w.year}`;
+        if (!exWinnerSet.has(key)) {
+          const row = { ...w, team_id: exTeamId, type_id: exTypeId };
+          delete row.id;
+          toAdd.push(row);
+          exWinnerSet.add(key);
+        }
+      }
+      if (toAdd.length) await db.accolade_winners.bulkAdd(toAdd);
+    }
+
   });
 
   return { matchesAdded, matchesReplaced };

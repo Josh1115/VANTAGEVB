@@ -649,20 +649,9 @@ export function ReportsPage() {
                 {[['reg-season', 'Reg Season'], ['tourney', 'Tourney'], ['ihsa-playoffs', playoffLabel], ['exhibition', 'Exhibition']].map(([val, label]) => (
                   <button
                     key={val}
-                    onClick={() => setMatchTypes(prev => {
-                      const on = prev.includes(val);
-                      if (val === 'reg-season') {
-                        return on
-                          ? prev.filter(v => v !== 'reg-season' && v !== 'tourney')
-                          : [...prev.filter(v => v !== 'tourney' && v !== 'ihsa-playoffs'), 'reg-season', 'tourney'];
-                      }
-                      if (val === 'ihsa-playoffs') {
-                        return on
-                          ? prev.filter(v => v !== 'ihsa-playoffs')
-                          : [...prev.filter(v => v !== 'reg-season' && v !== 'tourney'), 'ihsa-playoffs'];
-                      }
-                      return on ? prev.filter(v => v !== val) : [...prev, val];
-                    })}
+                    onClick={() => setMatchTypes(prev =>
+                      prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]
+                    )}
                     className={chipClass(matchTypes.includes(val))}
                   >{label}</button>
                 ))}

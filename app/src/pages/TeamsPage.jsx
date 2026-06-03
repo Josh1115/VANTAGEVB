@@ -517,6 +517,7 @@ export function TeamsPage() {
             onEditTeam={(team) => setTeamModal({ orgId: org.id, team })}
             onDeleteTeam={(team) => setDeleteTeam(team)}
             onSelectTeam={(teamId) => navigate(`/teams/${teamId}`)}
+            onAllTimeRoster={(gender) => navigate(`/orgs/${org.id}/all-time-roster${gender ? `?gender=${gender}` : ''}`)}
           />
         ))}
       </div>
@@ -619,7 +620,7 @@ function yearRangeInfo(teamIds, yearsByTeam) {
   return { label, count: unique.length };
 }
 
-function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDeleteTeam, onSelectTeam }) {
+function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDeleteTeam, onSelectTeam, onAllTimeRoster }) {
   const teams = useTeams(org.id);
 
   const yearsByTeam = useLiveQuery(async () => {
@@ -680,6 +681,12 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
               </span>
               {info && <span className="text-xs text-slate-500 font-medium">{info.label}</span>}
               {info && <span className="text-xs text-slate-600">{info.count} {info.count === 1 ? 'season' : 'seasons'}</span>}
+              <button
+                onClick={() => onAllTimeRoster(gender)}
+                className="ml-auto text-[10px] font-bold text-primary hover:text-orange-300 transition-colors uppercase tracking-wide"
+              >
+                All Time Roster
+              </button>
             </div>
             {gTeams.map((team) => (
               <TeamRow
@@ -697,12 +704,16 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
           const info = yearRangeInfo(allTeamIds, yearsByTeam);
           return (
             <>
-              {info && (
-                <div className="px-5 py-2 border-b border-slate-700/60 bg-slate-800/40 flex items-center gap-2">
-                  <span className="text-xs text-slate-500 font-medium">{info.label}</span>
-                  <span className="text-xs text-slate-600">{info.count} {info.count === 1 ? 'season' : 'seasons'}</span>
-                </div>
-              )}
+              <div className="px-5 py-2 border-b border-slate-700/60 bg-slate-800/40 flex items-center gap-2">
+                {info && <span className="text-xs text-slate-500 font-medium">{info.label}</span>}
+                {info && <span className="text-xs text-slate-600">{info.count} {info.count === 1 ? 'season' : 'seasons'}</span>}
+                <button
+                  onClick={() => onAllTimeRoster(null)}
+                  className="ml-auto text-[10px] font-bold text-primary hover:text-orange-300 transition-colors uppercase tracking-wide"
+                >
+                  All Time Roster
+                </button>
+              </div>
               {(teams ?? []).map((team) => (
                 <TeamRow
                   key={team.id}

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
@@ -93,13 +93,9 @@ export function TeamDetailPage() {
   const players = usePlayers(id);
   const seasons = useSeasons(id);
 
-  // Memoized splits to avoid O(n) filter on every render
+  // Show all players for the current season — active/inactive is internal only
   const activePlayers = useMemo(
-    () => (players ?? []).filter((p) => p.is_active).sort((a, b) => Number(a.jersey_number) - Number(b.jersey_number)),
-    [players]
-  );
-  const inactivePlayers = useMemo(
-    () => (players ?? []).filter((p) => !p.is_active),
+    () => (players ?? []).sort((a, b) => Number(a.jersey_number) - Number(b.jersey_number)),
     [players]
   );
 
@@ -115,13 +111,7 @@ export function TeamDetailPage() {
   const activePracticeSessions   = useMemo(() => (practiceSessions ?? []).filter(s => !s.archived), [practiceSessions]);
   const archivedPracticeSessions = useMemo(() => (practiceSessions ?? []).filter(s => s.archived),  [practiceSessions]);
 
-  // Most recent season for this team — used to store coaching staff
-  const currentSeason = useLiveQuery(
-    () => db.seasons.where('team_id').equals(id).toArray()
-      .then(arr => arr.sort((a, b) => b.year - a.year)[0] ?? null),
-    [id]
-  );
-
+  const [selectedSeasonId, setSelectedSeasonId] = useState(null);
   const [tab, setTab]             = useState('roster');
   const [selectedSession, setSelectedSession] = useState(null);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -133,7 +123,6 @@ export function TeamDetailPage() {
   const [confirmEndSeasonId, setConfirmEndSeasonId] = useState(null);
   const [postSeasonInfo,     setPostSeasonInfo]     = useState(null); // { teamId, year }
   const [deletePlayer, setDeletePlayer]       = useState(null);
-  const [confirmArchive, setConfirmArchive]   = useState(false);
   const [showLineupModal, setShowLineupModal] = useState(false);
   const [editLineup, setEditLineup]           = useState(null);
   const [deleteLineup, setDeleteLineup]       = useState(null);
@@ -146,6 +135,55 @@ export function TeamDetailPage() {
   const [showArchivedPractice, setShowArchivedPractice] = useState(false);
   const showToast = useUiStore(selectShowToast);
 
+  // Auto-select the most recent season when seasons first load
+  useEffect(() => {
+    if (!seasons?.length) return;
+    const latest = [...seasons].sort((a, b) => b.year - a.year)[0];
+    setSelectedSeasonId(prev => prev ?? latest.id);
+  }, [seasons]);
+
+  const selectedSeason = useMemo(
+    () => (seasons ?? []).find(s => s.id === selectedSeasonId) ?? null,
+    [seasons, selectedSeasonId]
+  );
+
+  // For past seasons: union of contact-derived players + all archived (inactive) players.
+  // Returns null when the selected season is the most recent (current) season.
+  const historicalRoster = useLiveQuery(
+    async () => {
+      if (!selectedSeasonId) return null;
+      // Check freshly whether this is the most recent season
+      const allSeasons = await db.seasons.where('team_id').equals(id).toArray();
+      const latestId = allSeasons.sort((a, b) => b.year - a.year)[0]?.id;
+      if (selectedSeasonId === latestId) return null; // current season — skip
+      const [matches, archivedPlayers] = await Promise.all([
+        db.matches.where('season_id').equals(selectedSeasonId).toArray(),
+        db.players.where('team_id').equals(id).filter(p => !p.is_active).toArray(),
+      ]);
+      const seen = new Set();
+      const all = [];
+      for (const p of archivedPlayers) { seen.add(p.id); all.push(p); }
+      if (matches.length) {
+        const matchIds = matches.map(m => m.id);
+        const contacts = await db.contacts.where('match_id').anyOf(matchIds).toArray();
+        const contactIds = [...new Set(contacts.map(c => c.player_id).filter(Boolean))];
+        const contactPlayers = await db.players.bulkGet(contactIds);
+        for (const p of contactPlayers) {
+          if (p && !seen.has(p.id)) { seen.add(p.id); all.push(p); }
+        }
+      }
+      return all.sort((a, b) => Number(a.jersey_number) - Number(b.jersey_number));
+    },
+    [selectedSeasonId, id]
+  );
+  // null = current season (query skipped it), undefined = still loading, array = past season
+  const isCurrentSeason = historicalRoster === null || historicalRoster === undefined;
+
+  const sortedSeasons = useMemo(
+    () => [...(seasons ?? [])].sort((a, b) => b.year - a.year),
+    [seasons]
+  );
+
   const removePlayer = async () => {
     try {
       await db.players.update(deletePlayer.id, { is_active: false });
@@ -155,17 +193,6 @@ export function TeamDetailPage() {
     }
   };
 
-  const archiveRoster = async () => {
-    try {
-      const ids = activePlayers.map((p) => p.id);
-      await Promise.all(ids.map((id) => db.players.update(id, { is_active: false })));
-      showToast(`${ids.length} player${ids.length !== 1 ? 's' : ''} archived`, 'success');
-    } catch (err) {
-      showToast(`Archive failed: ${err.message}`, 'error');
-    } finally {
-      setConfirmArchive(false);
-    }
-  };
 
   return (
     <div>
@@ -178,9 +205,33 @@ export function TeamDetailPage() {
         </div>
       )}
 
+      {/* Season selector */}
+      {sortedSeasons.length > 0 && (
+        <div className="px-4 py-2 border-b border-slate-800 flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 shrink-0">Season</span>
+          <select
+            value={selectedSeasonId ?? ''}
+            onChange={e => setSelectedSeasonId(Number(e.target.value))}
+            className="flex-1 bg-slate-800 border border-slate-700 text-white text-sm font-semibold rounded-lg px-3 py-1.5 focus:outline-none focus:border-primary"
+          >
+            {sortedSeasons.map(s => (
+              <option key={s.id} value={s.id}>
+                {s.name ?? s.year}{s.status === 'ended' ? '  ✓' : ''}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => setShowSeasonModal(true)}
+            className="text-xs text-primary font-semibold px-2 py-1.5 rounded-lg border border-blue-500 season-btn-pulse hover:bg-slate-700/50 transition-colors shrink-0"
+          >
+            + Season
+          </button>
+        </div>
+      )}
+
       <TabBar
         tabs={[
-          { value: 'roster',   label: `Roster (${activePlayers.length})` },
+          { value: 'roster',   label: isCurrentSeason ? `Roster (${activePlayers.length})` : 'Roster' },
           { value: 'lineups',  label: 'Lineups' },
           { value: 'seasons',  label: 'Seasons' },
           { value: 'practice', label: 'Practice' },
@@ -191,33 +242,35 @@ export function TeamDetailPage() {
 
       {tab === 'roster' && (
         <div className="p-4 md:p-6">
-          {/* Coaching Staff */}
-          {currentSeason && (
+          {/* Coaching Staff — reflects selected season */}
+          {selectedSeason && (
             <div className="mb-5">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold uppercase tracking-wide text-slate-400">Coaching Staff</span>
-                <button
-                  onClick={() => setShowCoachModal(true)}
-                  className="text-xs text-primary font-semibold px-2 py-1 rounded-lg hover:bg-slate-700/50 transition-colors"
-                >
-                  {currentSeason.head_coach ? 'Edit' : '+ Add'}
-                </button>
+                {isCurrentSeason && (
+                  <button
+                    onClick={() => setShowCoachModal(true)}
+                    className="text-xs text-primary font-semibold px-2 py-1 rounded-lg hover:bg-slate-700/50 transition-colors"
+                  >
+                    {selectedSeason.head_coach ? 'Edit' : '+ Add'}
+                  </button>
+                )}
               </div>
-              {currentSeason.head_coach || currentSeason.asst_coach ? (
+              {selectedSeason.head_coach || selectedSeason.asst_coach ? (
                 <div className="bg-surface rounded-xl px-4 py-3 space-y-1">
-                  {currentSeason.head_coach && (
+                  {selectedSeason.head_coach && (
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 w-8 shrink-0">HC</span>
-                      <span className="text-sm text-slate-200 font-semibold">{currentSeason.head_coach}</span>
-                      {currentSeason.tenure_year != null && (
-                        <span className="text-xs text-slate-500">· Year {currentSeason.tenure_year}</span>
+                      <span className="text-sm text-slate-200 font-semibold">{selectedSeason.head_coach}</span>
+                      {selectedSeason.tenure_year != null && (
+                        <span className="text-xs text-slate-500">· Year {selectedSeason.tenure_year}</span>
                       )}
                     </div>
                   )}
-                  {currentSeason.asst_coach && (
+                  {selectedSeason.asst_coach && (
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 w-8 shrink-0">AC</span>
-                      <span className="text-sm text-slate-200">{currentSeason.asst_coach}</span>
+                      <span className="text-sm text-slate-200">{selectedSeason.asst_coach}</span>
                     </div>
                   )}
                 </div>
@@ -227,29 +280,78 @@ export function TeamDetailPage() {
             </div>
           )}
 
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-sm text-slate-400">{activePlayers.length} active</span>
-            <div className="flex gap-2">
-              {activePlayers.length > 0 && (
-                <Button size="sm" variant="ghost" onClick={() => setConfirmArchive(true)}>Archive All</Button>
-              )}
-              <Button size="sm" variant="ghost" onClick={() => setShowImportModal(true)}>↑ Import</Button>
-              <Button size="sm" onClick={() => setShowPlayerModal(true)}>+ Player</Button>
-            </div>
-          </div>
+          {isCurrentSeason ? (
+            <>
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-sm text-slate-400">{activePlayers.length} players</span>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setShowImportModal(true)}>↑ Import</Button>
+                  <Button size="sm" onClick={() => setShowPlayerModal(true)}>+ Player</Button>
+                </div>
+              </div>
 
-          {activePlayers.length === 0 ? (
-            <EmptyState
-              icon="🏐"
-              title="No players yet"
-              description="Add players to build the roster"
-              action={<Button onClick={() => setShowPlayerModal(true)}>Add Player</Button>}
-            />
+              {activePlayers.length === 0 ? (
+                <EmptyState
+                  icon="🏐"
+                  title="No players yet"
+                  description="Add players to build the roster"
+                  action={<Button onClick={() => setShowPlayerModal(true)}>Add Player</Button>}
+                />
+              ) : (
+                <div className="space-y-2">
+                  {activePlayers.map((player) => (
+                    <SwipeableMatchCard key={player.id} onDeleteConfirm={() => setDeletePlayer(player)}>
+                      <div
+                        className="bg-surface rounded-xl px-4 py-3 flex items-center gap-3 cursor-pointer active:brightness-110"
+                        onClick={() => navigate(`/teams/${teamId}/players/${player.id}`)}
+                      >
+                        <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-mono font-bold text-primary shrink-0">
+                          #{player.jersey_number}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold truncate">
+                            {player.name}
+                            {player.is_captain && <span className="ml-1.5 text-xs font-bold text-yellow-400">C</span>}
+                          </div>
+                          <div className="flex gap-1 flex-wrap items-center">
+                            <Badge color={POS_COLOR[player.position] ?? 'gray'}>{player.position}</Badge>
+                            {player.secondary_position && (
+                              <Badge color={POS_COLOR[player.secondary_position] ?? 'gray'}>{player.secondary_position}</Badge>
+                            )}
+                            {player.height_ft != null && (
+                              <span className="text-xs text-slate-400">{player.height_ft}'{player.height_in != null ? player.height_in : 0}"</span>
+                            )}
+                            {player.year && <span className="text-xs text-slate-400">{player.year}</span>}
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setEditPlayer(player); }}
+                          className="text-slate-400 hover:text-white text-sm shrink-0"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    </SwipeableMatchCard>
+                  ))}
+                </div>
+              )}
+
+            </>
           ) : (
-            <div className="space-y-2">
-              {activePlayers.map((player) => (
-                <SwipeableMatchCard key={player.id} onDeleteConfirm={() => setDeletePlayer(player)}>
+            /* Historical season — read-only roster derived from match contacts */
+            historicalRoster == null ? (
+              <div className="flex items-center justify-center h-32 text-slate-500 text-sm">Loading…</div>
+            ) : historicalRoster.length === 0 ? (
+              <EmptyState
+                icon="🏐"
+                title="No roster data"
+                description="No match contacts found for this season."
+              />
+            ) : (
+              <div className="space-y-2">
+                {historicalRoster.map((player) => (
                   <div
+                    key={player.id}
                     className="bg-surface rounded-xl px-4 py-3 flex items-center gap-3 cursor-pointer active:brightness-110"
                     onClick={() => navigate(`/teams/${teamId}/players/${player.id}`)}
                   >
@@ -272,22 +374,10 @@ export function TeamDetailPage() {
                         {player.year && <span className="text-xs text-slate-400">{player.year}</span>}
                       </div>
                     </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setEditPlayer(player); }}
-                      className="text-slate-400 hover:text-white text-sm shrink-0"
-                    >
-                      Edit
-                    </button>
                   </div>
-                </SwipeableMatchCard>
-              ))}
-            </div>
-          )}
-
-          {inactivePlayers.length > 0 && (
-            <p className="text-xs text-slate-500 mt-4 text-center">
-              {inactivePlayers.length} inactive player{inactivePlayers.length !== 1 ? 's' : ''} hidden
-            </p>
+                ))}
+              </div>
+            )
           )}
         </div>
       )}
@@ -739,9 +829,9 @@ export function TeamDetailPage() {
         />
       )}
 
-      {showCoachModal && currentSeason && (
+      {showCoachModal && selectedSeason && (
         <CoachModal
-          season={currentSeason}
+          season={selectedSeason}
           onClose={() => setShowCoachModal(false)}
         />
       )}
@@ -804,16 +894,7 @@ export function TeamDetailPage() {
         />
       )}
 
-      {confirmArchive && (
-        <ConfirmDialog
-          title="Archive Entire Roster"
-          message={`Mark all ${activePlayers.length} active players as inactive? Use this at the end of a season to start fresh. Players and their stats are preserved — you can reactivate them anytime.`}
-          confirmLabel="Archive All"
-          danger
-          onConfirm={archiveRoster}
-          onCancel={() => setConfirmArchive(false)}
-        />
-      )}
+
 
     </div>
   );

@@ -168,8 +168,8 @@ function deriveStats(p, sp, posLabel = null) {
     fbr: p.fbr, fbs: p.fbs, fbe: p.fbe,
 
     // Volleyball Efficiency Rating (position-adjusted)
-    // VER = posMult × (1/sp) × [4K + 4ACE + 5BS + 2.5BA + 1.5AST + 1.25DIG
-    //       + (P1 + 2·P2 + 3·P3 − 2·PA) − 2.5AE − 2.5SE − 2.5BHE − 2.5DROP − 2.5L − 2.5NET]
+    // VER = posMult × (1/sp) × [4K + 4ACE + 5BS + 2.5BA + 1.0AST + 2.0DIG
+    //       + (P1 + 2·P2 + 3·P3 − 2·PA) − 3.0AE − 3.0SE − 3.0BHE − 3.0DROP − 3.0L − 3.0NET]
     // APR component (P1+2P2+3P3−2PA): +1 per perfect pass, 0 at APR=2 (neutral), −2 per ace-against.
     // Naturally zero when PA=0 (no pass attempts), so no special-casing needed.
     ver: sp > 0
@@ -178,15 +178,15 @@ function deriveStats(p, sp, posLabel = null) {
           4.0  * p.ace  +
           5.0  * p.bs   +
           2.5  * p.ba   +
-          1.5  * p.ast  +
-          1.25 * (p.dig + p.fb_dig) +
+          1.0  * p.ast  +
+          2.0  * (p.dig + p.fb_dig) +
           (p.p1 + p.p2 * 2 + p.p3 * 3 - p.pa * 2) -
-          2.5  * p.ae   -
-          2.5  * p.se   -
-          2.5  * p.bhe  -
-          2.5  * p.fbe  -
-          2.5  * p.lift -
-          2.5  * p.net
+          3.0  * p.ae   -
+          3.0  * p.se   -
+          3.0  * p.bhe  -
+          3.0  * p.fbe  -
+          3.0  * p.lift -
+          3.0  * p.net
         )
       : null,
     pos_label: posLabel ?? null,

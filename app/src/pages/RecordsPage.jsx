@@ -548,7 +548,7 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, teamId }) {
       </span>
 
       {showRight && (
-        <span className="text-right text-xs text-slate-500 shrink-0 leading-tight">
+        <span className="text-right text-xs text-white shrink-0 leading-tight">
           <span className="block">{row.opp}</span>
           <span className="block">{row.date ? fmtDate(row.date) : ''}</span>
         </span>

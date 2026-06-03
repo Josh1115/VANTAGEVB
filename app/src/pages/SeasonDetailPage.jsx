@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { MATCH_STATUS } from '../constants';
-import { fmtDate } from '../stats/formatters';
-import { computeMatchStats } from '../stats/engine';
+import { fmtDate, fmtHitting, fmtPct } from '../stats/formatters';
+import { computeMatchStats, computeTeamStats, computePlayerStats } from '../stats/engine';
 import { exportMaxPrepsCSV } from '../stats/export';
 import { getStorageItem, STORAGE_KEYS, getPlayoffLabel } from '../utils/storage';
 import { deleteMatch } from '../stats/queries';
@@ -45,6 +45,54 @@ export function SeasonDetailPage() {
     const playerJerseys = Object.fromEntries(players.map((p) => [p.id, p.jersey_number ?? '']));
 
     return { season, team, matches, playerNames, playerJerseys };
+  }, [id]);
+
+  const historyEntry = useLiveQuery(
+    () => data?.season
+      ? db.season_history
+          .where({ team_id: data.season.team_id, year: String(data.season.year) })
+          .first()
+      : undefined,
+    [data?.season?.team_id, data?.season?.year]
+  );
+
+  const seasonStats = useLiveQuery(async () => {
+    const season = await db.seasons.get(id);
+    if (!season) return null;
+    const completedMatches = await db.matches.where('season_id').equals(id)
+      .filter((m) => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition')
+      .toArray();
+    if (!completedMatches.length) return null;
+    const matchIds = completedMatches.map((m) => m.id);
+    const [contacts, players] = await Promise.all([
+      db.contacts.where('match_id').anyOf(matchIds).toArray(),
+      db.players.where('team_id').equals(season.team_id).toArray(),
+    ]);
+    const nameMap = Object.fromEntries(players.map((p) => [p.id, p.name ?? `#${p.jersey_number}`]));
+    const ts = computeTeamStats(contacts);
+    const ps = computePlayerStats(contacts);
+    function findLeader(getValue) {
+      let best = null;
+      for (const [pid, stat] of Object.entries(ps)) {
+        const val = getValue(stat);
+        if (val > 0 && (!best || val > best.val))
+          best = { name: nameMap[pid] ?? '—', val, id: Number(pid) };
+      }
+      return best;
+    }
+    return {
+      team: ts,
+      teamId: season.team_id,
+      leaders: {
+        kills:   findLeader(s => (s.ta  ?? 0) >= 10 ? (s.k   ?? 0) : 0),
+        aces:    findLeader(s => (s.sa  ?? 0) >= 10 ? (s.ace  ?? 0) : 0),
+        blocks:  findLeader(s => (s.bs ?? 0) + (s.ba ?? 0) + (s.be ?? 0) >= 10 ? (s.bs ?? 0) + (s.ba ?? 0) : 0),
+        digs:    findLeader(s => (s.dig ?? 0) >= 10 ? (s.dig  ?? 0) : 0),
+        assists: findLeader(s => (s.ast ?? 0) + (s.bhe ?? 0) >= 10 ? (s.ast ?? 0) : 0),
+        rec:     findLeader(s => (s.pa  ?? 0) >= 10 ? (s.pa   ?? 0) : 0),
+        apr:     findLeader(s => (s.pa  ?? 0) >= 10 ? (s.apr  ?? 0) : 0),
+      },
+    };
   }, [id]);
 
   // Schedule-game modal state (must be before early return)
@@ -135,6 +183,12 @@ export function SeasonDetailPage() {
   if (!data) return null;
   const { season, team, matches, playerNames, playerJerseys } = data;
 
+  const classification = season.classification ?? null;
+  const classRank      = historyEntry?.class_rank   ?? null;
+  const stateRank      = historyEntry?.state_rank    ?? null;
+  const nationalRank   = historyEntry?.national_rank ?? null;
+  const hasRankings    = classification || classRank != null || stateRank != null || nationalRank != null;
+
   async function handleMaxPreps(e, matchId) {
     e.stopPropagation();
     const uuid = getStorageItem(STORAGE_KEYS.MAXPREPS_TEAM_ID, '');
@@ -214,12 +268,23 @@ export function SeasonDetailPage() {
     }
   }
 
-  const wins = matches.filter(
-    (m) => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition' && (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)
-  ).length;
-  const losses = matches.filter(
-    (m) => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition' && (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)
-  ).length;
+  const completedNonExhib = matches.filter(
+    (m) => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition'
+  );
+  const wins   = completedNonExhib.filter((m) => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
+  const losses = completedNonExhib.filter((m) => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
+
+  function splitRecord(arr) {
+    const w = arr.filter((m) => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
+    const l = arr.filter((m) => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
+    return { w, l, any: w + l > 0 };
+  }
+  const homeRec    = splitRecord(completedNonExhib.filter((m) => m.location === 'home'));
+  const awayRec    = splitRecord(completedNonExhib.filter((m) => m.location === 'away'));
+  const neutRec    = splitRecord(completedNonExhib.filter((m) => m.location === 'neutral'));
+  const confRec    = splitRecord(completedNonExhib.filter((m) => m.conference === 'conference'));
+  const tourneyRec = splitRecord(completedNonExhib.filter((m) => m.match_type === 'tourney'));
+  const last5      = completedNonExhib.slice(0, 5);
 
   return (
     <div>
@@ -227,18 +292,182 @@ export function SeasonDetailPage() {
 
       <div className="p-4 md:p-6 space-y-4">
         {/* Season info card */}
-        <div className="bg-surface rounded-xl px-4 py-3 flex items-center justify-between">
-          <div>
-            <div className="font-semibold">{team?.name ?? '—'}</div>
-            <div className="text-sm text-slate-400">{season.year}</div>
+        <div className="bg-surface rounded-xl px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="font-semibold">{team?.name ?? '—'}</div>
+              <div className="text-sm text-slate-400">{season.year}</div>
+            </div>
+            {hasRankings && (
+              <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center">
+                {classification && (
+                  <span className="text-sm font-bold text-slate-200">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1">Class</span>
+                    {classification}{classRank ? ` #${classRank}` : ''}
+                  </span>
+                )}
+                {stateRank != null && (
+                  <span className="text-sm font-bold text-slate-200">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1">State</span>
+                    #{stateRank}
+                  </span>
+                )}
+                {nationalRank != null && (
+                  <span className="text-sm font-bold text-slate-200">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1">Natl</span>
+                    #{nationalRank}
+                  </span>
+                )}
+              </div>
+            )}
+            {completedNonExhib.length > 0 && (
+              <div className="text-right shrink-0">
+                <div className="font-mono font-bold text-lg">{wins}–{losses}</div>
+                <div className="text-xs text-slate-400">W–L</div>
+              </div>
+            )}
           </div>
-          {matches.some((m) => m.status === MATCH_STATUS.COMPLETE) && (
-            <div className="text-right">
-              <div className="font-mono font-bold text-lg">{wins}–{losses}</div>
-              <div className="text-xs text-slate-400">W–L</div>
+
+          {completedNonExhib.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-slate-700/60 flex flex-wrap gap-x-4 gap-y-1.5 items-center justify-center">
+              {homeRec.any && (
+                <span className="text-xs font-semibold text-slate-300">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1">Home</span>
+                  {homeRec.w}–{homeRec.l}
+                </span>
+              )}
+              {awayRec.any && (
+                <span className="text-xs font-semibold text-slate-300">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1">Away</span>
+                  {awayRec.w}–{awayRec.l}
+                </span>
+              )}
+              {neutRec.any && (
+                <span className="text-xs font-semibold text-slate-300">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1">Neut</span>
+                  {neutRec.w}–{neutRec.l}
+                </span>
+              )}
+              {confRec.any && (
+                <span className="text-xs font-semibold text-slate-300">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1">Conf</span>
+                  {confRec.w}–{confRec.l}
+                </span>
+              )}
+              {tourneyRec.any && (
+                <span className="text-xs font-semibold text-slate-300">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1">Tourn</span>
+                  {tourneyRec.w}–{tourneyRec.l}
+                </span>
+              )}
+              {last5.length > 0 && (
+                <span className="flex items-center gap-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-0.5">L5</span>
+                  {last5.map((m, i) => {
+                    const won = (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0);
+                    return (
+                      <span key={i} className={`text-[10px] font-black px-1 py-0.5 rounded ${won ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
+                        {won ? 'W' : 'L'}
+                      </span>
+                    );
+                  })}
+                </span>
+              )}
             </div>
           )}
         </div>
+
+        {/* Season Leaders + Team stat boxes */}
+        {seasonStats && (() => {
+          const STATS = [
+            { label: 'K',   leaderKey: 'kills',   ttKey: 'k',   navKey: 'k'   },
+            { label: 'ACE', leaderKey: 'aces',    ttKey: 'ace', navKey: 'ace' },
+            { label: 'BLK', leaderKey: 'blocks',  ttKey: 'blk', navKey: 'blk', fmt: v => Number(v) % 1 === 0 ? String(Math.round(v)) : Number(v).toFixed(1) },
+            { label: 'DIG', leaderKey: 'digs',    ttKey: 'dig', navKey: 'dig' },
+            { label: 'AST', leaderKey: 'assists', ttKey: 'ast', navKey: 'ast' },
+            { label: 'REC', leaderKey: 'rec',     ttKey: 'pa',  navKey: 'pa'  },
+            { label: 'APR', leaderKey: 'apr',     ttKey: 'apr', navKey: 'apr', fmt: v => Number(v).toFixed(2), noAvg: true },
+          ];
+          const mc = completedNonExhib.length;
+          return (
+            <div className="space-y-2">
+              {/* Season Leaders */}
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white px-0.5">Season Leaders</p>
+              <div className="grid grid-cols-7 gap-2">
+                {STATS.map(({ label, leaderKey, navKey, fmt }) => {
+                  const leader = seasonStats.leaders[leaderKey];
+                  return (
+                    <button
+                      key={leaderKey}
+                      onClick={() => leader?.id && navigate(`/teams/${seasonStats.teamId}/players/${leader.id}?season=${id}&stat=${navKey}`)}
+                      disabled={!leader?.id}
+                      className="bg-surface rounded-xl p-2 text-center flex flex-col items-center gap-1 active:scale-95 transition-transform disabled:active:scale-100"
+                    >
+                      <span className="text-[10px] font-black uppercase tracking-wider text-white">{label}</span>
+                      {leader ? (
+                        <>
+                          <span className="text-xl font-black text-primary tabular-nums leading-none">{fmt ? fmt(leader.val) : leader.val}</span>
+                          <span className="text-[10px] font-semibold text-slate-300 leading-tight text-center break-words w-full">{leader.name}</span>
+                        </>
+                      ) : (
+                        <span className="text-xl font-black text-slate-600 leading-none">—</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Team Totals */}
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white px-0.5">Team Totals</p>
+              <div className="grid grid-cols-7 gap-2">
+                {STATS.map(({ label, ttKey, navKey, fmt, noAvg }) => {
+                  const val = seasonStats.team[ttKey];
+                  const perMatch = !noAvg && val != null && mc > 0 ? val / mc : null;
+                  const fmtPM = perMatch != null
+                    ? (perMatch % 1 === 0 ? String(Math.round(perMatch)) : perMatch.toFixed(1))
+                    : null;
+                  return (
+                    <button
+                      key={ttKey}
+                      onClick={() => navigate(`/seasons/${id}/team?stat=${navKey}`)}
+                      className="bg-surface rounded-xl p-2 text-center flex flex-col items-center gap-1 active:scale-95 transition-transform"
+                    >
+                      <span className="text-[10px] font-black uppercase tracking-wider text-white">{label}</span>
+                      <span className="text-xl font-black text-primary tabular-nums leading-none">
+                        {val != null ? (fmt ? fmt(val) : val) : '—'}
+                      </span>
+                      {fmtPM != null && (
+                        <span className="text-[9px] font-semibold text-white leading-none tabular-nums">
+                          {fmtPM}<span className="text-white">/M</span>
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Percentage boxes */}
+              {(seasonStats.team.hit_pct != null || seasonStats.team.si_pct != null || seasonStats.team.ace_pct != null) && (
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: 'HIT%', val: fmtHitting(seasonStats.team.hit_pct), stat: 'hit_pct' },
+                    { label: 'SRV%', val: fmtPct(seasonStats.team.si_pct),      stat: 'si_pct'  },
+                    { label: 'ACE%', val: fmtPct(seasonStats.team.ace_pct),     stat: 'ace_pct' },
+                  ].map(({ label, val, stat }) => (
+                    <button
+                      key={label}
+                      onClick={() => navigate(`/seasons/${id}/team?stat=${stat}`)}
+                      className="bg-surface rounded-xl p-3 text-center active:scale-95 transition-transform"
+                    >
+                      <div className="text-[10px] font-black uppercase tracking-wider text-white">{label}</div>
+                      <div className="text-xl font-black text-primary tabular-nums mt-0.5">{val}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Matches */}
         <section>
