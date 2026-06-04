@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { VantageLogo } from '../components/ui/VantageLogo';
 import { STORAGE_KEYS, getStorageItem, setStorageItem, getIntStorage, getPlayoffLabel } from '../utils/storage';
 import { useNavigate } from 'react-router-dom';
@@ -62,7 +63,7 @@ function SetPips({ ourSets, oppSets }) {
 
 // ─── Schedule calendar ────────────────────────────────────────────────────────
 
-function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, openEditMatch }) {
+function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, openEditMatch, playoffLabel }) {
   const today = useMemo(() => new Date().toLocaleDateString('en-CA'), []); // YYYY-MM-DD local
 
   const availableMonths = useMemo(() => {
@@ -711,6 +712,7 @@ export function HomePage() {
     return () => { cancelled = true; };
   }, [seasonRecord]);
 
+
   const inProgress    = recentMatches?.find((m) => m.status === MATCH_STATUS.IN_PROGRESS);
   const [closestSortAsc, setClosestSortAsc] = useState(
     () => getStorageItem(STORAGE_KEYS.CLOSEST_SORT_ASC, 'true') !== 'false'
@@ -851,13 +853,13 @@ export function HomePage() {
             onPointerUp={handleLogoPointerUp}
             onPointerLeave={handleLogoPointerUp}
           />
+          <span className="text-[17.5px] font-semibold tracking-[0.22em] text-slate-300 uppercase">
+            Precision Sideline Analytics
+          </span>
           <span className="text-slate-400 font-normal text-[17.5px] tracking-wide italic">
             powered by the SSE (Shua Stat Engine)
           </span>
         </h1>
-        <div className="absolute bottom-2 left-0 right-0 text-center text-[17.5px] font-semibold tracking-[0.22em] text-slate-300 uppercase">
-          Precision Sideline Analytics
-        </div>
       </header>
 
       <div className="p-4 md:p-6 space-y-4">
@@ -887,20 +889,32 @@ export function HomePage() {
         )}
 
         {/* ── Quick start ── */}
-        <div className="space-y-3">
-          {/* Hero: New Match — shimmer sweep + ball spin on hover */}
+        <div className="flex gap-3">
+          {/* New Match */}
           <button
             onClick={() => navigate('/matches/new')}
-            className="group w-full card-top-glow btn-shimmer bg-primary/90 hover:bg-primary rounded-xl p-5 text-left flex items-center gap-4 transition-[transform,filter,background-color] duration-75 active:scale-[0.97] active:brightness-90 animate-slide-up-fade shadow-lg"
+            className="group flex-1 card-top-glow btn-shimmer bg-primary/90 hover:bg-primary rounded-xl p-4 text-left flex items-center gap-3 transition-[transform,filter,background-color] duration-75 active:scale-[0.97] active:brightness-90 animate-slide-up-fade shadow-lg"
             style={{ animationDelay: '0ms' }}
           >
-            <span className="text-5xl inline-block vb-ball-spin">🏐</span>
+            <span className="text-4xl inline-block vb-ball-spin">🏐</span>
             <div>
-              <div className="font-bold text-lg text-white">New Match</div>
-              <div className="text-sm text-orange-100/80">Start recording stats</div>
+              <div className="font-bold text-base text-white">New Match</div>
+              <div className="text-xs text-orange-100/80">Start recording stats</div>
             </div>
           </button>
 
+          {/* New Season */}
+          <button
+            onClick={() => navigate('/seasons')}
+            className="group flex-1 bg-blue-900/80 hover:bg-blue-900 border border-blue-800/60 hover:border-blue-700 rounded-xl p-4 text-left flex items-center gap-3 transition-[transform,background-color,border-color] duration-75 active:scale-[0.97] animate-slide-up-fade"
+            style={{ animationDelay: '60ms' }}
+          >
+            <span className="text-4xl inline-block">📅</span>
+            <div>
+              <div className="font-bold text-base text-white">New Season</div>
+              <div className="text-xs text-blue-200/70">Set up a new season</div>
+            </div>
+          </button>
         </div>
 
         {/* ── Season record card (shown when default team + season set) ── */}
@@ -1190,14 +1204,14 @@ export function HomePage() {
         <div className="flex gap-2 animate-slide-up-fade" style={{ animationDelay: '180ms' }}>
           <button
             onClick={() => navigate('/opponents')}
-            className="group flex-1 card-top-glow bg-surface rounded-xl p-3 text-left flex items-center gap-2.5 hover:bg-slate-700 active:scale-[0.97] transition-[transform,background-color] duration-75"
+            className="group flex-1 card-top-glow bg-blue-800/60 hover:bg-blue-800/80 border border-blue-700/40 hover:border-blue-600/60 rounded-xl p-3 text-left flex items-center gap-2.5 active:scale-[0.97] transition-[transform,background-color,border-color] duration-75"
           >
             <span className="text-2xl inline-block transition-transform duration-75 group-active:-translate-y-1 group-active:scale-125">🔭</span>
             <div className="min-w-0">
               <div className="font-semibold text-sm">Opponents</div>
-              <div className="text-[11px] text-slate-400 truncate">Scouting & history</div>
+              <div className="text-[11px] text-blue-200/60 truncate">Scouting & history</div>
             </div>
-            <span className="text-slate-500 ml-auto">›</span>
+            <span className="text-blue-400/60 ml-auto">›</span>
           </button>
 
           {nextMatch ? (
@@ -1295,7 +1309,7 @@ export function HomePage() {
           </svg>
 
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
+            <h2 className="text-sm font-semibold text-white uppercase tracking-wide flex items-center gap-1.5">
               {matchView === 'schedule' ? 'Schedule' : 'Closest'} Matches
               {matchView === 'closest' && displayMatches.length > 0 && (
                 <button
@@ -1355,6 +1369,7 @@ export function HomePage() {
               scoreDetail={scoreDetail}
               onDeleteConfirm={m => setConfirmDelete(m)}
               openEditMatch={openEditMatch}
+              playoffLabel={playoffLabel}
             />
           )}
 
@@ -1567,10 +1582,13 @@ export function HomePage() {
       )}
 
       {/* ── Edit Scheduled Match Modal ── */}
-      {schedOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm">
-          <div className="flex min-h-full items-center justify-center p-4">
-          <div className="bg-bg w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl">
+      {schedOpen && createPortal(
+        <>
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={resetSchedForm} />
+          <div
+            className="fixed z-50 w-[calc(100%-2rem)] max-w-md max-h-[90dvh] overflow-y-auto bg-bg rounded-2xl p-6 space-y-4 shadow-2xl"
+            style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+          >
             <h2 className="text-lg font-bold">Edit Scheduled Game</h2>
 
             {/* Opponent */}
@@ -1788,8 +1806,8 @@ export function HomePage() {
               </Button>
             </div>
           </div>
-          </div>
-        </div>
+        </>,
+        document.body
       )}
     </div>
   );

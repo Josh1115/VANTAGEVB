@@ -11,7 +11,6 @@ const TXT5    = '#64748b';
 const PRIMARY = '#f97316';
 const EMERALD = '#34d399';
 const RED     = '#f87171';
-const AMBER   = '#fbbf24';
 const DANGER  = '#ef4444';
 
 function Step({ number, title, note, children }) {

@@ -12,7 +12,6 @@ const TXT5    = '#64748b';
 const PRIMARY = '#f97316';
 const BLUE    = '#60a5fa';
 const GREEN   = '#34d399';
-const RED     = '#ef4444';
 
 function Step({ number, title, note, children }) {
   return (

@@ -1,7 +1,7 @@
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export function UpdatePrompt() {
-  const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW();
+  const { needRefresh: [needRefresh] } = useRegisterSW();
 
   if (!needRefresh) return null;
 

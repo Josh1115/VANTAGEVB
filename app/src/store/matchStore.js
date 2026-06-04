@@ -646,7 +646,7 @@ export const useMatchStore = create((set, get) => ({
     let id;
     try {
       id = await db.contacts.add(contactFull);
-    } catch (e) {
+    } catch {
       useUiStore.getState().showToast('Failed to record contact. Check storage.', 'error');
       return null;
     }

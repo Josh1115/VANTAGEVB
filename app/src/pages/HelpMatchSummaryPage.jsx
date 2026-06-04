@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/layout/PageHeader';
 
 const BG      = '#000000';
@@ -212,7 +211,6 @@ function DiagStatTable() {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export function HelpMatchSummaryPage() {
-  const navigate = useNavigate();
   return (
     <div className="min-h-screen" style={{ background: BG }}>
       <PageHeader title="Match Summary Guide" backTo="" />

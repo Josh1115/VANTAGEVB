@@ -33,11 +33,11 @@ export function MatchSetupPage() {
   const [tourneySet3, setTourneySet3] = useState(25);
   const [playoffRound, setPlayoffRound] = useState('');
   const [oppPlayoffSeed, setOppPlayoffSeed] = useState('');
-  const [format,    setFormat]    = useState(() => {
+  const format = useMemo(() => {
     const saved = getStorageItem(STORAGE_KEYS.DEFAULT_FORMAT);
     return saved === FORMAT.BEST_OF_5 ? FORMAT.BEST_OF_5 : FORMAT.BEST_OF_3;
-  });
-  const [lastSetScore, setLastSetScore] = useState(() => getIntStorage(STORAGE_KEYS.LAST_SET_SCORE, 15));
+  }, []);
+  const lastSetScore = useMemo(() => getIntStorage(STORAGE_KEYS.LAST_SET_SCORE, 15), []);
   // lineup[i] = playerId for serve order i+1 (I=0 … VI=5)
   const [lineup,         setLineupState]    = useState(Array(6).fill(''));
   // slotPositions[i] = position label override for serve slot i (e.g. 'OH', 'MB')
@@ -210,7 +210,7 @@ export function MatchSetupPage() {
       );
 
       navigate(`/matches/${matchId}/summary`);
-    } catch (e) {
+    } catch {
       showToast('Failed to save match. Try again.', 'error');
       setError('Failed to save match. Try again.');
     } finally {
@@ -329,7 +329,7 @@ export function MatchSetupPage() {
       );
 
       navigate(`/matches/${effectiveMatchId}/live`);
-    } catch (e) {
+    } catch {
       showToast('Failed to create match. Try again.', 'error');
       setError('Failed to create match. Try again.');
     } finally {

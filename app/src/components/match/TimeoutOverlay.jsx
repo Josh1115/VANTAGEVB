@@ -87,7 +87,6 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
   const ourScore          = useMatchStore((s) => s.ourScore);
   const oppScore          = useMatchStore((s) => s.oppScore);
   const rotationNum       = useMatchStore((s) => s.rotationNum);
-  const pointHistory      = useMatchStore((s) => s.pointHistory);
   const serveSide         = useMatchStore((s) => s.serveSide);
   const ourSetsWon        = useMatchStore((s) => s.ourSetsWon);
   const oppSetsWon        = useMatchStore((s) => s.oppSetsWon);
@@ -151,7 +150,7 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
     const pFutureSet = computeSetWinProb(p, q, 0, 0, 'them', false);
 
     const sorted = [...committedRallies].sort((a, b) =>
-      a.set_number !== b.set_number ? a.set_number - b.set_number : a.rally_number - b.rally_number
+      a.set_id !== b.set_id ? a.set_id - b.set_id : a.rally_number - b.rally_number
     );
 
     let usScore = 0, themScore = 0, useSets = 0, oppSets = 0, side = serveSide;

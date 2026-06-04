@@ -15,7 +15,6 @@ const BADGE_POS_STYLE  = { bottom: '36%', left: '50%' };
 const DELAY_50         = { animationDelay: '50ms' };
 const DELAY_100        = { animationDelay: '100ms' };
 const DELAY_150        = { animationDelay: '150ms' };
-const DELAY_200        = { animationDelay: '200ms' };
 
 // Pre-built pass badge text styles (one per rating) — avoids recreating every render
 const PASS_BADGE_STYLES = [

@@ -281,24 +281,16 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
   const prevTiedRef = useRef(false);
 
   const [serveVersion,    setServeVersion]    = useState(0);
-  const [serveTrail,      setServeTrail]      = useState(null); // null | 'left' | 'right'
-  const [serveTrailKey,   setServeTrailKey]   = useState(0);
   const subWarn2Fired    = useRef(false);
   const subWarn1Fired    = useRef(false);
   const usTimer          = useRef(null);
   const themTimer        = useRef(null);
   const prevWeServeRef   = useRef(weServe);
-  const serveTrailTimer  = useRef(null);
 
   useEffect(() => {
     if (prevWeServeRef.current !== weServe) {
-      const oldSide = prevWeServeRef.current ? 'left' : 'right';
       prevWeServeRef.current = weServe;
       setServeVersion((v) => v + 1);
-      clearTimeout(serveTrailTimer.current);
-      setServeTrail(oldSide);
-      setServeTrailKey((k) => k + 1);
-      serveTrailTimer.current = setTimeout(() => setServeTrail(null), 500);
     }
   }, [weServe]);
 

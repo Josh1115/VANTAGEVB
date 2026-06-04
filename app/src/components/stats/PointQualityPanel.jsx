@@ -19,7 +19,7 @@ function PointsPieChart({ earned, free, given, divisor = 1 }) {
 
   const pct = (v) => `${Math.round((v / total) * 100)}%`;
 
-  const renderLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, name, value }) => {
+  const renderLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, value }) => {
     const RADIAN = Math.PI / 180;
     const r = innerRadius + (outerRadius - innerRadius) * 0.55;
     const x = cx + r * Math.cos(-midAngle * RADIAN);

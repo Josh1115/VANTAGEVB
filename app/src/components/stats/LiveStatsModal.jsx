@@ -109,7 +109,7 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
   const prevOpenRef = useRef(false);
 
   const {
-    ourScore, oppScore, ourSetsWon, oppSetsWon, setNumber, format,
+    ourScore, oppScore, ourSetsWon, oppSetsWon, setNumber,
     matchId, teamId, pointHistory, lineup,
     currentSetId, committedContacts, committedRallies,
   } = useMatchStore(useShallow((s) => ({
@@ -118,7 +118,6 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
     ourSetsWon:        s.ourSetsWon,
     oppSetsWon:        s.oppSetsWon,
     setNumber:         s.setNumber,
-    format:            s.format,
     matchId:           s.matchId,
     teamId:            s.teamId,
     pointHistory:      s.pointHistory,
@@ -384,7 +383,6 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
   if (!open) return null;
 
   const activeColumns = activeTab === 'SERVING' ? SERVING_COLS[serveView] : COLUMNS[activeTab] ?? [];
-  const maxSets = format === 'best_of_5' ? 5 : 3;
 
   // Scope toggle — shared between box and stats views
   const ScopeToggle = () => (
@@ -671,7 +669,7 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
                         </div>
                         {scoreTimelineCharts
                           .filter(c => scope === 'match' || c.set.set_number === scope)
-                          .map(({ set, pts, maxScore }) => (
+                          .map(({ set, pts }) => (
                           <div key={set.id}>
                             <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Set {set.set_number}</p>
                             <ResponsiveContainer width="100%" height={130}>

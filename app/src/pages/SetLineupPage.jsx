@@ -175,7 +175,7 @@ export function SetLineupPage() {
       } else {
         navigate(`/matches/${matchId}/live`);
       }
-    } catch (e) {
+    } catch {
       showToast('Failed to save lineup. Try again.', 'error');
       setError('Failed to save lineup. Try again.');
     } finally {

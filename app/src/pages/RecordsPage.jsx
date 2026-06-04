@@ -225,7 +225,6 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
 
   // season tab — compute stats per season, track year on each row
   if (tab === 'season') {
-    const seasonById = Object.fromEntries(seasons.map(s => [s.id, s]));
     const matchesBySeason = {};
     for (const m of allMatches) {
       if (!matchesBySeason[m.season_id]) matchesBySeason[m.season_id] = [];

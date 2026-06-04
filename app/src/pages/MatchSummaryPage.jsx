@@ -303,7 +303,7 @@ function MatchNotes({ matchId, initialNotes }) {
 
 // ── Score Timeline Chart ─────────────────────────────────────────────────────
 
-function SetScoreChart({ setData, setLabel, teamName, opponentName, maxScore }) {
+function SetScoreChart({ setData, setLabel, teamName, opponentName }) {
   return (
     <div>
       <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">{setLabel}</p>
@@ -519,7 +519,7 @@ function generateScoutingSuggestions(stats) {
   return suggestions;
 }
 
-function ScoutingReviewModal({ oppName, matchId, suggestions, onSave, onSkip }) {
+function ScoutingReviewModal({ oppName, suggestions, onSave, onSkip }) {
   const [items,  setItems]  = useState(() => suggestions.map((s, i) => ({ ...s, _id: i, checked: true })));
   const [saving, setSaving] = useState(false);
 
@@ -2484,7 +2484,6 @@ export function MatchSummaryPage() {
       {showScoutModal && match && (
         <ScoutingReviewModal
           oppName={match.opponent_name ?? 'Opponent'}
-          matchId={id}
           suggestions={scoutSuggestions}
           onSave={handleScoutSave}
           onSkip={dismissScoutPrompt}

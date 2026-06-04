@@ -759,41 +759,41 @@ export function ReportsPage() {
                   ))}
                 </div>
 
-                {/* xK% & xHIT% by Pass Rating */}
-                {(xkTeam.xk1 != null || xkTeam.xk2 != null || xkTeam.xk3 != null) && (
-                  <div className="bg-surface rounded-xl p-3">
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Attack by Pass Rating</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { label: 'xK1%',  val: fmtPct(xkTeam.xk1)      },
-                        { label: 'xK2%',  val: fmtPct(xkTeam.xk2)      },
-                        { label: 'xK3%',  val: fmtPct(xkTeam.xk3)      },
-                        { label: 'xHIT1', val: fmtHitting(xkTeam.xhit1) },
-                        { label: 'xHIT2', val: fmtHitting(xkTeam.xhit2) },
-                        { label: 'xHIT3', val: fmtHitting(xkTeam.xhit3) },
-                      ].map(({ label, val }) => (
-                        <div key={label} className="bg-slate-800/60 rounded-lg p-2 text-center">
-                          <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">{label}</div>
-                          <div className="text-lg font-black text-primary mt-0.5">{val}</div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 mt-2">
-                      {[
-                        { label: 'P1 ATT', val: xkTeam.xk1_ta ?? 0 },
-                        { label: 'P2 ATT', val: xkTeam.xk2_ta ?? 0 },
-                        { label: 'P3 ATT', val: xkTeam.xk3_ta ?? 0 },
-                      ].map(({ label, val }) => (
-                        <div key={label} className="text-center">
-                          <div className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide">{label}</div>
-                          <div className="text-sm font-bold text-slate-400">
-                            {teamViewDivisor === 1 ? val : (val / teamViewDivisor).toFixed(1)}
+                {/* Attack by Pass Rating */}
+                {(xkTeam.xk1 != null || xkTeam.xk2 != null || xkTeam.xk3 != null) && (() => {
+                  const d = teamViewDivisor;
+                  const sc = (v) => d === 1 ? fmtCount(v ?? 0) : v != null ? (v / d).toFixed(1) : '—';
+                  const hitColor = (hp) => hp == null ? 'text-slate-400' : hp > 0.250 ? 'text-emerald-400' : hp > 0.150 ? 'text-amber-400' : 'text-red-400';
+                  const badges = [
+                    { label: 'Pass 1', badge: 'P1', badgeCls: 'bg-red-900/60 text-red-400',   hit: xkTeam.xhit1, kpct: xkTeam.xk1, ta: xkTeam.xk1_ta },
+                    { label: 'Pass 2', badge: 'P2', badgeCls: 'bg-amber-900/60 text-amber-400', hit: xkTeam.xhit2, kpct: xkTeam.xk2, ta: xkTeam.xk2_ta },
+                    { label: 'Pass 3', badge: 'P3', badgeCls: 'bg-emerald-900/60 text-emerald-400', hit: xkTeam.xhit3, kpct: xkTeam.xk3, ta: xkTeam.xk3_ta },
+                  ];
+                  return (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Attack by Pass Rating</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {badges.map(({ label, badge, badgeCls, hit, kpct, ta }) => (
+                          <div key={badge} className="bg-surface rounded-xl p-3 text-center space-y-2">
+                            <span className={`inline-block text-[10px] font-black px-1.5 py-0.5 rounded tracking-wide ${badgeCls}`}>{badge}</span>
+                            <div>
+                              <div className={`text-2xl font-black tabular-nums ${hitColor(hit)}`}>{fmtHitting(hit)}</div>
+                              <div className="text-[10px] text-slate-500 uppercase tracking-wide">HIT%</div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1 pt-2 border-t border-slate-700/50">
+                              {[['K%', fmtPct(kpct)], ['ATK', sc(ta)]].map(([lbl, val]) => (
+                                <div key={lbl}>
+                                  <div className="text-[10px] text-slate-500">{lbl}</div>
+                                  <div className="text-sm font-bold text-white">{val}</div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Point Quality — mirrors the Scoring tab in Match Summary */}
                 {stats.pointQuality && (
@@ -804,61 +804,91 @@ export function ReportsPage() {
                   />
                 )}
 
-                {/* In System vs Out of System */}
-                {stats.isOos && (stats.isOos.total.is.ta > 0 || stats.isOos.total.oos.ta > 0) && (
-                  <div className="bg-surface rounded-xl p-3 space-y-2">
-                    <SectionHeader>In System vs Out of System</SectionHeader>
-                    <div className="grid grid-cols-2 gap-3">
-                      {(() => {
-                        const d = teamViewDivisor;
-                        const sc = (v) => d === 1 ? fmtCount(v) : v != null ? (v / d).toFixed(1) : '—';
-                        return [
-                          { label: 'IS ATK',   val: sc(stats.isOos.total.is.ta)                  },
-                          { label: 'IS Win%',  val: fmtPct(stats.isOos.total.is.win_pct)               },
-                          { label: 'IS K%',    val: fmtPct(stats.isOos.total.is.k_pct)                 },
-                          { label: 'IS HIT%',  val: fmtHitting(stats.isOos.total.is.hit_pct)           },
-                          { label: 'OOS ATK',  val: sc(stats.isOos.total.oos.ta)                 },
-                          { label: 'OOS Win%', val: fmtPct(stats.isOos.total.oos.win_pct)              },
-                          { label: 'OOS K%',   val: fmtPct(stats.isOos.total.oos.k_pct)               },
-                          { label: 'OOS HIT%', val: fmtHitting(stats.isOos.total.oos.hit_pct)         },
-                        ];
-                      })().map(({ label, val }) => (
-                        <div key={label}>
-                          <div className="text-xs text-slate-400">{label}</div>
-                          <div className="text-lg font-bold text-primary">{val}</div>
-                        </div>
-                      ))}
+                {/* In System / Out of System */}
+                {stats.isOos && (stats.isOos.total.is.ta > 0 || stats.isOos.total.oos.ta > 0) && (() => {
+                  const d = teamViewDivisor;
+                  const sc = (v) => d === 1 ? fmtCount(v) : v != null ? (v / d).toFixed(1) : '—';
+                  const hitColor = (hp) => hp == null ? 'text-slate-400' : hp > 0.250 ? 'text-emerald-400' : hp > 0.150 ? 'text-amber-400' : 'text-red-400';
+                  const StatBox = ({ title, ta, k_pct, win_pct, hit_pct }) => (
+                    <div className="bg-surface rounded-xl p-3 text-center space-y-2">
+                      <SectionHeader>{title}</SectionHeader>
+                      <div>
+                        <div className={`text-3xl font-black tabular-nums ${hitColor(hit_pct)}`}>{fmtHitting(hit_pct)}</div>
+                        <div className="text-[10px] text-slate-500 uppercase tracking-wide">HIT%</div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1 pt-2 border-t border-slate-700/50">
+                        {[['ATK', sc(ta)], ['K%', fmtPct(k_pct)], ['WIN%', fmtPct(win_pct)]].map(([lbl, val]) => (
+                          <div key={lbl}>
+                            <div className="text-[10px] text-slate-500">{lbl}</div>
+                            <div className="text-sm font-bold text-white">{val}</div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                  const isTa = stats.isOos.total.is.ta;
+                  const oosTa = stats.isOos.total.oos.ta;
+                  const total = isTa + oosTa;
+                  const isPct = total > 0 ? isTa / total : 0;
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 px-0.5">
+                        <span className="text-[10px] font-bold text-slate-400 shrink-0">IS {Math.round(isPct * 100)}%</span>
+                        <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                          <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${isPct * 100}%` }} />
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-400 shrink-0">OOS {Math.round((1 - isPct) * 100)}%</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <StatBox title="In System"     ta={isTa}  k_pct={stats.isOos.total.is.k_pct}  win_pct={stats.isOos.total.is.win_pct}  hit_pct={stats.isOos.total.is.hit_pct} />
+                        <StatBox title="Out of System" ta={oosTa} k_pct={stats.isOos.total.oos.k_pct} win_pct={stats.isOos.total.oos.win_pct} hit_pct={stats.isOos.total.oos.hit_pct} />
+                      </div>
+                    </div>
+                  );
+                })()}
 
-                {/* Transition & Free Ball Offense */}
-                {stats.transitionAttack && (stats.transitionAttack.free.total.ta > 0 || stats.transitionAttack.transition.total.ta > 0) && (
-                  <div className="bg-surface rounded-xl p-3 space-y-2">
-                    <SectionHeader>Transition &amp; Free Ball Offense</SectionHeader>
-                    <div className="grid grid-cols-2 gap-3">
-                      {(() => {
-                        const d = teamViewDivisor;
-                        const sc = (v) => d === 1 ? fmtCount(v) : v != null ? (v / d).toFixed(1) : '—';
-                        return [
-                          { label: 'FB ATK',    val: sc(stats.transitionAttack.free.total.ta)            },
-                          { label: 'FB Win%',   val: fmtPct(stats.transitionAttack.free.total.win_pct)         },
-                          { label: 'FB K%',     val: fmtPct(stats.transitionAttack.free.total.k_pct)           },
-                          { label: 'FB HIT%',   val: fmtHitting(stats.transitionAttack.free.total.hit_pct)     },
-                          { label: 'TR ATK',    val: sc(stats.transitionAttack.transition.total.ta)       },
-                          { label: 'TR Win%',   val: fmtPct(stats.transitionAttack.transition.total.win_pct)   },
-                          { label: 'TR K%',     val: fmtPct(stats.transitionAttack.transition.total.k_pct)     },
-                          { label: 'TR HIT%',   val: fmtHitting(stats.transitionAttack.transition.total.hit_pct) },
-                        ];
-                      })().map(({ label, val }) => (
-                        <div key={label}>
-                          <div className="text-xs text-slate-400">{label}</div>
-                          <div className="text-lg font-bold text-primary">{val}</div>
-                        </div>
-                      ))}
+                {/* Free Ball / Transition */}
+                {stats.transitionAttack && (stats.transitionAttack.free.total.ta > 0 || stats.transitionAttack.transition.total.ta > 0) && (() => {
+                  const d = teamViewDivisor;
+                  const sc = (v) => d === 1 ? fmtCount(v) : v != null ? (v / d).toFixed(1) : '—';
+                  const hitColor = (hp) => hp == null ? 'text-slate-400' : hp > 0.250 ? 'text-emerald-400' : hp > 0.150 ? 'text-amber-400' : 'text-red-400';
+                  const StatBox = ({ title, ta, k_pct, win_pct, hit_pct }) => (
+                    <div className="bg-surface rounded-xl p-3 text-center space-y-2">
+                      <SectionHeader>{title}</SectionHeader>
+                      <div>
+                        <div className={`text-3xl font-black tabular-nums ${hitColor(hit_pct)}`}>{fmtHitting(hit_pct)}</div>
+                        <div className="text-[10px] text-slate-500 uppercase tracking-wide">HIT%</div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1 pt-2 border-t border-slate-700/50">
+                        {[['ATK', sc(ta)], ['K%', fmtPct(k_pct)], ['WIN%', fmtPct(win_pct)]].map(([lbl, val]) => (
+                          <div key={lbl}>
+                            <div className="text-[10px] text-slate-500">{lbl}</div>
+                            <div className="text-sm font-bold text-white">{val}</div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                  const fbTa = stats.transitionAttack.free.total.ta;
+                  const trTa = stats.transitionAttack.transition.total.ta;
+                  const total = fbTa + trTa;
+                  const fbPct = total > 0 ? fbTa / total : 0;
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 px-0.5">
+                        <span className="text-[10px] font-bold text-slate-400 shrink-0">FB {Math.round(fbPct * 100)}%</span>
+                        <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                          <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${fbPct * 100}%` }} />
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-400 shrink-0">TR {Math.round((1 - fbPct) * 100)}%</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <StatBox title="Free Ball"  ta={fbTa} k_pct={stats.transitionAttack.free.total.k_pct}       win_pct={stats.transitionAttack.free.total.win_pct}       hit_pct={stats.transitionAttack.free.total.hit_pct} />
+                        <StatBox title="Transition" ta={trTa} k_pct={stats.transitionAttack.transition.total.k_pct} win_pct={stats.transitionAttack.transition.total.win_pct} hit_pct={stats.transitionAttack.transition.total.hit_pct} />
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Hitting bar */}
                 {hittingBarData.length > 0 && (

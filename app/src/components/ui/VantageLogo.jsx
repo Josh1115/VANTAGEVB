@@ -60,7 +60,7 @@ function buildCSS(totalWidth) {
   return [...lKFs, ulKF].join('');
 }
 
-export function VantageLogo({ onClick, onPointerDown, onPointerUp, onPointerLeave }) {
+export function VantageLogo({ animated = true, onClick, onPointerDown, onPointerUp, onPointerLeave }) {
   const measureRef = useRef(null);
   const [m, setM] = useState(null); // { chars: [{x}], bbox }
 
@@ -92,11 +92,11 @@ export function VantageLogo({ onClick, onPointerDown, onPointerUp, onPointerLeav
   const totalW = bbox?.width ?? 0;
 
   // CSS depends on measured underline width — computed after measurement.
-  const css = m ? buildCSS(totalW) : '';
+  const css = (animated && m) ? buildCSS(totalW) : '';
 
   return (
     <svg
-      className="scoreboard-flicker cursor-pointer select-none"
+      className={`${animated ? 'scoreboard-flicker' : ''} cursor-pointer select-none`}
       style={{ overflow: 'visible' }}
       width={vbW}
       height={vbH}

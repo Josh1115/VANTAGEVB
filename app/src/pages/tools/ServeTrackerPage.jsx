@@ -303,7 +303,6 @@ function SetupView({ onStart, onResume, onDiscardDraft }) {
 
 function TeamSessionView({ label, teamId, initialServes = [] }) {
   const [serves,  setServes]  = useState(initialServes);
-  const [history, setHistory] = useState(initialServes.map((s) => s));
   const showToast = useUiStore(selectShowToast);
 
   // Auto-save draft on every change
@@ -313,13 +312,11 @@ function TeamSessionView({ label, teamId, initialServes = [] }) {
 
   function record(serve) {
     setServes((s) => [...s, serve]);
-    setHistory((h) => [...h, serve]);
   }
 
   function undo() {
-    if (!history.length) return;
+    if (!serves.length) return;
     setServes((s) => s.slice(0, -1));
-    setHistory((h) => h.slice(0, -1));
   }
 
   async function handleSave() {
@@ -346,7 +343,7 @@ function TeamSessionView({ label, teamId, initialServes = [] }) {
 
       <ZoneGrid zoneCounts={stats.zoneCounts} onZone={record} />
       <ErrorButtons netCount={stats.netCount} outCount={stats.outCount} onNet={() => record('net')} onOut={() => record('out')} />
-      <StatsBar stats={stats} onUndo={undo} canUndo={history.length > 0} />
+      <StatsBar stats={stats} onUndo={undo} canUndo={serves.length > 0} />
       <button
         onClick={handleSave}
         disabled={stats.total === 0}

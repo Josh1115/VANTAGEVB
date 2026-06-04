@@ -5,7 +5,6 @@ const SURFACE = '#1e293b';
 const SURFACE2= '#0f172a';
 const BORDER  = '#334155';
 const TXT     = '#f8fafc';
-const TXT3    = '#cbd5e1';
 const TXT4    = '#94a3b8';
 const TXT5    = '#64748b';
 const PRIMARY = '#f97316';

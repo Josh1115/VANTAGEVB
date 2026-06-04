@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/layout/PageHeader';
 
 const BG      = '#000000';
@@ -10,7 +9,6 @@ const TXT3    = '#cbd5e1';
 const TXT4    = '#94a3b8';
 const TXT5    = '#64748b';
 const PRIMARY = '#f97316';
-const EMERALD = '#34d399';
 const RED     = '#f87171';
 const AMBER   = '#fbbf24';
 
@@ -38,12 +36,11 @@ function DiagRotationWeakness() {
     x: cx + Math.cos(angles[i] - Math.PI/2) * R * v,
     y: cy + Math.sin(angles[i] - Math.PI/2) * R * v,
   }));
-  const outline = angles.map((a, i) => ({
+  const outline = angles.map((a) => ({
     x: cx + Math.cos(a - Math.PI/2) * R,
     y: cy + Math.sin(a - Math.PI/2) * R,
   }));
   const polyPts = pts.map(p => `${p.x},${p.y}`).join(' ');
-  const outlinePts = outline.map(p => `${p.x},${p.y}`).join(' ');
   return (
     <svg viewBox="0 0 320 110" className="w-full rounded-xl" style={{ background: SURFACE }}>
       <text x="16" y="16" fill={TXT5} fontSize="8" fontWeight="900" letterSpacing="2">ROTATION RADAR — LAST 5 MATCHES</text>
@@ -174,7 +171,6 @@ function DiagLiveSettings() {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export function HelpPreMatchPrepPage() {
-  const navigate = useNavigate();
   return (
     <div className="min-h-screen" style={{ background: BG }}>
       <PageHeader title="Pre-Match Prep Workflow" backTo="" />

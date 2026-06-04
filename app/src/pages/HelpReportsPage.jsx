@@ -4,7 +4,6 @@ const BG      = '#000000';
 const SURFACE = '#1e293b';
 const SURFACE2= '#0f172a';
 const BORDER  = '#334155';
-const TXT     = '#f8fafc';
 const TXT3    = '#cbd5e1';
 const TXT4    = '#94a3b8';
 const TXT5    = '#64748b';
@@ -12,7 +11,6 @@ const PRIMARY = '#f97316';
 const EMERALD = '#34d399';
 const RED     = '#f87171';
 const AMBER   = '#fbbf24';
-const BLUE    = '#60a5fa';
 
 function Step({ number, title, note, children }) {
   return (

@@ -3,11 +3,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { db } from '../db/schema';
 import { useMatchStore } from '../store/matchStore';
-import { useUiStore } from '../store/uiStore';
 import { useShallow } from 'zustand/react/shallow';
 import { computePlayerStats, computeTeamStats, computeSeasonStats } from '../stats/engine';
 import { SET_STATUS, FORMAT, SIDE, MATCH_STATUS } from '../constants';
-import { useMatchStats } from '../hooks/useMatchStats';
 import { useRecordAlerts } from '../hooks/useRecordAlerts';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { haptic } from '../utils/haptic';
@@ -74,7 +72,7 @@ export function LiveMatchPage() {
     confirmServeZone, dismissServeZoneModal, loadServeReticles, loadSetFormationData,
     pendingSetWin, ourScore, oppScore, ourSetsWon, oppSetsWon, format,
     pendingServeContact, serveReticles,
-    teamId, lineup, setNumber, pointHistory, currentRun,
+    teamId, lineup, setNumber, currentRun,
   } = useMatchStore(useShallow((s) => ({
     recordHomeRotError:   s.recordHomeRotError,
     setMatch:             s.setMatch,
@@ -101,12 +99,8 @@ export function LiveMatchPage() {
     teamId:               s.teamId,
     lineup:               s.lineup,
     setNumber:            s.setNumber,
-    pointHistory:         s.pointHistory,
     currentRun:           s.currentRun,
   })));
-  const { playerStats, teamStats } = useMatchStats();
-  const showToast = useUiStore((s) => s.showToast);
-
   const records = useLiveQuery(
     () => teamId ? db.records.where('team_id').equals(teamId).toArray() : [],
     [teamId], []
@@ -329,7 +323,7 @@ export function LiveMatchPage() {
             }
             setAceZoneHints(hints);
           }
-        } catch (e) {
+        } catch {
           // hints are non-critical — silent fail
         }
 
@@ -337,7 +331,7 @@ export function LiveMatchPage() {
         try {
           const seasonData = await computeSeasonStats(match.season_id, {});
           if (seasonData && !seasonData.empty) setSeasonRotation(seasonData.rotation);
-        } catch (e) {
+        } catch {
           // non-critical — silent fail
         }
       }

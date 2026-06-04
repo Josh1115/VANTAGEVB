@@ -25,7 +25,6 @@ function MatchCard({ label, match, highlight }) {
 }
 
 function ConflictRow({ conflict, decision, onChange }) {
-  const impMore = conflict.imported.contactCount >= conflict.current.contactCount;
   return (
     <div className="bg-slate-900 border border-slate-700 rounded-xl p-3 space-y-3">
       <p className="text-xs font-semibold text-slate-400">
@@ -36,7 +35,7 @@ function ConflictRow({ conflict, decision, onChange }) {
         <MatchCard label="This Device" match={conflict.current}  highlight={decision === 'keep'} />
         <MatchCard label="Imported"    match={conflict.imported} highlight={decision === 'replace'} />
       </div>
-      {impMore && conflict.imported.contactCount > conflict.current.contactCount && (
+      {conflict.imported.contactCount > conflict.current.contactCount && (
         <p className="text-[10px] text-amber-400">
           Imported has more contacts ({conflict.imported.contactCount} vs {conflict.current.contactCount})
         </p>

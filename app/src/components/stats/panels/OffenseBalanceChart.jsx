@@ -146,7 +146,7 @@ export function OffenseBalanceChart({ setPlayerStats, matchPlayerStats, position
                 <td className="text-center pt-1.5 tabular-nums">{totalK}</td>
                 <td className="text-center pt-1.5 tabular-nums">{totalAE}</td>
                 <td className="text-center pt-1.5 tabular-nums font-bold text-slate-400">
-                  {teamHit != null ? (teamHit >= 0 ? '+' : '') + (teamHit * 1000).toFixed(0) : '—'}
+                  {fmtHitting(teamHit)}
                 </td>
                 <td className="text-center pt-1.5 tabular-nums">
                   {totalTA > 0 ? Math.round(totalK / totalTA * 100) + '%' : '—'}

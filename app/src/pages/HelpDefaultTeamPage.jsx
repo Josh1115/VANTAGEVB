@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/layout/PageHeader';
 
 // ── Palette (matches app exactly) ─────────────────────────────────────────────
@@ -6,7 +5,6 @@ const BG      = '#000000';
 const SURFACE = '#1e293b';
 const SURFACE2= '#0f172a';
 const BORDER  = '#334155';
-const BORDER2 = '#475569';
 const TXT     = '#f8fafc';
 const TXT3    = '#cbd5e1';
 const TXT4    = '#94a3b8';
@@ -14,8 +12,6 @@ const TXT5    = '#64748b';
 const PRIMARY = '#f97316';
 const EMERALD = '#34d399';
 const RED     = '#f87171';
-const BLUE    = '#60a5fa';
-const YELLOW  = '#fbbf24';
 
 function Step({ number, title, note, children }) {
   return (
@@ -278,8 +274,6 @@ function DiagDrillDown() {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export function HelpDefaultTeamPage() {
-  const navigate = useNavigate();
-
   return (
     <div className="min-h-screen" style={{ background: BG }}>
       <PageHeader title="Default Team & Season Guide" backTo="" />

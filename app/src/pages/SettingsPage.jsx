@@ -1185,14 +1185,15 @@ export function SettingsPage() {
   const [playoffOrg,   savePlayoffOrg]  = useTrimSetting(STORAGE_KEYS.PLAYOFF_ORG);
   const [programName,  saveProgramName] = useTrimSetting(STORAGE_KEYS.PROGRAM_NAME);
   const [coachName,    saveCoachName]   = useTrimSetting(STORAGE_KEYS.COACH_NAME);
-  const [wakeLock,     saveWakeLock]    = useToggleSetting('vbstat_wake_lock');
-  const [hapticOn,     saveHaptic]      = useToggleSetting('vbstat_haptic');
+  const [wakeLock,     saveWakeLock]    = useToggleSetting(STORAGE_KEYS.WAKE_LOCK);
+  const [hapticOn,     saveHaptic]      = useToggleSetting(STORAGE_KEYS.HAPTIC);
   const [soundsOn,     saveSounds]      = useToggleSetting(STORAGE_KEYS.SOUNDS);
-  const [flipLayout,   saveFlipLayout]  = useToggleSetting('vbstat_flip_layout');
+  const [flipLayout,   saveFlipLayout]  = useToggleSetting(STORAGE_KEYS.FLIP_LAYOUT);
   const [assumeSetterRot1, setAssumeSetterRot1Raw] = useState(() => getBoolStorageDefaultTrue(STORAGE_KEYS.ASSUME_SETTER_ROT1));
   const saveAssumeSetterRot1 = (next) => { setBoolStorage(STORAGE_KEYS.ASSUME_SETTER_ROT1, next); setAssumeSetterRot1Raw(next); };
   const [confirmClear,   setConfirmClear]   = useState(false);
   const [confirmImport,  setConfirmImport]  = useState(false);
+  const [confirmLogout,  setConfirmLogout]  = useState(false);
   const [pendingFile,    setPendingFile]    = useState(null);
   const [importing,      setImporting]      = useState(false);
   const [showMerge,      setShowMerge]      = useState(false);
@@ -1216,7 +1217,7 @@ export function SettingsPage() {
     try {
       await exportBackup();
       showToast('Backup exported', 'success');
-    } catch (e) {
+    } catch {
       showToast('Export failed', 'error');
     }
   }
@@ -2010,6 +2011,13 @@ export function SettingsPage() {
           </div>
         </section>
 
+        {/* Sign Out */}
+        <section className="bg-surface rounded-xl p-4">
+          <Button className="w-full" variant="danger" onClick={() => setConfirmLogout(true)}>
+            Sign Out
+          </Button>
+        </section>
+
       </div>
 
       {/* Dialogs */}
@@ -2039,6 +2047,20 @@ export function SettingsPage() {
         <MergeBackupModal
           onClose={() => setShowMerge(false)}
           onSuccess={() => showToast('Merge complete', 'success')}
+        />
+      )}
+
+      {confirmLogout && (
+        <ConfirmDialog
+          title="Sign Out"
+          message="Are you sure you want to sign out? You'll need to enter your PIN to access the app again."
+          confirmLabel="Sign Out"
+          danger
+          onConfirm={() => {
+            try { sessionStorage.removeItem('vbstat_authed'); } catch {}
+            window.location.reload();
+          }}
+          onCancel={() => setConfirmLogout(false)}
         />
       )}
 
