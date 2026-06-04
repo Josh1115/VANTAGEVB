@@ -213,11 +213,9 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
               {/* Value of hitting the goal */}
               {(() => {
                 const share = totalImpact > 0 ? Math.round((impactScore / totalImpact) * 100) : 0;
-                const atWinLevel = pos != null && pos >= 0.95;
                 const gapVal = nowVal != null
                   ? (higherBetter ? winVal - nowVal : nowVal - winVal)
                   : null;
-                const gapPositive = gapVal != null && gapVal > 0;
                 return (
                   <div className="mt-3 pt-3 border-t border-slate-700/50">
                     <span className="text-[13.8px] font-bold text-white uppercase tracking-wide">Win Factor: </span>

@@ -207,7 +207,6 @@ export function SubstitutionModal({ onClose }) {
 
   const pair1Ready = !!outPlayerId && !!inPlayerId;
   const pair2Ready = !!outPlayerId2 && !!inPlayerId2;
-  const subsNeeded = showSecondSub ? 2 : 1;
   const confirmDisabled = !pair1Ready || atMax || (showSecondSub && !pair2Ready);
 
   const handleConfirm = async () => {

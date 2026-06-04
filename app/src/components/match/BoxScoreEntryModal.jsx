@@ -171,7 +171,7 @@ export function BoxScoreEntryModal({ set, matchId, players, onClose, onSaved }) 
         .delete();
 
       onSaved();
-    } catch (e) {
+    } catch {
       showToast('Failed to save. Try again.', 'error');
       setError('Failed to save. Try again.');
     } finally {

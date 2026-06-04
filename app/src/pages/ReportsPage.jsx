@@ -773,7 +773,7 @@ export function ReportsPage() {
                     <div className="space-y-2">
                       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Attack by Pass Rating</p>
                       <div className="grid grid-cols-3 gap-2">
-                        {badges.map(({ label, badge, badgeCls, hit, kpct, ta }) => (
+                        {badges.map(({ badge, badgeCls, hit, kpct, ta }) => (
                           <div key={badge} className="bg-surface rounded-xl p-3 text-center space-y-2">
                             <span className={`inline-block text-[10px] font-black px-1.5 py-0.5 rounded tracking-wide ${badgeCls}`}>{badge}</span>
                             <div>
