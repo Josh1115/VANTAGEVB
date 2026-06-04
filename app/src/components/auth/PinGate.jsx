@@ -4,8 +4,9 @@ import { SignupWizard } from './SignupWizard';
 import { apiLogin, apiMe } from '../../utils/api';
 import { STORAGE_KEYS } from '../../utils/storage';
 
-const SESSION_KEY = 'vbstat_authed';
-const PIN_LENGTH  = 6;
+const SESSION_KEY  = 'vbstat_authed';
+const PIN_LENGTH   = 6;
+const SIGNUP_OPEN  = false; // flip to true when sign-ups are ready to launch
 
 function getStoredEmail() {
   try { return localStorage.getItem(STORAGE_KEYS.ACCOUNT_EMAIL) ?? ''; } catch { return ''; }
@@ -151,12 +152,30 @@ export function PinGate({ children }) {
             >
               Log In
             </button>
-            <button
-              onClick={() => setChoice('signup')}
-              className="w-full rounded-2xl border-2 border-slate-600 bg-slate-800/40 py-5 text-lg font-black text-slate-300 tracking-wide active:scale-[0.97] transition-transform"
-            >
-              Sign Up
-            </button>
+            <div className="relative w-full overflow-hidden rounded-2xl">
+              <button
+                onClick={SIGNUP_OPEN ? () => setChoice('signup') : undefined}
+                disabled={!SIGNUP_OPEN}
+                className="w-full rounded-2xl border-2 border-slate-600 bg-slate-800/40 py-5 text-lg font-black tracking-wide transition-transform text-slate-600 cursor-not-allowed select-none"
+              >
+                Sign Up
+              </button>
+              {!SIGNUP_OPEN && (
+                <div
+                  className="absolute inset-0 rounded-2xl flex items-center justify-center pointer-events-none overflow-hidden"
+                  style={{
+                    background: 'repeating-linear-gradient(-45deg, #f59e0b 0px, #f59e0b 12px, #1a1306 12px, #1a1306 24px)',
+                  }}
+                >
+                  <span
+                    className="text-sm font-black tracking-[0.2em] uppercase px-4 py-1 rounded"
+                    style={{ color: '#000', background: '#f59e0b', letterSpacing: '0.2em' }}
+                  >
+                    ⚠ COMING SOON
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
