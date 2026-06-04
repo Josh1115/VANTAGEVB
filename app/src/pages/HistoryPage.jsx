@@ -689,7 +689,7 @@ function WinnerCard({ entry, onEdit, onDelete }) {
 // season_history entry if one exists; otherwise those sections are blank.
 // activeSeason: the season DB record (may have head_coach/asst_coach from the roster tab)
 // historyEntry: matching season_history row (has title, rankings, playoffs, and possibly coach overrides)
-function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit, onEndSeason, isWinRecord }) {
+function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit, onEndSeason, isWinRecord, isStateRankRecord, isNationalRankRecord, isWinsAddedRecord }) {
   const completed = (matches ?? []).filter(m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition');
   const wins      = completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
   const losses    = completed.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
@@ -698,8 +698,8 @@ function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit, onE
 
   // Coaches: prefer history entry (explicitly set in History → Edit Details),
   // fall back to season record (set from the roster tab)
-  const headCoach  = historyEntry?.head_coach  ?? activeSeason?.head_coach  ?? null;
-  const asstCoach  = historyEntry?.asst_coach  ?? activeSeason?.asst_coach  ?? null;
+  const headCoach  = historyEntry?.head_coach  || activeSeason?.head_coach  || null;
+  const asstCoach  = historyEntry?.asst_coach  || activeSeason?.asst_coach  || null;
   const tenureYear = historyEntry?.tenure_year ?? activeSeason?.tenure_year ?? null;
 
   const hasCoach    = headCoach || asstCoach;
@@ -741,6 +741,21 @@ function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit, onE
           {isWinRecord && (
             <span className="text-[9px] font-black uppercase tracking-wide text-amber-400 border border-amber-500/50 px-1.5 py-0.5 rounded-full">
               Most Wins
+            </span>
+          )}
+          {isStateRankRecord && (
+            <span className="text-[9px] font-black uppercase tracking-wide text-sky-400 border border-sky-500/50 px-1.5 py-0.5 rounded-full">
+              Best State Rank
+            </span>
+          )}
+          {isNationalRankRecord && (
+            <span className="text-[9px] font-black uppercase tracking-wide text-violet-400 border border-violet-500/50 px-1.5 py-0.5 rounded-full">
+              Best USA Rank
+            </span>
+          )}
+          {isWinsAddedRecord && (
+            <span className="text-[9px] font-black uppercase tracking-wide text-emerald-400 border border-emerald-500/50 px-1.5 py-0.5 rounded-full">
+              Most Wins Added
             </span>
           )}
         </div>
@@ -874,10 +889,13 @@ function PlayoffRoundsDisplay({ entry }) {
 
 // ── Static Season Card ────────────────────────────────────────────────────────
 
-function SeasonCard({ entry, onEdit, onDelete, isWinRecord }) {
-  const winPct     = fmtWinPct(entry.wins, entry.games);
+function SeasonCard({ entry, onEdit, onDelete, isWinRecord, isStateRankRecord, isNationalRankRecord, isWinsAddedRecord, liveRecord }) {
+  const wins       = liveRecord?.wins   ?? entry.wins   ?? null;
+  const losses     = liveRecord?.losses ?? entry.losses ?? null;
+  const total      = wins != null && losses != null ? wins + losses : null;
+  const winPct     = total > 0 ? fmtWinPct(wins, total) : null;
   const hasCoach   = entry.head_coach || entry.asst_coach;
-  const hasRecord  = entry.wins != null || entry.losses != null;
+  const hasRecord  = wins != null || losses != null;
   const hasPlayoffs = entry.playoff_seed || entry.state_finish || entry.playoff_result || (entry.playoff_rounds?.length > 0);
   const titleArr   = toTitleArr(entry.title);
 
@@ -895,13 +913,28 @@ function SeasonCard({ entry, onEdit, onDelete, isWinRecord }) {
           )}
           {hasRecord && (
             <span className="text-sm font-bold text-slate-200 tabular-nums">
-              {entry.wins ?? '—'}–{entry.losses ?? '—'}
+              {wins ?? '—'}–{losses ?? '—'}
               {winPct && <span className="text-xs text-slate-400 font-semibold ml-1.5">{winPct}</span>}
             </span>
           )}
           {isWinRecord && (
             <span className="text-[9px] font-black uppercase tracking-wide text-amber-400 border border-amber-500/50 px-1.5 py-0.5 rounded-full">
               Most Wins
+            </span>
+          )}
+          {isStateRankRecord && (
+            <span className="text-[9px] font-black uppercase tracking-wide text-sky-400 border border-sky-500/50 px-1.5 py-0.5 rounded-full">
+              Best State Rank
+            </span>
+          )}
+          {isNationalRankRecord && (
+            <span className="text-[9px] font-black uppercase tracking-wide text-violet-400 border border-violet-500/50 px-1.5 py-0.5 rounded-full">
+              Best USA Rank
+            </span>
+          )}
+          {isWinsAddedRecord && (
+            <span className="text-[9px] font-black uppercase tracking-wide text-emerald-400 border border-emerald-500/50 px-1.5 py-0.5 rounded-full">
+              Most Wins Added
             </span>
           )}
         </div>
@@ -950,8 +983,8 @@ function SeasonCard({ entry, onEdit, onDelete, isWinRecord }) {
         )}
 
         {/* Games played */}
-        {entry.games != null && (
-          <p className="text-xs text-slate-500">{entry.games} games played</p>
+        {total != null && total > 0 && (
+          <p className="text-xs text-slate-500">{total} {total === 1 ? 'game' : 'games'} played</p>
         )}
 
         {/* Coaching */}
@@ -1046,6 +1079,29 @@ export function HistoryPage() {
       : Promise.resolve([]),
     [teamId]
   );
+
+  // Live match record per season year — always reflects actual completed matches
+  const liveRecordsByYear = useLiveQuery(async () => {
+    if (!teamId) return {};
+    const seasons = await db.seasons.where('team_id').equals(teamId).toArray();
+    if (!seasons.length) return {};
+    const seasonIds = seasons.map(s => s.id);
+    const matches = await db.matches
+      .where('season_id').anyOf(seasonIds)
+      .filter(m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition')
+      .toArray();
+    const seasonById = Object.fromEntries(seasons.map(s => [s.id, s]));
+    const records = {};
+    for (const m of matches) {
+      const season = seasonById[m.season_id];
+      if (!season?.year) continue;
+      const yr = String(season.year);
+      if (!records[yr]) records[yr] = { wins: 0, losses: 0 };
+      if ((m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)) records[yr].wins++;
+      else records[yr].losses++;
+    }
+    return records;
+  }, [teamId]);
 
   // Live data for the active default season (only when viewing the default team)
   const isDefaultTeam = teamId != null && teamId === defaultTeamId;
@@ -1225,10 +1281,50 @@ export function HistoryPage() {
   }, [activeMatches, hasActiveSeason]);
 
   const maxWins = useMemo(() => {
-    const vals = (history ?? []).map(h => h.wins).filter(w => w != null && w > 0);
+    const vals = (history ?? []).map(h => {
+      const live = liveRecordsByYear?.[String(h.year)]?.wins;
+      return live ?? h.wins;
+    }).filter(w => w != null && w > 0);
     if (hasActiveSeason && liveCardWins > 0) vals.push(liveCardWins);
     return vals.length ? Math.max(...vals) : 0;
-  }, [history, liveCardWins, hasActiveSeason]);
+  }, [history, liveCardWins, hasActiveSeason, liveRecordsByYear]);
+
+  const bestStateRank = useMemo(() => {
+    const vals = (history ?? []).map(h => h.state_rank).filter(r => r != null && r > 0);
+    if (hasActiveSeason && liveHistoryEntry?.state_rank != null) vals.push(liveHistoryEntry.state_rank);
+    return vals.length ? Math.min(...vals) : null;
+  }, [history, liveHistoryEntry, hasActiveSeason]);
+
+  const bestNationalRank = useMemo(() => {
+    const vals = (history ?? []).map(h => h.national_rank).filter(r => r != null && r > 0);
+    if (hasActiveSeason && liveHistoryEntry?.national_rank != null) vals.push(liveHistoryEntry.national_rank);
+    return vals.length ? Math.min(...vals) : null;
+  }, [history, liveHistoryEntry, hasActiveSeason]);
+
+  const bestWinsAdded = useMemo(() => {
+    const entries = [...(history ?? [])]
+      .filter(h => h.year != null)
+      .map(h => {
+        const w = liveRecordsByYear?.[String(h.year)]?.wins ?? h.wins;
+        return w != null ? { year: h.year, wins: w } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => String(a.year).localeCompare(String(b.year)));
+    if (hasActiveSeason && activeSeason?.year != null && liveCardWins > 0) {
+      entries.push({ year: activeSeason.year, wins: liveCardWins, _live: true });
+      entries.sort((a, b) => String(a.year).localeCompare(String(b.year)));
+    }
+    let maxDelta = 0, bestYear = null, bestIsLive = false;
+    for (let i = 1; i < entries.length; i++) {
+      const delta = entries[i].wins - entries[i - 1].wins;
+      if (delta > maxDelta) {
+        maxDelta = delta;
+        bestYear = entries[i].year;
+        bestIsLive = !!entries[i]._live;
+      }
+    }
+    return maxDelta > 0 ? { year: bestYear, delta: maxDelta, isLive: bestIsLive } : null;
+  }, [history, liveCardWins, hasActiveSeason, activeSeason, liveRecordsByYear]);
 
   const programRecord = useMemo(() => {
     let wins = 0;
@@ -1729,6 +1825,9 @@ export function HistoryPage() {
                           onEdit={() => setLiveEditOpen(true)}
                           onEndSeason={() => setConfirmEndSeason(true)}
                           isWinRecord={maxWins > 0 && liveCardWins === maxWins}
+                          isStateRankRecord={bestStateRank != null && liveHistoryEntry?.state_rank === bestStateRank}
+                          isNationalRankRecord={bestNationalRank != null && liveHistoryEntry?.national_rank === bestNationalRank}
+                          isWinsAddedRecord={bestWinsAdded?.isLive === true}
                         />
                       )}
 
@@ -1745,7 +1844,11 @@ export function HistoryPage() {
                             entry={entry}
                             onEdit={setEditEntry}
                             onDelete={handleDelete}
-                            isWinRecord={maxWins > 0 && entry.wins === maxWins}
+                            isWinRecord={maxWins > 0 && (liveRecordsByYear?.[String(entry.year)]?.wins ?? entry.wins) === maxWins}
+                            isStateRankRecord={bestStateRank != null && entry.state_rank === bestStateRank}
+                            isNationalRankRecord={bestNationalRank != null && entry.national_rank === bestNationalRank}
+                            isWinsAddedRecord={bestWinsAdded != null && !bestWinsAdded.isLive && String(entry.year) === String(bestWinsAdded.year)}
+                            liveRecord={liveRecordsByYear?.[String(entry.year)] ?? null}
                           />
                         ))
                       )}

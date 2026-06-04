@@ -748,8 +748,8 @@ export function ReportsPage() {
                       <div className="grid grid-cols-3 gap-1.5">
                         {items.map((item) => (
                           <div key={item.label} className="bg-surface rounded-lg px-1 py-1 text-center">
-                            <div className="text-[10px] text-slate-400 leading-none">{item.label}</div>
-                            <div className="text-base font-bold text-primary mt-0.5 leading-none">
+                            <div className="text-[11.5px] text-slate-400 leading-none">{item.label}</div>
+                            <div className="text-[18.5px] font-bold text-primary mt-0.5 leading-none">
                               {getTeamStatDisplay(item, stats, teamView)}
                             </div>
                           </div>
@@ -978,65 +978,127 @@ export function ReportsPage() {
                   const { p, q } = computePQ(stats.rallies);
                   const pct = (v) => Math.round(v * 100);
                   const expectedWin = computeSetWinProb(p, q, 0, 0, 'them', false);
-                  const COLOR_P = p >= 0.58 ? 'text-green-400' : p >= 0.50 ? 'text-yellow-400' : 'text-red-400';
-                  const COLOR_Q = q >= 0.42 ? 'text-green-400' : q >= 0.35 ? 'text-yellow-400' : 'text-red-400';
-                  const COLOR_W = expectedWin >= 0.55 ? 'text-green-400' : expectedWin >= 0.45 ? 'text-yellow-400' : 'text-red-400';
-                  return (
-                    <div className="bg-surface rounded-xl p-3 space-y-2">
-                      <SectionHeader>Win Probability Model</SectionHeader>
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        <div className="bg-slate-800/60 rounded-lg p-2">
-                          <div className="text-[10px] text-slate-400 leading-none mb-1">Sideout%</div>
-                          <div className={`text-xl font-black leading-none ${COLOR_P}`}>{pct(p)}%</div>
-                          <div className="text-[9px] text-slate-500 mt-0.5">when receiving</div>
+                  const txtColor = (v, hi, mid) => v >= hi ? 'text-emerald-400' : v >= mid ? 'text-amber-400' : 'text-red-400';
+                  const barColor = (v, hi, mid) => v >= hi ? 'bg-emerald-500' : v >= mid ? 'bg-amber-500' : 'bg-red-500';
+                  const InputCard = ({ label, sub, value, neutralPct }) => {
+                    const v = pct(value);
+                    const hi = neutralPct + 8; const mid = neutralPct - 5;
+                    return (
+                      <div className="bg-slate-800/60 rounded-xl p-3 text-center space-y-1.5">
+                        <div className="text-[10px] font-semibold text-primary uppercase tracking-wide">{label}</div>
+                        <div className={`text-2xl font-black tabular-nums ${txtColor(value, hi/100, mid/100)}`}>{v}%</div>
+                        <div className="text-[9px] text-slate-500">{sub}</div>
+                        <div className="relative h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all ${barColor(value, hi/100, mid/100)}`} style={{ width: `${v}%` }} />
+                          <div className="absolute top-0 bottom-0 w-px bg-slate-400/50" style={{ left: `${neutralPct}%` }} />
                         </div>
-                        <div className="bg-slate-800/60 rounded-lg p-2">
-                          <div className="text-[10px] text-slate-400 leading-none mb-1">Break%</div>
-                          <div className={`text-xl font-black leading-none ${COLOR_Q}`}>{pct(q)}%</div>
-                          <div className="text-[9px] text-slate-500 mt-0.5">when serving</div>
-                        </div>
-                        <div className="bg-slate-800/60 rounded-lg p-2">
-                          <div className="text-[10px] text-slate-400 leading-none mb-1">Set Win</div>
-                          <div className={`text-xl font-black leading-none ${COLOR_W}`}>{pct(expectedWin)}%</div>
-                          <div className="text-[9px] text-slate-500 mt-0.5">at 0–0 serve</div>
-                        </div>
+                        <div className="text-[9px] text-slate-600">{neutralPct}% neutral</div>
                       </div>
-                      <p className="text-[10px] text-slate-500 text-center pt-1">Based on {stats.rallies.length} recorded rallies</p>
+                    );
+                  };
+                  const wv = pct(expectedWin);
+                  const wTxt = txtColor(expectedWin, 0.55, 0.45);
+                  const wBar = barColor(expectedWin, 0.55, 0.45);
+                  return (
+                    <div className="bg-surface rounded-xl p-3 space-y-3">
+                      <SectionHeader>Win Probability Model</SectionHeader>
+
+                      {/* Inputs row */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <InputCard label="Sideout%" sub="when receiving" value={p} neutralPct={50} />
+                        <InputCard label="Break%"   sub="when serving"   value={q} neutralPct={40} />
+                      </div>
+
+                      {/* Conclusion — full width */}
+                      <div className="bg-slate-800/60 rounded-xl p-4 text-center space-y-2">
+                        <div className="text-[10px] font-semibold text-primary uppercase tracking-wide">Projected Set Win</div>
+                        <div className={`text-4xl font-black tabular-nums ${wTxt}`}>{wv}%</div>
+                        <div className="relative h-2 bg-slate-700 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all ${wBar}`} style={{ width: `${wv}%` }} />
+                          <div className="absolute top-0 bottom-0 w-px bg-slate-400/60" style={{ left: '50%' }} />
+                        </div>
+                        <div className="flex justify-between text-[9px] text-slate-600 px-0.5">
+                          <span>0%</span><span className="text-slate-500">50% neutral</span><span>100%</span>
+                        </div>
+                        <div className="text-[10px] text-slate-500">Based on {stats.rallies.length} recorded rallies</div>
+                      </div>
                     </div>
                   );
                 })()}
 
-                {/* Timeout Effectiveness — always shown; falls back to zeros when no TO data in selection */}
+                {/* Timeout Effectiveness */}
                 {(() => {
                   const EMPTY = { count: 0, win3: 0, total3: 0, win_pct: null };
                   const te = stats.timeoutEffect ?? { us: EMPTY, them: EMPTY };
                   const noData = te.us.count === 0 && te.them.count === 0;
                   return (
-                    <div className="bg-surface rounded-xl p-3 space-y-2">
-                      <SectionHeader>Timeout Effectiveness</SectionHeader>
-                      <p className="text-[11px] text-slate-500 -mt-1 mb-2">Win % in the 3 rallies immediately following each timeout</p>
+                    <div className="bg-surface rounded-xl p-3 space-y-3">
+                      <div>
+                        <SectionHeader>Timeout Effectiveness</SectionHeader>
+                        <p className="text-[11px] text-slate-500 -mt-1">Our win % in the 3 rallies after each timeout</p>
+                      </div>
                       {noData ? (
                         <p className="text-xs text-slate-500 text-center py-2">No timeout data in selected matches</p>
                       ) : (
                         <div className="grid grid-cols-2 gap-3">
                           {[
-                            { label: 'Our Timeouts', d: te.us   },
-                            { label: 'Opp Timeouts', d: te.them },
+                            { label: 'After Our TOs',   sub: 'we called',   d: te.us   },
+                            { label: 'After Their TOs',  sub: 'they called',  d: te.them },
                           ].map(({ label, d }) => {
-                            const pct   = d.win_pct != null ? Math.round(d.win_pct * 100) : null;
-                            const color = pct == null ? 'text-slate-400'
+                            const pct      = d.win_pct != null ? Math.round(d.win_pct * 100) : null;
+                            const barPct   = pct ?? 0;
+                            const limited  = d.count > 0 && d.count < 3;
+                            const txtColor = pct == null ? 'text-slate-400'
                               : pct >= 55 ? 'text-emerald-400'
-                              : pct >= 40 ? 'text-yellow-400'
+                              : pct >= 40 ? 'text-amber-400'
                               : 'text-red-400';
+                            const barColor = pct == null ? 'bg-slate-600'
+                              : pct >= 55 ? 'bg-emerald-500'
+                              : pct >= 40 ? 'bg-amber-500'
+                              : 'bg-red-500';
                             return (
-                              <div key={label} className="bg-slate-800/60 rounded-lg p-3 text-center">
-                                <div className="text-[11px] text-slate-400 mb-1">{label}</div>
-                                <div className={`text-2xl font-black ${color}`}>
+                              <div key={label} className="bg-slate-800/60 rounded-xl p-3 text-center space-y-2">
+                                {/* Header: label then TO count below */}
+                                <div className="flex flex-col items-center gap-1">
+                                  <span className="text-[11px] font-semibold text-primary">{label}</span>
+                                  {d.count > 0 && (
+                                    <span className="text-[10.5px] font-black px-1.5 py-0.5 rounded bg-slate-700 text-white tracking-wide">
+                                      {d.count} TO{d.count !== 1 ? 's' : ''}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Hero percentage */}
+                                <div className={`text-3xl font-black tabular-nums ${txtColor}`}>
                                   {pct != null ? `${pct}%` : '—'}
                                 </div>
-                                <div className="text-[10px] text-slate-500 mt-1">
-                                  {d.win3}/{d.total3} pts · {d.count} TO{d.count !== 1 ? 's' : ''}
+
+                                {/* Fill bar with 50% neutral marker */}
+                                <div className="relative h-2 bg-slate-700 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                                    style={{ width: `${barPct}%` }}
+                                  />
+                                  {/* 50% neutral line */}
+                                  <div className="absolute top-0 bottom-0 w-px bg-slate-400/60" style={{ left: '50%' }} />
                                 </div>
+                                <div className="text-[9px] text-slate-600 -mt-1 flex justify-between px-0.5">
+                                  <span>0%</span><span className="text-slate-500">50% neutral</span><span>100%</span>
+                                </div>
+
+                                {/* Rally breakdown */}
+                                {d.total3 > 0 && (
+                                  <div className="text-[10px] text-slate-500">
+                                    {d.win3} of {d.total3} rallies won
+                                  </div>
+                                )}
+
+                                {/* Limited data warning */}
+                                {limited && (
+                                  <div className="text-[9px] font-semibold text-amber-500/80 tracking-wide">
+                                    limited data
+                                  </div>
+                                )}
                               </div>
                             );
                           })}

@@ -1389,7 +1389,6 @@ export function SettingsPage() {
                 <div className="space-y-1">
                   {[
                     { to: '/help/live-match',        icon: '📲', label: 'Live Match Screen Guide'       },
-                    { to: '/help/live-stat-labels',  icon: '🏐', label: 'Live Stat Phase Labels'        },
                     { to: '/help/serve-receive',     icon: '📐', label: 'Serve-Receive Formation Setup' },
                     { to: '/help/substitutions',     icon: '🔄', label: 'Substitutions & Lineup Changes'},
                   ].map(({ to, icon, label }) => (
@@ -1469,6 +1468,32 @@ export function SettingsPage() {
                         <span className="text-[9px] font-bold text-primary border border-primary/50 rounded px-1 py-px">GUIDE</span>
                       </span>
                       <span className="text-slate-500 text-sm">›</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* Find Your Vantage */}
+              <div>
+                <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-1.5 px-1">Find Your Vantage</p>
+                <p className="text-[11px] text-slate-500 mb-2 px-1">Deep-dive guides on using your data to make better coaching decisions.</p>
+                <div className="space-y-1">
+                  {[
+                    { to: '/help/vantage-win-factors', icon: '🏆', label: 'Reading Your Win Factors',  desc: 'Which stats predict your wins' },
+                    { to: '/help/vantage-rotations',   icon: '🔄', label: 'Rotation Intelligence',     desc: 'Find & fix your weak rotations' },
+                    { to: '/help/vantage-attack',      icon: '⚡', label: 'Attack Analytics',           desc: 'Hit%, IS/OOS, pass-to-kill chain' },
+                  ].map(({ to, icon, label, desc }) => (
+                    <Link key={to} to={to}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-blue-500/40 hover:border-blue-400 hover:bg-blue-500/5 transition-colors text-left"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <span className="text-base">{icon}</span>
+                        <span>
+                          <span className="text-sm font-medium text-slate-200 block leading-tight">{label}</span>
+                          <span className="text-[10px] text-slate-500">{desc}</span>
+                        </span>
+                      </span>
+                      <span className="text-slate-500 text-sm shrink-0 ml-2">›</span>
                     </Link>
                   ))}
                 </div>

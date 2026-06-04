@@ -11,7 +11,8 @@ export function PinGate({ children }) {
   const [username, setUsername] = useState('');
   const [pin,     setPin]     = useState('');
   const [invalid, setInvalid] = useState(false);
-  const [phase,   setPhase]   = useState(0); // 0=blank 1=logo fading in 2=animated+pin visible
+  const [phase,   setPhase]   = useState(0);
+  const [choice,  setChoice]  = useState(null); // null | 'login' | 'signup'
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -43,20 +44,30 @@ export function PinGate({ children }) {
   }
 
   const focusInput = () => inputRef.current?.focus();
+  const showForm   = choice === 'login';
 
   return (
     <div
-      className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-6 animate-fade-in"
+      className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-8 animate-fade-in"
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
-      <div className="flex flex-col items-center gap-8 w-full max-w-xs">
+      <div className="flex flex-col items-center gap-12 w-full max-w-sm">
+
         {/* Brandmark */}
-        <div className="flex flex-col items-center gap-3">
-          <div style={{ opacity: phase >= 1 ? 1 : 0, transition: 'opacity 1.3s ease' }}>
+        <div className="flex flex-col items-center gap-5">
+          <div
+            style={{
+              opacity: phase >= 1 ? 1 : 0,
+              transition: 'opacity 1.3s ease',
+              transform: 'scale(2)',
+              transformOrigin: 'top center',
+              marginBottom: '5.5rem',
+            }}
+          >
             <VantageLogo animated={phase >= 2} />
           </div>
           {/* Slogan — one word at a time */}
-          <p className="text-xs font-semibold tracking-[0.25em] text-slate-400 flex gap-2">
+          <p className="text-2xl font-semibold tracking-[0.25em] text-slate-400 flex gap-3">
             {['PRECISION', 'SIDELINE', 'ANALYTICS'].map((word, i) => (
               <span
                 key={word}
@@ -67,85 +78,111 @@ export function PinGate({ children }) {
             ))}
           </p>
           <p
-            className="text-xs italic text-slate-500"
+            className="text-[21px] italic text-slate-500"
             style={{ opacity: phase >= 5 ? 1 : 0, transition: 'opacity 0.8s ease' }}
           >
             Powered by the S.S.E (Shua Stat Engine)
           </p>
         </div>
 
-        {/* Username */}
-        <div
-          className="w-full"
-          style={{ opacity: phase >= 5 ? 1 : 0, transition: 'opacity 0.8s ease' }}
-        >
-          <input
-            type="text"
-            placeholder="Username"
-            value={username}
-            onChange={e => setUsername(e.target.value)}
-            autoComplete="username"
-            aria-label="Username"
-            className="w-full rounded-xl border-2 border-slate-600 bg-slate-800/40 px-4 py-3 text-white placeholder-slate-500 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all duration-150"
-          />
-          <p
-            className="mt-8 text-sm text-slate-400 text-center"
+        {/* Sign Up / Log In choice */}
+        {!showForm && (
+          <div
+            className="w-full flex flex-col gap-4"
+            style={{ opacity: phase >= 5 ? 1 : 0, transition: 'opacity 0.8s ease' }}
           >
-            Enter your access PIN
-          </p>
-        </div>
-
-        {/* Digit boxes (whole row focuses one hidden numeric input) */}
-        <div
-          className={`relative w-full ${invalid ? 'motion-safe:animate-shake' : ''}`}
-          style={{ opacity: phase >= 5 ? 1 : 0, transition: 'opacity 0.8s ease' }}
-          onClick={focusInput}
-        >
-          <div className="flex justify-center gap-2.5">
-            {Array.from({ length: PIN_LENGTH }).map((_, i) => {
-              const filled  = i < pin.length;
-              const active  = !invalid && i === pin.length;
-              const base    = 'flex items-center justify-center w-11 h-14 rounded-xl border-2 text-2xl text-white transition-all duration-150';
-              const state   = invalid
-                ? 'border-red-500 bg-red-500/5 text-red-400'
-                : filled
-                  ? 'border-primary bg-primary/10 motion-safe:scale-105'
-                  : active
-                    ? 'border-primary ring-2 ring-primary/30'
-                    : 'border-slate-600 bg-slate-800/40';
-              return (
-                <div key={i} className={`${base} ${state}`}>
-                  {filled
-                    ? <span className="leading-none">●</span>
-                    : active
-                      ? <span className="w-0.5 h-6 rounded-full bg-primary motion-safe:animate-pulse" />
-                      : null}
-                </div>
-              );
-            })}
+            <button
+              onClick={() => setChoice('login')}
+              className="w-full rounded-2xl bg-primary py-5 text-lg font-black text-white tracking-wide active:scale-[0.97] transition-transform"
+            >
+              Log In
+            </button>
+            <button
+              onClick={() => setChoice('signup')}
+              className="w-full rounded-2xl border-2 border-slate-600 bg-slate-800/40 py-5 text-lg font-black text-slate-300 tracking-wide active:scale-[0.97] transition-transform"
+            >
+              Sign Up
+            </button>
           </div>
+        )}
 
-          <input
-            ref={inputRef}
-            type="password"
-            inputMode="numeric"
-            pattern="\d*"
-            maxLength={PIN_LENGTH}
-            value={pin}
-            onChange={handleChange}
-            autoFocus
-            aria-label="Access PIN"
-            className="absolute inset-0 w-full h-full opacity-0 cursor-default"
-          />
-        </div>
+        {/* Login form */}
+        {showForm && (
+          <div className="w-full flex flex-col gap-10 animate-slide-up-fade">
 
-        {/* Error line — reserves space to avoid layout shift */}
-        <p
-          className={`h-5 text-sm font-semibold text-red-400 transition-opacity ${invalid ? 'opacity-100' : 'opacity-0'}`}
-          style={{ opacity: phase >= 5 ? undefined : 0 }}
-        >
-          Incorrect PIN
-        </p>
+            {/* Username */}
+            <div className="w-full">
+              <input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                autoComplete="username"
+                aria-label="Username"
+                autoFocus
+                className="w-full rounded-2xl border-2 border-slate-600 bg-slate-800/40 px-5 py-4 text-lg text-white placeholder-slate-500 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all duration-150"
+              />
+              <p className="mt-6 text-base text-slate-400 text-center">
+                Enter your access PIN
+              </p>
+            </div>
+
+            {/* Digit boxes */}
+            <div
+              className={`relative w-full ${invalid ? 'motion-safe:animate-shake' : ''}`}
+              onClick={focusInput}
+            >
+              <div className="flex justify-center gap-2">
+                {Array.from({ length: PIN_LENGTH }).map((_, i) => {
+                  const filled = i < pin.length;
+                  const active = !invalid && i === pin.length;
+                  const base   = 'flex items-center justify-center w-12 h-16 rounded-2xl border-2 text-3xl text-white transition-all duration-150';
+                  const state  = invalid
+                    ? 'border-red-500 bg-red-500/5 text-red-400'
+                    : filled
+                      ? 'border-primary bg-primary/10 motion-safe:scale-105'
+                      : active
+                        ? 'border-primary ring-2 ring-primary/30'
+                        : 'border-slate-600 bg-slate-800/40';
+                  return (
+                    <div key={i} className={`${base} ${state}`}>
+                      {filled
+                        ? <span className="leading-none">●</span>
+                        : active
+                          ? <span className="w-1 h-8 rounded-full bg-primary motion-safe:animate-pulse" />
+                          : null}
+                    </div>
+                  );
+                })}
+              </div>
+              <input
+                ref={inputRef}
+                type="password"
+                inputMode="numeric"
+                pattern="\d*"
+                maxLength={PIN_LENGTH}
+                value={pin}
+                onChange={handleChange}
+                aria-label="Access PIN"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-default"
+              />
+            </div>
+
+            {/* Error line */}
+            <p className={`h-6 text-base font-semibold text-red-400 text-center transition-opacity ${invalid ? 'opacity-100' : 'opacity-0'}`}>
+              Incorrect PIN
+            </p>
+
+            {/* Back link */}
+            <button
+              onClick={() => { setChoice(null); setPin(''); setInvalid(false); setUsername(''); }}
+              className="text-sm text-slate-500 hover:text-slate-300 transition-colors -mt-6"
+            >
+              ← Back
+            </button>
+          </div>
+        )}
+
       </div>
     </div>
   );

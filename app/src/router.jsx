@@ -36,7 +36,6 @@ const HelpDefaultTeamPage      = lazy(() => import('./pages/HelpDefaultTeamPage'
 const HelpMatchSummaryPage     = lazy(() => import('./pages/HelpMatchSummaryPage').then(m => ({ default: m.HelpMatchSummaryPage })));
 const HelpPreMatchPrepPage     = lazy(() => import('./pages/HelpPreMatchPrepPage').then(m => ({ default: m.HelpPreMatchPrepPage })));
 const HelpExportingPage        = lazy(() => import('./pages/HelpExportingPage').then(m => ({ default: m.HelpExportingPage })));
-const HelpLiveStatLabelsPage   = lazy(() => import('./pages/HelpLiveStatLabelsPage').then(m => ({ default: m.HelpLiveStatLabelsPage })));
 const HelpFirstMatchPage       = lazy(() => import('./pages/HelpFirstMatchPage').then(m => ({ default: m.HelpFirstMatchPage })));
 const HelpLiveMatchPage        = lazy(() => import('./pages/HelpLiveMatchPage').then(m => ({ default: m.HelpLiveMatchPage })));
 const HelpPlayerReportPage     = lazy(() => import('./pages/HelpPlayerReportPage').then(m => ({ default: m.HelpPlayerReportPage })));
@@ -44,7 +43,10 @@ const HelpReportsPage          = lazy(() => import('./pages/HelpReportsPage').th
 const HelpRosterPage           = lazy(() => import('./pages/HelpRosterPage').then(m => ({ default: m.HelpRosterPage })));
 const HelpSeasonHistoryPage    = lazy(() => import('./pages/HelpSeasonHistoryPage').then(m => ({ default: m.HelpSeasonHistoryPage })));
 const HelpSubstitutionsPage    = lazy(() => import('./pages/HelpSubstitutionsPage').then(m => ({ default: m.HelpSubstitutionsPage })));
-const HelpEndSeasonPage        = lazy(() => import('./pages/HelpEndSeasonPage').then(m => ({ default: m.HelpEndSeasonPage })));
+const HelpEndSeasonPage           = lazy(() => import('./pages/HelpEndSeasonPage').then(m => ({ default: m.HelpEndSeasonPage })));
+const HelpVantageWinFactorsPage   = lazy(() => import('./pages/HelpVantageWinFactorsPage').then(m => ({ default: m.HelpVantageWinFactorsPage })));
+const HelpVantageRotationsPage    = lazy(() => import('./pages/HelpVantageRotationsPage').then(m => ({ default: m.HelpVantageRotationsPage })));
+const HelpVantageAttackPage       = lazy(() => import('./pages/HelpVantageAttackPage').then(m => ({ default: m.HelpVantageAttackPage })));
 
 function PageFallback() {
   return (
@@ -92,7 +94,6 @@ export const router = createBrowserRouter([
       { path: 'help/match-summary',          element: <S><HelpMatchSummaryPage /></S> },
       { path: 'help/pre-match-prep',         element: <S><HelpPreMatchPrepPage /></S> },
       { path: 'help/exporting',              element: <S><HelpExportingPage /></S> },
-      { path: 'help/live-stat-labels',      element: <S><HelpLiveStatLabelsPage /></S> },
       { path: 'help/first-match',           element: <S><HelpFirstMatchPage /></S> },
       { path: 'help/live-match',            element: <S><HelpLiveMatchPage /></S> },
       { path: 'help/player-report',         element: <S><HelpPlayerReportPage /></S> },
@@ -101,6 +102,9 @@ export const router = createBrowserRouter([
       { path: 'help/season-history',        element: <S><HelpSeasonHistoryPage /></S> },
       { path: 'help/substitutions',         element: <S><HelpSubstitutionsPage /></S> },
       { path: 'help/end-season',            element: <S><HelpEndSeasonPage /></S> },
+      { path: 'help/vantage-win-factors',   element: <S><HelpVantageWinFactorsPage /></S> },
+      { path: 'help/vantage-rotations',     element: <S><HelpVantageRotationsPage /></S> },
+      { path: 'help/vantage-attack',        element: <S><HelpVantageAttackPage /></S> },
       { path: '*',                           element: <NotFoundPage /> },
     ],
   },
