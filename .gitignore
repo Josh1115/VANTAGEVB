@@ -3,3 +3,5 @@ app/dist
 app/.netlify
 .env
 .tmp
+server/node_modules
+server/vbstat.db

@@ -3,6 +3,8 @@
 // make key usage searchable across the codebase.
 
 export const STORAGE_KEYS = {
+  ACCOUNT_TOKEN: 'vbstat_account_token',
+  ACCOUNT_EMAIL: 'vbstat_account_email',
   AMOLED:             'vbstat_amoled',
   ACCENT:             'vbstat_accent',
   COACH_NAME:         'vbstat_coach_name',
