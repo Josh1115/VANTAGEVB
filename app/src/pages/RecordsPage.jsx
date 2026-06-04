@@ -148,21 +148,24 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
       }
     }
 
-    // Split historical records into linked (matched to a player) vs standalone
-    const COUNT_STATS = new Set(['k', 'ace', 'blk', 'ast', 'dig', 'sp']);
-    const offsetsByPid = {}; // player_id -> stat -> value (pre-app offset)
-    const standaloneHistorical = [];
-
-    for (const r of historicalAll) {
-      const pid = r.player_id
-        ?? nameToPlayerId[r.player_name?.toLowerCase().trim() ?? ''];
-      if (pid && playerNamesMap[pid] && COUNT_STATS.has(r.stat)) {
-        if (!offsetsByPid[pid]) offsetsByPid[pid] = {};
-        offsetsByPid[pid][r.stat] = (offsetsByPid[pid][r.stat] ?? 0) + (r.value ?? 0);
-      } else {
-        standaloneHistorical.push(r);
-      }
+    // Build pre-VBSTAT baselines from player fields (avoids double-counting from historical records)
+    const offsetsByPid = {};
+    for (const p of players) {
+      const b = {};
+      if (p.pre_vbstat_k   != null) b.k   = p.pre_vbstat_k;
+      if (p.pre_vbstat_ace != null) b.ace = p.pre_vbstat_ace;
+      if (p.pre_vbstat_blk != null) b.blk = p.pre_vbstat_blk;
+      if (p.pre_vbstat_ast != null) b.ast = p.pre_vbstat_ast;
+      if (p.pre_vbstat_dig != null) b.dig = p.pre_vbstat_dig;
+      if (p.pre_vbstat_sp  != null) b.sp  = p.pre_vbstat_sp;
+      if (Object.keys(b).length) offsetsByPid[p.id] = b;
     }
+
+    // Standalone historical = records with no matching in-app player (pure manual entries)
+    const standaloneHistorical = historicalAll.filter(r => {
+      const pid = r.player_id ?? nameToPlayerId[r.player_name?.toLowerCase().trim() ?? ''];
+      return !pid || !playerNamesMap[pid];
+    });
 
     // Build player rows: all players with contacts OR with pre-app offsets
     const allPids = new Set([
@@ -473,30 +476,143 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
   );
 }
 
+// ── EditCareerBaselineModal ───────────────────────────────────────────────────
+
+const BASELINE_FIELDS = [
+  { key: 'pre_vbstat_k',   label: 'Kills'   },
+  { key: 'pre_vbstat_ace', label: 'Aces'    },
+  { key: 'pre_vbstat_blk', label: 'Blocks'  },
+  { key: 'pre_vbstat_ast', label: 'Assists' },
+  { key: 'pre_vbstat_dig', label: 'Digs'    },
+  { key: 'pre_vbstat_sp',  label: 'Sets'    },
+];
+
+function EditCareerBaselineModal({ playerId, onClose, onSaved }) {
+  const [form, setForm]           = useState(null);
+  const [playerName, setPlayerName] = useState('');
+  const [saving, setSaving]       = useState(false);
+  const [error, setError]         = useState('');
+
+  useEffect(() => {
+    db.players.get(playerId).then(p => {
+      if (!p) { onClose(); return; }
+      setPlayerName(p.name ?? '');
+      setForm({
+        pre_vbstat_k:   p.pre_vbstat_k   != null ? String(p.pre_vbstat_k)   : '',
+        pre_vbstat_ace: p.pre_vbstat_ace != null ? String(p.pre_vbstat_ace) : '',
+        pre_vbstat_blk: p.pre_vbstat_blk != null ? String(p.pre_vbstat_blk) : '',
+        pre_vbstat_ast: p.pre_vbstat_ast != null ? String(p.pre_vbstat_ast) : '',
+        pre_vbstat_dig: p.pre_vbstat_dig != null ? String(p.pre_vbstat_dig) : '',
+        pre_vbstat_sp:  p.pre_vbstat_sp  != null ? String(p.pre_vbstat_sp)  : '',
+      });
+    });
+  }, [playerId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleSave() {
+    if (!form) return;
+    const updates = {};
+    for (const { key } of BASELINE_FIELDS) {
+      if (form[key] === '') { updates[key] = null; continue; }
+      const val = Number(form[key]);
+      if (isNaN(val) || val < 0) { setError('All values must be non-negative numbers.'); return; }
+      updates[key] = val;
+    }
+    setSaving(true);
+    try {
+      await db.players.update(playerId, updates);
+      onSaved?.();
+      onClose();
+    } catch {
+      setError('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputCls = 'w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-primary';
+  const labelCls = 'block text-xs font-semibold text-slate-400 mb-1';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-4"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold text-slate-100">Pre-VBSTAT Career Stats</h2>
+            {playerName && <p className="text-xs text-slate-400 mt-0.5">{playerName}</p>}
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
+        </div>
+
+        <p className="text-xs text-slate-500 leading-relaxed">
+          Enter career totals earned before VBSTAT. These are added on top of app-recorded stats for the career leaderboard. Leave blank for zero.
+        </p>
+
+        {!form ? (
+          <div className="flex justify-center py-4"><Spinner /></div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {BASELINE_FIELDS.map(({ key, label }) => (
+              <div key={key}>
+                <label className={labelCls}>{label}</label>
+                <input
+                  className={inputCls}
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                  value={form[key]}
+                  onChange={e => { setForm(f => ({ ...f, [key]: e.target.value })); setError(''); }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {error && <p className="text-xs text-red-400">{error}</p>}
+
+        <button
+          onClick={handleSave}
+          disabled={saving || !form}
+          className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold active:scale-95 disabled:opacity-50"
+        >
+          {saving ? 'Saving…' : 'Save Baseline'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── LeaderboardRow ────────────────────────────────────────────────────────────
 
-function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, teamId }) {
+function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, onEditBaseline, teamId }) {
   const navigate  = useNavigate();
   const [swiped, setSwiped] = useState(false);
   const startX = useRef(0);
   const showPlayer = tab !== 'team_match' && tab !== 'team_season';
   const canLink = !!row.player_id && !!teamId;
   const showRight  = tab === 'match' || tab === 'team_match';
+  const canEditBaseline = tab === 'career' && !row.historical && !!row.player_id && !!onEditBaseline;
+  const swipeable = row.historical || canEditBaseline;
 
   const bgCls = row.rank === 1 ? 'bg-[#555232]'
     : row.rank === 2 ? 'bg-[#424b5a]'
     : row.rank === 3 ? 'bg-[#472f2f]'
     : 'bg-slate-800';
 
+  const swipeTranslate = row.historical ? '-translate-x-32' : '-translate-x-16';
+
   const inner = (
     <div
       className={`flex items-center gap-3 px-3 py-2.5 ${bgCls} ${
-        row.historical
-          ? `transition-transform duration-200 ${swiped ? '-translate-x-32' : 'translate-x-0'}`
+        swipeable
+          ? `transition-transform duration-200 ${swiped ? swipeTranslate : 'translate-x-0'}`
           : 'rounded-lg'
       }`}
-      onTouchStart={row.historical ? e => { startX.current = e.touches[0].clientX; } : undefined}
-      onTouchEnd={row.historical ? e => {
+      onTouchStart={swipeable ? e => { startX.current = e.touches[0].clientX; } : undefined}
+      onTouchEnd={swipeable ? e => {
         const delta = e.changedTouches[0].clientX - startX.current;
         if (delta < -40) setSwiped(true);
         else if (delta > 20) setSwiped(false);
@@ -558,6 +674,21 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, teamId }) {
   const isActive = row.active || row.currentSeason;
 
   if (!row.historical) {
+    if (canEditBaseline) {
+      return (
+        <div className={`relative overflow-hidden rounded-lg ${isActive ? 'border border-orange-400 animate-active-record-glow' : ''}`}>
+          <div className="absolute inset-y-0 right-0 flex">
+            <button
+              onClick={() => { setSwiped(false); onEditBaseline(row); }}
+              className="w-16 flex items-center justify-center bg-blue-600 text-white text-xs font-bold"
+            >
+              Edit
+            </button>
+          </div>
+          {inner}
+        </div>
+      );
+    }
     if (isActive) {
       return (
         <div className="relative rounded-lg overflow-hidden border border-orange-400 animate-active-record-glow">
@@ -903,10 +1034,11 @@ export function RecordsPage() {
   const [statKey, setStatKey] = useState('k');
   const [boards,     setBoards]     = useState(null);
   const [loading,    setLoading]    = useState(false);
-  const [showAdd,      setShowAdd]      = useState(false);
-  const [editRow,      setEditRow]      = useState(null);
-  const [editTourney,  setEditTourney]  = useState(null);
-  const [refreshKey,   setRefreshKey]   = useState(0);
+  const [showAdd,             setShowAdd]             = useState(false);
+  const [editRow,             setEditRow]             = useState(null);
+  const [editTourney,         setEditTourney]         = useState(null);
+  const [editBaselinePlayerId, setEditBaselinePlayerId] = useState(null);
+  const [refreshKey,          setRefreshKey]          = useState(0);
 
   const orgs = useLiveQuery(
     () => db.organizations.toArray().then(o => o.sort((a, b) => a.name?.localeCompare(b.name))),
@@ -1229,6 +1361,7 @@ export function RecordsPage() {
                             fmt={statDef?.fmt ?? fmtCount}
                             onEdit={setEditRow}
                             onDelete={handleDelete}
+                            onEditBaseline={tab === 'career' ? row => setEditBaselinePlayerId(row.player_id) : undefined}
                             teamId={teamId}
                           />
                         ))}
@@ -1269,6 +1402,14 @@ export function RecordsPage() {
             })),
           }}
           onClose={() => setEditTourney(null)}
+        />
+      )}
+
+      {editBaselinePlayerId && (
+        <EditCareerBaselineModal
+          playerId={editBaselinePlayerId}
+          onClose={() => setEditBaselinePlayerId(null)}
+          onSaved={() => setRefreshKey(k => k + 1)}
         />
       )}
 

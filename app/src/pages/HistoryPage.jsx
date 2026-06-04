@@ -689,7 +689,7 @@ function WinnerCard({ entry, onEdit, onDelete }) {
 // season_history entry if one exists; otherwise those sections are blank.
 // activeSeason: the season DB record (may have head_coach/asst_coach from the roster tab)
 // historyEntry: matching season_history row (has title, rankings, playoffs, and possibly coach overrides)
-function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit, onEndSeason, isWinRecord, isStateRankRecord, isNationalRankRecord, isWinsAddedRecord }) {
+function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit, onEndSeason, isWinRecord, isStateRankRecord, isNationalRankRecord, isWinsAddedRecord, isMostGamesRecord }) {
   const completed = (matches ?? []).filter(m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition');
   const wins      = completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
   const losses    = completed.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
@@ -756,6 +756,11 @@ function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit, onE
           {isWinsAddedRecord && (
             <span className="text-[9px] font-black uppercase tracking-wide text-emerald-400 border border-emerald-500/50 px-1.5 py-0.5 rounded-full">
               Most Wins Added
+            </span>
+          )}
+          {isMostGamesRecord && (
+            <span className="text-[9px] font-black uppercase tracking-wide text-rose-400 border border-rose-500/50 px-1.5 py-0.5 rounded-full">
+              Most Games Played
             </span>
           )}
         </div>
@@ -889,7 +894,7 @@ function PlayoffRoundsDisplay({ entry }) {
 
 // ── Static Season Card ────────────────────────────────────────────────────────
 
-function SeasonCard({ entry, onEdit, onDelete, isWinRecord, isStateRankRecord, isNationalRankRecord, isWinsAddedRecord, liveRecord }) {
+function SeasonCard({ entry, onEdit, onDelete, isWinRecord, isStateRankRecord, isNationalRankRecord, isWinsAddedRecord, isMostGamesRecord, liveRecord }) {
   const wins       = liveRecord?.wins   ?? entry.wins   ?? null;
   const losses     = liveRecord?.losses ?? entry.losses ?? null;
   const total      = wins != null && losses != null ? wins + losses : null;
@@ -935,6 +940,11 @@ function SeasonCard({ entry, onEdit, onDelete, isWinRecord, isStateRankRecord, i
           {isWinsAddedRecord && (
             <span className="text-[9px] font-black uppercase tracking-wide text-emerald-400 border border-emerald-500/50 px-1.5 py-0.5 rounded-full">
               Most Wins Added
+            </span>
+          )}
+          {isMostGamesRecord && (
+            <span className="text-[9px] font-black uppercase tracking-wide text-rose-400 border border-rose-500/50 px-1.5 py-0.5 rounded-full">
+              Most Games Played
             </span>
           )}
         </div>
@@ -1280,6 +1290,13 @@ export function HistoryPage() {
     return completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
   }, [activeMatches, hasActiveSeason]);
 
+  const liveCardGames = useMemo(() => {
+    if (!hasActiveSeason) return 0;
+    return (activeMatches ?? []).filter(
+      m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition'
+    ).length;
+  }, [activeMatches, hasActiveSeason]);
+
   const maxWins = useMemo(() => {
     const vals = (history ?? []).map(h => {
       const live = liveRecordsByYear?.[String(h.year)]?.wins;
@@ -1288,6 +1305,17 @@ export function HistoryPage() {
     if (hasActiveSeason && liveCardWins > 0) vals.push(liveCardWins);
     return vals.length ? Math.max(...vals) : 0;
   }, [history, liveCardWins, hasActiveSeason, liveRecordsByYear]);
+
+  const maxGames = useMemo(() => {
+    const vals = (history ?? []).map(h => {
+      const live = liveRecordsByYear?.[String(h.year)];
+      if (live) return live.wins + live.losses;
+      if (h.wins != null && h.losses != null) return h.wins + h.losses;
+      return h.games ?? null;
+    }).filter(g => g != null && g > 0);
+    if (hasActiveSeason && liveCardGames > 0) vals.push(liveCardGames);
+    return vals.length ? Math.max(...vals) : 0;
+  }, [history, liveCardGames, hasActiveSeason, liveRecordsByYear]);
 
   const bestStateRank = useMemo(() => {
     const vals = (history ?? []).map(h => h.state_rank).filter(r => r != null && r > 0);
@@ -1828,6 +1856,7 @@ export function HistoryPage() {
                           isStateRankRecord={bestStateRank != null && liveHistoryEntry?.state_rank === bestStateRank}
                           isNationalRankRecord={bestNationalRank != null && liveHistoryEntry?.national_rank === bestNationalRank}
                           isWinsAddedRecord={bestWinsAdded?.isLive === true}
+                          isMostGamesRecord={maxGames > 0 && liveCardGames === maxGames}
                         />
                       )}
 
@@ -1848,6 +1877,13 @@ export function HistoryPage() {
                             isStateRankRecord={bestStateRank != null && entry.state_rank === bestStateRank}
                             isNationalRankRecord={bestNationalRank != null && entry.national_rank === bestNationalRank}
                             isWinsAddedRecord={bestWinsAdded != null && !bestWinsAdded.isLive && String(entry.year) === String(bestWinsAdded.year)}
+                            isMostGamesRecord={(() => {
+                              const live = liveRecordsByYear?.[String(entry.year)];
+                              const g = live ? live.wins + live.losses
+                                : entry.wins != null && entry.losses != null ? entry.wins + entry.losses
+                                : entry.games ?? null;
+                              return maxGames > 0 && g === maxGames;
+                            })()}
                             liveRecord={liveRecordsByYear?.[String(entry.year)] ?? null}
                           />
                         ))
