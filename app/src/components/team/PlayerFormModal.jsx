@@ -5,6 +5,21 @@ import { POSITION_KEYS, POSITIONS } from '../../constants';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 
+const BASELINE_FIELDS = [
+  { key: 'pre_vbstat_k',   label: 'Kills'   },
+  { key: 'pre_vbstat_ace', label: 'Aces'    },
+  { key: 'pre_vbstat_blk', label: 'Blocks'  },
+  { key: 'pre_vbstat_ast', label: 'Assists' },
+  { key: 'pre_vbstat_dig', label: 'Digs'    },
+  { key: 'pre_vbstat_sp',  label: 'Sets'    },
+];
+
+function initBaseline(player) {
+  return Object.fromEntries(
+    BASELINE_FIELDS.map(({ key }) => [key, player?.[key] != null ? String(player[key]) : ''])
+  );
+}
+
 export function PlayerFormModal({ onClose, teamId, player }) {
   const [name, setName]       = useState(player?.name ?? '');
   const [nickname, setNickname] = useState(player?.nickname ?? '');
@@ -15,13 +30,17 @@ export function PlayerFormModal({ onClose, teamId, player }) {
   const [year, setYear] = useState(player?.year ?? '');
   const [heightFt, setHeightFt] = useState(player?.height_ft != null ? String(player.height_ft) : '');
   const [heightIn, setHeightIn] = useState(player?.height_in != null ? String(player.height_in) : '');
+  const [baseline, setBaseline] = useState(() => initBaseline(player));
   const showToast = useUiStore(selectShowToast);
   const nameRef = useRef(null);
 
   const buildData = () => {
     const hFt = heightFt !== '' ? Number(heightFt) : null;
     const hIn = heightIn !== '' ? Number(heightIn) : null;
-    return { name: name.trim(), nickname: nickname.trim() || null, jersey_number: jersey.trim(), position, secondary_position: secondaryPosition || null, is_captain: isCaptain, year: year || null, height_ft: hFt, height_in: hIn };
+    const baselineData = Object.fromEntries(
+      BASELINE_FIELDS.map(({ key }) => [key, baseline[key] !== '' ? Number(baseline[key]) : null])
+    );
+    return { name: name.trim(), nickname: nickname.trim() || null, jersey_number: jersey.trim(), position, secondary_position: secondaryPosition || null, is_captain: isCaptain, year: year || null, height_ft: hFt, height_in: hIn, ...baselineData };
   };
 
   const save = async () => {
@@ -163,6 +182,26 @@ export function PlayerFormModal({ onClose, teamId, player }) {
               max={11}
             />
             <span className="text-slate-400">in</span>
+          </div>
+        </div>
+        <div className="border-t border-slate-700 pt-3">
+          <p className="text-sm font-semibold text-slate-300 mb-0.5">Career Baseline <span className="text-slate-500 font-normal">(optional)</span></p>
+          <p className="text-xs text-slate-500 mb-3">Pre-app career totals — automatically added to this player's career leaderboard stats.</p>
+          <div className="grid grid-cols-3 gap-2">
+            {BASELINE_FIELDS.map(({ key, label }) => (
+              <div key={key}>
+                <label className="block text-xs text-slate-400 mb-1">{label}</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                  className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+                  value={baseline[key]}
+                  onChange={e => setBaseline(b => ({ ...b, [key]: e.target.value }))}
+                />
+              </div>
+            ))}
           </div>
         </div>
         <label className="flex items-center gap-2 cursor-pointer">

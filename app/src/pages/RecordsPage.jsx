@@ -351,6 +351,7 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
   const [form, setForm] = useState(initialData ?? EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const firstInputRef = useRef(null);
 
   const isIndividual   = tab !== 'team_match' && tab !== 'team_season';
   const needsOpponent  = tab === 'match' || tab === 'team_match';
@@ -363,15 +364,8 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
     setError('');
   }
 
-  async function handleSave() {
-    const val = parseFloat(form.value);
-    if (isNaN(val) || val <= 0)               { setError('Enter a valid value greater than 0.'); return; }
-    if (isIndividual && !form.player_name.trim()) { setError('Player name is required.'); return; }
-    if (needsOpponent && !form.opponent.trim())   { setError('Opponent is required.'); return; }
-    if (needsSeason   && !form.season_year.trim()) { setError('Season year is required.'); return; }
-
-    setSaving(true);
-    const fields = {
+  function buildFields(val) {
+    return {
       team_id:           teamId,
       category:          tab,
       stat:              statKey,
@@ -380,17 +374,48 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
       opponent:          form.opponent.trim()    || null,
       date:              form.date               || null,
       season_year:       form.season_year.trim() || null,
-      class_year:        form.class_year                       || null,
+      class_year:        form.class_year         || null,
       career_year_start: form.career_year_start ? Number(form.career_year_start) : null,
       career_year_end:   form.career_year_end   ? Number(form.career_year_end)   : null,
     };
+  }
+
+  function validate() {
+    const val = parseFloat(form.value);
+    if (isNaN(val) || val <= 0)                    { setError('Enter a valid value greater than 0.'); return null; }
+    if (isIndividual && !form.player_name.trim())   { setError('Player name is required.'); return null; }
+    if (needsOpponent && !form.opponent.trim())     { setError('Opponent is required.'); return null; }
+    if (needsSeason   && !form.season_year.trim())  { setError('Season year is required.'); return null; }
+    return val;
+  }
+
+  async function handleSave() {
+    const val = validate();
+    if (val === null) return;
+    setSaving(true);
     try {
       if (recordId) {
-        await db.historical_records.update(recordId, fields);
+        await db.historical_records.update(recordId, buildFields(val));
       } else {
-        await db.historical_records.add(fields);
+        await db.historical_records.add(buildFields(val));
       }
       onClose();
+    } catch {
+      setError('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSaveAndAdd() {
+    const val = validate();
+    if (val === null) return;
+    setSaving(true);
+    try {
+      await db.historical_records.add(buildFields(val));
+      setForm(EMPTY_FORM);
+      setError('');
+      setTimeout(() => firstInputRef.current?.focus(), 0);
     } catch {
       setError('Failed to save. Please try again.');
     } finally {
@@ -417,7 +442,7 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
             <div className={needsClassYear ? 'grid grid-cols-2 gap-2' : ''}>
               <div>
                 <label className={labelCls}>Player Name</label>
-                <input className={inputCls} placeholder="Jane Smith" value={form.player_name} onChange={e => set('player_name', e.target.value)} />
+                <input ref={firstInputRef} className={inputCls} placeholder="Jane Smith" value={form.player_name} onChange={e => set('player_name', e.target.value)} />
               </div>
               {needsClassYear && (
                 <div>
@@ -446,7 +471,7 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
 
           <div>
             <label className={labelCls}>Value</label>
-            <input className={inputCls} type="number" step="any" placeholder="e.g. 24" value={form.value} onChange={e => set('value', e.target.value)} />
+            <input ref={isIndividual ? undefined : firstInputRef} className={inputCls} type="number" step="any" placeholder="e.g. 24" value={form.value} onChange={e => set('value', e.target.value)} />
           </div>
 
           {needsSeason && (
@@ -472,13 +497,24 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
 
         {error && <p className="text-xs text-red-400">{error}</p>}
 
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold active:scale-95 disabled:opacity-50"
-        >
-          {saving ? 'Saving…' : recordId ? 'Save Changes' : 'Save Record'}
-        </button>
+        <div className={recordId ? '' : 'grid grid-cols-2 gap-2'}>
+          {!recordId && (
+            <button
+              onClick={handleSaveAndAdd}
+              disabled={saving}
+              className="w-full py-2.5 rounded-xl border border-primary text-primary text-sm font-bold active:scale-95 disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Save & Add Another'}
+            </button>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold active:scale-95 disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : recordId ? 'Save Changes' : 'Save Record'}
+          </button>
+        </div>
       </div>
     </div>
   );
