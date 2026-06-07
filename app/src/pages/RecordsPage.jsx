@@ -77,22 +77,29 @@ function mergeAndRank(computed, historical) {
     .map((e, i) => ({ ...e, rank: i + 1 }));
 }
 
-function makeHistoricalRows(historicalAll) {
+function makeHistoricalRows(historicalAll, playerLookup = null) {
   return function historicalRows(statKey) {
     return historicalAll
       .filter(r => r.stat === statKey)
-      .map(r => ({
-        id:                r.id,
-        name:              r.player_name ?? '',
-        val:               r.value,
-        year:              r.season_year ?? '',
-        opp:               r.opponent ?? '',
-        date:              r.date ?? '',
-        class_year:        r.class_year ?? '',
-        career_year_start: r.career_year_start ?? null,
-        career_year_end:   r.career_year_end   ?? null,
-        active:            r.career_year_start != null && !r.career_year_end,
-      }));
+      .map(r => {
+        const pid = playerLookup
+          ? (r.player_id ?? playerLookup.nameToPlayerId[r.player_name?.toLowerCase().trim() ?? ''])
+          : null;
+        const activeByRoster = pid ? playerLookup.activePlayerIds.has(pid) : false;
+        return {
+          id:                r.id,
+          name:              r.player_name ?? '',
+          val:               r.value,
+          year:              r.season_year ?? '',
+          opp:               r.opponent ?? '',
+          date:              r.date ?? '',
+          class_year:        r.class_year ?? '',
+          career_year_start: r.career_year_start ?? null,
+          career_year_end:   r.career_year_end   ?? null,
+          active:            activeByRoster || (r.career_year_start != null && !r.career_year_end),
+          player_id:         pid ?? undefined,
+        };
+      });
   };
 }
 
@@ -103,8 +110,6 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
     .where('team_id').equals(teamId)
     .filter(r => r.category === tab)
     .toArray();
-  const historicalRows = makeHistoricalRows(historicalAll);
-
   // career — compute from all seasons' contacts, with manual historical as offsets
   if (tab === 'career') {
     const players = await db.players.where('team_id').equals(teamId).toArray();
@@ -195,7 +200,7 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
           })
           .filter(Boolean);
 
-        const historical = makeHistoricalRows(standaloneHistorical)(key);
+        const historical = makeHistoricalRows(standaloneHistorical, { nameToPlayerId, activePlayerIds })(key);
         return [key, mergeAndRank(computed, historical)];
       })
     );
@@ -206,6 +211,9 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
   const positions = Object.fromEntries(players.map(p => [p.id, p.position]));
   const activePlayerIds = new Set(players.filter(p => p.is_active).map(p => p.id));
   const playerYears = Object.fromEntries(players.filter(p => p.year).map(p => [p.id, p.year]));
+  const nameToPlayerId = Object.fromEntries(players.map(p => [p.name?.toLowerCase().trim() ?? '', p.id]));
+  const playerLookup = { nameToPlayerId, activePlayerIds };
+  const historicalRows = makeHistoricalRows(historicalAll, playerLookup);
 
   const seasons = await db.seasons.where('team_id').equals(teamId).toArray();
   if (!seasons.length) return Object.fromEntries(statsForTab.map(s => [s.key, mergeAndRank([], historicalRows(s.key))]));

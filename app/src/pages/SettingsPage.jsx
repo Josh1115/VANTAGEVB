@@ -11,7 +11,7 @@ import { MergeBackupModal } from '../components/settings/MergeBackupModal';
 import { TERMS_STORAGE_KEY } from '../components/auth/TermsGate';
 import { db } from '../db/schema';
 import { useUiStore } from '../store/uiStore';
-import { FORMAT, ACCENT_COLORS } from '../constants';
+import { FORMAT, ACCENT_COLORS, BASELINE_FEATURES, SIDELINE_FEATURES, ADVANTAGE_FEATURES } from '../constants';
 import {
   getStorageItem, setStorageItem,
   getBoolStorage, setBoolStorage,
@@ -1191,6 +1191,7 @@ export function SettingsPage() {
   const [flipLayout,   saveFlipLayout]  = useToggleSetting(STORAGE_KEYS.FLIP_LAYOUT);
   const [assumeSetterRot1, setAssumeSetterRot1Raw] = useState(() => getBoolStorageDefaultTrue(STORAGE_KEYS.ASSUME_SETTER_ROT1));
   const saveAssumeSetterRot1 = (next) => { setBoolStorage(STORAGE_KEYS.ASSUME_SETTER_ROT1, next); setAssumeSetterRot1Raw(next); };
+  const [selectedPlan,   setSelectedPlan]   = useState('baseline');
   const [confirmClear,   setConfirmClear]   = useState(false);
   const [confirmImport,  setConfirmImport]  = useState(false);
   const [confirmLogout,  setConfirmLogout]  = useState(false);
@@ -1303,6 +1304,96 @@ export function SettingsPage() {
                 return <span className="text-xs text-slate-500">Agreed {fmt.format(new Date(acceptedAt))}</span>;
               } catch { return null; }
             })()}
+          </div>
+        </section>
+
+        {/* Plans */}
+        <section className="bg-surface rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-700">
+            <h2 className="font-semibold">Plans</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Compare features</p>
+          </div>
+          <div className="p-4">
+            <div className="grid grid-cols-3 gap-2">
+              {/* BASELINE */}
+              {(() => {
+                const sel = selectedPlan === 'baseline';
+                return (
+                  <button
+                    onClick={() => setSelectedPlan('baseline')}
+                    className={`rounded-2xl border-2 p-3 flex flex-col gap-2 text-left transition-all active:scale-[0.97] relative overflow-hidden ${sel ? 'border-primary bg-primary/10' : 'border-slate-600 bg-slate-800/40'}`}
+                  >
+                    <span className="absolute top-2 right-2 text-[13px] font-black uppercase tracking-wide bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded-full">Current</span>
+                    <p className="text-lg font-black text-white">"BASELINE"</p>
+                    <ul className="space-y-1 flex-1">
+                      {BASELINE_FEATURES.map(f => {
+                        const isLimit = f.startsWith('No ');
+                        return (
+                          <li key={f} className={`flex items-start gap-1 text-sm ${sel ? (isLimit ? 'text-slate-400' : 'text-white') : 'text-slate-500'}`}>
+                            <span className={`shrink-0 mt-px ${isLimit ? (sel ? 'text-red-400' : 'text-slate-600') : (sel ? 'text-emerald-400' : 'text-slate-600')}`}>{isLimit ? '✕' : '✓'}</span>{f}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <p className={`text-xl font-black mt-auto ${sel ? 'text-white' : 'text-slate-500'}`}>Free</p>
+                  </button>
+                );
+              })()}
+              {/* SIDELINE */}
+              {(() => {
+                const sel = selectedPlan === 'sideline';
+                return (
+                  <button
+                    onClick={() => setSelectedPlan('sideline')}
+                    className={`rounded-2xl border-2 p-3 flex flex-col gap-2 text-left transition-all active:scale-[0.97] relative overflow-hidden ${sel ? 'border-primary bg-primary/10' : 'border-slate-600 bg-slate-800/40'}`}
+                  >
+                    <span className="absolute top-2 right-2 text-[13px] font-black uppercase tracking-wide bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded-full">Soon</span>
+                    <div>
+                      <p className="text-lg font-black text-white">"SIDELINE"</p>
+                      <p className={`text-sm mt-0.5 ${sel ? 'text-slate-300' : 'text-slate-500'}`}>One program</p>
+                    </div>
+                    <ul className="space-y-1 flex-1">
+                      {SIDELINE_FEATURES.map(f => (
+                        <li key={f} className={`flex items-start gap-1 text-sm ${sel ? 'text-white' : 'text-slate-500'}`}>
+                          <span className={`shrink-0 mt-px ${sel ? 'text-emerald-400' : 'text-slate-600'}`}>✓</span>{f}
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="mt-auto">
+                      <p className={`text-xl font-black ${sel ? 'text-primary' : 'text-slate-500'}`}>$49.99<span className="text-sm font-normal">/season</span></p>
+                      <p className={`text-sm ${sel ? 'text-primary' : 'text-slate-500'}`}>or $84.99 / 2-season bundle <span className="text-primary font-semibold">save $15</span></p>
+                    </div>
+                  </button>
+                );
+              })()}
+              {/* AD-VANTAGE */}
+              {(() => {
+                const sel = selectedPlan === 'advantage';
+                return (
+                  <button
+                    onClick={() => setSelectedPlan('advantage')}
+                    className={`rounded-2xl border-2 p-3 flex flex-col gap-2 text-left transition-all active:scale-[0.97] relative overflow-hidden ${sel ? 'border-primary bg-primary/10' : 'border-slate-600 bg-slate-800/40'}`}
+                  >
+                    <span className="absolute top-2 right-2 text-[13px] font-black uppercase tracking-wide bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded-full">Soon</span>
+                    <div>
+                      <p className="text-lg font-black text-white">"AD-VANTAGE"</p>
+                      <p className={`text-sm mt-0.5 ${sel ? 'text-slate-300' : 'text-slate-500'}`}>JV + Varsity</p>
+                    </div>
+                    <ul className="space-y-1 flex-1">
+                      {ADVANTAGE_FEATURES.map(f => (
+                        <li key={f} className={`flex items-start gap-1 text-sm ${sel ? 'text-white' : 'text-slate-500'}`}>
+                          <span className={`shrink-0 mt-px ${sel ? 'text-emerald-400' : 'text-slate-600'}`}>✓</span>{f}
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="mt-auto">
+                      <p className={`text-xl font-black ${sel ? 'text-primary' : 'text-slate-500'}`}>$89.99<span className="text-sm font-normal">/season</span></p>
+                      <p className={`text-sm ${sel ? 'text-primary' : 'text-slate-500'}`}>or $159.99 / 2-season bundle <span className="text-primary font-semibold">save $20</span></p>
+                    </div>
+                  </button>
+                );
+              })()}
+            </div>
           </div>
         </section>
 

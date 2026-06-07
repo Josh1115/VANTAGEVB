@@ -131,6 +131,11 @@ export const COLLEGE_DIVISIONS = [
   { value: 'Club',    label: 'Club'    },
 ];
 
+// Plan feature lists
+export const BASELINE_FEATURES  = ['Live match scoring', 'Kills, Aces, Errors, Digs, Blocks & Assists', 'Basic season record', 'Max 1 active season', 'No MaxPreps export'];
+export const SIDELINE_FEATURES  = ['Full analytics suite', 'Career records & history', 'Practice tools', 'Opponent scouting page', 'Rotation optimizer', 'Multi-format export (PDF, CSV, MaxPreps)'];
+export const ADVANTAGE_FEATURES = ['Everything in SIDELINE', 'Two levels per program (JV + Varsity)', 'Priority customer support'];
+
 // NFHS rules
 // MAX_SUBS_PER_SET: intentionally 18 (club/college rules) rather than NFHS's 12.
 // Overridable via localStorage key 'vbstat_max_subs'. Change to 12 for strict NFHS play.

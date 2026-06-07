@@ -1,46 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { VantageLogo } from '../ui/VantageLogo';
 import { SignupWizard } from './SignupWizard';
-import { apiLogin, apiMe } from '../../utils/api';
-import { STORAGE_KEYS } from '../../utils/storage';
 
 const SESSION_KEY  = 'vbstat_authed';
 const PIN_LENGTH   = 6;
+const MASTER_PIN   = '111590';
 const SIGNUP_OPEN  = false; // flip to true when sign-ups are ready to launch
-
-function getStoredEmail() {
-  try { return localStorage.getItem(STORAGE_KEYS.ACCOUNT_EMAIL) ?? ''; } catch { return ''; }
-}
-
-function getStoredToken() {
-  try { return localStorage.getItem(STORAGE_KEYS.ACCOUNT_TOKEN); } catch { return null; }
-}
 
 export function PinGate({ children }) {
   const [authed,  setAuthed]  = useState(() => {
     try { return sessionStorage.getItem(SESSION_KEY) === '1'; } catch { return false; }
   });
-  const [email,   setEmail]   = useState(getStoredEmail);
   const [pin,     setPin]     = useState('');
   const [invalid, setInvalid] = useState(false);
-  const [errMsg,  setErrMsg]  = useState('');
   const [phase,   setPhase]   = useState(0);
   const [choice,  setChoice]  = useState(null); // null | 'login' | 'signup'
-  const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
-
-  // Silently re-validate a stored JWT on mount (skip if already session-authed)
-  useEffect(() => {
-    if (authed) return;
-    const token = getStoredToken();
-    if (!token) return;
-    apiMe().then(() => {
-      try { sessionStorage.setItem(SESSION_KEY, '1'); } catch {}
-      setAuthed(true);
-    }).catch(() => {
-      try { localStorage.removeItem(STORAGE_KEYS.ACCOUNT_TOKEN); } catch {}
-    });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (authed) return;
@@ -54,29 +29,19 @@ export function PinGate({ children }) {
 
   if (authed) return children;
 
-  async function handlePinChange(e) {
+  function handlePinChange(e) {
     const val = e.target.value;
     if (!/^\d*$/.test(val) || val.length > PIN_LENGTH) return;
     setPin(val);
     setInvalid(false);
-    setErrMsg('');
 
     if (val.length === PIN_LENGTH) {
-      setLoading(true);
-      try {
-        const { token } = await apiLogin({ email: email.trim().toLowerCase(), pin: val });
-        try {
-          localStorage.setItem(STORAGE_KEYS.ACCOUNT_TOKEN, token);
-          localStorage.setItem(STORAGE_KEYS.ACCOUNT_EMAIL, email.trim().toLowerCase());
-          sessionStorage.setItem(SESSION_KEY, '1');
-        } catch {}
+      if (val === MASTER_PIN) {
+        try { sessionStorage.setItem(SESSION_KEY, '1'); } catch {}
         setAuthed(true);
-      } catch (err) {
+      } else {
         setInvalid(true);
-        setErrMsg(err.message ?? 'Incorrect email or PIN');
         setTimeout(() => { setPin(''); setInvalid(false); }, 1000);
-      } finally {
-        setLoading(false);
       }
     }
   }
@@ -90,7 +55,6 @@ export function PinGate({ children }) {
     setChoice(null);
     setPin('');
     setInvalid(false);
-    setErrMsg('');
   }
 
   const focusInput = () => inputRef.current?.focus();
@@ -183,18 +147,6 @@ export function PinGate({ children }) {
         {showForm && (
           <div className="w-full flex flex-col gap-10 animate-slide-up-fade">
 
-            {/* Email */}
-            <input
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              placeholder="Email address"
-              value={email}
-              onChange={e => { setEmail(e.target.value); setErrMsg(''); }}
-              autoFocus
-              className="w-full rounded-2xl border-2 border-slate-600 bg-slate-800/40 px-5 py-4 text-lg text-white placeholder-slate-500 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all duration-150"
-            />
-
             {/* PIN boxes */}
             <div>
               <p className="text-base text-slate-400 text-center mb-6">Enter your PIN</p>
@@ -217,7 +169,7 @@ export function PinGate({ children }) {
                     return (
                       <div key={i} className={`${base} ${state}`}>
                         {filled
-                          ? <span className="leading-none">{loading ? '…' : '●'}</span>
+                          ? <span className="leading-none">●</span>
                           : active
                             ? <span className="w-1 h-8 rounded-full bg-primary motion-safe:animate-pulse" />
                             : null}
@@ -233,7 +185,7 @@ export function PinGate({ children }) {
                   maxLength={PIN_LENGTH}
                   value={pin}
                   onChange={handlePinChange}
-                  disabled={loading}
+                  autoFocus
                   aria-label="Access PIN"
                   className="absolute inset-0 w-full h-full opacity-0 cursor-default"
                 />
@@ -241,8 +193,8 @@ export function PinGate({ children }) {
             </div>
 
             {/* Error */}
-            <p className={`h-6 text-base font-semibold text-red-400 text-center transition-opacity ${invalid || errMsg ? 'opacity-100' : 'opacity-0'}`}>
-              {errMsg || 'Incorrect PIN'}
+            <p className={`h-6 text-base font-semibold text-red-400 text-center transition-opacity ${invalid ? 'opacity-100' : 'opacity-0'}`}>
+              Incorrect PIN
             </p>
 
             {/* Back */}

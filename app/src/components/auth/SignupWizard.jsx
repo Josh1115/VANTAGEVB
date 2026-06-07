@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { apiSignup } from '../../utils/api';
 import { STORAGE_KEYS } from '../../utils/storage';
+import { BASELINE_FEATURES, SIDELINE_FEATURES, ADVANTAGE_FEATURES } from '../../constants';
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA',
@@ -262,8 +263,6 @@ function StepCoach({ value, onChange, onNext }) {
 }
 
 // ── Step 5: Plan ──────────────────────────────────────────────────────────────
-const FREE_FEATURES  = ['Live match scoring', 'Full season stats', 'Player analytics', 'Records & history', 'PDF / CSV export'];
-const PRO_FEATURES   = ['Everything in Free', 'Video sync', 'Multi-device access', 'Advanced shot charts', 'Priority support'];
 
 function StepPlan({ value, onChange, onSubmit, submitting, error }) {
   return (
@@ -273,58 +272,83 @@ function StepPlan({ value, onChange, onSubmit, submitting, error }) {
         <p className="text-slate-400 text-sm">You can upgrade at any time</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {/* Free */}
+      <div className="grid grid-cols-3 gap-2">
+        {/* BASELINE */}
         <button
           onClick={() => onChange('free')}
-          className={`rounded-2xl border-2 p-4 text-left flex flex-col gap-3 transition-all active:scale-[0.97] ${
+          className={`rounded-2xl border-2 p-3 text-left flex flex-col gap-2 transition-all active:scale-[0.97] ${
             value === 'free' ? 'border-primary bg-primary/10' : 'border-slate-600 bg-slate-800/40'
           }`}
         >
           <div>
-            <p className="text-base font-black text-white">Free</p>
-            <p className="text-xs text-slate-400 mt-0.5">Everything you need</p>
+            <p className="text-sm font-black text-white">"BASELINE"</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Everything you need</p>
           </div>
-          <ul className="space-y-1.5">
-            {FREE_FEATURES.map(f => (
-              <li key={f} className="flex items-start gap-1.5 text-xs text-slate-300">
-                <span className="text-emerald-400 shrink-0 mt-px">✓</span>{f}
-              </li>
-            ))}
+          <ul className="space-y-1">
+            {BASELINE_FEATURES.map(f => {
+              const isLimit = f.startsWith('No ');
+              return (
+                <li key={f} className={`flex items-start gap-1 text-[10px] ${isLimit ? 'text-slate-500' : 'text-slate-300'}`}>
+                  <span className={`shrink-0 mt-px ${isLimit ? 'text-slate-600' : 'text-emerald-400'}`}>{isLimit ? '✕' : '✓'}</span>{f}
+                </li>
+              );
+            })}
           </ul>
-          <p className="text-lg font-black text-white mt-auto">$0</p>
+          <p className="text-base font-black text-white mt-auto">Free</p>
         </button>
 
-        {/* Pro */}
+        {/* SIDELINE */}
         <button
-          onClick={() => onChange('pro')}
-          className={`rounded-2xl border-2 p-4 text-left flex flex-col gap-3 transition-all active:scale-[0.97] relative overflow-hidden ${
-            value === 'pro' ? 'border-primary bg-primary/10' : 'border-slate-600 bg-slate-800/40'
-          }`}
+          onClick={() => onChange('sideline')}
+          disabled
+          className="rounded-2xl border-2 border-slate-600 bg-slate-800/40 p-3 text-left flex flex-col gap-2 transition-all relative overflow-hidden opacity-60 cursor-not-allowed"
         >
           <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wide bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded-full">
             Soon
           </span>
           <div>
-            <p className="text-base font-black text-white">Pro</p>
-            <p className="text-xs text-slate-400 mt-0.5">Full Vantage suite</p>
+            <p className="text-sm font-black text-white">"SIDELINE"</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">One program</p>
           </div>
-          <ul className="space-y-1.5">
-            {PRO_FEATURES.map(f => (
-              <li key={f} className="flex items-start gap-1.5 text-xs text-slate-400">
+          <ul className="space-y-1">
+            {SIDELINE_FEATURES.map(f => (
+              <li key={f} className="flex items-start gap-1 text-[10px] text-slate-400">
                 <span className="text-slate-600 shrink-0 mt-px">✓</span>{f}
               </li>
             ))}
           </ul>
-          <p className="text-lg font-black text-slate-500 mt-auto">Coming soon</p>
+          <div className="mt-auto">
+            <p className="text-base font-black text-slate-500">$49.99<span className="text-[10px] font-normal">/season</span></p>
+            <p className="text-[10px] text-slate-500">or $84.99 / 2-season bundle <span className="text-primary font-semibold">save $15</span></p>
+          </div>
+        </button>
+
+        {/* AD-VANTAGE */}
+        <button
+          onClick={() => onChange('advantage')}
+          disabled
+          className="rounded-2xl border-2 border-slate-600 bg-slate-800/40 p-3 text-left flex flex-col gap-2 transition-all relative overflow-hidden opacity-60 cursor-not-allowed"
+        >
+          <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wide bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded-full">
+            Soon
+          </span>
+          <div>
+            <p className="text-sm font-black text-white">"AD-VANTAGE"</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">JV + Varsity</p>
+          </div>
+          <ul className="space-y-1">
+            {ADVANTAGE_FEATURES.map(f => (
+              <li key={f} className="flex items-start gap-1 text-[10px] text-slate-400">
+                <span className="text-slate-600 shrink-0 mt-px">✓</span>{f}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-auto">
+            <p className="text-base font-black text-slate-500">$89.99<span className="text-[10px] font-normal">/season</span></p>
+            <p className="text-[10px] text-slate-500">or $159.99 / 2-season bundle <span className="text-primary font-semibold">save $20</span></p>
+          </div>
         </button>
       </div>
-
-      {value === 'pro' && (
-        <p className="text-xs text-slate-400 text-center bg-slate-800/60 rounded-xl px-4 py-2.5">
-          We'll notify you at your email when Pro launches.
-        </p>
-      )}
 
       {error && <p className="text-sm text-red-400 text-center">{error}</p>}
 
