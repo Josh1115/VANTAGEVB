@@ -149,7 +149,7 @@ export const COLLEGE_DIVISIONS = [
 export const BASELINE_FEATURES  = [
   'Limited to one level',
   'Limited to one season',
-  'Max 35 matches',
+  'Max 20 matches',
   'Basic stats (K, Ace, Blk, Digs, Ast, Errs)',
   'Live stat recording',
   'No Records page',

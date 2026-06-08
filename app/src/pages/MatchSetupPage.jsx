@@ -10,6 +10,9 @@ import { useMatchStore } from '../store/matchStore';
 import { MATCH_STATUS, SET_STATUS, FORMAT, SIDE } from '../constants';
 import { serveOrderToZone } from '../components/court/CourtZonePicker';
 import { LineupForm } from '../components/match/LineupForm';
+import { usePlan } from '../hooks/usePlan';
+
+const BASELINE_MATCH_LIMIT = 20;
 
 export function MatchSetupPage() {
   const navigate     = useNavigate();
@@ -19,6 +22,16 @@ export function MatchSetupPage() {
   const [searchParams] = useSearchParams();
 
   const scheduledMatchId = searchParams.get('match') ? Number(searchParams.get('match')) : null;
+
+  const { plan } = usePlan();
+  const isBaseline = plan === 'baseline';
+  const totalMatches = useLiveQuery(() => db.matches.count(), []);
+
+  useEffect(() => {
+    if (isBaseline && totalMatches !== undefined && totalMatches >= BASELINE_MATCH_LIMIT && !scheduledMatchId) {
+      navigate('/upgrade');
+    }
+  }, [isBaseline, totalMatches, scheduledMatchId, navigate]);
 
   const [seasonId,  setSeasonId]  = useState(searchParams.get('season') ?? '');
   const [opponent,           setOpponent]           = useState('');
@@ -342,6 +355,21 @@ export function MatchSetupPage() {
       <PageHeader title="New Match" backTo="/" />
 
       <div className="p-4 md:p-6 space-y-5 max-w-lg mx-auto">
+
+        {/* Baseline match limit warning */}
+        {isBaseline && totalMatches !== undefined && totalMatches < BASELINE_MATCH_LIMIT && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-700/50 bg-amber-900/20 px-4 py-3">
+            <p className="text-sm text-amber-300">
+              Match <span className="font-black">{totalMatches + 1} of {BASELINE_MATCH_LIMIT}</span> on BASELINE.
+            </p>
+            <button
+              onClick={() => navigate('/upgrade')}
+              className="text-xs font-black text-primary whitespace-nowrap hover:text-orange-300 transition-colors"
+            >
+              Upgrade →
+            </button>
+          </div>
+        )}
 
         {/* Season picker */}
         <div>
