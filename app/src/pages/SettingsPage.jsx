@@ -1165,7 +1165,7 @@ const PLAN_ROWS = [
   { section: 'Limits' },
   { label: 'Levels',                    values: ['1',       '1',        '2',        '∞']        },
   { label: 'Seasons',                   values: ['1',       '∞',        '∞',        '∞']        },
-  { label: 'Max matches',               values: ['35',      '∞',        '∞',        '∞']        },
+  { label: 'Max matches',               values: ['20',      '∞',        '∞',        '∞']        },
   { section: 'Recording' },
   { label: 'Live stat recording',       values: [true,      true,       true,       true]       },
   { label: 'Stats depth',               values: ['Basic',   'Full',     'Full',     'Full']     },
