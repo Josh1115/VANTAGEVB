@@ -26,6 +26,7 @@ const RecordsPage      = lazy(() => import('./pages/RecordsPage').then(m => ({ d
 const HistoryPage      = lazy(() => import('./pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
 const ReportsPage      = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const SettingsPage     = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const UpgradePage      = lazy(() => import('./pages/UpgradePage').then(m => ({ default: m.UpgradePage })));
 const ToolsPage        = lazy(() => import('./pages/ToolsPage').then(m => ({ default: m.ToolsPage })));
 const ServeReceivePage = lazy(() => import('./pages/tools/ServeReceivePage').then(m => ({ default: m.ServeReceivePage })));
 const ServeTrackerPage = lazy(() => import('./pages/tools/ServeTrackerPage').then(m => ({ default: m.ServeTrackerPage })));
@@ -84,6 +85,7 @@ export const router = createBrowserRouter([
       { path: 'history',                     element: <S><HistoryPage /></S> },
       { path: 'reports',                     element: <S><ReportsPage /></S> },
       { path: 'settings',                    element: <S><SettingsPage /></S> },
+      { path: 'upgrade',                     element: <S><UpgradePage /></S> },
       { path: 'tools',                       element: <S><ToolsPage /></S> },
       { path: 'tools/serve-receive',         element: <S><ServeReceivePage /></S> },
       { path: 'tools/serve-tracker',         element: <S><ServeTrackerPage /></S> },

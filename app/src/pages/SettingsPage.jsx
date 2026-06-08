@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
@@ -11,7 +11,8 @@ import { MergeBackupModal } from '../components/settings/MergeBackupModal';
 import { TERMS_STORAGE_KEY } from '../components/auth/TermsGate';
 import { db } from '../db/schema';
 import { useUiStore } from '../store/uiStore';
-import { FORMAT, ACCENT_COLORS, BASELINE_FEATURES, SIDELINE_FEATURES, ADVANTAGE_FEATURES } from '../constants';
+import { FORMAT, ACCENT_COLORS } from '../constants';
+import { useAuth } from '../contexts/AuthContext';
 import {
   getStorageItem, setStorageItem,
   getBoolStorage, setBoolStorage,
@@ -1160,9 +1161,40 @@ function useLastSetScore() {
   return [val, save];
 }
 
+const PLAN_ROWS = [
+  { section: 'Limits' },
+  { label: 'Levels',                    values: ['1',       '1',        '2',        '∞']        },
+  { label: 'Seasons',                   values: ['1',       '∞',        '∞',        '∞']        },
+  { label: 'Max matches',               values: ['35',      '∞',        '∞',        '∞']        },
+  { section: 'Recording' },
+  { label: 'Live stat recording',       values: [true,      true,       true,       true]       },
+  { label: 'Stats depth',               values: ['Basic',   'Full',     'Full',     'Full']     },
+  { section: 'Analytics' },
+  { label: 'Reports page',              values: [false,     true,       true,       true]       },
+  { label: 'Records page',              values: [false,     true,       true,       true]       },
+  { label: 'History page',              values: [false,     true,       true,       true]       },
+  { label: 'Rotation analysis',         values: [false,     true,       true,       true]       },
+  { section: 'Tools' },
+  { label: 'Practice tools',            values: [false,     true,       true,       true]       },
+  { label: 'Whiteboard',                values: [false,     true,       true,       true]       },
+  { label: 'Opponent scouting',         values: [false,     true,       true,       true]       },
+  { label: 'Rotation optimizer',        values: [false,     true,       true,       true]       },
+  { section: 'Export' },
+  { label: 'MaxPreps export',           values: [false,     true,       true,       true]       },
+  { label: 'PDF / CSV export',          values: [false,     true,       true,       true]       },
+  { section: 'Program' },
+  { label: 'Multi-level (JV + Varsity)',values: [false,     false,      true,       true]       },
+  { section: 'Support' },
+  { label: 'Settings & customization',  values: ['Limited', 'Full',     'Full',     'Full']     },
+  { label: 'Support tier',              values: ['Basic',   'Standard', 'Priority', 'Priority+']},
+];
+
 export function SettingsPage() {
   const showToast    = useUiStore((s) => s.showToast);
   const fileInputRef = useRef(null);
+  const { profile }  = useAuth();
+  const navigate     = useNavigate();
+  const currentPlan  = profile?.plan ?? 'baseline';
   const [maxSubs, saveMaxSubs]           = useMaxSubs();
   const [defaultFormat, saveDefaultFormat] = useDefaultFormat();
   const [lastSetScore, saveLastSetScore] = useLastSetScore();
@@ -1191,7 +1223,6 @@ export function SettingsPage() {
   const [flipLayout,   saveFlipLayout]  = useToggleSetting(STORAGE_KEYS.FLIP_LAYOUT);
   const [assumeSetterRot1, setAssumeSetterRot1Raw] = useState(() => getBoolStorageDefaultTrue(STORAGE_KEYS.ASSUME_SETTER_ROT1));
   const saveAssumeSetterRot1 = (next) => { setBoolStorage(STORAGE_KEYS.ASSUME_SETTER_ROT1, next); setAssumeSetterRot1Raw(next); };
-  const [selectedPlan,   setSelectedPlan]   = useState('baseline');
   const [confirmClear,   setConfirmClear]   = useState(false);
   const [confirmImport,  setConfirmImport]  = useState(false);
   const [confirmLogout,  setConfirmLogout]  = useState(false);
@@ -1309,91 +1340,65 @@ export function SettingsPage() {
 
         {/* Plans */}
         <section className="bg-surface rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-700">
-            <h2 className="font-semibold">Plans</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Compare features</p>
-          </div>
-          <div className="p-4">
-            <div className="grid grid-cols-3 gap-2">
-              {/* BASELINE */}
-              {(() => {
-                const sel = selectedPlan === 'baseline';
-                return (
-                  <button
-                    onClick={() => setSelectedPlan('baseline')}
-                    className={`rounded-2xl border-2 p-3 flex flex-col gap-2 text-left transition-all active:scale-[0.97] relative overflow-hidden ${sel ? 'border-primary bg-primary/10' : 'border-slate-600 bg-slate-800/40'}`}
-                  >
-                    <span className="absolute top-2 right-2 text-[13px] font-black uppercase tracking-wide bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded-full">Current</span>
-                    <p className="text-lg font-black text-white">"BASELINE"</p>
-                    <ul className="space-y-1 flex-1">
-                      {BASELINE_FEATURES.map(f => {
-                        const isLimit = f.startsWith('No ');
-                        return (
-                          <li key={f} className={`flex items-start gap-1 text-sm ${sel ? (isLimit ? 'text-slate-400' : 'text-white') : 'text-slate-500'}`}>
-                            <span className={`shrink-0 mt-px ${isLimit ? (sel ? 'text-red-400' : 'text-slate-600') : (sel ? 'text-emerald-400' : 'text-slate-600')}`}>{isLimit ? '✕' : '✓'}</span>{f}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                    <p className={`text-xl font-black mt-auto ${sel ? 'text-white' : 'text-slate-500'}`}>Free</p>
-                  </button>
-                );
-              })()}
-              {/* SIDELINE */}
-              {(() => {
-                const sel = selectedPlan === 'sideline';
-                return (
-                  <button
-                    onClick={() => setSelectedPlan('sideline')}
-                    className={`rounded-2xl border-2 p-3 flex flex-col gap-2 text-left transition-all active:scale-[0.97] relative overflow-hidden ${sel ? 'border-primary bg-primary/10' : 'border-slate-600 bg-slate-800/40'}`}
-                  >
-                    <span className="absolute top-2 right-2 text-[13px] font-black uppercase tracking-wide bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded-full">Soon</span>
-                    <div>
-                      <p className="text-lg font-black text-white">"SIDELINE"</p>
-                      <p className={`text-sm mt-0.5 ${sel ? 'text-slate-300' : 'text-slate-500'}`}>One program</p>
-                    </div>
-                    <ul className="space-y-1 flex-1">
-                      {SIDELINE_FEATURES.map(f => (
-                        <li key={f} className={`flex items-start gap-1 text-sm ${sel ? 'text-white' : 'text-slate-500'}`}>
-                          <span className={`shrink-0 mt-px ${sel ? 'text-emerald-400' : 'text-slate-600'}`}>✓</span>{f}
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="mt-auto">
-                      <p className={`text-xl font-black ${sel ? 'text-primary' : 'text-slate-500'}`}>$49.99<span className="text-sm font-normal">/season</span></p>
-                      <p className={`text-sm ${sel ? 'text-primary' : 'text-slate-500'}`}>or $84.99 / 2-season bundle <span className="text-primary font-semibold">save $15</span></p>
-                    </div>
-                  </button>
-                );
-              })()}
-              {/* AD-VANTAGE */}
-              {(() => {
-                const sel = selectedPlan === 'advantage';
-                return (
-                  <button
-                    onClick={() => setSelectedPlan('advantage')}
-                    className={`rounded-2xl border-2 p-3 flex flex-col gap-2 text-left transition-all active:scale-[0.97] relative overflow-hidden ${sel ? 'border-primary bg-primary/10' : 'border-slate-600 bg-slate-800/40'}`}
-                  >
-                    <span className="absolute top-2 right-2 text-[13px] font-black uppercase tracking-wide bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded-full">Soon</span>
-                    <div>
-                      <p className="text-lg font-black text-white">"AD-VANTAGE"</p>
-                      <p className={`text-sm mt-0.5 ${sel ? 'text-slate-300' : 'text-slate-500'}`}>JV + Varsity</p>
-                    </div>
-                    <ul className="space-y-1 flex-1">
-                      {ADVANTAGE_FEATURES.map(f => (
-                        <li key={f} className={`flex items-start gap-1 text-sm ${sel ? 'text-white' : 'text-slate-500'}`}>
-                          <span className={`shrink-0 mt-px ${sel ? 'text-emerald-400' : 'text-slate-600'}`}>✓</span>{f}
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="mt-auto">
-                      <p className={`text-xl font-black ${sel ? 'text-primary' : 'text-slate-500'}`}>$89.99<span className="text-sm font-normal">/season</span></p>
-                      <p className={`text-sm ${sel ? 'text-primary' : 'text-slate-500'}`}>or $159.99 / 2-season bundle <span className="text-primary font-semibold">save $20</span></p>
-                    </div>
-                  </button>
-                );
-              })()}
+          <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold">Plans</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Current: <span className="text-primary font-bold uppercase">{currentPlan}</span>
+              </p>
             </div>
+            {currentPlan === 'baseline' && (
+              <button
+                onClick={() => navigate('/upgrade')}
+                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-black text-white active:scale-95 transition-transform"
+              >
+                Upgrade
+              </button>
+            )}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse" style={{ minWidth: '320px' }}>
+              <thead>
+                <tr className="border-b border-slate-700">
+                  <th className="py-3 pl-4 pr-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 w-[36%]" />
+                  {[
+                    { key: 'baseline', label: 'BASE​LINE', price: 'Free',    badge: currentPlan === 'baseline' ? 'Current' : '',      badgeCls: 'text-primary border-primary/40 bg-primary/10' },
+                    { key: 'core',     label: 'CORE',      price: '$49.99',  badge: currentPlan === 'core'     ? 'Current' : 'Upgrade', badgeCls: currentPlan === 'core' ? 'text-primary border-primary/40 bg-primary/10' : 'text-slate-400 border-slate-600 bg-slate-800' },
+                    { key: 'advantage',label: 'ADVAN​TAGE', price: '$89.99',  badge: currentPlan === 'advantage'? 'Current' : 'Upgrade', badgeCls: currentPlan === 'advantage' ? 'text-primary border-primary/40 bg-primary/10' : 'text-slate-400 border-slate-600 bg-slate-800' },
+                    { key: 'topper',   label: 'TOPPER',    price: 'TBD',     badge: currentPlan === 'topper'   ? 'Current' : 'Soon',    badgeCls: currentPlan === 'topper' ? 'text-primary border-primary/40 bg-primary/10' : 'text-slate-400 border-slate-600 bg-slate-800' },
+                  ].map(({ key, label, price, badge, badgeCls }) => (
+                    <th key={label} className="py-3 px-1 text-center w-[16%]">
+                      <div className="text-[10px] font-black text-white leading-tight">{label}</div>
+                      <div className="text-[9px] text-slate-400 mt-0.5">{price}</div>
+                      {badge && <span className={`inline-block mt-1 text-[8px] font-bold border rounded-full px-1.5 py-px leading-none ${badgeCls}`}>{badge}</span>}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {PLAN_ROWS.map((row, i) => {
+                  if (row.section) {
+                    return (
+                      <tr key={row.section}>
+                        <td colSpan={5} className="pt-3 pb-0.5 pl-4 pr-2 text-[9px] font-bold uppercase tracking-widest text-slate-500">{row.section}</td>
+                      </tr>
+                    );
+                  }
+                  return (
+                    <tr key={row.label} className={i % 2 === 0 ? 'bg-slate-800/25' : ''}>
+                      <td className="py-2 pl-4 pr-2 text-[11px] text-slate-300 leading-snug">{row.label}</td>
+                      {row.values.map((val, ci) => (
+                        <td key={ci} className="py-2 px-1 text-center">
+                          {val === true  && <span className="text-emerald-400 text-sm leading-none">✓</span>}
+                          {val === false && <span className="text-slate-600 text-sm leading-none">✗</span>}
+                          {typeof val === 'string' && <span className="text-[10px] text-slate-300 leading-tight">{val}</span>}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -2169,12 +2174,12 @@ export function SettingsPage() {
       {confirmLogout && (
         <ConfirmDialog
           title="Sign Out"
-          message="Are you sure you want to sign out? You'll need to enter your PIN to access the app again."
+          message="Are you sure you want to sign out?"
           confirmLabel="Sign Out"
           danger
-          onConfirm={() => {
-            try { sessionStorage.removeItem('vbstat_authed'); } catch {}
-            window.location.reload();
+          onConfirm={async () => {
+            const { supabase } = await import('../utils/supabase');
+            await supabase.auth.signOut();
           }}
           onCancel={() => setConfirmLogout(false)}
         />

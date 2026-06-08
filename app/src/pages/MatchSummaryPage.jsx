@@ -36,7 +36,7 @@ import { ReviseSetModal } from '../components/match/ReviseSetModal';
 import { BoxScoreEntryModal } from '../components/match/BoxScoreEntryModal';
 import { VideoCorrectionsModal } from '../components/match/VideoCorrectionsModal';
 import { Modal } from '../components/ui/Modal';
-import { FORMAT, MATCH_STATUS } from '../constants';
+import { FORMAT, MATCH_STATUS, ORG_COLOR_HEX } from '../constants';
 import { getStorageItem, STORAGE_KEYS, getPlayoffLabel } from '../utils/storage';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
@@ -382,80 +382,180 @@ function ScoreTimeline({ rawRallies, sets, teamName, opponentName }) {
 
 // ── Share Card ───────────────────────────────────────────────────────────────
 
-const ShareCard = ({ cardRef, match, sets, stats, fmtDate }) => {
+const ShareCard = ({ cardRef, match, sets, stats, teamColors, seasonRecord, playerNames }) => {
   if (!match || !stats) return null;
+
   const won = (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
   const completedSets = (sets ?? []).filter(s => s.status === 'complete');
+  const primary   = teamColors?.primary   ?? '#ea580c';
+  const secondary = teamColors?.secondary ?? '#1e1b4b';
+
+  // Top performers from player stats
+  const topPerformers = (() => {
+    const ps = stats.players ?? {};
+    const entries = Object.entries(ps);
+    const getName = pid => playerNames?.[pid] ?? `#${pid}`;
+    const best = (fn) => {
+      const sorted = entries.map(([pid, s]) => ({ pid, val: fn(s) })).filter(e => e.val > 0);
+      sorted.sort((a, b) => b.val - a.val);
+      return sorted[0] ?? null;
+    };
+    const rows = [
+      { icon: '⚡', label: 'Kills',   entry: best(s => s.k   ?? 0) },
+      { icon: '🎯', label: 'Aces',    entry: best(s => s.ace  ?? 0) },
+      { icon: '🛡', label: 'Digs',    entry: best(s => s.dig  ?? 0) },
+      { icon: '🔥', label: 'Blocks',  entry: best(s => (s.bs ?? 0) + (s.ba ?? 0)) },
+      { icon: '🎨', label: 'Assists', entry: best(s => s.ast  ?? 0) },
+    ];
+    return rows.filter(r => r.entry !== null).map(r => ({
+      icon: r.icon, label: r.label, name: getName(r.entry.pid), val: r.entry.val,
+    }));
+  })();
+
+  const divider = <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', margin: '14px 0' }} />;
 
   return (
     <div
       ref={cardRef}
       style={{
         position: 'absolute', left: '-9999px', top: 0,
-        width: 380, background: '#0f172a', borderRadius: 16,
-        padding: '20px 24px', fontFamily: 'system-ui, -apple-system, sans-serif',
-        color: 'white', overflow: 'hidden',
+        width: 480,
+        background: `linear-gradient(135deg, ${primary}ee 0%, ${secondary}bb 55%, #0a0a18 100%)`,
+        borderRadius: 20,
+        padding: '28px 28px 22px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        color: 'white',
+        overflow: 'hidden',
       }}
     >
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', color: '#f97316', textTransform: 'uppercase', marginBottom: 2 }}>
-            VBSTAT · Match Result
-          </div>
-          <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.1 }}>
-            vs. {match.opponent_name ?? 'Opponent'}
-          </div>
-          <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-            {fmtDate(match.date)}{match.location ? ` · ${match.location}` : ''}
-          </div>
+      {/* Subtle noise overlay for texture */}
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 20,
+        background: 'radial-gradient(ellipse at top left, rgba(255,255,255,0.07) 0%, transparent 60%)',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Brand header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.9)' }}>
+          VANTAGE
         </div>
-        <div style={{
-          fontSize: 32, fontWeight: 900, letterSpacing: '-0.02em',
-          color: won ? '#4ade80' : '#f87171', lineHeight: 1,
-        }}>
-          {won ? 'W' : 'L'} {match.our_sets_won ?? 0}–{match.opp_sets_won ?? 0}
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)' }}>
+          Match Result
         </div>
       </div>
 
-      {/* Set score chips */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+      {/* Opponent + W/L */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
+            vs.
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1.1, letterSpacing: '-0.01em' }}>
+            {match.opponent_name ?? 'Opponent'}
+          </div>
+          {match.opponent_record && (
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 3 }}>
+              {match.opponent_record}
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 5 }}>
+            {match.date ? fmtDate(match.date) : ''}{match.location ? ` · ${match.location}` : ''}
+          </div>
+        </div>
+        {/* Big W/L + set score */}
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 52, fontWeight: 900, lineHeight: 1, letterSpacing: '-0.03em', color: won ? '#4ade80' : '#f87171' }}>
+            {won ? 'W' : 'L'}
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: 'rgba(255,255,255,0.85)', letterSpacing: '-0.02em' }}>
+            {match.our_sets_won ?? 0}–{match.opp_sets_won ?? 0}
+          </div>
+        </div>
+      </div>
+
+      {/* Set chips */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 14 }}>
         {completedSets.map(s => {
           const sw = s.our_score > s.opp_score;
           return (
             <div key={s.id} style={{
-              background: sw ? 'rgba(52,211,153,0.15)' : 'rgba(248,113,113,0.15)',
-              border: `1px solid ${sw ? 'rgba(52,211,153,0.4)' : 'rgba(248,113,113,0.4)'}`,
-              borderRadius: 8, padding: '3px 10px', fontSize: 13,
+              background: sw ? 'rgba(74,222,128,0.18)' : 'rgba(248,113,113,0.18)',
+              border: `1px solid ${sw ? 'rgba(74,222,128,0.45)' : 'rgba(248,113,113,0.45)'}`,
+              borderRadius: 8, padding: '4px 11px', fontSize: 13,
             }}>
-              <span style={{ color: sw ? '#4ade80' : '#f87171', fontWeight: 700, marginRight: 4, fontSize: 10 }}>S{s.set_number}</span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: sw ? '#4ade80' : '#f87171', marginRight: 4, letterSpacing: '0.05em' }}>S{s.set_number}</span>
               <span style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{s.our_score}–{s.opp_score}</span>
             </div>
           );
         })}
       </div>
 
-      {/* Divider */}
-      <div style={{ borderTop: '1px solid #334155', marginBottom: 14 }} />
+      {divider}
 
-      {/* Key stats row */}
+      {/* Top performers */}
+      {topPerformers.length > 0 && (
+        <>
+          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 10 }}>
+            Top Performers
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            {topPerformers.map(({ icon, label, name, val }) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ fontSize: 14, width: 20, textAlign: 'center' }}>{icon}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', width: 52, letterSpacing: '0.04em' }}>{label}</div>
+                <div style={{ flex: 1, fontSize: 14, fontWeight: 800, color: 'white' }}>{name}</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: primary === '#e2e8f0' ? '#f97316' : primary, fontVariantNumeric: 'tabular-nums', filter: 'brightness(1.4)' }}>{val}</div>
+              </div>
+            ))}
+          </div>
+          {divider}
+        </>
+      )}
+
+      {/* Team stats */}
+      <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 10 }}>
+        Team Stats
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, textAlign: 'center' }}>
         {[
-          { label: 'HIT%',  val: fmtHitting(stats.team.hit_pct) },
-          { label: 'ACE%',  val: fmtPct(stats.team.ace_pct)     },
-          { label: 'APR',   val: fmtPassRating(stats.team.apr)  },
-          { label: 'SO%',   val: fmtPct(stats.rotation.so_pct)  },
+          { label: 'HIT%', val: fmtHitting(stats.team.hit_pct) },
+          { label: 'ACE%', val: fmtPct(stats.team.ace_pct)     },
+          { label: 'SO%',  val: fmtPct(stats.rotation?.so_pct) },
+          { label: 'APR',  val: fmtPassRating(stats.team.apr)  },
         ].map(({ label, val }) => (
-          <div key={label} style={{ background: '#1e293b', borderRadius: 8, padding: '8px 4px' }}>
-            <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 3 }}>{label}</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: '#f97316' }}>{val}</div>
+          <div key={label} style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '10px 4px', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', marginBottom: 5, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: primary === '#e2e8f0' ? '#f97316' : primary, filter: 'brightness(1.4)' }}>{val}</div>
           </div>
         ))}
       </div>
 
-      {/* Footer */}
-      <div style={{ marginTop: 14, fontSize: 10, color: '#475569', textAlign: 'right' }}>
-        Tracked with VBSTAT by SHUA
+      {/* Season record */}
+      {seasonRecord && (
+        <>
+          {divider}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)' }}>
+              Season Record
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.01em' }}>
+              <span style={{ color: '#4ade80' }}>{seasonRecord.w}</span>
+              <span style={{ color: 'rgba(255,255,255,0.3)', margin: '0 6px' }}>–</span>
+              <span style={{ color: '#f87171' }}>{seasonRecord.l}</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Footer branding */}
+      <div style={{ marginTop: 20, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.6)' }}>
+          VANTAGE
+        </div>
+        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.06em' }}>
+          Precision Sideline Analytics
+        </div>
       </div>
     </div>
   );
@@ -838,6 +938,29 @@ export function MatchSummaryPage() {
     () => Object.values(players ?? {})[0]?.team_id ?? null,
     [players]
   );
+
+  // Team colors for share card gradient
+  const teamColors = useLiveQuery(async () => {
+    if (!match?.season_id) return null;
+    const season = await db.seasons.get(match.season_id);
+    const team   = season?.team_id ? await db.teams.get(season.team_id) : null;
+    const org    = team?.org_id    ? await db.organizations.get(team.org_id) : null;
+    const colorIds = org?.colors?.length ? org.colors : (team?.team_jersey_color ?? []);
+    const primary   = ORG_COLOR_HEX[colorIds[0]] ?? '#ea580c';
+    const secondary = ORG_COLOR_HEX[colorIds[1]] ?? ORG_COLOR_HEX[colorIds[0]] ?? '#1e1b4b';
+    return { primary, secondary };
+  }, [match?.season_id]);
+
+  // Season W–L record (includes this match)
+  const seasonRecord = useLiveQuery(async () => {
+    if (!match?.season_id) return null;
+    const all = await db.matches
+      .where('season_id').equals(match.season_id)
+      .filter(m => m.status === 'complete' && m.match_type !== 'exhibition')
+      .toArray();
+    const w = all.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
+    return { w, l: all.length - w };
+  }, [match?.season_id]);
 
   const handlePlayerClick = useCallback((row) => {
     if (!matchTeamId || !match?.season_id || row.id === '__totals__') return;
@@ -1271,29 +1394,48 @@ export function MatchSummaryPage() {
     exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, uuid, `match-${id}-maxpreps.txt`);
   }
 
+  async function captureCard() {
+    const html2canvas = html2canvasRef.current ?? (await import('html2canvas')).default;
+    const canvas = await html2canvas(shareCardRef.current, {
+      backgroundColor: null,
+      scale: 2,
+      useCORS: true,
+      logging: false,
+    });
+    return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  }
+
   async function handleShareCard() {
     if (!shareCardRef.current || !stats || !match) return;
     setSharingCard(true);
     try {
-      const html2canvas = html2canvasRef.current ?? (await import('html2canvas')).default;
-      const canvas = await html2canvas(shareCardRef.current, {
-        backgroundColor: '#0f172a',
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
-      canvas.toBlob(async (blob) => {
-        if (!blob) return;
-        const filename = `vbstat-vs-${(match.opponent_name ?? 'opponent').replace(/\s+/g, '-').toLowerCase()}.png`;
-        if (navigator.share && navigator.canShare?.({ files: [new File([blob], filename, { type: 'image/png' })] })) {
-          await navigator.share({ files: [new File([blob], filename, { type: 'image/png' })], title: 'Match Result' });
-        } else {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url; a.download = filename; a.click();
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-        }
-      }, 'image/png');
+      const blob = await captureCard();
+      if (!blob) return;
+      const filename = `vantage-vs-${(match.opponent_name ?? 'opponent').replace(/\s+/g, '-').toLowerCase()}.png`;
+      if (navigator.share && navigator.canShare?.({ files: [new File([blob], filename, { type: 'image/png' })] })) {
+        await navigator.share({ files: [new File([blob], filename, { type: 'image/png' })], title: 'Match Result' });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+    } finally {
+      setSharingCard(false);
+    }
+  }
+
+  async function handleDownloadCard() {
+    if (!shareCardRef.current || !stats || !match) return;
+    setSharingCard(true);
+    try {
+      const blob = await captureCard();
+      if (!blob) return;
+      const filename = `vantage-vs-${(match.opponent_name ?? 'opponent').replace(/\s+/g, '-').toLowerCase()}.png`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } finally {
       setSharingCard(false);
     }
@@ -1423,7 +1565,10 @@ export function MatchSummaryPage() {
                 MaxPreps
               </Button>
               <Button size="sm" variant="secondary" disabled={!stats || sharingCard} onClick={handleShareCard}>
-                {sharingCard ? '…' : '📸 Share Card'}
+                {sharingCard ? '…' : '📲 Share'}
+              </Button>
+              <Button size="sm" variant="secondary" disabled={!stats || sharingCard} onClick={handleDownloadCard}>
+                {sharingCard ? '…' : '⬇ Card'}
               </Button>
               <Button size="sm" variant="secondary" disabled={!stats} onClick={() => setShowCorrections(true)}>
                 ✎ Correct
@@ -2202,7 +2347,9 @@ export function MatchSummaryPage() {
         match={match}
         sets={sets}
         stats={stats}
-        fmtDate={fmtDate}
+        teamColors={teamColors}
+        seasonRecord={seasonRecord}
+        playerNames={playerNames}
       />
 
       {editOpen && (

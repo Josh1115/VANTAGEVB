@@ -1,3 +1,17 @@
+// Team/org color ID → hex (matches ORG_COLORS in TeamsPage)
+export const ORG_COLOR_HEX = {
+  red:    '#dc2626',
+  orange: '#ea580c',
+  yellow: '#ca8a04',
+  blue:   '#1d4ed8',
+  purple: '#7c3aed',
+  pink:   '#db2777',
+  white:  '#e2e8f0',
+  black:  '#1e293b',
+  gray:   '#64748b',
+  green:  '#16a34a',
+};
+
 // Player positions
 export const POSITIONS = {
   S:   'Setter',
@@ -132,9 +146,25 @@ export const COLLEGE_DIVISIONS = [
 ];
 
 // Plan feature lists
-export const BASELINE_FEATURES  = ['Live match scoring', 'Kills, Aces, Errors, Digs, Blocks & Assists', 'Basic season record', 'Max 1 active season', 'No MaxPreps export'];
-export const SIDELINE_FEATURES  = ['Full analytics suite', 'Career records & history', 'Practice tools', 'Opponent scouting page', 'Rotation optimizer', 'Multi-format export (PDF, CSV, MaxPreps)'];
-export const ADVANTAGE_FEATURES = ['Everything in SIDELINE', 'Two levels per program (JV + Varsity)', 'Priority customer support'];
+export const BASELINE_FEATURES  = [
+  'Limited to one level',
+  'Limited to one season',
+  'Max 35 matches',
+  'Basic stats (K, Ace, Blk, Digs, Ast, Errs)',
+  'Live stat recording',
+  'No Records page',
+  'No History page',
+  'No Reports page',
+  'No MaxPreps export',
+  'Limited settings & customization',
+  'Baseline priority support',
+  'No tools / practice features',
+  'No whiteboard',
+  'No opponent page',
+];
+export const CORE_FEATURES      = ['Full analytics suite', 'Career records & history', 'Practice tools', 'Opponent scouting page', 'Rotation optimizer', 'Multi-format export (PDF, CSV, MaxPreps)'];
+export const ADVANTAGE_FEATURES = ['Everything in CORE', 'Two levels per program (JV + Varsity)', 'Priority customer support'];
+export const TOPPER_FEATURES    = ['Everything in ADVANTAGE'];
 
 // NFHS rules
 // MAX_SUBS_PER_SET: intentionally 18 (club/college rules) rather than NFHS's 12.

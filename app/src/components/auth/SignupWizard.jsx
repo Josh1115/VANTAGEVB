@@ -1,7 +1,6 @@
-import { useState } from 'react';
-import { apiSignup } from '../../utils/api';
-import { STORAGE_KEYS } from '../../utils/storage';
-import { BASELINE_FEATURES, SIDELINE_FEATURES, ADVANTAGE_FEATURES } from '../../constants';
+import { useRef, useState } from 'react';
+import { supabase } from '../../utils/supabase';
+import { BASELINE_FEATURES, CORE_FEATURES, ADVANTAGE_FEATURES, TOPPER_FEATURES } from '../../constants';
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA',
@@ -109,57 +108,58 @@ function StepEmail({ value, onChange, onNext, error }) {
   );
 }
 
-// ── Step 2: PIN ───────────────────────────────────────────────────────────────
-function StepPin({ onNext, error, onPinComplete }) {
-  const [pin,     setPin]     = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [phase,   setPhase]   = useState('enter'); // 'enter' | 'confirm'
-  const [shake,   setShake]   = useState(false);
+// ── Step 2: Password ──────────────────────────────────────────────────────────
+function StepPassword({ value, onChange, onNext, error }) {
+  const [confirm,  setConfirm]  = useState('');
+  const [mismatch, setMismatch] = useState(false);
+  const [tooShort, setTooShort] = useState(false);
+  const confirmRef = useRef(null);
 
-  function handleEnter(v) {
-    setPin(v);
-    if (v.length === PIN_LENGTH) setPhase('confirm');
-  }
+  const inp = 'w-full rounded-2xl border-2 border-slate-600 bg-slate-800/40 px-5 py-4 text-lg text-white placeholder-slate-500 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all';
 
-  function handleConfirm(v) {
-    setConfirm(v);
-    if (v.length === PIN_LENGTH) {
-      if (v === pin) {
-        onPinComplete(pin);
-        onNext();
-      } else {
-        setShake(true);
-        setTimeout(() => { setConfirm(''); setShake(false); }, 900);
-      }
-    }
+  function handleNext() {
+    setMismatch(false);
+    setTooShort(false);
+    if (value.length < 8) { setTooShort(true); return; }
+    if (value !== confirm) { setMismatch(true); return; }
+    onNext();
   }
 
   return (
-    <div className="w-full flex flex-col gap-8 animate-slide-up-fade">
+    <div className="w-full flex flex-col gap-5 animate-slide-up-fade">
       <div className="text-center space-y-1">
-        <h2 className="text-2xl font-black text-white">Choose your PIN</h2>
-        <p className="text-slate-400 text-sm">6 digits — you'll use this to log in</p>
+        <h2 className="text-2xl font-black text-white">Create a password</h2>
+        <p className="text-slate-400 text-sm">At least 8 characters</p>
       </div>
-      {phase === 'enter' ? (
-        <PinBoxes pin={pin} invalid={false} onChange={handleEnter} label="Enter a 6-digit PIN" />
-      ) : (
-        <PinBoxes
-          pin={confirm}
-          invalid={shake}
-          onChange={handleConfirm}
-          label="Confirm your PIN"
-        />
-      )}
-      {shake && <p className="text-sm text-red-400 text-center -mt-4">PINs don't match — try again</p>}
-      {error && <p className="text-sm text-red-400 text-center">{error}</p>}
-      {phase === 'confirm' && (
-        <button
-          onClick={() => { setPhase('enter'); setPin(''); setConfirm(''); }}
-          className="text-sm text-slate-500 hover:text-slate-300 transition-colors text-center"
-        >
-          ← Start over
-        </button>
-      )}
+      <input
+        type="password"
+        autoComplete="new-password"
+        autoFocus
+        placeholder="Password"
+        value={value}
+        onChange={e => { onChange(e.target.value); setTooShort(false); setMismatch(false); }}
+        onKeyDown={e => e.key === 'Enter' && confirmRef.current?.focus()}
+        className={inp}
+      />
+      <input
+        ref={confirmRef}
+        type="password"
+        autoComplete="new-password"
+        placeholder="Confirm password"
+        value={confirm}
+        onChange={e => { setConfirm(e.target.value); setMismatch(false); }}
+        onKeyDown={e => e.key === 'Enter' && handleNext()}
+        className={`${inp} ${mismatch ? 'border-red-500' : ''}`}
+      />
+      {tooShort && <p className="text-sm text-red-400 text-center -mt-2">Password must be at least 8 characters</p>}
+      {mismatch && <p className="text-sm text-red-400 text-center -mt-2">Passwords don't match</p>}
+      {error    && <p className="text-sm text-red-400 text-center">{error}</p>}
+      <button
+        onClick={handleNext}
+        className="w-full rounded-2xl bg-primary py-4 text-base font-black text-white tracking-wide active:scale-[0.97] transition-transform"
+      >
+        Continue
+      </button>
     </div>
   );
 }
@@ -264,7 +264,7 @@ function StepCoach({ value, onChange, onNext }) {
 
 // ── Step 5: Plan ──────────────────────────────────────────────────────────────
 
-function StepPlan({ value, onChange, onSubmit, submitting, error }) {
+function StepPlan({ onSubmit, submitting, error }) {
   return (
     <div className="w-full flex flex-col gap-5 animate-slide-up-fade">
       <div className="text-center space-y-1">
@@ -272,21 +272,16 @@ function StepPlan({ value, onChange, onSubmit, submitting, error }) {
         <p className="text-slate-400 text-sm">You can upgrade at any time</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
-        {/* BASELINE */}
-        <button
-          onClick={() => onChange('free')}
-          className={`rounded-2xl border-2 p-3 text-left flex flex-col gap-2 transition-all active:scale-[0.97] ${
-            value === 'free' ? 'border-primary bg-primary/10' : 'border-slate-600 bg-slate-800/40'
-          }`}
-        >
+      <div className="grid grid-cols-2 gap-2">
+        {/* BASELINE — always selected at signup */}
+        <div className="rounded-2xl border-2 border-primary bg-primary/10 p-3 text-left flex flex-col gap-2">
           <div>
             <p className="text-sm font-black text-white">"BASELINE"</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Everything you need</p>
+            <p className="text-[10px] text-slate-300 mt-0.5">Everything you need</p>
           </div>
           <ul className="space-y-1">
             {BASELINE_FEATURES.map(f => {
-              const isLimit = f.startsWith('No ');
+              const isLimit = f.startsWith('No ') || f.startsWith('Limited') || f.startsWith('Max ');
               return (
                 <li key={f} className={`flex items-start gap-1 text-[10px] ${isLimit ? 'text-slate-500' : 'text-slate-300'}`}>
                   <span className={`shrink-0 mt-px ${isLimit ? 'text-slate-600' : 'text-emerald-400'}`}>{isLimit ? '✕' : '✓'}</span>{f}
@@ -295,59 +290,58 @@ function StepPlan({ value, onChange, onSubmit, submitting, error }) {
             })}
           </ul>
           <p className="text-base font-black text-white mt-auto">Free</p>
-        </button>
+        </div>
 
-        {/* SIDELINE */}
-        <button
-          onClick={() => onChange('sideline')}
-          disabled
-          className="rounded-2xl border-2 border-slate-600 bg-slate-800/40 p-3 text-left flex flex-col gap-2 transition-all relative overflow-hidden opacity-60 cursor-not-allowed"
-        >
-          <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wide bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded-full">
-            Soon
-          </span>
+        {/* CORE */}
+        <div className="rounded-2xl border-2 border-slate-600 bg-slate-800/40 p-3 text-left flex flex-col gap-2 relative overflow-hidden opacity-50">
+          <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wide bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded-full">Soon</span>
           <div>
-            <p className="text-sm font-black text-white">"SIDELINE"</p>
+            <p className="text-sm font-black text-white">"CORE"</p>
             <p className="text-[10px] text-slate-400 mt-0.5">One program</p>
           </div>
           <ul className="space-y-1">
-            {SIDELINE_FEATURES.map(f => (
-              <li key={f} className="flex items-start gap-1 text-[10px] text-slate-400">
+            {CORE_FEATURES.map(f => (
+              <li key={f} className="flex items-start gap-1 text-[10px] text-slate-500">
                 <span className="text-slate-600 shrink-0 mt-px">✓</span>{f}
               </li>
             ))}
           </ul>
-          <div className="mt-auto">
-            <p className="text-base font-black text-slate-500">$49.99<span className="text-[10px] font-normal">/season</span></p>
-            <p className="text-[10px] text-slate-500">or $84.99 / 2-season bundle <span className="text-primary font-semibold">save $15</span></p>
-          </div>
-        </button>
+          <p className="text-base font-black text-slate-500 mt-auto">$49.99<span className="text-[10px] font-normal">/season</span></p>
+        </div>
 
-        {/* AD-VANTAGE */}
-        <button
-          onClick={() => onChange('advantage')}
-          disabled
-          className="rounded-2xl border-2 border-slate-600 bg-slate-800/40 p-3 text-left flex flex-col gap-2 transition-all relative overflow-hidden opacity-60 cursor-not-allowed"
-        >
-          <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wide bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded-full">
-            Soon
-          </span>
+        {/* ADVANTAGE */}
+        <div className="rounded-2xl border-2 border-slate-600 bg-slate-800/40 p-3 text-left flex flex-col gap-2 relative overflow-hidden opacity-50">
+          <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wide bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded-full">Soon</span>
           <div>
-            <p className="text-sm font-black text-white">"AD-VANTAGE"</p>
+            <p className="text-sm font-black text-white">"ADVANTAGE"</p>
             <p className="text-[10px] text-slate-400 mt-0.5">JV + Varsity</p>
           </div>
           <ul className="space-y-1">
             {ADVANTAGE_FEATURES.map(f => (
-              <li key={f} className="flex items-start gap-1 text-[10px] text-slate-400">
+              <li key={f} className="flex items-start gap-1 text-[10px] text-slate-500">
                 <span className="text-slate-600 shrink-0 mt-px">✓</span>{f}
               </li>
             ))}
           </ul>
-          <div className="mt-auto">
-            <p className="text-base font-black text-slate-500">$89.99<span className="text-[10px] font-normal">/season</span></p>
-            <p className="text-[10px] text-slate-500">or $159.99 / 2-season bundle <span className="text-primary font-semibold">save $20</span></p>
+          <p className="text-base font-black text-slate-500 mt-auto">$89.99<span className="text-[10px] font-normal">/season</span></p>
+        </div>
+
+        {/* TOPPER */}
+        <div className="rounded-2xl border-2 border-slate-600 bg-slate-800/40 p-3 text-left flex flex-col gap-2 relative overflow-hidden opacity-50">
+          <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wide bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded-full">Soon</span>
+          <div>
+            <p className="text-sm font-black text-white">"TOPPER"</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Top tier</p>
           </div>
-        </button>
+          <ul className="space-y-1">
+            {TOPPER_FEATURES.map(f => (
+              <li key={f} className="flex items-start gap-1 text-[10px] text-slate-500">
+                <span className="text-slate-600 shrink-0 mt-px">✓</span>{f}
+              </li>
+            ))}
+          </ul>
+          <p className="text-base font-black text-slate-500 mt-auto">TBD</p>
+        </div>
       </div>
 
       {error && <p className="text-sm text-red-400 text-center">{error}</p>}
@@ -366,14 +360,13 @@ function StepPlan({ value, onChange, onSubmit, submitting, error }) {
 // ── Wizard shell ──────────────────────────────────────────────────────────────
 
 export function SignupWizard({ onComplete, onBack }) {
-  const [step,        setStep]        = useState(1);
-  const [email,       setEmail]       = useState('');
-  const [pin,         setPin]         = useState('');
-  const [school,      setSchool]      = useState({ school_name: '', school_type: 'high_school', school_state: '' });
-  const [coachName,   setCoachName]   = useState('');
-  const [plan,        setPlan]        = useState('free');
-  const [error,       setError]       = useState('');
-  const [submitting,  setSubmitting]  = useState(false);
+  const [step,       setStep]       = useState(1);
+  const [email,      setEmail]      = useState('');
+  const [password,   setPassword]   = useState('');
+  const [school,     setSchool]     = useState({ school_name: '', school_type: 'high_school', school_state: '' });
+  const [coachName,  setCoachName]  = useState('');
+  const [error,      setError]      = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   function clearError() { setError(''); }
   function next()       { clearError(); setStep(s => s + 1); }
@@ -396,25 +389,52 @@ export function SignupWizard({ onComplete, onBack }) {
     setSubmitting(true);
     setError('');
     try {
-      const { token } = await apiSignup({
-        email:        email.trim().toLowerCase(),
-        pin,
-        plan,
-        coach_name:   coachName.trim() || null,
-        school_name:  school.school_name.trim() || null,
-        school_type:  school.school_type || null,
-        school_state: school.school_state || null,
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
+        options: {
+          data: {
+            coach_name:   coachName.trim() || null,
+            school_name:  school.school_name.trim() || null,
+            school_type:  school.school_type || null,
+            school_state: school.school_state || null,
+          },
+        },
       });
-      try {
-        localStorage.setItem(STORAGE_KEYS.ACCOUNT_TOKEN, token);
-        localStorage.setItem(STORAGE_KEYS.ACCOUNT_EMAIL, email.trim().toLowerCase());
-      } catch {}
-      onComplete();
+      if (error) throw error;
+      if (data.session) {
+        onComplete(); // logged in immediately (email confirmation disabled)
+      } else {
+        setStep(6); // email confirmation required — show check-your-email screen
+      }
     } catch (err) {
       setError(err.message ?? 'Sign up failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (step === 6) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-8 animate-fade-in"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+        <div className="w-full max-w-sm text-center space-y-6">
+          <div className="text-6xl">📬</div>
+          <h2 className="text-2xl font-black text-white">Check your email</h2>
+          <p className="text-slate-400 text-sm leading-relaxed">
+            We sent a confirmation link to{' '}
+            <span className="text-white font-semibold">{email}</span>.
+            Click it to activate your account, then come back to log in.
+          </p>
+          <button
+            onClick={onBack}
+            className="w-full rounded-2xl bg-primary py-4 text-base font-black text-white tracking-wide active:scale-[0.97] transition-transform"
+          >
+            Back to Log In
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -432,9 +452,10 @@ export function SignupWizard({ onComplete, onBack }) {
           />
         )}
         {step === 2 && (
-          <StepPin
+          <StepPassword
+            value={password}
+            onChange={setPassword}
             onNext={next}
-            onPinComplete={setPin}
             error={error}
           />
         )}
@@ -455,8 +476,6 @@ export function SignupWizard({ onComplete, onBack }) {
         )}
         {step === 5 && (
           <StepPlan
-            value={plan}
-            onChange={setPlan}
             onSubmit={handleSubmit}
             submitting={submitting}
             error={error}
