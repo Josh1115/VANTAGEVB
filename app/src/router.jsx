@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import { Spinner } from './components/ui/Spinner';
+import { PlanGate } from './components/shared/PlanGate';
 
 // Eagerly loaded — tiny pages or always needed on first paint
 import { HomePage } from './pages/HomePage';
@@ -72,8 +73,8 @@ export const router = createBrowserRouter([
       { path: 'teams/:teamId',               element: <S><TeamDetailPage /></S> },
       { path: 'teams/:teamId/players/:playerId', element: <S><PlayerStatsPage /></S> },
       { path: 'teams/:teamId/optimizer',        element: <S><RotationOptimizerPage /></S> },
-      { path: 'opponents',                      element: <S><OpponentListPage /></S> },
-      { path: 'opponents/:oppId',               element: <S><OpponentDetailPage /></S> },
+      { path: 'opponents',                      element: <PlanGate requires="core" feature="Opponent scouting"><S><OpponentListPage /></S></PlanGate> },
+      { path: 'opponents/:oppId',               element: <PlanGate requires="core" feature="Opponent scouting"><S><OpponentDetailPage /></S></PlanGate> },
       { path: 'seasons',                     element: <S><SeasonsPage /></S> },
       { path: 'seasons/:seasonId',            element: <S><SeasonDetailPage /></S> },
       { path: 'seasons/:seasonId/team',      element: <S><TeamSeasonPage /></S> },
@@ -81,15 +82,15 @@ export const router = createBrowserRouter([
       { path: 'matches/:matchId/live',        element: <S><LiveMatchPage /></S> },
       { path: 'matches/:matchId/set-lineup', element: <S><SetLineupPage /></S> },
       { path: 'matches/:matchId/summary',    element: <S><MatchSummaryPage /></S> },
-      { path: 'records',                     element: <S><RecordsPage /></S> },
-      { path: 'history',                     element: <S><HistoryPage /></S> },
-      { path: 'reports',                     element: <S><ReportsPage /></S> },
+      { path: 'records',                     element: <PlanGate requires="core" feature="Career records"><S><RecordsPage /></S></PlanGate> },
+      { path: 'history',                     element: <PlanGate requires="core" feature="Season history"><S><HistoryPage /></S></PlanGate> },
+      { path: 'reports',                     element: <PlanGate requires="core" feature="Analytics & reports"><S><ReportsPage /></S></PlanGate> },
       { path: 'settings',                    element: <S><SettingsPage /></S> },
       { path: 'upgrade',                     element: <S><UpgradePage /></S> },
-      { path: 'tools',                       element: <S><ToolsPage /></S> },
-      { path: 'tools/serve-receive',         element: <S><ServeReceivePage /></S> },
-      { path: 'tools/serve-tracker',         element: <S><ServeTrackerPage /></S> },
-      { path: 'tools/practice-game',         element: <S><PracticeGamePage /></S> },
+      { path: 'tools',                       element: <PlanGate requires="core" feature="Practice tools"><S><ToolsPage /></S></PlanGate> },
+      { path: 'tools/serve-receive',         element: <PlanGate requires="core" feature="Practice tools"><S><ServeReceivePage /></S></PlanGate> },
+      { path: 'tools/serve-tracker',         element: <PlanGate requires="core" feature="Practice tools"><S><ServeTrackerPage /></S></PlanGate> },
+      { path: 'tools/practice-game',         element: <PlanGate requires="core" feature="Practice tools"><S><PracticeGamePage /></S></PlanGate> },
       { path: 'terms',                       element: <S><TermsPage /></S> },
       { path: 'help/serve-receive',          element: <S><HelpServeReceivePage /></S> },
       { path: 'help/default-team',           element: <S><HelpDefaultTeamPage /></S> },
