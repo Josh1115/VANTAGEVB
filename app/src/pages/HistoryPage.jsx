@@ -61,7 +61,7 @@ const EMPTY_FORM = {
   year: '', title: [], classification: '', head_coach: '', tenure_year: '', asst_coach: '',
   games: '', wins: '', losses: '',
   state_rank: '', national_rank: '', class_rank: '',
-  playoff_seed: '', regional: '', sectional: '', state_finish: '', playoff_result: '',
+  playoff_seed: '', state_finish: '', playoff_result: '',
   playoff_rounds: [],
 };
 
@@ -104,8 +104,6 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
         national_rank:  newNationalRank,
         class_rank:     (form.class_rank ?? '').trim()   || null,
         playoff_seed:   form.playoff_seed.trim()         || null,
-        regional:       form.regional.trim()             || null,
-        sectional:      form.sectional.trim()            || null,
         state_finish:   form.state_finish.trim()         || null,
         playoff_result: form.playoff_result.trim()       || null,
         playoff_rounds: (form.playoff_rounds ?? []).filter(r => r.round?.trim() || r.opponent?.trim()),
@@ -1265,8 +1263,6 @@ export function HistoryPage() {
     wins:           '',
     losses:         '',
     playoff_seed:   liveHistoryEntry.playoff_seed   ?? '',
-    regional:       liveHistoryEntry.regional       ?? '',
-    sectional:      liveHistoryEntry.sectional      ?? '',
     state_finish:   liveHistoryEntry.state_finish
                       || inferFinishFromPlayoffRounds(liveHistoryEntry.playoff_rounds)
                       || '',
@@ -1937,8 +1933,6 @@ export function HistoryPage() {
             wins:           editEntry.wins           != null ? String(editEntry.wins)    : '',
             losses:         editEntry.losses         != null ? String(editEntry.losses)  : '',
             playoff_seed:   editEntry.playoff_seed   ?? '',
-            regional:       editEntry.regional       ?? '',
-            sectional:      editEntry.sectional      ?? '',
             state_finish:   editEntry.state_finish
                               || inferFinishFromPlayoffRounds(editEntry.playoff_rounds)
                               || '',

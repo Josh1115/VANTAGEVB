@@ -47,7 +47,7 @@ export function LiveMatchPage() {
 
   const [liberoPlayer,        setLiberoPlayer]        = useState(null);
   const [confettiNav,         setConfettiNav]         = useState(null); // { path, matchWin } | null
-  const [setSummaryData,      setSetSummaryData]      = useState(null); // { winner } | null
+  const [summaryModalData,     setSummaryModalData]     = useState(null); // { winner } | null
   const [exportPromptNav,     setExportPromptNav]     = useState(null); // fn to call after export prompt
   const [teamName,            setTeamName]            = useState('');
   const [opponentName,        setOpponentName]        = useState('');
@@ -456,14 +456,14 @@ export function LiveMatchPage() {
         />
       )}
 
-      {setSummaryData && (
+      {summaryModalData && (
         <SetSummaryModal
-          winner={setSummaryData.winner}
+          winner={summaryModalData.winner}
           teamName={teamName}
           opponentName={opponentName}
           onContinue={async () => {
-            const { winner } = setSummaryData;
-            setSetSummaryData(null);
+            const { winner } = summaryModalData;
+            setSummaryModalData(null);
             await endSet(winner);
             if (winner === SIDE.US) {
               setConfettiNav({ path: `/matches/${matchIdParam}/set-lineup`, matchWin: false });
@@ -533,7 +533,7 @@ export function LiveMatchPage() {
                 // Show set summary before transitioning to next set
                 const winner = pendingSetWin;
                 clearPendingSetWin();
-                setSetSummaryData({ winner });
+                setSummaryModalData({ winner });
               }
             }}
             onCancel={clearPendingSetWin}

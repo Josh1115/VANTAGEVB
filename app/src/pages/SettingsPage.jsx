@@ -1096,14 +1096,24 @@ function useDefaultFormat() {
   return [defaultFormat, save];
 }
 
-function useAmoledMode() {
-  const [amoled, setAmoledState] = useState(() => getBoolStorage(STORAGE_KEYS.AMOLED));
-  const save = (val) => {
-    setBoolStorage(STORAGE_KEYS.AMOLED, val);
-    document.documentElement.classList.toggle('amoled', val);
-    setAmoledState(val);
-  };
-  return [amoled, save];
+
+function CollapsibleSection({ title, subtitle, children, defaultOpen = true }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section className="bg-surface rounded-xl overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 border-b border-slate-700 text-left"
+      >
+        <div>
+          <h2 className="font-semibold">{title}</h2>
+          {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+        </div>
+        <span className={`text-slate-400 text-xs transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▼</span>
+      </button>
+      {open && children}
+    </section>
+  );
 }
 
 function useToggleSetting(key) {
@@ -1207,7 +1217,6 @@ export function SettingsPage() {
   const [defaultFormat, saveDefaultFormat] = useDefaultFormat();
   const [lastSetScore, saveLastSetScore] = useLastSetScore();
 
-  const [amoled,      saveAmoled]      = useAmoledMode();
   const [accent,      saveAccent]      = useAccentColor();
   const [defaultTeamId,    saveDefaultTeam]    = useNullableIntSetting(STORAGE_KEYS.DEFAULT_TEAM_ID);
   const [defaultSeasonId,  saveDefaultSeason]  = useNullableIntSetting(STORAGE_KEYS.DEFAULT_SEASON_ID);
@@ -1557,10 +1566,7 @@ export function SettingsPage() {
         )}
 
         {/* Help & Guides */}
-        <section className="bg-surface rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-700">
-            <h2 className="font-semibold">Help &amp; Guides</h2>
-          </div>
+        <CollapsibleSection title="Help & Guides">
           <div className="p-4">
             <div className="space-y-4">
 
@@ -1725,13 +1731,10 @@ export function SettingsPage() {
 
             </div>
           </div>
-        </section>
+        </CollapsibleSection>
 
         {/* Personalization */}
-        <section className="bg-surface rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-700">
-            <h2 className="font-semibold">Personalization</h2>
-          </div>
+        <CollapsibleSection title="Personalization">
           <div className="p-4 space-y-5">
 
             {/* Program name */}
@@ -1922,37 +1925,10 @@ export function SettingsPage() {
             </div>
 
           </div>
-        </section>
-
-        {/* Display */}
-        <section className="bg-surface rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-700">
-            <h2 className="font-semibold">Display</h2>
-          </div>
-          <div className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">AMOLED Mode</div>
-                <div className="text-xs text-slate-400 mt-0.5">Pure black background — saves battery on OLED screens</div>
-              </div>
-              <button
-                onClick={() => saveAmoled(!amoled)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${amoled ? 'bg-primary' : 'bg-slate-600'}`}
-                aria-checked={amoled}
-                role="switch"
-              >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${amoled ? 'translate-x-5' : ''}`} />
-              </button>
-            </div>
-          </div>
-        </section>
+        </CollapsibleSection>
 
         {/* Live Match */}
-        <section className="bg-surface rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-700">
-            <h2 className="font-semibold">Live Match</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Applied during active stat recording</p>
-          </div>
+        <CollapsibleSection title="Live Match" subtitle="Applied during active stat recording">
           <div className="p-4 divide-y divide-slate-700/60 space-y-0">
 
             {/* Keep Screen Awake */}
@@ -2082,14 +2058,10 @@ export function SettingsPage() {
             </div>
 
           </div>
-        </section>
+        </CollapsibleSection>
 
         {/* Match Rules */}
-        <section className="bg-surface rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-700">
-            <h2 className="font-semibold">Match Rules</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Applied to all future matches</p>
-          </div>
+        <CollapsibleSection title="Match Rules" subtitle="Applied to all future matches">
           <div className="p-4 space-y-4">
             <div>
               <label className="block text-sm text-slate-400 mb-2">Best of Sets</label>
@@ -2151,13 +2123,10 @@ export function SettingsPage() {
               </div>
             </div>
           </div>
-        </section>
+        </CollapsibleSection>
 
         {/* Exports */}
-        <section className="bg-surface rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-700">
-            <h2 className="font-semibold">Exports</h2>
-          </div>
+        <CollapsibleSection title="Exports">
           <div className="p-4">
             <label className="block text-sm font-medium mb-1">MaxPreps Team ID</label>
             <div className="text-xs text-slate-400 mb-2">
@@ -2171,13 +2140,10 @@ export function SettingsPage() {
               className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-primary placeholder:text-slate-600"
             />
           </div>
-        </section>
+        </CollapsibleSection>
 
-        {/* Data management */}
-        <section className="bg-surface rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-700">
-            <h2 className="font-semibold">Data Management</h2>
-          </div>
+        {/* Data Management */}
+        <CollapsibleSection title="Data Management">
           <div className="p-4 space-y-3">
             <Button className="w-full" variant="secondary" onClick={handleExport}>
               Export Full Backup (JSON)
@@ -2267,7 +2233,7 @@ export function SettingsPage() {
               Clear All Data
             </Button>
           </div>
-        </section>
+        </CollapsibleSection>
 
         {/* Sign Out */}
         <section className="bg-surface rounded-xl p-4">

@@ -235,14 +235,7 @@ export async function executeMerge(preview, decisions) {
       const exSeasonId = seasonMap.get(impMatch.season_id);
       if (exSeasonId == null) continue;
 
-      if (decision === 'keep') {
-        const ex = exMatchByKey.get(`${exSeasonId}|${nkMatch(impMatch)}`);
-        if (ex) {
-          // Map to existing so optional-table refs resolve correctly
-          // (no data imported for this match)
-        }
-        continue;
-      }
+      if (decision === 'keep') continue;
 
       if (decision === 'replace') {
         const ex = exMatchByKey.get(`${exSeasonId}|${nkMatch(impMatch)}`);

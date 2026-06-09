@@ -1083,7 +1083,7 @@ export function HomePage() {
                 disabled={!defaultSeasonId}
                 className="bg-surface rounded-xl p-3 text-center active:scale-95 transition-transform disabled:active:scale-100"
               >
-                <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-white">{label}</div>
                 <div className="text-xl font-black text-primary tabular-nums mt-0.5">{val}</div>
                 {deltaVal != null && deltaVal !== 0 && (
                   <span className={`flex items-center justify-center gap-px text-[8px] font-bold leading-none tabular-nums mt-0.5 ${deltaVal > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
