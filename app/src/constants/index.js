@@ -163,8 +163,8 @@ export const BASELINE_FEATURES  = [
   'No opponent page',
 ];
 export const CORE_FEATURES      = ['Full analytics suite', 'Career records & history', 'Practice tools', 'Opponent scouting page', 'Rotation optimizer', 'Multi-format export (PDF, CSV, MaxPreps)'];
-export const ADVANTAGE_FEATURES = ['Everything in CORE', 'Two levels per program (JV + Varsity)', 'Priority customer support'];
-export const TOPPER_FEATURES    = ['Everything in ADVANTAGE'];
+export const ADVANTAGE_FEATURES = ['Everything in CORE', 'Two levels per program (JV + Varsity)', 'Up to 45 matches per team/level', 'Priority customer support'];
+export const TOPPER_FEATURES    = ['Everything in ADVANTAGE', 'Up to 60 matches per team/level'];
 
 // NFHS rules
 // MAX_SUBS_PER_SET: intentionally 18 (club/college rules) rather than NFHS's 12.

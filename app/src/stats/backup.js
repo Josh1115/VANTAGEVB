@@ -36,9 +36,9 @@ function migrateBackup(data) {
   return data;
 }
 
-// ── Export ────────────────────────────────────────────────────────────────────
+// ── Shared helpers ─────────────────────────────────────────────────────────────
 
-export async function exportBackup() {
+async function collectBackupData() {
   const data = { version: BACKUP_VERSION, exportedAt: new Date().toISOString() };
   for (const table of ALL_TABLES) {
     data[table] = await db[table].toArray();
@@ -49,7 +49,33 @@ export async function exportBackup() {
     if (v !== null) settings[key] = v;
   }
   data.settings = settings;
+  return data;
+}
 
+async function applyBackupData(data) {
+  await db.transaction('rw', db.tables, async () => {
+    for (const table of [...ALL_TABLES].reverse()) {
+      await db[table].clear();
+    }
+    for (const table of ALL_TABLES) {
+      const rows = data[table];
+      if (Array.isArray(rows) && rows.length > 0) {
+        await db[table].bulkAdd(rows);
+      }
+    }
+  });
+
+  if (data.settings && typeof data.settings === 'object') {
+    for (const [key, value] of Object.entries(data.settings)) {
+      if (typeof value === 'string') localStorage.setItem(key, value);
+    }
+  }
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+
+export async function exportBackup() {
+  const data = await collectBackupData();
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -64,17 +90,7 @@ export async function exportBackup() {
 const MAX_AUTO_BACKUPS = 5;
 
 export async function autoSaveBackup(label = 'auto') {
-  const data = { version: BACKUP_VERSION, exportedAt: new Date().toISOString() };
-  for (const table of ALL_TABLES) {
-    data[table] = await db[table].toArray();
-  }
-  const settings = {};
-  for (const key of SETTINGS_KEYS) {
-    const v = localStorage.getItem(key);
-    if (v !== null) settings[key] = v;
-  }
-  data.settings = settings;
-
+  const data = await collectBackupData();
   await db.auto_backups.add({ created_at: new Date().toISOString(), label, data });
 
   const all = await db.auto_backups.orderBy('created_at').toArray();
@@ -136,24 +152,48 @@ export async function importBackup(file) {
     throw new Error(`Invalid backup: missing required tables: ${missingTables.join(', ')}`);
   }
 
-  await db.transaction('rw', db.tables, async () => {
-    // Clear all tables in reverse dependency order
-    for (const table of [...ALL_TABLES].reverse()) {
-      await db[table].clear();
-    }
-    // Bulk-insert preserving original IDs; optional tables may be absent in older backups
-    for (const table of ALL_TABLES) {
-      const rows = data[table];
-      if (Array.isArray(rows) && rows.length > 0) {
-        await db[table].bulkAdd(rows);
-      }
-    }
-  });
+  await applyBackupData(data);
+}
 
-  // Restore settings to localStorage (after DB transaction succeeds)
-  if (data.settings && typeof data.settings === 'object') {
-    for (const [key, value] of Object.entries(data.settings)) {
-      if (typeof value === 'string') localStorage.setItem(key, value);
-    }
+// ── Cloud sync ────────────────────────────────────────────────────────────────
+
+export async function saveToCloud(supabase) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in');
+  const payload = await collectBackupData();
+  const { error } = await supabase
+    .from('backups')
+    .upsert(
+      { user_id: user.id, label: 'manual', payload, created_at: new Date().toISOString() },
+      { onConflict: 'user_id' }
+    );
+  if (error) throw error;
+}
+
+export async function restoreFromCloud(supabase) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in');
+  const { data, error } = await supabase
+    .from('backups')
+    .select('payload, created_at')
+    .eq('user_id', user.id)
+    .single();
+  if (error) throw error;
+  let payload = migrateBackup(data.payload);
+  const missingTables = REQUIRED_TABLES.filter((t) => !Array.isArray(payload[t]));
+  if (missingTables.length > 0) {
+    throw new Error(`Cloud backup is missing required tables: ${missingTables.join(', ')}`);
   }
+  await applyBackupData(payload);
+}
+
+export async function getCloudBackupMeta(supabase) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from('backups')
+    .select('created_at')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  return data?.created_at ?? null;
 }

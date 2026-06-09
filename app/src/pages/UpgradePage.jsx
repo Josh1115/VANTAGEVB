@@ -30,6 +30,7 @@ const PLANS = [
     features: [
       'Everything in CORE',
       'Two levels (JV + Varsity)',
+      'Up to 45 matches per team/level',
       'Priority customer support',
     ],
   },
@@ -41,6 +42,7 @@ const PLANS = [
     highlight: false,
     features: [
       'Everything in ADVANTAGE',
+      'Up to 60 matches per team/level',
       'Coming soon — stay tuned',
     ],
   },

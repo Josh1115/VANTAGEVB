@@ -6,13 +6,15 @@ import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { Modal } from '../components/ui/Modal';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
-import { exportBackup, importBackup, restoreAutoBackup } from '../stats/backup';
+import { exportBackup, importBackup, restoreAutoBackup, saveToCloud, restoreFromCloud, getCloudBackupMeta } from '../stats/backup';
+import { supabase } from '../utils/supabase';
 import { MergeBackupModal } from '../components/settings/MergeBackupModal';
 import { TERMS_STORAGE_KEY } from '../components/auth/TermsGate';
 import { db } from '../db/schema';
 import { useUiStore } from '../store/uiStore';
 import { FORMAT, ACCENT_COLORS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
+import { PLAN_RANK } from '../hooks/usePlan';
 import {
   getStorageItem, setStorageItem,
   getBoolStorage, setBoolStorage,
@@ -1161,19 +1163,27 @@ function useLastSetScore() {
   return [val, save];
 }
 
+const PLAN_COLS = [
+  { key: 'baseline',  label: 'BASELINE',  price: 'Free',   period: '',        featured: false },
+  { key: 'core',      label: 'CORE',      price: '$49.99', period: '/season', featured: false },
+  { key: 'advantage', label: 'ADVANTAGE', price: '$89.99', period: '/season', featured: true  },
+  { key: 'topper',    label: 'TOPPER',    price: 'TBD',    period: '',        featured: false },
+];
+
 const PLAN_ROWS = [
   { section: 'Limits' },
-  { label: 'Levels',                    values: ['1',       '1',        '2',        '∞']        },
-  { label: 'Seasons',                   values: ['1',       '∞',        '∞',        '∞']        },
-  { label: 'Max matches',               values: ['20',      '∞',        '∞',        '∞']        },
+  { label: 'Levels/Teams',               values: ['1',       '1',        '2',        '∞']        },
+  { label: 'Seasons',                   values: ['1',       '1',        '1',        '1']        },
+  { label: 'Max matches',               values: ['20',      '45',       '45 / team', '60 / team'] },
   { section: 'Recording' },
   { label: 'Live stat recording',       values: [true,      true,       true,       true]       },
   { label: 'Stats depth',               values: ['Basic',   'Full',     'Full',     'Full']     },
   { section: 'Analytics' },
-  { label: 'Reports page',              values: [false,     true,       true,       true]       },
-  { label: 'Records page',              values: [false,     true,       true,       true]       },
-  { label: 'History page',              values: [false,     true,       true,       true]       },
-  { label: 'Rotation analysis',         values: [false,     true,       true,       true]       },
+  { label: 'Reports by SSE',            values: [false,     true,       true,       true]       },
+  { label: 'Vantage Records',           values: [false,     true,       true,       true]       },
+  { label: 'Program/Organization History', values: [false,  true,       true,       true]       },
+  { label: 'Rotational Analyzer & Optimizer', values: [false, true,    true,       true]       },
+  { label: '"Insights" by SSE',          values: [false,     true,       true,       true]       },
   { section: 'Tools' },
   { label: 'Practice tools',            values: [false,     true,       true,       true]       },
   { label: 'Whiteboard',                values: [false,     true,       true,       true]       },
@@ -1182,8 +1192,6 @@ const PLAN_ROWS = [
   { section: 'Export' },
   { label: 'MaxPreps export',           values: [false,     true,       true,       true]       },
   { label: 'PDF / CSV export',          values: [false,     true,       true,       true]       },
-  { section: 'Program' },
-  { label: 'Multi-level (JV + Varsity)',values: [false,     false,      true,       true]       },
   { section: 'Support' },
   { label: 'Settings & customization',  values: ['Limited', 'Full',     'Full',     'Full']     },
   { label: 'Support tier',              values: ['Basic',   'Standard', 'Priority', 'Priority+']},
@@ -1192,7 +1200,7 @@ const PLAN_ROWS = [
 export function SettingsPage() {
   const showToast    = useUiStore((s) => s.showToast);
   const fileInputRef = useRef(null);
-  const { profile }  = useAuth();
+  const { profile, session } = useAuth();
   const navigate     = useNavigate();
   const currentPlan  = profile?.plan ?? 'baseline';
   const [maxSubs, saveMaxSubs]           = useMaxSubs();
@@ -1223,14 +1231,18 @@ export function SettingsPage() {
   const [flipLayout,   saveFlipLayout]  = useToggleSetting(STORAGE_KEYS.FLIP_LAYOUT);
   const [assumeSetterRot1, setAssumeSetterRot1Raw] = useState(() => getBoolStorageDefaultTrue(STORAGE_KEYS.ASSUME_SETTER_ROT1));
   const saveAssumeSetterRot1 = (next) => { setBoolStorage(STORAGE_KEYS.ASSUME_SETTER_ROT1, next); setAssumeSetterRot1Raw(next); };
-  const [confirmClear,   setConfirmClear]   = useState(false);
-  const [confirmImport,  setConfirmImport]  = useState(false);
-  const [confirmLogout,  setConfirmLogout]  = useState(false);
-  const [pendingFile,    setPendingFile]    = useState(null);
-  const [importing,      setImporting]      = useState(false);
-  const [showMerge,      setShowMerge]      = useState(false);
-  const [restoringId,    setRestoringId]    = useState(null);
-  const [helpTopic,      setHelpTopic]      = useState(null);
+  const [confirmClear,        setConfirmClear]        = useState(false);
+  const [confirmImport,       setConfirmImport]       = useState(false);
+  const [confirmLogout,       setConfirmLogout]       = useState(false);
+  const [pendingFile,         setPendingFile]         = useState(null);
+  const [importing,           setImporting]           = useState(false);
+  const [showMerge,           setShowMerge]           = useState(false);
+  const [restoringId,         setRestoringId]         = useState(null);
+  const [helpTopic,           setHelpTopic]           = useState(null);
+  const [cloudSaving,         setCloudSaving]         = useState(false);
+  const [cloudRestoring,      setCloudRestoring]      = useState(false);
+  const [lastCloudSave,       setLastCloudSave]       = useState(null);
+  const [confirmCloudRestore, setConfirmCloudRestore] = useState(false);
 
   const autoBackups = useLiveQuery(
     () => db.auto_backups.orderBy('created_at').reverse().limit(5).toArray(),
@@ -1243,6 +1255,11 @@ export function SettingsPage() {
   const usagePct = storage?.quota ? storage.usage / storage.quota : 0;
   const showStorageWarning = usagePct > 0.8;
 
+  useEffect(() => {
+    if (!session) return;
+    getCloudBackupMeta(supabase).then(setLastCloudSave).catch(() => {});
+  }, [session]);
+
   // ── Handlers ─────────────────────────────────────────────────────────────
 
   async function handleExport() {
@@ -1251,6 +1268,34 @@ export function SettingsPage() {
       showToast('Backup exported', 'success');
     } catch {
       showToast('Export failed', 'error');
+    }
+  }
+
+  async function handleSaveToCloud() {
+    setCloudSaving(true);
+    try {
+      await saveToCloud(supabase);
+      const now = new Date().toISOString();
+      setLastCloudSave(now);
+      showToast('Saved to cloud', 'success');
+    } catch (e) {
+      showToast(e.message ?? 'Cloud save failed', 'error');
+    } finally {
+      setCloudSaving(false);
+    }
+  }
+
+  async function handleRestoreFromCloud() {
+    setCloudRestoring(true);
+    setConfirmCloudRestore(false);
+    try {
+      await restoreFromCloud(supabase);
+      showToast('Restored from cloud', 'success');
+      window.location.reload();
+    } catch (e) {
+      showToast(e.message ?? 'Cloud restore failed', 'error');
+    } finally {
+      setCloudRestoring(false);
     }
   }
 
@@ -1343,9 +1388,6 @@ export function SettingsPage() {
           <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
             <div>
               <h2 className="font-semibold">Plans</h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Current: <span className="text-primary font-bold uppercase">{currentPlan}</span>
-              </p>
             </div>
             {currentPlan === 'baseline' && (
               <button
@@ -1357,48 +1399,114 @@ export function SettingsPage() {
             )}
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse" style={{ minWidth: '320px' }}>
-              <thead>
-                <tr className="border-b border-slate-700">
-                  <th className="py-3 pl-4 pr-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 w-[36%]" />
-                  {[
-                    { key: 'baseline', label: 'BASE​LINE', price: 'Free',    badge: currentPlan === 'baseline' ? 'Current' : '',      badgeCls: 'text-primary border-primary/40 bg-primary/10' },
-                    { key: 'core',     label: 'CORE',      price: '$49.99',  badge: currentPlan === 'core'     ? 'Current' : 'Upgrade', badgeCls: currentPlan === 'core' ? 'text-primary border-primary/40 bg-primary/10' : 'text-slate-400 border-slate-600 bg-slate-800' },
-                    { key: 'advantage',label: 'ADVAN​TAGE', price: '$89.99',  badge: currentPlan === 'advantage'? 'Current' : 'Upgrade', badgeCls: currentPlan === 'advantage' ? 'text-primary border-primary/40 bg-primary/10' : 'text-slate-400 border-slate-600 bg-slate-800' },
-                    { key: 'topper',   label: 'TOPPER',    price: 'TBD',     badge: currentPlan === 'topper'   ? 'Current' : 'Soon',    badgeCls: currentPlan === 'topper' ? 'text-primary border-primary/40 bg-primary/10' : 'text-slate-400 border-slate-600 bg-slate-800' },
-                  ].map(({ key, label, price, badge, badgeCls }) => (
-                    <th key={label} className="py-3 px-1 text-center w-[16%]">
-                      <div className="text-[10px] font-black text-white leading-tight">{label}</div>
-                      <div className="text-[9px] text-slate-400 mt-0.5">{price}</div>
-                      {badge && <span className={`inline-block mt-1 text-[8px] font-bold border rounded-full px-1.5 py-px leading-none ${badgeCls}`}>{badge}</span>}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {PLAN_ROWS.map((row, i) => {
-                  if (row.section) {
-                    return (
-                      <tr key={row.section}>
-                        <td colSpan={5} className="pt-3 pb-0.5 pl-4 pr-2 text-[9px] font-bold uppercase tracking-widest text-slate-500">{row.section}</td>
-                      </tr>
-                    );
-                  }
+            <div style={{ minWidth: '340px' }}>
+
+              {/* Plan header cards */}
+              <div className="grid gap-2 px-3 pt-3 pb-2" style={{ gridTemplateColumns: '1.6fr repeat(4, 1fr)' }}>
+                <div /> {/* feature label spacer */}
+                {PLAN_COLS.map((col) => {
+                  const isCurrent = currentPlan === col.key;
+                  const canUpgrade = !isCurrent && col.key !== 'topper' && PLAN_RANK[col.key] > PLAN_RANK[currentPlan];
                   return (
-                    <tr key={row.label} className={i % 2 === 0 ? 'bg-slate-800/25' : ''}>
-                      <td className="py-2 pl-4 pr-2 text-[11px] text-slate-300 leading-snug">{row.label}</td>
-                      {row.values.map((val, ci) => (
-                        <td key={ci} className="py-2 px-1 text-center">
-                          {val === true  && <span className="text-emerald-400 text-sm leading-none">✓</span>}
-                          {val === false && <span className="text-slate-600 text-sm leading-none">✗</span>}
-                          {typeof val === 'string' && <span className="text-[10px] text-slate-300 leading-tight">{val}</span>}
-                        </td>
-                      ))}
-                    </tr>
+                    <div
+                      key={col.key}
+                      className={`relative flex flex-col items-center justify-center rounded-xl pt-[24.9px] pb-[16.6px] px-1 gap-0.5 overflow-hidden
+                        ${col.featured
+                          ? 'bg-primary/10 ring-1 ring-primary/40'
+                          : isCurrent
+                          ? 'bg-emerald-900/20 ring-1 ring-emerald-700/40'
+                          : 'bg-slate-800/60 ring-1 ring-slate-700/50'}`}
+                    >
+                      {/* Top accent bar */}
+                      <div className={`absolute top-0 left-0 right-0 h-1 ${col.featured ? 'bg-primary' : isCurrent ? 'bg-emerald-600' : 'bg-slate-700'}`} />
+                      {col.featured && (
+                        <span className="absolute top-1.5 left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-widest bg-primary text-white px-1 py-px rounded-full leading-none whitespace-nowrap">
+                          Popular
+                        </span>
+                      )}
+                      <span
+                        className={`text-[19.4px] font-black tracking-widest uppercase italic mt-0.5 ${col.featured ? 'text-primary' : isCurrent ? 'text-emerald-400' : 'text-slate-300'}`}
+                        style={{ WebkitTextStroke: '0.6px currentColor' }}
+                      >
+                        {col.label}
+                      </span>
+                      <span className="text-[19.5px] font-normal leading-none text-white">
+                        {col.price}
+                      </span>
+                      {col.period && <span className="text-[10.5px] text-white leading-none">{col.period}</span>}
+                      <div className="mt-1.5 w-full flex justify-center">
+                        {isCurrent ? (
+                          <span className="text-[10.5px] font-black text-emerald-400 bg-emerald-900/40 border border-emerald-700/50 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                            Active
+                          </span>
+                        ) : col.key === 'topper' ? (
+                          <span className="text-[10.5px] text-slate-600 font-bold">Coming soon</span>
+                        ) : canUpgrade ? (
+                          <button
+                            onClick={() => navigate('/upgrade')}
+                            className={`text-[10.5px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide transition-all active:scale-95
+                              ${col.featured ? 'bg-primary text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+                          >
+                            Upgrade
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+
+              {/* Feature rows */}
+              {PLAN_ROWS.map((row, i) => {
+                if (row.section) {
+                  return (
+                    <div
+                      key={row.section}
+                      className="flex items-center gap-2 px-3 py-2 mt-1 bg-slate-800/70 border-y border-slate-700/40"
+                    >
+                      <span
+                        className="text-[15.2px] font-black uppercase leading-none"
+                        style={{ color: '#f97316', WebkitTextStroke: '0.5px rgba(255,255,255,0.6)', letterSpacing: '0.15em' }}
+                      >
+                        {row.section}
+                      </span>
+                    </div>
+                  );
+                }
+                const isEven = i % 2 === 0;
+                return (
+                  <div
+                    key={row.label}
+                    className={`grid items-center ${isEven ? '' : 'bg-slate-800/20'}`}
+                    style={{ gridTemplateColumns: '1.6fr repeat(4, 1fr)' }}
+                  >
+                    <span className="px-3 py-2 text-[16.5px] text-slate-300 leading-snug">{row.label}</span>
+                    {row.values.map((val, ci) => {
+                      const col = PLAN_COLS[ci];
+                      return (
+                        <div
+                          key={ci}
+                          className={`flex items-center justify-center py-2
+                            ${col.featured ? 'bg-primary/5' : ''}`}
+                        >
+                          {val === true  && <span className="text-emerald-400 text-[21px] font-black leading-none">✓</span>}
+                          {val === false && <span className="text-slate-600 text-[18px] leading-none">—</span>}
+                          {typeof val === 'string' && (
+                            <span className={`text-[15px] font-semibold leading-tight text-center
+                              ${val === '∞' ? 'text-[11px] font-black' : 'text-slate-300'}`}
+                              style={val === '∞' ? { color: '#f97316' } : {}}>
+                              {val === '∞' ? 'UNLIMITED' : val}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+
+              <div className="h-3" />
+            </div>
           </div>
         </section>
 
@@ -2126,6 +2234,35 @@ export function SettingsPage() {
               </div>
             )}
 
+            {session && (
+              <div className="pt-1">
+                <p className="text-sm font-medium mb-1.5">Cloud Backup</p>
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1"
+                    variant="secondary"
+                    disabled={cloudSaving}
+                    onClick={handleSaveToCloud}
+                  >
+                    {cloudSaving ? 'Saving…' : 'Save to Cloud'}
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    variant="secondary"
+                    disabled={cloudRestoring}
+                    onClick={() => setConfirmCloudRestore(true)}
+                  >
+                    {cloudRestoring ? 'Restoring…' : 'Restore from Cloud'}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1.5">
+                  {lastCloudSave
+                    ? `Last saved: ${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(lastCloudSave))}`
+                    : 'No cloud backup yet'}
+                </p>
+              </div>
+            )}
+
             <Button className="w-full" variant="danger" onClick={() => setConfirmClear(true)}>
               Clear All Data
             </Button>
@@ -2161,6 +2298,17 @@ export function SettingsPage() {
           danger
           onConfirm={handleImportConfirm}
           onCancel={() => { setConfirmImport(false); setPendingFile(null); }}
+        />
+      )}
+
+      {confirmCloudRestore && (
+        <ConfirmDialog
+          title="Restore from Cloud"
+          message="This will REPLACE all local data with your cloud backup. Any changes made since your last cloud save will be lost. Export a local backup first if you want to preserve current data."
+          confirmLabel="Restore & Replace"
+          danger
+          onConfirm={handleRestoreFromCloud}
+          onCancel={() => setConfirmCloudRestore(false)}
         />
       )}
 

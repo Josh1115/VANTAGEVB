@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './router';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -10,6 +10,16 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary';
 function AppShell() {
   const { session, loading } = useAuth();
   const [view, setView] = useState('login'); // 'login' | 'signup'
+  const wasLoggedOut = useRef(false);
+
+  if (!loading && !session) wasLoggedOut.current = true;
+
+  // When transitioning from logged-out → logged-in, reset URL to home
+  // so the router doesn't land on whatever page was open before login.
+  if (!loading && session && wasLoggedOut.current) {
+    wasLoggedOut.current = false;
+    window.history.replaceState(null, '', '/');
+  }
 
   if (loading) {
     return (

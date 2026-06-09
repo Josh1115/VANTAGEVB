@@ -12,7 +12,9 @@ import { serveOrderToZone } from '../components/court/CourtZonePicker';
 import { LineupForm } from '../components/match/LineupForm';
 import { usePlan } from '../hooks/usePlan';
 
-const BASELINE_MATCH_LIMIT = 20;
+const BASELINE_MATCH_LIMIT  = 20;
+const ADVANTAGE_MATCH_LIMIT = 45;
+const TOPPER_MATCH_LIMIT    = 60;
 
 export function MatchSetupPage() {
   const navigate     = useNavigate();
@@ -24,7 +26,9 @@ export function MatchSetupPage() {
   const scheduledMatchId = searchParams.get('match') ? Number(searchParams.get('match')) : null;
 
   const { plan } = usePlan();
-  const isBaseline = plan === 'baseline';
+  const isBaseline  = plan === 'baseline';
+  const isAdvantage = plan === 'advantage';
+  const isTopper    = plan === 'topper';
   const totalMatches = useLiveQuery(() => db.matches.count(), []);
 
   useEffect(() => {
@@ -79,6 +83,13 @@ export function MatchSetupPage() {
   }, []);
 
   const selectedSeason = (seasons ?? []).find((s) => s.id === Number(seasonId));
+
+  const teamMatchCount = useLiveQuery(async () => {
+    if (!selectedSeason?.team_id) return undefined;
+    const teamSeasons = await db.seasons.where('team_id').equals(selectedSeason.team_id).toArray();
+    const seasonIds = teamSeasons.map((s) => s.id);
+    return db.matches.where('season_id').anyOf(seasonIds).count();
+  }, [selectedSeason?.team_id]);
 
   const selectedTeam = useLiveQuery(
     () => selectedSeason?.team_id ? db.teams.get(selectedSeason.team_id) : Promise.resolve(null),
@@ -368,6 +379,56 @@ export function MatchSetupPage() {
             >
               Upgrade →
             </button>
+          </div>
+        )}
+
+        {/* Advantage match limit warning */}
+        {isAdvantage && teamMatchCount !== undefined && teamMatchCount >= ADVANTAGE_MATCH_LIMIT && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-red-700/50 bg-red-900/20 px-4 py-3">
+            <p className="text-sm text-red-300">
+              This team has reached the <span className="font-black">{ADVANTAGE_MATCH_LIMIT}-match</span> limit for ADVANTAGE.
+            </p>
+            <button
+              onClick={() => navigate('/upgrade')}
+              className="text-xs font-black text-primary whitespace-nowrap hover:text-orange-300 transition-colors"
+            >
+              Upgrade →
+            </button>
+          </div>
+        )}
+        {isAdvantage && teamMatchCount !== undefined && teamMatchCount < ADVANTAGE_MATCH_LIMIT && selectedSeason && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-700/50 bg-amber-900/20 px-4 py-3">
+            <p className="text-sm text-amber-300">
+              Match <span className="font-black">{teamMatchCount + 1} of {ADVANTAGE_MATCH_LIMIT}</span> for this team on ADVANTAGE.
+            </p>
+            <button
+              onClick={() => navigate('/upgrade')}
+              className="text-xs font-black text-primary whitespace-nowrap hover:text-orange-300 transition-colors"
+            >
+              Upgrade →
+            </button>
+          </div>
+        )}
+
+        {/* Topper match limit warning */}
+        {isTopper && teamMatchCount !== undefined && teamMatchCount >= TOPPER_MATCH_LIMIT && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-red-700/50 bg-red-900/20 px-4 py-3">
+            <p className="text-sm text-red-300">
+              This team has reached the <span className="font-black">{TOPPER_MATCH_LIMIT}-match</span> limit for TOPPER.
+            </p>
+            <button
+              onClick={() => navigate('/upgrade')}
+              className="text-xs font-black text-primary whitespace-nowrap hover:text-orange-300 transition-colors"
+            >
+              Contact Support →
+            </button>
+          </div>
+        )}
+        {isTopper && teamMatchCount !== undefined && teamMatchCount < TOPPER_MATCH_LIMIT && selectedSeason && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-700/50 bg-amber-900/20 px-4 py-3">
+            <p className="text-sm text-amber-300">
+              Match <span className="font-black">{teamMatchCount + 1} of {TOPPER_MATCH_LIMIT}</span> for this team on TOPPER.
+            </p>
           </div>
         )}
 
@@ -845,11 +906,11 @@ export function MatchSetupPage() {
 
         {/* Primary action */}
         {manualEntry ? (
-          <Button size="lg" className="w-full" disabled={saving} onClick={handleManualSave}>
+          <Button size="lg" className="w-full" disabled={saving || (isAdvantage && teamMatchCount >= ADVANTAGE_MATCH_LIMIT) || (isTopper && teamMatchCount >= TOPPER_MATCH_LIMIT)} onClick={handleManualSave}>
             {saving ? 'Saving…' : 'Save Match'}
           </Button>
         ) : (
-          <Button size="lg" className="w-full" disabled={saving} onClick={handleStart}>
+          <Button size="lg" className="w-full" disabled={saving || (isAdvantage && teamMatchCount >= ADVANTAGE_MATCH_LIMIT) || (isTopper && teamMatchCount >= TOPPER_MATCH_LIMIT)} onClick={handleStart}>
             {saving ? 'Creating…' : 'Start Match'}
           </Button>
         )}
