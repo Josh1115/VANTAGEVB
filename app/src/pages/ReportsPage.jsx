@@ -302,6 +302,7 @@ export function ReportsPage() {
   const [playerStatView,        setPlayerStatView]        = useState('serving');
   const [playerServeView,       setPlayerServeView]       = useState('all');
   const [selectedServingPlayerId, setSelectedServingPlayerId] = useState(null);
+  const [selectedGender,   setSelectedGender]   = useState('');
   const [selectedTeamId,   setSelectedTeamId]   = useState(() => getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID,   null) ?? '');
   const [selectedSeasonId, setSelectedSeasonId] = useState(() => getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID, null) ?? '');
   const [selectedMatchIds, setSelectedMatchIds] = useState(null); // null = all matches
@@ -316,9 +317,21 @@ export function ReportsPage() {
   const [showAllMatches, setShowAllMatches] = useState(false);
   const [prodSort, setProdSort] = useState({ key: 'ptPct', dir: 'desc' });
   const statsDebounceRef = useRef(null);
+  const genderInitRef = useRef(false);
+
+  const GENDER_LABELS = { F: 'Girls', M: 'Boys', Mixed: 'Mixed' };
 
   // Filter data
   const teams   = useLiveQuery(() => db.teams.toArray(), []);
+  const genderOptions = useMemo(() => {
+    const seen = new Set((teams ?? []).map(t => t.gender ?? '').filter(Boolean));
+    return [...seen].sort();
+  }, [teams]);
+  const multiGender = genderOptions.length > 1;
+  const filteredTeams = useMemo(() => {
+    if (!selectedGender) return teams ?? [];
+    return (teams ?? []).filter(t => t.gender === selectedGender);
+  }, [teams, selectedGender]);
   const seasons = useLiveQuery(
     () => selectedTeamId
       ? db.seasons.where('team_id').equals(Number(selectedTeamId)).toArray()
@@ -345,6 +358,15 @@ export function ReportsPage() {
   const positionMap = useMemo(() => players
     ? Object.fromEntries((Array.isArray(players) ? players : Object.values(players)).map(p => [p.id, p.position]))
     : {}, [players]);
+
+  function handleGenderChange(e) {
+    setSelectedGender(e.target.value);
+    setSelectedTeamId('');
+    setSelectedSeasonId('');
+    setSelectedMatchIds(null);
+    setStats(null);
+    setContacts([]);
+  }
 
   // Reset everything when team changes
   function handleTeamChange(e) {
@@ -401,6 +423,14 @@ export function ReportsPage() {
     const d = new Date(iso);
     return `${d.getMonth() + 1}/${d.getDate()}`;
   };
+
+  // Seed gender from the default team on first load (teams arrive async from Dexie)
+  useEffect(() => {
+    if (genderInitRef.current || !teams?.length || !selectedTeamId) return;
+    const team = teams.find(t => t.id === Number(selectedTeamId));
+    if (team?.gender) setSelectedGender(team.gender);
+    genderInitRef.current = true;
+  }, [teams, selectedTeamId]);
 
   // Load season stats when season, match selection, or chip filters change.
   // Debounced 150ms so rapid filter taps don't fire multiple expensive scans.
@@ -568,9 +598,17 @@ export function ReportsPage() {
 
       {/* Filters */}
       <div className="px-4 pt-4 pb-2 flex gap-3 flex-wrap">
+        {multiGender && (
+          <select className={selectClass} value={selectedGender} onChange={handleGenderChange}>
+            <option value="">All Genders</option>
+            {genderOptions.map(g => (
+              <option key={g} value={g}>{GENDER_LABELS[g] ?? g}</option>
+            ))}
+          </select>
+        )}
         <select className={selectClass} value={selectedTeamId} onChange={handleTeamChange}>
           <option value="">Select Team</option>
-          {(teams ?? []).map(t => (
+          {filteredTeams.map(t => (
             <option key={t.id} value={t.id}>{t.name}</option>
           ))}
         </select>

@@ -1106,7 +1106,10 @@ function CollapsibleSection({ title, subtitle, children, defaultOpen = true }) {
         className="w-full flex items-center justify-between px-4 py-3 border-b border-slate-700 text-left"
       >
         <div>
-          <h2 className="font-semibold">{title}</h2>
+          <h2
+            className="text-[18.4px] font-black uppercase leading-none section-twinkle"
+            style={{ color: '#f97316', WebkitTextStroke: '0.5px rgba(255,255,255,0.6)', letterSpacing: '0.15em' }}
+          >{title}</h2>
           {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
         </div>
         <span className={`text-slate-400 text-xs transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▼</span>
@@ -1185,11 +1188,12 @@ const PLAN_ROWS = [
   { label: 'Levels/Teams',               values: ['1',       '1',        '2',        '∞']        },
   { label: 'Seasons',                   values: ['1',       '1',        '1',        '1']        },
   { label: 'Max matches',               values: ['20',      '45',       '45 / team', '60 / team'] },
-  { section: 'Recording' },
-  { label: 'Live stat recording',       values: [true,      true,       true,       true]       },
-  { label: 'Stats depth',               values: ['Basic',   'Full',     'Full',     'Full']     },
+  { section: 'Live Stats' },
+  { label: 'Stats Depth',               values: ['Basic',   'Full',     'Full',     'Full']     },
+  { label: 'Player Stats',              values: ['Per Game', 'Per Game & Season', 'Per Game & Season', 'Per Game & Season'] },
   { section: 'Analytics' },
   { label: 'Reports by SSE',            values: [false,     true,       true,       true]       },
+  { label: 'Trends by SSE',             values: [false,     true,       true,       true]       },
   { label: 'Vantage Records',           values: [false,     true,       true,       true]       },
   { label: 'Program/Organization History', values: [false,  true,       true,       true]       },
   { label: 'Rotational Analyzer & Optimizer', values: [false, true,    true,       true]       },
@@ -1396,7 +1400,10 @@ export function SettingsPage() {
         <section className="bg-surface rounded-xl overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
             <div>
-              <h2 className="font-semibold">Plans</h2>
+              <h2
+                className="text-[18.4px] font-black uppercase leading-none section-twinkle text-center w-full"
+                style={{ color: '#f97316', WebkitTextStroke: '0.5px rgba(255,255,255,0.6)', letterSpacing: '0.15em' }}
+              >Plans</h2>
             </div>
             {currentPlan === 'baseline' && (
               <button
