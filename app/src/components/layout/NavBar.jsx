@@ -301,7 +301,6 @@ const TABS = [
   { to: '/teams',    label: 'Teams',   svg: TeamsIcon, end: false, idleAnim: ''                        },
   { to: '/records',  label: 'Records', svg: ConfettiTrophy, end: false, idleAnim: 'animate-trophy-twinkle', requires: 'core' },
   { to: '/history',  label: 'History', svg: HistoryBookIcon, end: false, idleAnim: 'animate-book-open', requires: 'core'  },
-  { to: '/reports',  label: 'Reports', svg: ClipboardIcon, end: false, idleAnim: 'animate-chart-float', requires: 'core' },
   { to: '/settings', label: 'Settings', svg: SettingsGearIcon, end: false, idleAnim: 'animate-gear-spin' },
 ];
 

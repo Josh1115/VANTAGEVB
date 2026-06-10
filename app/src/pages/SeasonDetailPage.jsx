@@ -15,6 +15,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { SwipeableMatchCard } from '../components/ui/SwipeableMatchCard';
 import { PostSeasonModal } from '../components/shared/PostSeasonModal';
 import { applyInferredSeasonFinish } from '../utils/seasonUtils';
+import { PvShareSheet } from '../components/parentvantage/PvShareSheet';
 
 
 export function SeasonDetailPage() {
@@ -98,6 +99,7 @@ export function SeasonDetailPage() {
   // Schedule-game modal state (must be before early return)
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmEndSeason, setConfirmEndSeason] = useState(false);
+  const [pvShareMatch, setPvShareMatch] = useState(null);
   const [showPostSeason,   setShowPostSeason]   = useState(false);
 
   const [schedOpen,      setSchedOpen]      = useState(false);
@@ -258,9 +260,13 @@ export function SeasonDetailPage() {
         opponent_playoff_seed: schedMatchType === 'ihsa-playoffs' && schedOppSeed !== '' ? parseInt(schedOppSeed, 10) : null,
       };
       if (editMatchId) {
-        await db.matches.update(editMatchId, fields);
+        const existing = await db.matches.get(editMatchId);
+        await db.matches.update(editMatchId, {
+          ...fields,
+          pv_token: existing?.pv_token ?? crypto.randomUUID(),
+        });
       } else {
-        await db.matches.add({ season_id: id, status: MATCH_STATUS.SCHEDULED, ...fields });
+        await db.matches.add({ season_id: id, status: MATCH_STATUS.SCHEDULED, pv_token: crypto.randomUUID(), ...fields });
       }
       resetSchedForm();
     } finally {
@@ -534,6 +540,15 @@ export function SeasonDetailPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          {match.pv_token && (
+                            <button
+                              onClick={() => setPvShareMatch(match)}
+                              className="text-xs font-semibold px-2.5 py-1 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
+                              title="Share on ParentVantage"
+                            >
+                              PV
+                            </button>
+                          )}
                           <button
                             onClick={() => openEditMatch(match)}
                             className="text-xs font-semibold px-2.5 py-1 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
@@ -595,6 +610,15 @@ export function SeasonDetailPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
+                      {match.pv_token && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setPvShareMatch(match); }}
+                          className="text-xs font-bold px-2 py-1 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
+                          title="Share on ParentVantage"
+                        >
+                          PV
+                        </button>
+                      )}
                       {match.status === MATCH_STATUS.COMPLETE && (
                         <button
                           onClick={(e) => handleMaxPreps(e, match.id)}
@@ -681,6 +705,14 @@ export function SeasonDetailPage() {
           teamId={season.team_id}
           year={season.year}
           onClose={() => setShowPostSeason(false)}
+        />
+      )}
+
+      {pvShareMatch && (
+        <PvShareSheet
+          match={pvShareMatch}
+          teamName={team?.name}
+          onClose={() => setPvShareMatch(null)}
         />
       )}
 

@@ -5,6 +5,8 @@ import { db } from '../db/schema';
 import { useMatchStore } from '../store/matchStore';
 import { useShallow } from 'zustand/react/shallow';
 import { computePlayerStats, computeTeamStats, computeSeasonStats } from '../stats/engine';
+import { computeMatchSnapshot } from '../utils/pvSnapshot';
+import { publishPvStats } from '../utils/supabase';
 import { SET_STATUS, FORMAT, SIDE, MATCH_STATUS } from '../constants';
 import { useRecordAlerts } from '../hooks/useRecordAlerts';
 import { useWakeLock } from '../hooks/useWakeLock';
@@ -68,6 +70,7 @@ export function LiveMatchPage() {
   const {
     recordHomeRotError,
     setMatch, setLineup, setPlayerNicknames, setLibero, swapLibero,
+    startBroadcast, stopBroadcast,
     endSet, endMatch, finishRevisedSet, clearPendingSetWin,
     confirmServeZone, dismissServeZoneModal, loadServeReticles, loadSetFormationData,
     pendingSetWin, ourScore, oppScore, ourSetsWon, oppSetsWon, format,
@@ -75,6 +78,8 @@ export function LiveMatchPage() {
     teamId, lineup, setNumber, currentRun,
   } = useMatchStore(useShallow((s) => ({
     recordHomeRotError:   s.recordHomeRotError,
+    startBroadcast:       s.startBroadcast,
+    stopBroadcast:        s.stopBroadcast,
     setMatch:             s.setMatch,
     setLineup:            s.setLineup,
     setPlayerNicknames:   s.setPlayerNicknames,
@@ -306,6 +311,19 @@ export function LiveMatchPage() {
       setReady(true);
       await loadServeReticles(currentSet.id);
 
+      // Auto-broadcast: publish snapshot + start live feed if online
+      if (match.pv_token && navigator.onLine) {
+        try {
+          const snapshot = await computeMatchSnapshot(matchId);
+          if (snapshot) {
+            await publishPvStats(match.pv_token, team?.name ?? '', snapshot);
+          }
+        } catch {
+          // non-critical — silent fail
+        }
+        startBroadcast(match.pv_token);
+      }
+
       // Load ace zone hints + season rotation baseline (non-critical, fires after UI is ready)
       if (match.season_id) {
         try {
@@ -519,6 +537,7 @@ export function LiveMatchPage() {
                 navigate(`/matches/${matchIdParam}/summary`);
               } else if (isMatchOver) {
                 await endMatch(pendingSetWin);
+                stopBroadcast();
                 autoSaveBackup('match_end').catch(() => {});
                 clearPendingSetWin();
                 const winner = pendingSetWin;

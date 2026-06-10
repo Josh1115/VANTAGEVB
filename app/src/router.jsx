@@ -32,6 +32,7 @@ const ToolsPage        = lazy(() => import('./pages/ToolsPage').then(m => ({ def
 const ServeReceivePage = lazy(() => import('./pages/tools/ServeReceivePage').then(m => ({ default: m.ServeReceivePage })));
 const ServeTrackerPage = lazy(() => import('./pages/tools/ServeTrackerPage').then(m => ({ default: m.ServeTrackerPage })));
 const PracticeGamePage = lazy(() => import('./pages/tools/PracticeGamePage').then(m => ({ default: m.PracticeGamePage })));
+const ParentViewPage       = lazy(() => import('./pages/ParentViewPage').then(m => ({ default: m.ParentViewPage })));
 const TermsPage                = lazy(() => import('./pages/TermsPage').then(m => ({ default: m.TermsPage })));
 const HelpServeReceivePage     = lazy(() => import('./pages/HelpServeReceivePage').then(m => ({ default: m.HelpServeReceivePage })));
 const HelpDefaultTeamPage      = lazy(() => import('./pages/HelpDefaultTeamPage').then(m => ({ default: m.HelpDefaultTeamPage })));
@@ -63,6 +64,11 @@ function S({ children }) {
 }
 
 export const router = createBrowserRouter([
+  // Public parent view — outside the main Layout (no navbar)
+  {
+    path: '/pv/:token',
+    element: <S><ParentViewPage /></S>,
+  },
   {
     path: '/',
     element: <Layout />,
@@ -85,6 +91,7 @@ export const router = createBrowserRouter([
       { path: 'records',                     element: <PlanGate requires="core" feature="Career records"><S><RecordsPage /></S></PlanGate> },
       { path: 'history',                     element: <PlanGate requires="core" feature="Season history"><S><HistoryPage /></S></PlanGate> },
       { path: 'reports',                     element: <PlanGate requires="core" feature="Analytics & reports"><S><ReportsPage /></S></PlanGate> },
+      { path: 'hub',                         element: <S><TeamsPage /></S> },
       { path: 'settings',                    element: <S><SettingsPage /></S> },
       { path: 'upgrade',                     element: <S><UpgradePage /></S> },
       { path: 'tools',                       element: <PlanGate requires="core" feature="Practice tools"><S><ToolsPage /></S></PlanGate> },

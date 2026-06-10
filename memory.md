@@ -407,6 +407,31 @@ Libero rule update: libero CAN serve (S1) — no position restriction
 - Coach Name text input added to Personalization section (second field) — used on PDF reports and CSV exports
 - Sound Effects toggle added to Live Match section (between Haptic Feedback and Player Name Format)
 
+### 2026-06-10 — ParentVantage Rework (Match-Level Gamecast)
+
+**Removed:**
+- Hub NavBar tab (`NavBar.jsx`) + `HubIcon` inline function
+- `ParentVantageHubPage` import from `router.jsx`; `/hub` route now redirects to TeamsPage
+- `ParentVantageHubPage.jsx` left on disk but unreachable
+
+**New files:**
+- `src/components/parentvantage/PvShareSheet.jsx` — reusable bottom sheet with QR code + copy link; accepts `onContinue`/`continueLabel` props for post-save navigation
+
+**Modified:**
+- `src/utils/pvSnapshot.js` — added `computeMatchSnapshot(matchId)`: computes stats for a single match from lineup players, contacts, and sets; distinct from the existing team-season `computeSnapshotPayload`
+- `src/pages/MatchSetupPage.jsx` — `pv_token: crypto.randomUUID()` added to both `db.matches.add()` paths (handleManualSave + handleStart); scheduled match update preserves existing token; after either save, PvShareSheet is shown before navigating (QR share moment)
+- `src/pages/SeasonDetailPage.jsx` — `pv_token` generated on both schedule-new and schedule-edit paths; `pvShareMatch` state + PvShareSheet rendered; **PV** button added to scheduled match actions and to completed/in-progress match card right side (before MaxPreps)
+- `src/pages/LiveMatchPage.jsx` — after init/setReady, auto-calls `computeMatchSnapshot` + `publishPvStats` + `startBroadcast` if `match.pv_token && navigator.onLine`; `stopBroadcast()` called on match end
+- `src/pages/ParentViewPage.jsx` — full redesign: sticky header with teams + location + live/final badge; live scoreboard (LiveScoreBoard); team stat bar (kills/aces/digs/blocks/assists); tabbed Box Score / Play-by-Play; BoxScoreTable with sortable columns + expandable PlayerStatCard; states: loading / not-found / waiting / in_progress / final
+
+**Key decisions:**
+- Token is per-match (stored as `pv_token` on match record, unindexed), not per-team
+- Broadcasting is fully automatic — no manual "Go Live" button
+- `pv_stats` Supabase table structure unchanged; just uses match token instead of team token
+- `computeSnapshotPayload(teamId)` retained for any future use; new function is additive
+
+**Build:** Clean ✓ — 163/163 tests passing
+
 ## Weekly Summaries
 
 ## Monthly Summaries

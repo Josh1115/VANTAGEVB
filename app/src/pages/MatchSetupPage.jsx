@@ -11,8 +11,10 @@ import { MATCH_STATUS, SET_STATUS, FORMAT, SIDE } from '../constants';
 import { serveOrderToZone } from '../components/court/CourtZonePicker';
 import { LineupForm } from '../components/match/LineupForm';
 import { usePlan } from '../hooks/usePlan';
+import { PvShareSheet } from '../components/parentvantage/PvShareSheet';
 
 const BASELINE_MATCH_LIMIT  = 20;
+const TRIAL_MATCH_LIMIT     = 5;
 const ADVANTAGE_MATCH_LIMIT = 45;
 const TOPPER_MATCH_LIMIT    = 60;
 
@@ -25,17 +27,18 @@ export function MatchSetupPage() {
 
   const scheduledMatchId = searchParams.get('match') ? Number(searchParams.get('match')) : null;
 
-  const { plan } = usePlan();
+  const { plan, isTrial } = usePlan();
   const isBaseline  = plan === 'baseline';
   const isAdvantage = plan === 'advantage';
   const isTopper    = plan === 'topper';
   const totalMatches = useLiveQuery(() => db.matches.count(), []);
 
   useEffect(() => {
-    if (isBaseline && totalMatches !== undefined && totalMatches >= BASELINE_MATCH_LIMIT && !scheduledMatchId) {
-      navigate('/upgrade');
+    if (!scheduledMatchId && totalMatches !== undefined) {
+      if (isBaseline && totalMatches >= BASELINE_MATCH_LIMIT) navigate('/upgrade');
+      if (isTrial    && totalMatches >= TRIAL_MATCH_LIMIT)    navigate('/upgrade');
     }
-  }, [isBaseline, totalMatches, scheduledMatchId, navigate]);
+  }, [isBaseline, isTrial, totalMatches, scheduledMatchId, navigate]);
 
   const [seasonId,  setSeasonId]  = useState(searchParams.get('season') ?? '');
   const [opponent,           setOpponent]           = useState('');
@@ -71,6 +74,8 @@ export function MatchSetupPage() {
   const [liberoJerseyColor, setLiberoJerseyColor] = useState('black');
   const [saving,         setSaving]         = useState(false);
   const [error,          setError]          = useState('');
+  const [pvShareMatch,   setPvShareMatch]   = useState(null);
+  const [pvNav,          setPvNav]          = useState(null);
   const [loadPickerOpen, setLoadPickerOpen] = useState(false);
   const [manualEntry,    setManualEntry]    = useState(false);
   const [manualSets,     setManualSets]     = useState([{ ourScore: '', oppScore: '' }]);
@@ -209,6 +214,7 @@ export function MatchSetupPage() {
         opponent_record:        opponentRecord.trim() || null,
         opponent_maxpreps_rank: opponentMaxprepsRank !== '' ? parseInt(opponentMaxprepsRank, 10) : null,
         status:                 MATCH_STATUS.COMPLETE,
+        pv_token:               crypto.randomUUID(),
         format,
         last_set_score:         matchType === 'tourney' ? tourneySet3 : lastSetScore,
         location,
@@ -233,7 +239,9 @@ export function MatchSetupPage() {
         }))
       );
 
-      navigate(`/matches/${matchId}/summary`);
+      const savedMatch = await db.matches.get(matchId);
+      setPvShareMatch(savedMatch);
+      setPvNav(`/matches/${matchId}/summary`);
     } catch {
       showToast('Failed to save match. Try again.', 'error');
       setError('Failed to save match. Try again.');
@@ -279,6 +287,7 @@ export function MatchSetupPage() {
           opponent_record:       opponentRecord.trim() || null,
           opponent_maxpreps_rank: opponentMaxprepsRank !== '' ? parseInt(opponentMaxprepsRank, 10) : null,
           status:                MATCH_STATUS.IN_PROGRESS,
+          pv_token:              scheduledMatch?.pv_token ?? crypto.randomUUID(),
           format,
           last_set_score:        matchType === 'tourney' ? tourneySet3 : lastSetScore,
           location,
@@ -300,6 +309,7 @@ export function MatchSetupPage() {
           opponent_record:       opponentRecord.trim() || null,
           opponent_maxpreps_rank: opponentMaxprepsRank !== '' ? parseInt(opponentMaxprepsRank, 10) : null,
           status:                MATCH_STATUS.IN_PROGRESS,
+          pv_token:              crypto.randomUUID(),
           format,
           last_set_score:        matchType === 'tourney' ? tourneySet3 : lastSetScore,
           location,
@@ -352,7 +362,9 @@ export function MatchSetupPage() {
         }))
       );
 
-      navigate(`/matches/${effectiveMatchId}/live`);
+      const savedMatch = await db.matches.get(effectiveMatchId);
+      setPvShareMatch(savedMatch);
+      setPvNav(`/matches/${effectiveMatchId}/live`);
     } catch {
       showToast('Failed to create match. Try again.', 'error');
       setError('Failed to create match. Try again.');
@@ -367,11 +379,27 @@ export function MatchSetupPage() {
 
       <div className="p-4 md:p-6 space-y-5 max-w-lg mx-auto">
 
-        {/* Baseline match limit warning */}
+        {/* Match limit warning — baseline (grandfathered) */}
         {isBaseline && totalMatches !== undefined && totalMatches < BASELINE_MATCH_LIMIT && (
           <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-700/50 bg-amber-900/20 px-4 py-3">
             <p className="text-sm text-amber-300">
               Match <span className="font-black">{totalMatches + 1} of {BASELINE_MATCH_LIMIT}</span> on BASELINE.
+            </p>
+            <button
+              onClick={() => navigate('/upgrade')}
+              className="text-xs font-black text-primary whitespace-nowrap hover:text-orange-300 transition-colors"
+            >
+              Upgrade →
+            </button>
+          </div>
+        )}
+
+        {/* Match limit warning — trial */}
+        {isTrial && totalMatches !== undefined && totalMatches < TRIAL_MATCH_LIMIT && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/40 bg-primary/10 px-4 py-3">
+            <p className="text-sm text-orange-300">
+              Trial match <span className="font-black">{totalMatches + 1} of {TRIAL_MATCH_LIMIT}</span>.{' '}
+              {totalMatches + 1 === TRIAL_MATCH_LIMIT ? 'This is your last trial match.' : ''}
             </p>
             <button
               onClick={() => navigate('/upgrade')}
@@ -915,6 +943,16 @@ export function MatchSetupPage() {
           </Button>
         )}
       </div>
+
+      {pvShareMatch && pvNav && (
+        <PvShareSheet
+          match={pvShareMatch}
+          teamName={null}
+          onClose={() => { setPvShareMatch(null); navigate(pvNav); }}
+          onContinue={() => { setPvShareMatch(null); navigate(pvNav); }}
+          continueLabel={pvNav.includes('/live') ? 'Start Match →' : 'View Summary →'}
+        />
+      )}
     </div>
   );
 }
