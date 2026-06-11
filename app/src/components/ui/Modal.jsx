@@ -9,14 +9,13 @@ export function Modal({ title, children, onClose, footer }) {
   }, [onClose]);
 
   return createPortal(
-    <>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-backdrop-in"
+      onClick={onClose}
+    >
       <div
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-backdrop-in"
-        onClick={onClose}
-      />
-      <div
-        className="fixed z-50 w-[calc(100%-2rem)] max-w-lg max-h-[90dvh] flex flex-col bg-surface rounded-2xl animate-modal-up"
-        style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+        className="w-full max-w-lg max-h-[85dvh] flex flex-col bg-surface rounded-2xl animate-modal-up"
+        onClick={(e) => e.stopPropagation()}
       >
         {title && (
           <div className="flex items-center justify-between shrink-0 px-6 pt-6 pb-4">
@@ -29,7 +28,7 @@ export function Modal({ title, children, onClose, footer }) {
         </div>
         {footer && <div className="shrink-0 px-6 py-4 flex gap-2 justify-end border-t border-slate-700/60">{footer}</div>}
       </div>
-    </>,
+    </div>,
     document.body
   );
 }
