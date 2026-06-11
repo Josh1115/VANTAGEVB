@@ -53,7 +53,6 @@ export function LiveMatchPage() {
   const [exportPromptNav,     setExportPromptNav]     = useState(null); // fn to call after export prompt
   const [teamName,            setTeamName]            = useState('');
   const [opponentName,        setOpponentName]        = useState('');
-  const [liveStatsDefaultTab, setLiveStatsDefaultTab] = useState(null);
   const [aceZoneHints,        setAceZoneHints]        = useState({}); // { [playerId]: { [zone]: count } }
   const [seasonRotation,      setSeasonRotation]      = useState(null);
   const [seasonId,            setSeasonId]            = useState(null);
@@ -206,7 +205,6 @@ export function LiveMatchPage() {
   }, []);
 
   useEffect(() => {
-    const matchId = parseInt(matchIdParam, 10);
     if (!matchId) return;
 
     async function init() {
@@ -454,12 +452,11 @@ export function LiveMatchPage() {
       {menuOpen  && <MenuDrawer onClose={() => setMenuOpen(false)} flipLayout={flipLayout} onFlipLayout={handleToggleFlip} teamName={teamName} opponentName={opponentName} />}
       <LiveStatsModal
         open={statsOpen}
-        onClose={() => { setStatsOpen(false); setLiveStatsDefaultTab(null); }}
+        onClose={() => setStatsOpen(false)}
         teamName={teamName}
         opponentName={opponentName}
         recordAlerts={activeAlerts}
         records={records}
-        defaultTab={liveStatsDefaultTab}
         seasonRotation={seasonRotation}
       />
       {summaryOpen && <ScoringSummaryModal onClose={() => setSummaryOpen(false)} />}

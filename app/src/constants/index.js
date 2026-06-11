@@ -146,6 +146,17 @@ export const COLLEGE_DIVISIONS = [
 ];
 
 // Plan feature lists
+export const TRIAL_MATCH_LIMIT  = 5;
+export const TRIAL_FEATURES     = [
+  'Full Core feature access',
+  'All analytics & reports',
+  'Practice tools & whiteboard',
+  'Opponent scouting page',
+  'Multi-format export (PDF, CSV, MaxPreps)',
+  'Limited to 5 matches',
+  'Read-only after trial ends',
+];
+// Kept for grandfathered Baseline users
 export const BASELINE_FEATURES  = [
   'Limited to one level',
   'Limited to one season',
@@ -165,6 +176,28 @@ export const BASELINE_FEATURES  = [
 export const CORE_FEATURES      = ['Full analytics suite', 'Career records & history', 'Practice tools', 'Opponent scouting page', 'Rotation optimizer', 'Multi-format export (PDF, CSV, MaxPreps)'];
 export const ADVANTAGE_FEATURES = ['Everything in CORE', 'Two levels per program (JV + Varsity)', 'Up to 45 matches per team/level', 'Priority customer support'];
 export const TOPPER_FEATURES    = ['Everything in ADVANTAGE', 'Up to 60 matches per team/level'];
+
+// Jersey / team colors — shared between TeamsPage (color picker) and SeasonsPage (accent derivation)
+export const JERSEY_COLORS = [
+  { id: 'black',  label: 'Black',  bg: '#111827', border: '#374151' },
+  { id: 'white',  label: 'White',  bg: '#f8fafc', border: '#94a3b8' },
+  { id: 'gray',   label: 'Gray',   bg: '#94a3b8', border: '#64748b' },
+  { id: 'red',    label: 'Red',    bg: '#dc2626', border: '#ef4444' },
+  { id: 'orange', label: 'Orange', bg: '#ea580c', border: '#f97316' },
+  { id: 'yellow', label: 'Yellow', bg: '#ca8a04', border: '#eab308' },
+  { id: 'green',  label: 'Green',  bg: '#16a34a', border: '#22c55e' },
+  { id: 'blue',   label: 'Blue',   bg: '#1d4ed8', border: '#3b82f6' },
+  { id: 'purple', label: 'Purple', bg: '#7c3aed', border: '#a855f7' },
+  { id: 'pink',   label: 'Pink',   bg: '#db2777', border: '#ec4899' },
+];
+
+// School year badge classes (shared between HistoryPage and PlayerStatsPage)
+export const SCHOOL_YEAR_CLS = {
+  Freshman:  'bg-white text-black border-white/30',
+  Sophomore: 'bg-teal-400 text-black border-teal-300/50',
+  Junior:    'bg-blue-600 text-white border-blue-500/50',
+  Senior:    'bg-black text-white border-slate-600',
+};
 
 // NFHS rules
 // MAX_SUBS_PER_SET: intentionally 18 (club/college rules) rather than NFHS's 12.

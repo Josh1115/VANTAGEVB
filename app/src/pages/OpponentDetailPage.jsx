@@ -112,7 +112,7 @@ function TendenciesTab({ oppId, selectedTeamId, selectedSeasonId }) {
     const seasons = await db.seasons.where('team_id').equals(selectedTeamId).toArray();
     const sIds = new Set(
       selectedSeasonId
-        ? seasons.filter(s => s.id === selectedSeasonId).map(s => s.id)
+        ? [selectedSeasonId]
         : seasons.map(s => s.id)
     );
     const matches = await db.matches.filter(m => sIds.has(m.season_id)).toArray();

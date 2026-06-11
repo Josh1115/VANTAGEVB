@@ -19,16 +19,6 @@ function LocationBadge({ location }) {
   return <span className={`text-[10px] font-black px-1.5 py-0.5 rounded uppercase ${cls}`}>{label}</span>;
 }
 
-function StatRow({ label, value }) {
-  if (value == null || value === 0) return null;
-  return (
-    <div className="flex justify-between text-xs py-0.5">
-      <span className="text-slate-400">{label}</span>
-      <span className="font-bold text-white tabular-nums">{value}</span>
-    </div>
-  );
-}
-
 function BoxScoreTable({ players, selectedId, onSelect }) {
   const [sort, setSort] = useState('kills');
   const COLS = [
@@ -36,7 +26,6 @@ function BoxScoreTable({ players, selectedId, onSelect }) {
     { key: 'aces',    label: 'ACE' },
     { key: 'apr',     label: 'APR' },
     { key: 'digs',    label: 'DIG' },
-    { key: 'blocks',  label: 'BLK' },
   ];
   const sorted = [...players].sort((a, b) => {
     const av = a.stats?.[sort] ?? 0;

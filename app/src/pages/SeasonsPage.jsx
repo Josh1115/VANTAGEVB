@@ -2,25 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
-import { MATCH_STATUS } from '../constants';
+import { MATCH_STATUS, JERSEY_COLORS } from '../constants';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useUiStore, selectShowToast } from '../store/uiStore';
 
-const JERSEY_HEX = {
-  black:  '#111827',
-  white:  '#f8fafc',
-  gray:   '#94a3b8',
-  red:    '#dc2626',
-  orange: '#ea580c',
-  yellow: '#ca8a04',
-  green:  '#16a34a',
-  blue:   '#1d4ed8',
-  purple: '#7c3aed',
-  pink:   '#db2777',
-};
+const JERSEY_HEX = Object.fromEntries(JERSEY_COLORS.map(c => [c.id, c.bg]));
 const DEFAULT_ACCENT = '#f97316'; // app orange
 
 function getAccent(team) {

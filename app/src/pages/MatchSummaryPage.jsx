@@ -833,17 +833,11 @@ export function MatchSummaryPage() {
   const [showCorrections, setShowCorrections] = useState(false);
   const [showPvShare,     setShowPvShare]     = useState(false);
   const [editOpen,      setEditOpen]      = useState(false);
-  const [editOpp,       setEditOpp]       = useState('');
-  const [editOppAbbr,   setEditOppAbbr]   = useState('');
-  const [editOppRecord, setEditOppRecord] = useState('');
-  const [editDate,      setEditDate]      = useState('');
-  const [editLoc,       setEditLoc]       = useState('home');
-  const [editConf,      setEditConf]      = useState('non-con');
-  const [editMatchType,    setEditMatchType]    = useState('reg-season');
-  const [editTourneyName,  setEditTourneyName]  = useState('');
-  const [editTourneyRound, setEditTourneyRound] = useState('pool');
-  const [editPlayoffRound, setEditPlayoffRound] = useState('');
-  const [editOppRank,   setEditOppRank]   = useState('');
+  const [editForm, setEditForm] = useState({
+    opp: '', oppAbbr: '', oppRecord: '', date: '', loc: 'home',
+    conf: 'non-con', matchType: 'reg-season', tourneyName: '',
+    tourneyRound: 'pool', playoffRound: '', oppRank: '',
+  });
   const [editSaving,    setEditSaving]    = useState(false);
   const [editResultOpen,   setEditResultOpen]   = useState(false);
   const [editOurSets,      setEditOurSets]      = useState(0);
@@ -1078,7 +1072,7 @@ export function MatchSummaryPage() {
           name: `${playerNames[pid] ?? `#${pid}`}${correctedPlayerIds.has(Number(pid)) ? ' ✎' : ''}`,
           ...s,
           srv_pt:   displayStats.servingPoints?.[pid] ?? 0,
-          att_pt:   (() => { const sp = displayStats.servingPoints?.[pid] ?? 0; return sp > 0 ? s.sa / sp : null; })(),
+          att_pt:   (() => { const sp = displayStats.servingPoints?.[pid] ?? 0; return sp > 0 ? s.srv_pt / sp : null; })(),
           f_se_pct: s.f_sa > 0 ? s.f_se / s.f_sa : null,
           t_se_pct: s.t_sa > 0 ? s.t_se / s.t_sa : null,
         }))
@@ -1300,36 +1294,38 @@ export function MatchSummaryPage() {
   const matchMeta = match ? { ...match, sets: sets ?? [] } : {};
 
   function openEditModal() {
-    setEditOpp(match.opponent_name ?? '');
-    setEditOppAbbr(match.opponent_abbr ?? '');
-    setEditOppRecord(match.opponent_record ?? '');
-    setEditDate(match.date ? match.date.slice(0, 10) : new Date().toISOString().slice(0, 10));
-    setEditLoc(match.location ?? 'home');
-    setEditConf(match.conference ?? 'non-con');
-    setEditMatchType(match.match_type ?? 'reg-season');
-    setEditTourneyName(match.tournament_name ?? '');
-    setEditTourneyRound(match.tournament_round ?? 'pool');
-    setEditPlayoffRound(match.playoff_round ?? '');
-    setEditOppRank(match.opponent_maxpreps_rank != null ? String(match.opponent_maxpreps_rank) : '');
+    setEditForm({
+      opp:          match.opponent_name ?? '',
+      oppAbbr:      match.opponent_abbr ?? '',
+      oppRecord:    match.opponent_record ?? '',
+      date:         match.date ? match.date.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      loc:          match.location ?? 'home',
+      conf:         match.conference ?? 'non-con',
+      matchType:    match.match_type ?? 'reg-season',
+      tourneyName:  match.tournament_name ?? '',
+      tourneyRound: match.tournament_round ?? 'pool',
+      playoffRound: match.playoff_round ?? '',
+      oppRank:      match.opponent_maxpreps_rank != null ? String(match.opponent_maxpreps_rank) : '',
+    });
     setEditOpen(true);
   }
 
   async function handleEditSave() {
-    if (!editOpp.trim()) return;
+    if (!editForm.opp.trim()) return;
     setEditSaving(true);
     try {
       await db.matches.update(id, {
-        opponent_name:   editOpp.trim(),
-        opponent_abbr:   editOppAbbr.trim().toUpperCase() || null,
-        opponent_record: editOppRecord.trim() || null,
-        date:            editDate ? new Date(editDate + 'T12:00:00').toISOString() : match.date,
-        location:        editLoc,
-        conference:      editConf,
-        match_type:       editMatchType,
-        tournament_name:  editMatchType === 'tourney' ? editTourneyName.trim() || null : null,
-        tournament_round: editMatchType === 'tourney' ? editTourneyRound : null,
-        playoff_round:    editMatchType === 'ihsa-playoffs' ? editPlayoffRound.trim() || null : null,
-        opponent_maxpreps_rank: editOppRank.trim() !== '' ? parseInt(editOppRank, 10) || null : null,
+        opponent_name:   editForm.opp.trim(),
+        opponent_abbr:   editForm.oppAbbr.trim().toUpperCase() || null,
+        opponent_record: editForm.oppRecord.trim() || null,
+        date:            editForm.date ? new Date(editForm.date + 'T12:00:00').toISOString() : match.date,
+        location:        editForm.loc,
+        conference:      editForm.conf,
+        match_type:       editForm.matchType,
+        tournament_name:  editForm.matchType === 'tourney' ? editForm.tourneyName.trim() || null : null,
+        tournament_round: editForm.matchType === 'tourney' ? editForm.tourneyRound : null,
+        playoff_round:    editForm.matchType === 'ihsa-playoffs' ? editForm.playoffRound.trim() || null : null,
+        opponent_maxpreps_rank: editForm.oppRank.trim() !== '' ? parseInt(editForm.oppRank, 10) || null : null,
       });
       setEditOpen(false);
     } finally {
@@ -1752,14 +1748,6 @@ export function MatchSummaryPage() {
                     </div>
                   );
                 })()}
-                {scoringView === 'teamvsopp' && displayStats.team && displayStats.opp && (
-                  <TeamComparison
-                    team={displayStats.team}
-                    opp={displayStats.opp}
-                    teamName={match?.team_name ?? 'Us'}
-                    oppName={match?.opponent_name ?? 'Opponent'}
-                  />
-                )}
                 {displayStats.opp && (
                   <div className="space-y-3">
                     <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Opponent</p>
@@ -2047,52 +2035,6 @@ export function MatchSummaryPage() {
                 })()}
 
                 {/* Dig-to-Kill% */}
-                {(() => {
-                  const dtk = displayStats?.digToKill;
-                  if (!dtk || dtk.team.dg === 0) return null;
-                  const dgRows = playerRows.filter(r => (r.dg ?? 0) > 0);
-                  return (
-                    <div className="bg-surface rounded-xl p-3 space-y-3">
-                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Dig-to-Kill%</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {[
-                          { label: 'DIG',     val: fmtCount(dtk.team.dg) },
-                          { label: 'DG K%',   val: fmtPct(dtk.team.dg_k_pct) },
-                          { label: 'DG Win%', val: fmtPct(dtk.team.dg_win_pct) },
-                        ].map(({ label, val }) => (
-                          <div key={label} className="bg-slate-800/60 rounded-lg p-2 text-center">
-                            <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">{label}</div>
-                            <div className="text-lg font-black text-primary mt-0.5">{val}</div>
-                          </div>
-                        ))}
-                      </div>
-                      {dgRows.length > 0 && (
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr className="border-b border-slate-700">
-                                <th className="px-2 py-1.5 text-left font-semibold text-slate-400">Player</th>
-                                <th className="px-2 py-1.5 text-right font-semibold text-slate-400">DIG</th>
-                                <th className="px-2 py-1.5 text-right font-semibold text-slate-400">DG K%</th>
-                                <th className="px-2 py-1.5 text-right font-semibold text-slate-400">DG Win%</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {dgRows.map((r, i) => (
-                                <tr key={r.id} className={`border-b border-slate-800/60 ${i % 2 !== 0 ? 'bg-slate-900/30' : ''}`}>
-                                  <td className="px-2 py-1.5 text-slate-300">{r.name}</td>
-                                  <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{r.dg ?? 0}</td>
-                                  <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{fmtPct(r.dg_k_pct)}</td>
-                                  <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{fmtPct(r.dg_win_pct)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
               </div>
             )}
 
@@ -2370,7 +2312,7 @@ export function MatchSummaryPage() {
               </button>
               <button
                 onClick={handleEditSave}
-                disabled={editSaving || !editOpp.trim()}
+                disabled={editSaving || !editForm.opp.trim()}
                 className="px-4 py-2 text-sm font-semibold bg-primary text-white rounded-lg disabled:opacity-50"
               >
                 {editSaving ? 'Saving…' : 'Save'}

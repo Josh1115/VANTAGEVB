@@ -1,35 +1,6 @@
 import { PageHeader } from '../components/layout/PageHeader';
+import { BG, SURFACE, SURFACE2, BORDER, TXT, TXT3, TXT4, TXT5, PRIMARY, EMERALD, RED, AMBER, LIME, HelpStep as Step } from './helpTheme';
 
-const BG      = '#000000';
-const SURFACE = '#1e293b';
-const SURFACE2= '#0f172a';
-const BORDER  = '#334155';
-const TXT     = '#f8fafc';
-const TXT3    = '#cbd5e1';
-const TXT4    = '#94a3b8';
-const TXT5    = '#64748b';
-const PRIMARY = '#f97316';
-const EMERALD = '#34d399';
-const RED     = '#f87171';
-const AMBER   = '#fbbf24';
-const LIME    = '#a3e635';
-
-function Step({ number, title, note, children }) {
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        <span className="w-7 h-7 rounded-full text-black text-sm font-black flex items-center justify-center shrink-0" style={{ background: PRIMARY }}>
-          {number}
-        </span>
-        <span className="font-semibold text-white">{title}</span>
-      </div>
-      {note && <p className="text-sm text-slate-400 pl-10 leading-relaxed">{note}</p>}
-      {children && <div className="pl-10">{children}</div>}
-    </div>
-  );
-}
-
-// ── Diagram: score header ──────────────────────────────────────────────────────
 function DiagScoreHeader() {
   return (
     <svg viewBox="0 0 320 90" className="w-full rounded-xl" style={{ background: SURFACE }}>

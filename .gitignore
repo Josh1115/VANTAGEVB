@@ -5,3 +5,4 @@ app/.netlify
 .tmp
 server/node_modules
 server/vbstat.db
+deploy.sh

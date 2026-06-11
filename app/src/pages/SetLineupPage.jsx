@@ -125,6 +125,8 @@ export function SetLineupPage() {
   const handleConfirm = async () => {
     setError('');
     if (lineup.some((id) => !id)) { setError('Assign a player to every position.'); return; }
+    const filled = lineup.filter(Boolean);
+    if (new Set(filled).size !== filled.length) { setError('Each player can only appear once in the lineup.'); return; }
     if (!setId) return;
 
     setSaving(true);

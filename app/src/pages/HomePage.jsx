@@ -16,6 +16,16 @@ function fmtTime(t) {
   const h12 = h % 12 || 12;
   return `${h12}:${String(m).padStart(2, '0')} ${period}`;
 }
+
+// Sort matches by date, breaking same-day ties with match_time ("HH:MM" 24h). No time = sorts last within the day.
+function sortByDateTime(a, b) {
+  const da = a.date?.slice(0, 10) ?? '';
+  const db = b.date?.slice(0, 10) ?? '';
+  if (da !== db) return da < db ? -1 : 1;
+  const ta = a.match_time ?? '99:99';
+  const tb = b.match_time ?? '99:99';
+  return ta < tb ? -1 : ta > tb ? 1 : 0;
+}
 import { computePlayerStats, computeTeamStats } from '../stats/engine';
 import { deleteMatch } from '../stats/queries';
 import { Button } from '../components/ui/Button';
@@ -339,6 +349,8 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
 
 export function HomePage() {
   const navigate = useNavigate();
+  const isWin = (match) => (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
+  const fmtDelta = (val) => val > 0 ? `(▲${val})` : `(▼${Math.abs(val)})`;
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [matchView, setMatchView] = useState(() => {
@@ -373,18 +385,8 @@ export function HomePage() {
     return `${day} · ${month} ${d.getDate()}`;
   }, []);
 
-  const defaultTeamId   = useMemo(() => getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID),   []);
-  const defaultSeasonId = useMemo(() => getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID), []);
-
-  // Sort matches by date, breaking same-day ties with match_time ("HH:MM" 24h). No time = sorts last within the day.
-  const sortByDateTime = (a, b) => {
-    const da = a.date?.slice(0, 10) ?? '';
-    const db2 = b.date?.slice(0, 10) ?? '';
-    if (da !== db2) return da < db2 ? -1 : 1;
-    const ta = a.match_time ?? '99:99';
-    const tb = b.match_time ?? '99:99';
-    return ta < tb ? -1 : ta > tb ? 1 : 0;
-  };
+  const defaultTeamId   = getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID);
+  const defaultSeasonId = getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID);
 
   const recentMatches = useLiveQuery(async () => {
     let matches;

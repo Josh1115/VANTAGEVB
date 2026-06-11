@@ -342,6 +342,16 @@
   animation: spark-pop 2s ease-in-out var(--delay, 0ms) infinite;
 }
 
+@keyframes bar-eq {
+  0%   { transform: scaleY(0.22); }
+  100% { transform: scaleY(1); }
+}
+.chart-bar-eq {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: bar-eq 0.52s ease-in-out var(--delay, 0ms) infinite alternate;
+}
+
 @keyframes confetti-fall {
   0%   { transform: translateX(0) translateY(-6px) rotate(0deg); opacity: 1; }
   80%  { opacity: 0.6; }

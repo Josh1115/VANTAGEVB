@@ -7,6 +7,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
 import { db } from '../db/schema';
+import { SCHOOL_YEAR_CLS } from '../constants';
 import { computePlayerStats, computePlayerTrends, computeTeamStats, computePlayerWPA, computePQ } from '../stats/engine';
 import {
   getContactsForMatches,
@@ -27,13 +28,6 @@ import { Badge } from '../components/ui/Badge';
 import { VER_TIERS } from '../components/stats/VERBadge';
 
 const POS_COLOR = { S: 'blue', OH: 'orange', OPP: 'orange', MB: 'green', L: 'gray', DS: 'gray', RS: 'orange' };
-
-const SCHOOL_YEAR_CLS = {
-  Freshman:  'bg-white text-black border-white/30',
-  Sophomore: 'bg-teal-400 text-black border-teal-300/50',
-  Junior:    'bg-blue-600 text-white border-blue-500/50',
-  Senior:    'bg-black text-white border-slate-600',
-};
 
 // ── Per-game trend chart ──────────────────────────────────────────────────────
 

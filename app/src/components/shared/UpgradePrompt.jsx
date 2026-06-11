@@ -1,10 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 
-const PLAN_LABEL = { core: 'CORE', advantage: 'ADVANTAGE', topper: 'TOPPER' };
-
-export function UpgradePrompt({ requiredPlan = 'core', feature }) {
+export function UpgradePrompt({ feature }) {
   const navigate = useNavigate();
-  const label = PLAN_LABEL[requiredPlan] ?? requiredPlan.toUpperCase();
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center gap-6">
@@ -19,12 +16,12 @@ export function UpgradePrompt({ requiredPlan = 'core', feature }) {
 
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-black text-white tracking-wide">
-          {label} Plan Required
+          Subscription Required
         </h2>
         <p className="text-sm text-slate-400 max-w-xs">
           {feature
-            ? `${feature} is available on the ${label} plan and above.`
-            : `This feature is available on the ${label} plan and above.`}
+            ? `${feature} requires an active VBSTAT subscription.`
+            : 'This feature requires an active VBSTAT subscription.'}
         </p>
       </div>
 
@@ -32,7 +29,7 @@ export function UpgradePrompt({ requiredPlan = 'core', feature }) {
         onClick={() => navigate('/upgrade')}
         className="px-6 py-3 rounded-xl bg-primary text-white text-sm font-black tracking-wide active:scale-[0.97] transition-transform"
       >
-        Upgrade to {label}
+        View Plans
       </button>
 
       <p className="text-xs text-slate-600">

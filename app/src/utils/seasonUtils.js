@@ -1,6 +1,22 @@
 import { db } from '../db/schema';
 import { MATCH_STATUS } from '../constants';
 
+export function fmtVal(val, decimals = 0) {
+  if (val == null || isNaN(val)) return '—';
+  return decimals > 0 ? Number(val).toFixed(decimals) : String(Math.round(val));
+}
+
+export function fmtPct(val) {
+  if (val == null || isNaN(val)) return '—';
+  return (val * 100).toFixed(1) + '%';
+}
+
+export function fmtHit(val) {
+  if (val == null || isNaN(val)) return '—';
+  const s = (val * 1000).toFixed(0);
+  return (val >= 0 ? '' : '') + (val * 1000 >= 0 ? '.' : '-.') + Math.abs(Number(s)).toString().padStart(3, '0');
+}
+
 const PLAYOFF_ROUND_ORDER = [
   'regional', 'sectional', 'super-sectional', 'quarterfinal', 'semifinal', 'state championship',
 ];

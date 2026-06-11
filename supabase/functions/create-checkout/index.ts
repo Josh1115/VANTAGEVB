@@ -2,9 +2,11 @@ import Stripe from 'npm:stripe@14';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const PRICE_IDS: Record<string, string> = {
-  core:      'price_1TfrN0EZO853IB28dlwniOCd',
-  advantage: 'price_1TfrNYEZO853IB28Z01mpQWs',
-  topper:    'price_1TfrNkEZO853IB28QjaJqx7Q',
+  '1_team':      'price_1Tgv6hEZO853IB28UMuYmThg',
+  '2_teams':     'price_1Tgv6hEZO853IB28oD6EK5Nv',
+  '3_teams':     'price_1Tgv6iEZO853IB28yjTenLlh',
+  '4_teams':     'price_1Tgv6iEZO853IB28cvivhAJ1',
+  '5plus_teams': 'price_1Tgv6jEZO853IB28b5NnUVVJ',
 };
 
 const corsHeaders = {

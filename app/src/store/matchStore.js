@@ -263,6 +263,9 @@ const INITIAL_STATE = {
   serveReceiveFormations: null, // { [rotationNum]: number[6] } | null — soIdx per grid cell
   plannedSubs:            [],   // [{ rotation, player_out_so, player_in_id }]
   _undoInFlight:          false, // guard against concurrent undo taps
+
+  broadcastEnabled:       false,
+  _pvChannel:             null,
 };
 
 export const useMatchStore = create((set, get) => ({
@@ -273,7 +276,51 @@ export const useMatchStore = create((set, get) => ({
     const maxSubsPerSet = !isNaN(saved) && saved > 0 ? saved : NFHS.MAX_SUBS_PER_SET;
     set({ matchId, currentSetId: setId, teamId, format, lastSetScore: lastSetScore ?? 15, maxSubsPerSet });
   },
-  resetMatch: () => set(INITIAL_STATE),
+  resetMatch: () => {
+    const { _pvChannel } = get();
+    if (_pvChannel) {
+      _pvChannel.unsubscribe();
+    }
+    set(INITIAL_STATE);
+  },
+
+  startBroadcast: async (token) => {
+    const prev = get()._pvChannel;
+    if (prev) prev.unsubscribe();
+    const { subscribePvChannel } = await import('../utils/supabase');
+    const channel = subscribePvChannel(token, () => {});
+    set({ broadcastEnabled: true, _pvChannel: channel });
+  },
+
+  stopBroadcast: () => {
+    const { _pvChannel } = get();
+    if (_pvChannel) _pvChannel.unsubscribe();
+    set({ broadcastEnabled: false, _pvChannel: null });
+  },
+
+  broadcastUpdate: async () => {
+    const s = get();
+    if (!s.broadcastEnabled || !s._pvChannel) return;
+    const { broadcastPvUpdate } = await import('../utils/supabase');
+    broadcastPvUpdate(s._pvChannel, {
+      ourScore:    s.ourScore,
+      oppScore:    s.oppScore,
+      ourSetsWon:  s.ourSetsWon,
+      oppSetsWon:  s.oppSetsWon,
+      setNumber:   s.setNumber,
+      serveSide:   s.serveSide,
+      rallyCount:  s.rallyCount,
+      lastFeedItem: s.lastFeedItem,
+      lineup:      s.lineup.map(sl => ({
+        position:  sl.position,
+        playerId:  sl.playerId,
+        name:      sl.playerName,
+        jersey:    sl.jersey,
+        posLabel:  sl.positionLabel,
+      })),
+      ts: Date.now(),
+    });
+  },
   setLineup:          (lineup, rotationNum) => set({ lineup, ...(rotationNum !== undefined ? { rotationNum } : {}) }),
   setPlayerNicknames: (map)    => set({ playerNicknames: map }),
   setTeamJerseyColor:   (color) => set({ teamJerseyColor: color }),
@@ -396,6 +443,8 @@ export const useMatchStore = create((set, get) => ({
 
     const winner = checkSetWin(ourScore, oppScore, setNumber, s.format, s.lastSetScore);
     if (winner) set({ pendingSetWin: winner });
+
+    get().broadcastUpdate();
 
     // 3. Persist rally to DB — best effort. The score is already committed to
     //   Zustand state above and must NOT be rolled back on failure: a dropped
@@ -1089,6 +1138,7 @@ export const useMatchStore = create((set, get) => ({
       oppSetsWon:    newSetsThem,
       pendingSetWin: null,
     });
+    get().broadcastUpdate();
   },
 
   confirmServeZone: async (contactId, court_x, court_y, zone) => {

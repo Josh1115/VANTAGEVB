@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
-import { COLLEGE_DIVISIONS, MATCH_STATUS } from '../constants';
+import { COLLEGE_DIVISIONS, MATCH_STATUS, SCHOOL_YEAR_CLS } from '../constants';
 import { STORAGE_KEYS, getIntStorage, getStorageItem } from '../utils/storage';
 import { PageHeader } from '../components/layout/PageHeader';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -511,12 +511,6 @@ function CommitCard({ entry, onEdit, onDelete }) {
 // ── Individual Awards ─────────────────────────────────────────────────────────
 
 const SCHOOL_YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior'];
-const SCHOOL_YEAR_CLS = {
-  Freshman:  'bg-white text-black border-white/30',
-  Sophomore: 'bg-teal-400 text-black border-teal-300/50',
-  Junior:    'bg-blue-600 text-white border-blue-500/50',
-  Senior:    'bg-black text-white border-slate-600',
-};
 const EMPTY_AWARD_TYPE = { name: '' };
 const EMPTY_WINNER = { player_name: '', year: '', school_year: '', times_won: '1' };
 
@@ -1410,7 +1404,7 @@ export function HistoryPage() {
         if (!map[name]) map[name] = { wins: 0, losses: 0, minYear: Infinity, maxYear: 0, isPresent: false };
         const yr = Number(activeSeason?.year) || 0;
         map[name].minYear  = Math.min(map[name].minYear, yr);
-        map[name].maxYear  = Math.max(map[name].maxYear, yr || 9999);
+        map[name].maxYear  = Math.max(map[name].maxYear, yr != null ? yr : 9999);
         map[name].isPresent = true;
         const completed = (activeMatches ?? []).filter(
           m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition'
@@ -1453,7 +1447,7 @@ export function HistoryPage() {
         if (!map[name]) map[name] = { wins: 0, losses: 0, minYear: Infinity, maxYear: 0, isPresent: false };
         const yr = Number(activeSeason?.year) || 0;
         map[name].minYear  = Math.min(map[name].minYear, yr);
-        map[name].maxYear  = Math.max(map[name].maxYear, yr || 9999);
+        map[name].maxYear  = Math.max(map[name].maxYear, yr != null ? yr : 9999);
         map[name].isPresent = true;
         const completed = (activeMatches ?? []).filter(
           m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition'
@@ -1504,13 +1498,14 @@ export function HistoryPage() {
     for (const t of (tourneyEntries ?? [])) {
       const isState = t.name?.toLowerCase().includes('state');
       if (isState) {
+        const placingLabel = ordinal(t.placing);
         let label;
         if (isCollege && divLabel) {
-          label = `${ordinal(t.placing)} in ${divLabel}`;
+          label = `${placingLabel} in ${divLabel}`;
         } else if (isHS && stateName) {
-          label = `${ordinal(t.placing)} State ${stateName}`;
+          label = `${placingLabel} State ${stateName}`;
         } else {
-          label = `${ordinal(t.placing)} — ${t.name}`;
+          label = `${placingLabel} — ${t.name}`;
         }
         items.push({ year: String(t.year), title: label, priority: 5 });
       } else if (t.placing === 1) {

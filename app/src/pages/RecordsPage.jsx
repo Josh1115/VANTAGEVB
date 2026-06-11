@@ -1244,10 +1244,11 @@ export function RecordsPage() {
     for (const t of (tourneyEntries ?? [])) {
       const isState = t.name?.toLowerCase().includes('state');
       if (isState) {
+        const placingLabel = ordinal(t.placing);
         let label;
-        if (isCollege && divLabel)   label = `${ordinal(t.placing)} in ${divLabel}`;
-        else if (isHS && stateName)  label = `${ordinal(t.placing)} State ${stateName}`;
-        else                         label = `${ordinal(t.placing)} — ${t.name}`;
+        if (isCollege && divLabel)   label = `${placingLabel} in ${divLabel}`;
+        else if (isHS && stateName)  label = `${placingLabel} State ${stateName}`;
+        else                         label = `${placingLabel} — ${t.name}`;
         items.push({ year: String(t.year), title: label, priority: 5 });
       } else if (t.placing === 1) {
         items.push({ year: String(t.year), title: `${t.name} Champions`, priority: 0 });

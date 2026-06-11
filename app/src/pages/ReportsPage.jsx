@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback, Fragment } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { buildPlayerMaps } from '../utils/players';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -37,25 +37,6 @@ const TABS = [
 ];
 
 const TAB_VALUES = TABS.map(t => t.value);
-
-const PLAYER_COLS = [
-  { key: 'name',      label: 'Player' },
-  { key: 'mp',        label: 'MP',    fmt: fmtCount     },
-  { key: 'sp',        label: 'SP',    fmt: fmtCount     },
-  { key: 'pos_label', label: 'POS',   fmt: (v) => v ?? '—' },
-  { key: 'ver',       label: 'VER',   fmt: fmtVER,      render: (v) => <VERBadge ver={v} /> },
-  { key: 'sa',      label: 'SA',    fmt: fmtCount     },
-  { key: 'si_pct',  label: 'SRV%',  fmt: fmtPct       },
-  { key: 'ace',     label: 'ACE',   fmt: fmtCount     },
-  { key: 'ace_pct', label: 'ACE%',  fmt: fmtPct       },
-  { key: 'pa',      label: 'REC',   fmt: fmtCount     },
-  { key: 'apr',     label: 'APR',   fmt: fmtPassRating },
-  { key: 'ta',      label: 'ATT',   fmt: fmtCount     },
-  { key: 'k',       label: 'K',     fmt: fmtCount     },
-  { key: 'hit_pct', label: 'HIT%',  fmt: fmtHitting   },
-  { key: 'bs',      label: 'BS',    fmt: fmtCount     },
-  { key: 'dig',     label: 'DIG',   fmt: fmtCount     },
-];
 
 // Each entry uses either `key` (looked up on stats.team) or `get(stats)` for derived/nested values.
 const fmtBlocks = (v) => v == null ? '—' : v % 1 === 0 ? String(v) : v.toFixed(1);
@@ -487,7 +468,6 @@ export function ReportsPage() {
       sp:        stats.setsPlayed ?? null,
       mp:        stats.matchCount  ?? null,
       pos_label: null,
-      pos_mult:  null,
       ver:       null,
     };
   }, [stats]);
@@ -1212,7 +1192,7 @@ export function ReportsPage() {
                       columns={SERVING_COLS[playerServeView]}
                       rows={playerRows}
                       totalsRow={playerTotalsRow}
-                      onRowClick={(row) => setSelectedServingPlayerId(id => String(id) === String(row.id) ? null : row.id)}
+                      onRowClick={(row) => setSelectedServingPlayerId(selectedServingPlayerId => String(selectedServingPlayerId) === String(row.id) ? null : row.id)}
                       selectedRowId={selectedServingPlayerId}
                       onNameClick={handlePlayerClick}
                       showGlossary
@@ -1348,7 +1328,6 @@ export function ReportsPage() {
                           </div>
                           {dgRows.length > 0 && (
                             <XPassRatingTable
-                              title=""
                               rows={dgRows}
                               cols={[
                                 { key: 'dg',        label: 'DIG',    fmt: (v) => v ?? 0 },
@@ -1456,7 +1435,7 @@ export function ReportsPage() {
                         <div className="bg-slate-800 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Serving</div>
                         <div className="bg-slate-800 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Receiving</div>
                         {rows.map(({ rot, serve, rec }) => (
-                          <Fragment key={rot}>
+                          <React.Fragment key={rot}>
                             <div className="bg-slate-900 py-2 font-bold text-slate-300">R{rot}</div>
                             <div className={`py-2 font-black tabular-nums ${
                               serve === maxServe ? 'bg-emerald-900/40 text-emerald-300'
@@ -1470,7 +1449,7 @@ export function ReportsPage() {
                             : 'bg-slate-900 text-slate-200'}`}>
                               {rec.toFixed(1)}
                             </div>
-                          </Fragment>
+                          </React.Fragment>
                         ))}
                       </div>
                       <p className="text-[10px] text-slate-600 text-center mt-2">Green = best rotation · Red = worst rotation</p>

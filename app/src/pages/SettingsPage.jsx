@@ -14,7 +14,7 @@ import { db } from '../db/schema';
 import { useUiStore } from '../store/uiStore';
 import { FORMAT, ACCENT_COLORS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
-import { PLAN_RANK } from '../hooks/usePlan';
+import { usePlan } from '../hooks/usePlan';
 import {
   getStorageItem, setStorageItem,
   getBoolStorage, setBoolStorage,
@@ -1097,12 +1097,29 @@ function useDefaultFormat() {
 }
 
 
-function CollapsibleSection({ title, subtitle, children, defaultOpen = true }) {
-  const [open, setOpen] = useState(defaultOpen);
+const SECTION_KEY_PREFIX = 'settings_section_';
+function clearSectionStates() {
+  Object.keys(localStorage).filter(k => k.startsWith(SECTION_KEY_PREFIX)).forEach(k => localStorage.removeItem(k));
+}
+
+function CollapsibleSection({ id, title, subtitle, children, defaultOpen = true }) {
+  const storageKey = id ? `${SECTION_KEY_PREFIX}${id}` : null;
+  const [open, setOpen] = useState(() => {
+    if (!storageKey) return defaultOpen;
+    const stored = localStorage.getItem(storageKey);
+    return stored === null ? defaultOpen : stored === 'true';
+  });
+
+  function toggle() {
+    const next = !open;
+    if (storageKey) localStorage.setItem(storageKey, String(next));
+    setOpen(next);
+  }
+
   return (
     <section className="bg-surface rounded-xl overflow-hidden">
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={toggle}
         className="w-full flex items-center justify-between px-4 py-3 border-b border-slate-700 text-left"
       >
         <div>
@@ -1119,8 +1136,8 @@ function CollapsibleSection({ title, subtitle, children, defaultOpen = true }) {
   );
 }
 
-function useToggleSetting(key) {
-  const [val, setVal] = useState(() => getBoolStorage(key));
+function useToggleSetting(key, defaultVal = false) {
+  const [val, setVal] = useState(() => defaultVal ? getBoolStorageDefaultTrue(key) : getBoolStorage(key));
   const save = (next) => { setBoolStorage(key, next); setVal(next); };
   return [val, save];
 }
@@ -1176,47 +1193,13 @@ function useLastSetScore() {
   return [val, save];
 }
 
-const PLAN_COLS = [
-  { key: 'baseline',  label: 'BASELINE',  price: 'Free',   period: '',        featured: false },
-  { key: 'core',      label: 'CORE',      price: '$49.99', period: '/season', featured: false },
-  { key: 'advantage', label: 'ADVANTAGE', price: '$89.99', period: '/season', featured: true  },
-  { key: 'topper',    label: 'TOPPER',    price: 'TBD',    period: '',        featured: false },
-];
-
-const PLAN_ROWS = [
-  { section: 'Limits' },
-  { label: 'Levels/Teams',               values: ['1',       '1',        '2',        '∞']        },
-  { label: 'Seasons',                   values: ['1',       '1',        '1',        '1']        },
-  { label: 'Max matches',               values: ['20',      '45',       '45 / team', '60 / team'] },
-  { section: 'Live Stats' },
-  { label: 'Stats Depth',               values: ['Basic',   'Full',     'Full',     'Full']     },
-  { label: 'Player Stats',              values: ['Per Game', 'Per Game & Season', 'Per Game & Season', 'Per Game & Season'] },
-  { section: 'Analytics' },
-  { label: 'Reports by SSE',            values: [false,     true,       true,       true]       },
-  { label: 'Trends by SSE',             values: [false,     true,       true,       true]       },
-  { label: 'Vantage Records',           values: [false,     true,       true,       true]       },
-  { label: 'Program/Organization History', values: [false,  true,       true,       true]       },
-  { label: 'Rotational Analyzer & Optimizer', values: [false, true,    true,       true]       },
-  { label: '"Insights" by SSE',          values: [false,     true,       true,       true]       },
-  { section: 'Tools' },
-  { label: 'Practice tools',            values: [false,     true,       true,       true]       },
-  { label: 'Whiteboard',                values: [false,     true,       true,       true]       },
-  { label: 'Opponent scouting',         values: [false,     true,       true,       true]       },
-  { label: 'Rotation optimizer',        values: [false,     true,       true,       true]       },
-  { section: 'Export' },
-  { label: 'MaxPreps export',           values: [false,     true,       true,       true]       },
-  { label: 'PDF / CSV export',          values: [false,     true,       true,       true]       },
-  { section: 'Support' },
-  { label: 'Settings & customization',  values: ['Limited', 'Full',     'Full',     'Full']     },
-  { label: 'Support tier',              values: ['Basic',   'Standard', 'Priority', 'Priority+']},
-];
 
 export function SettingsPage() {
   const showToast    = useUiStore((s) => s.showToast);
   const fileInputRef = useRef(null);
-  const { profile, session } = useAuth();
+  const { session } = useAuth();
+  const { isActive, isMaster, teamsAllowed } = usePlan();
   const navigate     = useNavigate();
-  const currentPlan  = profile?.plan ?? 'baseline';
   const [maxSubs, saveMaxSubs]           = useMaxSubs();
   const [defaultFormat, saveDefaultFormat] = useDefaultFormat();
   const [lastSetScore, saveLastSetScore] = useLastSetScore();
@@ -1242,8 +1225,7 @@ export function SettingsPage() {
   const [hapticOn,     saveHaptic]      = useToggleSetting(STORAGE_KEYS.HAPTIC);
   const [soundsOn,     saveSounds]      = useToggleSetting(STORAGE_KEYS.SOUNDS);
   const [flipLayout,   saveFlipLayout]  = useToggleSetting(STORAGE_KEYS.FLIP_LAYOUT);
-  const [assumeSetterRot1, setAssumeSetterRot1Raw] = useState(() => getBoolStorageDefaultTrue(STORAGE_KEYS.ASSUME_SETTER_ROT1));
-  const saveAssumeSetterRot1 = (next) => { setBoolStorage(STORAGE_KEYS.ASSUME_SETTER_ROT1, next); setAssumeSetterRot1Raw(next); };
+  const [assumeSetterRot1, saveAssumeSetterRot1] = useToggleSetting(STORAGE_KEYS.ASSUME_SETTER_ROT1, true);
   const [confirmClear,        setConfirmClear]        = useState(false);
   const [confirmImport,       setConfirmImport]       = useState(false);
   const [confirmLogout,       setConfirmLogout]       = useState(false);
@@ -1372,10 +1354,10 @@ export function SettingsPage() {
           </div>
           <div className="border-t border-slate-700 mb-4" />
           <p className="text-sm text-slate-200 leading-relaxed italic text-center">
-            VANTAGE is a comprehensive volleyball statistics platform built for coaches who want a competitive edge. Record every contact live during a match — serves, passes, attacks, blocks, and digs — and instantly access deep analytics: rotation efficiency, player VER ratings, win correlation insights, and real-time performance alerts. All data lives on your device, works offline, and requires no account or subscription. From pre-match lineup prep to post-match film review, VANTAGE gives your program the same data-driven tools used at the highest levels of the sport.
+            VANTAGE is a comprehensive volleyball statistics platform built for coaches who want a competitive edge. Record every contact live during a match — serves, passes, attacks, blocks, and digs — and instantly access deep analytics: rotation efficiency, player VER ratings, win correlation insights, and real-time performance alerts. All data lives on your device and works offline. From pre-match lineup prep to post-match film review, VANTAGE gives your program the same data-driven tools used at the highest levels of the sport.
           </p>
           <div className="border-t border-slate-700 mt-4 pt-3">
-            <p className="text-[11px] text-slate-500 text-center tracking-wide">All data stored locally on this device. No account required.</p>
+            <p className="text-[11px] text-slate-500 text-center tracking-wide">New accounts include a full-featured 5-match trial. Upgrade anytime.</p>
           </div>
 
           <div className="flex items-baseline gap-2 mt-4 flex-wrap">
@@ -1399,130 +1381,41 @@ export function SettingsPage() {
         {/* Plans */}
         <section className="bg-surface rounded-xl overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
-            <div>
-              <h2
-                className="text-[18.4px] font-black uppercase leading-none section-twinkle text-center w-full"
-                style={{ color: '#f97316', WebkitTextStroke: '0.5px rgba(255,255,255,0.6)', letterSpacing: '0.15em' }}
-              >Plans</h2>
-            </div>
-            {currentPlan === 'baseline' && (
+            <h2
+              className="text-[18.4px] font-black uppercase leading-none"
+              style={{ color: '#f97316', WebkitTextStroke: '0.5px rgba(255,255,255,0.6)', letterSpacing: '0.15em' }}
+            >Subscription</h2>
+            {!isMaster && (
               <button
                 onClick={() => navigate('/upgrade')}
                 className="rounded-lg bg-primary px-3 py-1.5 text-xs font-black text-white active:scale-95 transition-transform"
               >
-                Upgrade
+                {isActive ? 'Change Plan' : 'Subscribe'}
               </button>
             )}
           </div>
-          <div className="overflow-x-auto">
-            <div style={{ minWidth: '340px' }}>
-
-              {/* Plan header cards */}
-              <div className="grid gap-2 px-3 pt-3 pb-2" style={{ gridTemplateColumns: '1.6fr repeat(4, 1fr)' }}>
-                <div /> {/* feature label spacer */}
-                {PLAN_COLS.map((col) => {
-                  const isCurrent = currentPlan === col.key;
-                  const canUpgrade = !isCurrent && col.key !== 'topper' && PLAN_RANK[col.key] > PLAN_RANK[currentPlan];
-                  return (
-                    <div
-                      key={col.key}
-                      className={`relative flex flex-col items-center justify-center rounded-xl pt-[24.9px] pb-[16.6px] px-1 gap-0.5 overflow-hidden
-                        ${col.featured
-                          ? 'bg-primary/10 ring-1 ring-primary/40'
-                          : isCurrent
-                          ? 'bg-emerald-900/20 ring-1 ring-emerald-700/40'
-                          : 'bg-slate-800/60 ring-1 ring-slate-700/50'}`}
-                    >
-                      {/* Top accent bar */}
-                      <div className={`absolute top-0 left-0 right-0 h-1 ${col.featured ? 'bg-primary' : isCurrent ? 'bg-emerald-600' : 'bg-slate-700'}`} />
-                      {col.featured && (
-                        <span className="absolute top-1.5 left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-widest bg-primary text-white px-1 py-px rounded-full leading-none whitespace-nowrap">
-                          Popular
-                        </span>
-                      )}
-                      <span
-                        className={`text-[19.4px] font-black tracking-widest uppercase italic mt-0.5 ${col.featured ? 'text-primary' : isCurrent ? 'text-emerald-400' : 'text-slate-300'}`}
-                        style={{ WebkitTextStroke: '0.6px currentColor' }}
-                      >
-                        {col.label}
-                      </span>
-                      <span className="text-[19.5px] font-normal leading-none text-white">
-                        {col.price}
-                      </span>
-                      {col.period && <span className="text-[10.5px] text-white leading-none">{col.period}</span>}
-                      <div className="mt-1.5 w-full flex justify-center">
-                        {isCurrent ? (
-                          <span className="text-[10.5px] font-black text-emerald-400 bg-emerald-900/40 border border-emerald-700/50 px-2 py-0.5 rounded-full uppercase tracking-wide">
-                            Active
-                          </span>
-                        ) : col.key === 'topper' ? (
-                          <span className="text-[10.5px] text-slate-600 font-bold">Coming soon</span>
-                        ) : canUpgrade ? (
-                          <button
-                            onClick={() => navigate('/upgrade')}
-                            className={`text-[10.5px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide transition-all active:scale-95
-                              ${col.featured ? 'bg-primary text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
-                          >
-                            Upgrade
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })}
+          <div className="p-4 flex flex-col gap-3">
+            {isMaster ? (
+              <div className="flex items-center gap-3">
+                <span className="text-yellow-400 text-lg font-black">★</span>
+                <div>
+                  <div className="text-sm font-bold text-yellow-300">Master Account</div>
+                  <div className="text-xs text-slate-400">Unlimited access · No restrictions</div>
+                </div>
               </div>
-
-              {/* Feature rows */}
-              {PLAN_ROWS.map((row, i) => {
-                if (row.section) {
-                  return (
-                    <div
-                      key={row.section}
-                      className="flex items-center gap-2 px-3 py-2 mt-1 bg-slate-800/70 border-y border-slate-700/40"
-                    >
-                      <span
-                        className="text-[15.2px] font-black uppercase leading-none"
-                        style={{ color: '#f97316', WebkitTextStroke: '0.5px rgba(255,255,255,0.6)', letterSpacing: '0.15em' }}
-                      >
-                        {row.section}
-                      </span>
-                    </div>
-                  );
-                }
-                const isEven = i % 2 === 0;
-                return (
-                  <div
-                    key={row.label}
-                    className={`grid items-center ${isEven ? '' : 'bg-slate-800/20'}`}
-                    style={{ gridTemplateColumns: '1.6fr repeat(4, 1fr)' }}
-                  >
-                    <span className="px-3 py-2 text-[16.5px] text-slate-300 leading-snug">{row.label}</span>
-                    {row.values.map((val, ci) => {
-                      const col = PLAN_COLS[ci];
-                      return (
-                        <div
-                          key={ci}
-                          className={`flex items-center justify-center py-2
-                            ${col.featured ? 'bg-primary/5' : ''}`}
-                        >
-                          {val === true  && <span className="text-emerald-400 text-[21px] font-black leading-none">✓</span>}
-                          {val === false && <span className="text-slate-600 text-[18px] leading-none">—</span>}
-                          {typeof val === 'string' && (
-                            <span className={`text-[15px] font-semibold leading-tight text-center
-                              ${val === '∞' ? 'text-[11px] font-black' : 'text-slate-300'}`}
-                              style={val === '∞' ? { color: '#f97316' } : {}}>
-                              {val === '∞' ? 'UNLIMITED' : val}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
+            ) : isActive ? (
+              <div className="flex items-center gap-3">
+                <span className="text-emerald-400 text-lg font-black">✓</span>
+                <div>
+                  <div className="text-sm font-bold text-white">
+                    {teamsAllowed === 99 ? '5+ Teams' : `${teamsAllowed} Team${teamsAllowed > 1 ? 's' : ''}`} / Season
                   </div>
-                );
-              })}
-
-              <div className="h-3" />
-            </div>
+                  <div className="text-xs text-slate-400">All features included · 50 matches per team per season</div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">No active subscription. Subscribe to unlock all features.</p>
+            )}
           </div>
         </section>
 
@@ -1573,7 +1466,7 @@ export function SettingsPage() {
         )}
 
         {/* Help & Guides */}
-        <CollapsibleSection title="Help & Guides">
+        <CollapsibleSection id="help-guides" title="Help & Guides">
           <div className="p-4">
             <div className="space-y-4">
 
@@ -1741,7 +1634,7 @@ export function SettingsPage() {
         </CollapsibleSection>
 
         {/* Personalization */}
-        <CollapsibleSection title="Personalization">
+        <CollapsibleSection id="personalization" title="Personalization">
           <div className="p-4 space-y-5">
 
             {/* Program name */}
@@ -1935,7 +1828,7 @@ export function SettingsPage() {
         </CollapsibleSection>
 
         {/* Live Match */}
-        <CollapsibleSection title="Live Match" subtitle="Applied during active stat recording">
+        <CollapsibleSection id="live-match" title="Live Match" subtitle="Applied during active stat recording">
           <div className="p-4 divide-y divide-slate-700/60 space-y-0">
 
             {/* Keep Screen Awake */}
@@ -2068,7 +1961,7 @@ export function SettingsPage() {
         </CollapsibleSection>
 
         {/* Match Rules */}
-        <CollapsibleSection title="Match Rules" subtitle="Applied to all future matches">
+        <CollapsibleSection id="match-rules" title="Match Rules" subtitle="Applied to all future matches">
           <div className="p-4 space-y-4">
             <div>
               <label className="block text-sm text-slate-400 mb-2">Best of Sets</label>
@@ -2133,7 +2026,7 @@ export function SettingsPage() {
         </CollapsibleSection>
 
         {/* Exports */}
-        <CollapsibleSection title="Exports">
+        <CollapsibleSection id="exports" title="Exports">
           <div className="p-4">
             <label className="block text-sm font-medium mb-1">MaxPreps Team ID</label>
             <div className="text-xs text-slate-400 mb-2">
@@ -2150,35 +2043,44 @@ export function SettingsPage() {
         </CollapsibleSection>
 
         {/* Data Management */}
-        <CollapsibleSection title="Data Management">
+        <CollapsibleSection id="data-management" title="Data Management">
           <div className="p-4 space-y-3">
             <Button className="w-full" variant="secondary" onClick={handleExport}>
               Export Full Backup (JSON)
             </Button>
 
-            <Button
-              className="w-full"
-              variant="secondary"
-              disabled={importing}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {importing ? 'Importing…' : 'Import Backup (JSON)'}
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json,application/json"
-              className="hidden"
-              onChange={handleImportPick}
-            />
+            {!isActive ? (
+              <div className="rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-3 space-y-1">
+                <p className="text-sm font-semibold text-slate-300">Import Backup (JSON)</p>
+                <p className="text-xs text-slate-500">Import and merge require an active subscription. <button onClick={() => navigate('/upgrade')} className="text-primary hover:text-orange-300 transition-colors font-semibold">Subscribe →</button></p>
+              </div>
+            ) : (
+              <>
+                <Button
+                  className="w-full"
+                  variant="secondary"
+                  disabled={importing}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {importing ? 'Importing…' : 'Import Backup (JSON)'}
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json,application/json"
+                  className="hidden"
+                  onChange={handleImportPick}
+                />
 
-            <Button
-              className="w-full"
-              variant="secondary"
-              onClick={() => setShowMerge(true)}
-            >
-              Merge from Backup (JSON)
-            </Button>
+                <Button
+                  className="w-full"
+                  variant="secondary"
+                  onClick={() => setShowMerge(true)}
+                >
+                  Merge from Backup (JSON)
+                </Button>
+              </>
+            )}
 
             {autoBackups && autoBackups.length > 0 && (
               <div>
@@ -2243,10 +2145,29 @@ export function SettingsPage() {
         </CollapsibleSection>
 
         {/* Sign Out */}
-        <section className="bg-surface rounded-xl p-4">
-          <Button className="w-full" variant="danger" onClick={() => setConfirmLogout(true)}>
+        <section className="bg-surface rounded-xl p-4 space-y-3">
+          {session && (
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-700/60">
+              <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-sm font-bold text-slate-200 shrink-0">
+                {session.user.email?.[0]?.toUpperCase() ?? '?'}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white truncate">{session.user.email}</p>
+                <p className="text-xs text-slate-500">Signed in</p>
+              </div>
+            </div>
+          )}
+          <button
+            onClick={() => setConfirmLogout(true)}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 active:scale-95 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 font-semibold text-sm transition-all duration-150"
+          >
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
             Sign Out
-          </Button>
+          </button>
         </section>
 
       </div>
@@ -2299,7 +2220,7 @@ export function SettingsPage() {
           confirmLabel="Sign Out"
           danger
           onConfirm={async () => {
-            const { supabase } = await import('../utils/supabase');
+            clearSectionStates();
             await supabase.auth.signOut();
           }}
           onCancel={() => setConfirmLogout(false)}

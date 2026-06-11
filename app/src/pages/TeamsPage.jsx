@@ -4,10 +4,12 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { useOrganizations, useTeams } from '../hooks/useTeamData';
 import { useUiStore, selectShowToast } from '../store/uiStore';
+import { JERSEY_COLORS } from '../constants';
 
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
+import { usePlan } from '../hooks/usePlan';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Badge } from '../components/ui/Badge';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -266,19 +268,6 @@ const LEVEL_LABELS = {
   club:       'Club',
 };
 
-const JERSEY_COLORS = [
-  { id: 'black',  label: 'Black',  bg: '#111827', border: '#374151' },
-  { id: 'white',  label: 'White',  bg: '#f8fafc', border: '#94a3b8' },
-  { id: 'gray',   label: 'Gray',   bg: '#94a3b8', border: '#64748b' },
-  { id: 'red',    label: 'Red',    bg: '#dc2626', border: '#ef4444' },
-  { id: 'orange', label: 'Orange', bg: '#ea580c', border: '#f97316' },
-  { id: 'yellow', label: 'Yellow', bg: '#ca8a04', border: '#eab308' },
-  { id: 'green',  label: 'Green',  bg: '#16a34a', border: '#22c55e' },
-  { id: 'blue',   label: 'Blue',   bg: '#1d4ed8', border: '#3b82f6' },
-  { id: 'purple', label: 'Purple', bg: '#7c3aed', border: '#a855f7' },
-  { id: 'pink',   label: 'Pink',   bg: '#db2777', border: '#ec4899' },
-];
-
 // value = string[] of selected color ids; onChange(id) toggles that id in/out
 function JerseyColorPicker({ label, value, onChange, colors }) {
   return (
@@ -465,11 +454,15 @@ function TeamFormModal({ onClose, orgId, team }) {
 export function TeamsPage() {
   const navigate = useNavigate();
   const orgs = useOrganizations();
+  const allTeams = useTeams();
+  const { teamsAllowed, isMaster } = usePlan();
   const [orgModal,    setOrgModal]    = useState(null); // null | { org? }
   const [teamModal,   setTeamModal]   = useState(null); // null | { orgId, team? }
   const [deleteOrg,   setDeleteOrg]   = useState(null); // org object to delete
   const [deleteTeam,  setDeleteTeam]  = useState(null); // team object to delete
   const showToast = useUiStore(selectShowToast);
+
+  const atTeamLimit = !isMaster && teamsAllowed > 0 && (allTeams?.length ?? 0) >= teamsAllowed;
 
   const handleDeleteOrg = async () => {
     try {
@@ -513,7 +506,7 @@ export function TeamsPage() {
             org={org}
             onEditOrg={() => setOrgModal({ org })}
             onDeleteOrg={() => setDeleteOrg(org)}
-            onAddTeam={() => setTeamModal({ orgId: org.id })}
+            onAddTeam={atTeamLimit ? null : () => setTeamModal({ orgId: org.id })}
             onEditTeam={(team) => setTeamModal({ orgId: org.id, team })}
             onDeleteTeam={(team) => setDeleteTeam(team)}
             onSelectTeam={(teamId) => navigate(`/teams/${teamId}`)}
@@ -665,7 +658,7 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
             <IconTrash />
           </button>
         </div>
-        <Button size="sm" variant="ghost" onClick={onAddTeam}>+ Team</Button>
+        <Button size="sm" variant="ghost" onClick={onAddTeam ?? undefined} disabled={!onAddTeam} title={!onAddTeam ? 'Team limit reached — upgrade your plan' : undefined}>+ Team</Button>
       </div>
 
       {(teams ?? []).length === 0 ? (

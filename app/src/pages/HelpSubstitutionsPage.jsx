@@ -1,30 +1,5 @@
 import { PageHeader } from '../components/layout/PageHeader';
-
-const BG      = '#000000';
-const SURFACE = '#1e293b';
-const SURFACE2= '#0f172a';
-const BORDER  = '#334155';
-const TXT     = '#f8fafc';
-const TXT4    = '#94a3b8';
-const TXT5    = '#64748b';
-const PRIMARY = '#f97316';
-const EMERALD = '#34d399';
-const BLUE    = '#60a5fa';
-
-function Step({ number, title, note, children }) {
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        <span className="w-7 h-7 rounded-full text-black text-sm font-black flex items-center justify-center shrink-0" style={{ background: PRIMARY }}>
-          {number}
-        </span>
-        <span className="font-semibold text-white">{title}</span>
-      </div>
-      {note && <p className="text-sm text-slate-400 pl-10 leading-relaxed">{note}</p>}
-      {children && <div className="pl-10">{children}</div>}
-    </div>
-  );
-}
+import { BG, SURFACE, SURFACE2, BORDER, TXT, TXT4, TXT5, PRIMARY, BLUE, EMERALD, HelpStep as Step } from './helpTheme';
 
 function DiagActionBar() {
   const btns = ['↺ ROT', '↻ ROT', 'UNDO', 'SUB 2/18', '≡'];

@@ -2,6 +2,32 @@ import Dexie from 'dexie';
 
 export const db = new Dexie('VBAPPv2');
 
+// v21: add share_token to teams for ParentVantage HUB sharing.
+db.version(21).stores({
+  rallies:            '++id, set_id, rally_number',
+  sets:               '++id, match_id, set_number',
+  lineups:            '++id, set_id, player_id',
+  substitutions:      '++id, set_id, rally_number',
+  organizations:      '++id, name, type',
+  teams:              '++id, org_id, name, share_token',
+  seasons:            '++id, team_id, year, status',
+  players:            '++id, team_id, is_active',
+  opponents:          '++id, name',
+  saved_lineups:      '++id, team_id',
+  contacts:           '++id, match_id, player_id, action, set_id, rally_id, rotation_num',
+  matches:            '++id, season_id, status, date, opponent_id',
+  opp_tendencies:     '++id, opp_id, match_id',
+  timeouts:           '++id, match_id, set_id',
+  historical_records: '++id, team_id, category, stat',
+  season_history:     '++id, team_id, year',
+  tourney_entries:    '++id, team_id, year',
+  player_commits:     '++id, team_id, grad_year',
+  auto_backups:       '++id, created_at',
+  accolade_types:     '++id, team_id',
+  accolade_winners:   '++id, type_id, team_id',
+  practice_sessions:  '++id, team_id, tool_type, date, archived',
+});
+
 // v20: add archived index on practice_sessions for end-of-season archiving.
 db.version(20).stores({
   rallies:            '++id, set_id, rally_number',

@@ -108,8 +108,10 @@ export function TeamDetailPage() {
     () => db.practice_sessions.where('team_id').equals(id).reverse().toArray(),
     [id]
   );
-  const activePracticeSessions   = useMemo(() => (practiceSessions ?? []).filter(s => !s.archived), [practiceSessions]);
-  const archivedPracticeSessions = useMemo(() => (practiceSessions ?? []).filter(s => s.archived),  [practiceSessions]);
+  const { activePracticeSessions, archivedPracticeSessions } = useMemo(() => ({
+    activePracticeSessions:   (practiceSessions ?? []).filter(s => !s.archived),
+    archivedPracticeSessions: (practiceSessions ?? []).filter(s => s.archived),
+  }), [practiceSessions]);
 
   const [selectedSeasonId, setSelectedSeasonId] = useState(null);
   const [tab, setTab]             = useState('roster');

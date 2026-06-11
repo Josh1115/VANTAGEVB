@@ -10,13 +10,9 @@ import { useMatchStore } from '../store/matchStore';
 import { MATCH_STATUS, SET_STATUS, FORMAT, SIDE } from '../constants';
 import { serveOrderToZone } from '../components/court/CourtZonePicker';
 import { LineupForm } from '../components/match/LineupForm';
-import { usePlan } from '../hooks/usePlan';
+import { usePlan, SEASON_MATCH_LIMIT } from '../hooks/usePlan';
 import { PvShareSheet } from '../components/parentvantage/PvShareSheet';
 
-const BASELINE_MATCH_LIMIT  = 20;
-const TRIAL_MATCH_LIMIT     = 5;
-const ADVANTAGE_MATCH_LIMIT = 45;
-const TOPPER_MATCH_LIMIT    = 60;
 
 export function MatchSetupPage() {
   const navigate     = useNavigate();
@@ -25,20 +21,10 @@ export function MatchSetupPage() {
   const playoffLabel = getPlayoffLabel();
   const [searchParams] = useSearchParams();
 
-  const scheduledMatchId = searchParams.get('match') ? Number(searchParams.get('match')) : null;
+  const rawMatchId = searchParams.get('match');
+  const scheduledMatchId = rawMatchId ? parseInt(rawMatchId, 10) || null : null;
 
-  const { plan, isTrial } = usePlan();
-  const isBaseline  = plan === 'baseline';
-  const isAdvantage = plan === 'advantage';
-  const isTopper    = plan === 'topper';
-  const totalMatches = useLiveQuery(() => db.matches.count(), []);
-
-  useEffect(() => {
-    if (!scheduledMatchId && totalMatches !== undefined) {
-      if (isBaseline && totalMatches >= BASELINE_MATCH_LIMIT) navigate('/upgrade');
-      if (isTrial    && totalMatches >= TRIAL_MATCH_LIMIT)    navigate('/upgrade');
-    }
-  }, [isBaseline, isTrial, totalMatches, scheduledMatchId, navigate]);
+  const { isActive, isMaster } = usePlan();
 
   const [seasonId,  setSeasonId]  = useState(searchParams.get('season') ?? '');
   const [opponent,           setOpponent]           = useState('');
@@ -89,12 +75,10 @@ export function MatchSetupPage() {
 
   const selectedSeason = (seasons ?? []).find((s) => s.id === Number(seasonId));
 
-  const teamMatchCount = useLiveQuery(async () => {
-    if (!selectedSeason?.team_id) return undefined;
-    const teamSeasons = await db.seasons.where('team_id').equals(selectedSeason.team_id).toArray();
-    const seasonIds = teamSeasons.map((s) => s.id);
-    return db.matches.where('season_id').anyOf(seasonIds).count();
-  }, [selectedSeason?.team_id]);
+  const seasonMatchCount = useLiveQuery(async () => {
+    if (!selectedSeason?.id) return undefined;
+    return db.matches.where('season_id').equals(selectedSeason.id).count();
+  }, [selectedSeason?.id]);
 
   const selectedTeam = useLiveQuery(
     () => selectedSeason?.team_id ? db.teams.get(selectedSeason.team_id) : Promise.resolve(null),
@@ -159,10 +143,12 @@ export function MatchSetupPage() {
     }
   }, [scheduledMatch, prefilled]);
 
+  // Normalize a jersey-color field that may be stored as a single string or an array of strings
+  const toIds = (v) => Array.isArray(v) ? v : (v ? [v] : []);
+
   // When the selected team changes, reset jersey colors to first available if current pick isn't in the team's palette
   useEffect(() => {
     if (!selectedTeam) return;
-    const toIds = (v) => Array.isArray(v) ? v : (v ? [v] : []);
     const teamIds   = toIds(selectedTeam.team_jersey_color);
     const liberoIds = toIds(selectedTeam.libero_jersey_color);
     if (teamIds.length   && !teamIds.includes(teamJerseyColor))     setTeamJerseyColor(teamIds[0]);
@@ -176,6 +162,22 @@ export function MatchSetupPage() {
     setSlotPositions(sl.slot_positions ?? Array(6).fill(''));
     setStartFormations(sl.serve_receive_formations ?? null);
     setLoadPickerOpen(false);
+  };
+
+  // Upsert opponent — prefer the locked id from autocomplete selection,
+  // fall back to case-insensitive name match, then create new.
+  const resolveOpponent = async (name) => {
+    let oppRecord = lockedOppId != null ? await db.opponents.get(lockedOppId) : null;
+    if (!oppRecord) {
+      const nameLower = name.trim().toLowerCase();
+      const all = await db.opponents.toArray();
+      oppRecord = all.find((o) => o.name.toLowerCase() === nameLower) ?? null;
+    }
+    if (!oppRecord) {
+      const oppId = await db.opponents.add({ name: name.trim() });
+      oppRecord = { id: oppId, name: name.trim() };
+    }
+    return oppRecord;
   };
 
   const handleManualSave = async () => {
@@ -192,16 +194,7 @@ export function MatchSetupPage() {
     }
     setSaving(true);
     try {
-      let oppRecord = lockedOppId != null ? await db.opponents.get(lockedOppId) : null;
-      if (!oppRecord) {
-        const nameLower = opponent.trim().toLowerCase();
-        const all = await db.opponents.toArray();
-        oppRecord = all.find((o) => o.name.toLowerCase() === nameLower) ?? null;
-      }
-      if (!oppRecord) {
-        const oppId = await db.opponents.add({ name: opponent.trim() });
-        oppRecord = { id: oppId, name: opponent.trim() };
-      }
+      const oppRecord = await resolveOpponent(opponent);
 
       const ourSetsWon = parsedSets.filter((s) => s.ourScore > s.oppScore).length;
       const oppSetsWon = parsedSets.filter((s) => s.oppScore > s.ourScore).length;
@@ -262,64 +255,42 @@ export function MatchSetupPage() {
       resetMatch();
       useMatchStore.setState({ serveSide: servingSide, teamJerseyColor, liberoJerseyColor });
 
-      // Upsert opponent — prefer the locked id from autocomplete selection,
-      // fall back to case-insensitive name match, then create new.
-      let oppRecord = lockedOppId != null
-        ? await db.opponents.get(lockedOppId)
-        : null;
-      if (!oppRecord) {
-        const nameLower = opponent.trim().toLowerCase();
-        const all = await db.opponents.toArray();
-        oppRecord = all.find(o => o.name.toLowerCase() === nameLower) ?? null;
-      }
-      if (!oppRecord) {
-        const oppId = await db.opponents.add({ name: opponent.trim() });
-        oppRecord = { id: oppId, name: opponent.trim() };
-      }
+      const oppRecord = await resolveOpponent(opponent);
+
+      // Shared fields for both the update (scheduled) and add (new) paths
+      const matchPayload = {
+        opponent_id:            oppRecord.id,
+        opponent_name:          oppRecord.name,
+        opponent_abbr:          opponentAbbr.trim().toUpperCase() || null,
+        opponent_record:        opponentRecord.trim() || null,
+        opponent_maxpreps_rank: opponentMaxprepsRank !== '' ? parseInt(opponentMaxprepsRank, 10) : null,
+        status:                 MATCH_STATUS.IN_PROGRESS,
+        format,
+        last_set_score:         matchType === 'tourney' ? tourneySet3 : lastSetScore,
+        location,
+        conference,
+        match_type:             matchType,
+        tournament_name:        matchType === 'tourney' ? tournamentName.trim() || null : null,
+        tournament_round:       matchType === 'tourney' ? tournamentRound : null,
+        playoff_round:          matchType === 'ihsa-playoffs' ? playoffRound.trim() || null : null,
+        opponent_playoff_seed:  matchType === 'ihsa-playoffs' && oppPlayoffSeed !== '' ? parseInt(oppPlayoffSeed, 10) : null,
+      };
 
       // Create or update match
       let effectiveMatchId;
       if (scheduledMatchId) {
         await db.matches.update(scheduledMatchId, {
-          opponent_id:           oppRecord.id,
-          opponent_name:         oppRecord.name,
-          opponent_abbr:         opponentAbbr.trim().toUpperCase() || null,
-          opponent_record:       opponentRecord.trim() || null,
-          opponent_maxpreps_rank: opponentMaxprepsRank !== '' ? parseInt(opponentMaxprepsRank, 10) : null,
-          status:                MATCH_STATUS.IN_PROGRESS,
-          pv_token:              scheduledMatch?.pv_token ?? crypto.randomUUID(),
-          format,
-          last_set_score:        matchType === 'tourney' ? tourneySet3 : lastSetScore,
-          location,
-          conference,
-          match_type:            matchType,
-          tournament_name:       matchType === 'tourney' ? tournamentName.trim() || null : null,
-          tournament_round:      matchType === 'tourney' ? tournamentRound : null,
-          playoff_round:         matchType === 'ihsa-playoffs' ? playoffRound.trim() || null : null,
-          opponent_playoff_seed: matchType === 'ihsa-playoffs' && oppPlayoffSeed !== '' ? parseInt(oppPlayoffSeed, 10) : null,
-          date:                  scheduledMatch?.date ?? new Date().toISOString(),
+          ...matchPayload,
+          pv_token: scheduledMatch?.pv_token ?? crypto.randomUUID(),
+          date:     scheduledMatch?.date ?? new Date().toISOString(),
         });
         effectiveMatchId = scheduledMatchId;
       } else {
         effectiveMatchId = await db.matches.add({
-          season_id:             Number(seasonId),
-          opponent_id:           oppRecord.id,
-          opponent_name:         oppRecord.name,
-          opponent_abbr:         opponentAbbr.trim().toUpperCase() || null,
-          opponent_record:       opponentRecord.trim() || null,
-          opponent_maxpreps_rank: opponentMaxprepsRank !== '' ? parseInt(opponentMaxprepsRank, 10) : null,
-          status:                MATCH_STATUS.IN_PROGRESS,
-          pv_token:              crypto.randomUUID(),
-          format,
-          last_set_score:        matchType === 'tourney' ? tourneySet3 : lastSetScore,
-          location,
-          conference,
-          match_type:            matchType,
-          tournament_name:       matchType === 'tourney' ? tournamentName.trim() || null : null,
-          tournament_round:      matchType === 'tourney' ? tournamentRound : null,
-          playoff_round:         matchType === 'ihsa-playoffs' ? playoffRound.trim() || null : null,
-          opponent_playoff_seed: matchType === 'ihsa-playoffs' && oppPlayoffSeed !== '' ? parseInt(oppPlayoffSeed, 10) : null,
-          date:                  new Date().toISOString(),
+          ...matchPayload,
+          season_id: Number(seasonId),
+          pv_token:  crypto.randomUUID(),
+          date:      new Date().toISOString(),
         });
       }
 
@@ -379,83 +350,18 @@ export function MatchSetupPage() {
 
       <div className="p-4 md:p-6 space-y-5 max-w-lg mx-auto">
 
-        {/* Match limit warning — baseline (grandfathered) */}
-        {isBaseline && totalMatches !== undefined && totalMatches < BASELINE_MATCH_LIMIT && (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-700/50 bg-amber-900/20 px-4 py-3">
-            <p className="text-sm text-amber-300">
-              Match <span className="font-black">{totalMatches + 1} of {BASELINE_MATCH_LIMIT}</span> on BASELINE.
-            </p>
-            <button
-              onClick={() => navigate('/upgrade')}
-              className="text-xs font-black text-primary whitespace-nowrap hover:text-orange-300 transition-colors"
-            >
-              Upgrade →
-            </button>
-          </div>
-        )}
-
-        {/* Match limit warning — trial */}
-        {isTrial && totalMatches !== undefined && totalMatches < TRIAL_MATCH_LIMIT && (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/40 bg-primary/10 px-4 py-3">
-            <p className="text-sm text-orange-300">
-              Trial match <span className="font-black">{totalMatches + 1} of {TRIAL_MATCH_LIMIT}</span>.{' '}
-              {totalMatches + 1 === TRIAL_MATCH_LIMIT ? 'This is your last trial match.' : ''}
-            </p>
-            <button
-              onClick={() => navigate('/upgrade')}
-              className="text-xs font-black text-primary whitespace-nowrap hover:text-orange-300 transition-colors"
-            >
-              Upgrade →
-            </button>
-          </div>
-        )}
-
-        {/* Advantage match limit warning */}
-        {isAdvantage && teamMatchCount !== undefined && teamMatchCount >= ADVANTAGE_MATCH_LIMIT && (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-red-700/50 bg-red-900/20 px-4 py-3">
+        {/* Season match limit warning */}
+        {!isMaster && selectedSeason && seasonMatchCount !== undefined && seasonMatchCount >= SEASON_MATCH_LIMIT && (
+          <div className="rounded-xl border border-red-700/50 bg-red-900/20 px-4 py-3">
             <p className="text-sm text-red-300">
-              This team has reached the <span className="font-black">{ADVANTAGE_MATCH_LIMIT}-match</span> limit for ADVANTAGE.
+              This season has reached the <span className="font-black">{SEASON_MATCH_LIMIT}-match</span> limit.
             </p>
-            <button
-              onClick={() => navigate('/upgrade')}
-              className="text-xs font-black text-primary whitespace-nowrap hover:text-orange-300 transition-colors"
-            >
-              Upgrade →
-            </button>
           </div>
         )}
-        {isAdvantage && teamMatchCount !== undefined && teamMatchCount < ADVANTAGE_MATCH_LIMIT && selectedSeason && (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-700/50 bg-amber-900/20 px-4 py-3">
+        {!isMaster && selectedSeason && seasonMatchCount !== undefined && seasonMatchCount >= SEASON_MATCH_LIMIT * 0.9 && seasonMatchCount < SEASON_MATCH_LIMIT && (
+          <div className="rounded-xl border border-amber-700/50 bg-amber-900/20 px-4 py-3">
             <p className="text-sm text-amber-300">
-              Match <span className="font-black">{teamMatchCount + 1} of {ADVANTAGE_MATCH_LIMIT}</span> for this team on ADVANTAGE.
-            </p>
-            <button
-              onClick={() => navigate('/upgrade')}
-              className="text-xs font-black text-primary whitespace-nowrap hover:text-orange-300 transition-colors"
-            >
-              Upgrade →
-            </button>
-          </div>
-        )}
-
-        {/* Topper match limit warning */}
-        {isTopper && teamMatchCount !== undefined && teamMatchCount >= TOPPER_MATCH_LIMIT && (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-red-700/50 bg-red-900/20 px-4 py-3">
-            <p className="text-sm text-red-300">
-              This team has reached the <span className="font-black">{TOPPER_MATCH_LIMIT}-match</span> limit for TOPPER.
-            </p>
-            <button
-              onClick={() => navigate('/upgrade')}
-              className="text-xs font-black text-primary whitespace-nowrap hover:text-orange-300 transition-colors"
-            >
-              Contact Support →
-            </button>
-          </div>
-        )}
-        {isTopper && teamMatchCount !== undefined && teamMatchCount < TOPPER_MATCH_LIMIT && selectedSeason && (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-700/50 bg-amber-900/20 px-4 py-3">
-            <p className="text-sm text-amber-300">
-              Match <span className="font-black">{teamMatchCount + 1} of {TOPPER_MATCH_LIMIT}</span> for this team on TOPPER.
+              Match <span className="font-black">{seasonMatchCount + 1} of {SEASON_MATCH_LIMIT}</span> this season.
             </p>
           </div>
         )}
@@ -771,7 +677,6 @@ export function MatchSetupPage() {
             { id: 'purple', label: 'Purple', bg: '#7c3aed', border: '#a855f7' },
             { id: 'pink',   label: 'Pink',   bg: '#db2777', border: '#ec4899' },
           ];
-          const toIds = (v) => Array.isArray(v) ? v : (v ? [v] : []);
           const teamIds   = toIds(selectedTeam?.team_jersey_color);
           const liberoIds = toIds(selectedTeam?.libero_jersey_color);
           const teamColors   = teamIds.length   ? ALL_COLORS.filter(c => teamIds.includes(c.id))   : ALL_COLORS;
@@ -934,11 +839,11 @@ export function MatchSetupPage() {
 
         {/* Primary action */}
         {manualEntry ? (
-          <Button size="lg" className="w-full" disabled={saving || (isAdvantage && teamMatchCount >= ADVANTAGE_MATCH_LIMIT) || (isTopper && teamMatchCount >= TOPPER_MATCH_LIMIT)} onClick={handleManualSave}>
+          <Button size="lg" className="w-full" disabled={saving || (!isMaster && seasonMatchCount >= SEASON_MATCH_LIMIT)} onClick={handleManualSave}>
             {saving ? 'Saving…' : 'Save Match'}
           </Button>
         ) : (
-          <Button size="lg" className="w-full" disabled={saving || (isAdvantage && teamMatchCount >= ADVANTAGE_MATCH_LIMIT) || (isTopper && teamMatchCount >= TOPPER_MATCH_LIMIT)} onClick={handleStart}>
+          <Button size="lg" className="w-full" disabled={saving || (!isMaster && seasonMatchCount >= SEASON_MATCH_LIMIT)} onClick={handleStart}>
             {saving ? 'Creating…' : 'Start Match'}
           </Button>
         )}

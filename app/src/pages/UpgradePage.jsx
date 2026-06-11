@@ -3,77 +3,50 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/layout/PageHeader';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { PLAN_PRICES, PLAN_LABELS, SEASON_MATCH_LIMIT } from '../hooks/usePlan';
 
 const PLANS = [
-  {
-    key: 'core',
-    label: 'CORE',
-    price: '$49.99',
-    period: 'per season',
-    highlight: false,
-    features: [
-      'Full analytics suite',
-      'Career records & history',
-      'Practice tools',
-      'Opponent scouting page',
-      'Rotation optimizer',
-      'Multi-format export (PDF, CSV, MaxPreps)',
-      'Standard support',
-    ],
-  },
-  {
-    key: 'advantage',
-    label: 'ADVANTAGE',
-    price: '$89.99',
-    period: 'per season',
-    highlight: true,
-    features: [
-      'Everything in CORE',
-      'Two levels (JV + Varsity)',
-      'Up to 45 matches per team/level',
-      'Priority customer support',
-    ],
-  },
-  {
-    key: 'topper',
-    label: 'TOPPER',
-    price: 'TBD',
-    period: '',
-    highlight: false,
-    features: [
-      'Everything in ADVANTAGE',
-      'Up to 60 matches per team/level',
-      'Coming soon — stay tuned',
-    ],
-  },
+  { key: '1_team',      teams: 1,  highlight: false },
+  { key: '2_teams',     teams: 2,  highlight: true  },
+  { key: '3_teams',     teams: 3,  highlight: false },
+  { key: '4_teams',     teams: 4,  highlight: false },
+  { key: '5plus_teams', teams: 99, highlight: false },
 ];
 
-const PLAN_RANK = { baseline: 0, core: 1, advantage: 2, topper: 3 };
+const ALL_FEATURES = [
+  'Full live match stat entry',
+  'Complete analytics & reports',
+  'Career records & season history',
+  'Opponent scouting & tracking',
+  'Rotation optimizer',
+  'Practice tools (serve tracker, serve receive, practice games)',
+  'ParentVantage live sharing',
+  'PDF, CSV & MaxPreps export',
+  `${SEASON_MATCH_LIMIT} matches per team per season`,
+];
 
 export function UpgradePage() {
-  const { session, profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const [loadingPlan, setLoadingPlan] = useState(null);
   const [error, setError] = useState('');
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const currentPlan = profile?.plan ?? 'baseline';
+  const currentPlan = profile?.plan ?? 'inactive';
   const successPlan = searchParams.get('plan');
   const didSucceed  = searchParams.get('success') === '1';
   const didCancel   = searchParams.get('canceled') === '1';
 
   useEffect(() => {
-    if (didSucceed && successPlan) {
-      refreshProfile();
-    }
-  }, [didSucceed, successPlan]);
+    if (didSucceed && successPlan) refreshProfile();
+  }, [didSucceed, successPlan, refreshProfile]);
 
   async function handleUpgrade(planKey) {
     setError('');
     setLoadingPlan(planKey);
     try {
-      const { data: { session: fresh } } = await supabase.auth.getSession();
-      if (!fresh) throw new Error('Not signed in');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not signed in');
 
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`,
@@ -81,7 +54,7 @@ export function UpgradePage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${fresh.access_token}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({ plan: planKey }),
         }
@@ -89,7 +62,6 @@ export function UpgradePage() {
 
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Checkout failed');
-
       window.location.href = json.url;
     } catch (err) {
       setError(err.message);
@@ -97,29 +69,33 @@ export function UpgradePage() {
     }
   }
 
+  const currentLabel = PLAN_LABELS[currentPlan];
+
   return (
     <div className="pb-safe-bottom">
-      <PageHeader title="Upgrade Plan" />
+      <PageHeader title="Get VBSTAT" />
 
-      <div className="p-4 max-w-lg mx-auto flex flex-col gap-6">
+      <div className="p-4 max-w-lg mx-auto flex flex-col gap-5">
 
         {/* Success / cancel banners */}
         {didSucceed && successPlan && (
           <div className="bg-emerald-900/40 border border-emerald-700 rounded-xl px-4 py-3 text-sm text-emerald-300 font-semibold text-center">
-            You're now on {successPlan.toUpperCase()}. Enjoy the upgrade!
+            You&rsquo;re all set on {PLAN_LABELS[successPlan] ?? successPlan}. Let&rsquo;s go!
           </div>
         )}
         {didCancel && (
           <div className="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-sm text-slate-400 text-center">
-            No problem — you can upgrade any time.
+            No problem — you can subscribe any time.
           </div>
         )}
 
-        {/* Current plan badge */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-400">Current plan:</span>
-          <span className="text-sm font-bold text-primary uppercase">{currentPlan}</span>
-        </div>
+        {/* Current plan */}
+        {currentLabel && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-400">Current plan:</span>
+            <span className="text-sm font-bold text-primary">{currentLabel} / season</span>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-900/40 border border-red-700 rounded-xl px-4 py-3 text-sm text-red-300">
@@ -127,12 +103,31 @@ export function UpgradePage() {
           </div>
         )}
 
-        {/* Plan cards */}
+        {/* What's included — shared across all plans */}
+        <div className="bg-slate-800/60 rounded-xl p-4">
+          <div className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">
+            Everything included
+          </div>
+          <ul className="flex flex-col gap-1.5">
+            {ALL_FEATURES.map(f => (
+              <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
+                <span className="text-emerald-400 mt-px leading-none shrink-0">✓</span>
+                {f}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Plan cards — only differ by team count and price */}
+        <div className="text-xs font-black text-slate-400 uppercase tracking-widest">
+          Choose your team count
+        </div>
+
         {PLANS.map((plan) => {
-          const owned    = PLAN_RANK[currentPlan] >= PLAN_RANK[plan.key];
-          const loading  = loadingPlan === plan.key;
+          const owned   = currentPlan === plan.key;
+          const loading = loadingPlan === plan.key;
           const disabled = loadingPlan !== null && !loading;
-          const isTopper = plan.key === 'topper';
+          const teamsLabel = plan.teams === 99 ? '5+ Teams' : `${plan.teams} Team${plan.teams > 1 ? 's' : ''}`;
 
           return (
             <div
@@ -148,45 +143,31 @@ export function UpgradePage() {
                   MOST POPULAR
                 </div>
               )}
-              <div className="p-4 flex flex-col gap-3">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-base font-black text-white">{plan.label}</span>
-                  <div className="text-right">
-                    <span className="text-lg font-black text-white">{plan.price}</span>
-                    {plan.period && (
-                      <span className="text-xs text-slate-400 ml-1">{plan.period}</span>
-                    )}
-                  </div>
+              <div className="px-4 py-3 flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-base font-black text-white">{teamsLabel}</div>
+                  <div className="text-xs text-slate-400 mt-0.5">per season</div>
                 </div>
-
-                <ul className="flex flex-col gap-1.5">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
-                      <span className="text-emerald-400 mt-px leading-none">✓</span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-
+                <div className="text-right shrink-0">
+                  <div className="text-xl font-black text-white">{PLAN_PRICES[plan.key]}</div>
+                </div>
+              </div>
+              <div className="px-4 pb-4">
                 {owned ? (
-                  <div className="w-full rounded-xl bg-slate-700 py-3 text-sm font-bold text-slate-400 text-center">
+                  <div className="w-full rounded-xl bg-slate-700 py-2.5 text-sm font-bold text-slate-400 text-center">
                     Current Plan
-                  </div>
-                ) : isTopper ? (
-                  <div className="w-full rounded-xl bg-slate-800 border border-slate-700 py-3 text-sm font-bold text-slate-500 text-center">
-                    Coming Soon
                   </div>
                 ) : (
                   <button
                     onClick={() => handleUpgrade(plan.key)}
                     disabled={disabled || loading}
-                    className={`w-full rounded-xl py-3 text-sm font-black tracking-wide transition-all active:scale-[0.97] ${
+                    className={`w-full rounded-xl py-2.5 text-sm font-black tracking-wide transition-all active:scale-[0.97] disabled:opacity-50 ${
                       plan.highlight
                         ? 'bg-primary text-white'
                         : 'bg-slate-700 text-white hover:bg-slate-600'
-                    } disabled:opacity-50`}
+                    }`}
                   >
-                    {loading ? 'Redirecting…' : `Upgrade to ${plan.label}`}
+                    {loading ? 'Redirecting…' : `Subscribe — ${PLAN_PRICES[plan.key]}`}
                   </button>
                 )}
               </div>
@@ -195,7 +176,7 @@ export function UpgradePage() {
         })}
 
         <p className="text-xs text-slate-500 text-center pb-2">
-          Payments are processed by Stripe. No card data touches our servers.
+          One-time payment per season. Payments processed by Stripe — no card data touches our servers.
         </p>
       </div>
     </div>

@@ -1,28 +1,5 @@
 import { PageHeader } from '../components/layout/PageHeader';
-
-const BG      = '#0f172a';
-const SURFACE = '#1e293b';
-const PRIMARY = '#f97316';
-const TXT     = '#f8fafc';
-const TXT4    = '#94a3b8';
-const TXT5    = '#64748b';
-const GREEN   = '#34d399';
-const AMBER   = '#fbbf24';
-const RED     = '#f87171';
-const BLUE    = '#60a5fa';
-
-function Step({ number, title, note, children }) {
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        <span className="w-7 h-7 rounded-full bg-primary text-black text-sm font-black flex items-center justify-center shrink-0">{number}</span>
-        <span className="font-semibold text-white">{title}</span>
-      </div>
-      {note && <p className="text-sm text-slate-400 pl-10 leading-relaxed">{note}</p>}
-      {children && <div className="pl-10">{children}</div>}
-    </div>
-  );
-}
+import { SURFACE2 as BG, SURFACE, PRIMARY, TXT, TXT4, TXT5, BLUE, GREEN, AMBER, RED, HelpStep as Step } from './helpTheme';
 
 function DiagWinFactorsPanel() {
   return (

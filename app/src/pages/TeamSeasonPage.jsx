@@ -11,24 +11,9 @@ import { getContactsForMatches, getBatchSetsPlayedCount } from '../stats/queries
 import { PageHeader } from '../components/layout/PageHeader';
 import { Spinner } from '../components/ui/Spinner';
 import { EmptyState } from '../components/ui/EmptyState';
+import { fmtVal, fmtPct, fmtHit } from '../utils/seasonUtils';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-
-function fmtVal(val, decimals = 0) {
-  if (val == null || isNaN(val)) return '—';
-  return decimals > 0 ? Number(val).toFixed(decimals) : String(Math.round(val));
-}
-
-function fmtPct(val) {
-  if (val == null || isNaN(val)) return '—';
-  return (val * 100).toFixed(1) + '%';
-}
-
-function fmtHit(val) {
-  if (val == null || isNaN(val)) return '—';
-  const s = (val * 1000).toFixed(0);
-  return (val >= 0 ? '' : '') + (val * 1000 >= 0 ? '.' : '-.') + Math.abs(Number(s)).toString().padStart(3, '0');
-}
 
 function oppLabel(match) {
   if (match.opponent_abbr) return match.opponent_abbr;
@@ -268,7 +253,7 @@ export function TeamSeasonPage() {
         setSeasonTotals(totals);
       })
       .finally(() => setLoading(false));
-  }, [matches]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [matches]);
 
   // W–L record from completed matches
   const record = useMemo(() => {

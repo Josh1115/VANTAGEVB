@@ -203,7 +203,7 @@ export function RotationOptimizerPage() {
             const si     = slotIdxForCell(g, activeRotation);
             const pid    = slots[si];
             const player = pid ? playerMap[pid] : null;
-            const pStats = pid ? (playerStats[pid]) : null;
+            const pStats = pid ? playerStats[String(pid)] : null;
             const keyStat = keyStatLabel(pStats, player);
             const isServer = CELL_LABELS[g] === 'S1';
             return (
@@ -316,7 +316,7 @@ export function RotationOptimizerPage() {
                 .slice()
                 .sort((a, b) => Number(a.jersey_number) - Number(b.jersey_number))
                 .map(p => {
-                  const pStats  = playerStats[p.id] ?? playerStats[String(p.id)];
+                  const pStats  = playerStats[String(p.id)];
                   const keyStat = keyStatLabel(pStats, p);
                   const assigned = assignedSet.has(p.id);
                   return (

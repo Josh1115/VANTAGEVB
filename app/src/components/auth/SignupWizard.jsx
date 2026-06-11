@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { supabase } from '../../utils/supabase';
-import { BASELINE_FEATURES, CORE_FEATURES, ADVANTAGE_FEATURES, TOPPER_FEATURES } from '../../constants';
+import { TRIAL_MATCH_LIMIT } from '../../constants';
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA',
@@ -10,7 +10,7 @@ const US_STATES = [
 ];
 
 const PIN_LENGTH = 6;
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 4;
 
 function ProgressDots({ step }) {
   return (
@@ -227,8 +227,8 @@ function StepSchool({ data, onChange, onNext, error }) {
   );
 }
 
-// ── Step 4: Coach ─────────────────────────────────────────────────────────────
-function StepCoach({ value, onChange, onNext }) {
+// ── Step 4: Coach (final step — triggers account creation) ───────────────────
+function StepCoach({ value, onChange, onSubmit, submitting, error }) {
   const inp = 'w-full rounded-2xl border-2 border-slate-600 bg-slate-800/40 px-5 py-4 text-lg text-white placeholder-slate-500 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all';
 
   return (
@@ -243,105 +243,14 @@ function StepCoach({ value, onChange, onNext }) {
         placeholder="Head coach name"
         value={value}
         onChange={e => onChange(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && onNext()}
+        onKeyDown={e => e.key === 'Enter' && onSubmit()}
         className={inp}
       />
-      <button
-        onClick={onNext}
-        className="w-full rounded-2xl bg-primary py-4 text-base font-black text-white tracking-wide active:scale-[0.97] transition-transform"
-      >
-        Continue
-      </button>
-      <button
-        onClick={onNext}
-        className="text-sm text-slate-500 hover:text-slate-300 transition-colors text-center -mt-3"
-      >
-        Skip for now
-      </button>
-    </div>
-  );
-}
 
-// ── Step 5: Plan ──────────────────────────────────────────────────────────────
-
-function StepPlan({ onSubmit, submitting, error }) {
-  return (
-    <div className="w-full flex flex-col gap-5 animate-slide-up-fade">
-      <div className="text-center space-y-1">
-        <h2 className="text-2xl font-black text-white">Choose a plan</h2>
-        <p className="text-slate-400 text-sm">You can upgrade at any time</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        {/* BASELINE — always selected at signup */}
-        <div className="rounded-2xl border-2 border-primary bg-primary/10 p-3 text-left flex flex-col gap-2">
-          <div>
-            <p className="text-sm font-black text-white">"BASELINE"</p>
-            <p className="text-[10px] text-slate-300 mt-0.5">Everything you need</p>
-          </div>
-          <ul className="space-y-1">
-            {BASELINE_FEATURES.map(f => {
-              const isLimit = f.startsWith('No ') || f.startsWith('Limited') || f.startsWith('Max ');
-              return (
-                <li key={f} className={`flex items-start gap-1 text-[10px] ${isLimit ? 'text-slate-500' : 'text-slate-300'}`}>
-                  <span className={`shrink-0 mt-px ${isLimit ? 'text-slate-600' : 'text-emerald-400'}`}>{isLimit ? '✕' : '✓'}</span>{f}
-                </li>
-              );
-            })}
-          </ul>
-          <p className="text-base font-black text-white mt-auto">Free</p>
-        </div>
-
-        {/* CORE */}
-        <div className="rounded-2xl border-2 border-slate-600 bg-slate-800/40 p-3 text-left flex flex-col gap-2 relative overflow-hidden opacity-50">
-          <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wide bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded-full">Soon</span>
-          <div>
-            <p className="text-sm font-black text-white">"CORE"</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">One program</p>
-          </div>
-          <ul className="space-y-1">
-            {CORE_FEATURES.map(f => (
-              <li key={f} className="flex items-start gap-1 text-[10px] text-slate-500">
-                <span className="text-slate-600 shrink-0 mt-px">✓</span>{f}
-              </li>
-            ))}
-          </ul>
-          <p className="text-base font-black text-slate-500 mt-auto">$49.99<span className="text-[10px] font-normal">/season</span></p>
-        </div>
-
-        {/* ADVANTAGE */}
-        <div className="rounded-2xl border-2 border-slate-600 bg-slate-800/40 p-3 text-left flex flex-col gap-2 relative overflow-hidden opacity-50">
-          <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wide bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded-full">Soon</span>
-          <div>
-            <p className="text-sm font-black text-white">"ADVANTAGE"</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">JV + Varsity</p>
-          </div>
-          <ul className="space-y-1">
-            {ADVANTAGE_FEATURES.map(f => (
-              <li key={f} className="flex items-start gap-1 text-[10px] text-slate-500">
-                <span className="text-slate-600 shrink-0 mt-px">✓</span>{f}
-              </li>
-            ))}
-          </ul>
-          <p className="text-base font-black text-slate-500 mt-auto">$89.99<span className="text-[10px] font-normal">/season</span></p>
-        </div>
-
-        {/* TOPPER */}
-        <div className="rounded-2xl border-2 border-slate-600 bg-slate-800/40 p-3 text-left flex flex-col gap-2 relative overflow-hidden opacity-50">
-          <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wide bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 rounded-full">Soon</span>
-          <div>
-            <p className="text-sm font-black text-white">"TOPPER"</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Top tier</p>
-          </div>
-          <ul className="space-y-1">
-            {TOPPER_FEATURES.map(f => (
-              <li key={f} className="flex items-start gap-1 text-[10px] text-slate-500">
-                <span className="text-slate-600 shrink-0 mt-px">✓</span>{f}
-              </li>
-            ))}
-          </ul>
-          <p className="text-base font-black text-slate-500 mt-auto">TBD</p>
-        </div>
+      {/* Trial callout */}
+      <div className="rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-center space-y-0.5">
+        <p className="text-sm font-black text-primary">Full access — {TRIAL_MATCH_LIMIT} matches free</p>
+        <p className="text-xs text-slate-400">Try everything. Upgrade anytime.</p>
       </div>
 
       {error && <p className="text-sm text-red-400 text-center">{error}</p>}
@@ -351,7 +260,14 @@ function StepPlan({ onSubmit, submitting, error }) {
         disabled={submitting}
         className="w-full rounded-2xl bg-primary py-4 text-base font-black text-white tracking-wide active:scale-[0.97] transition-transform disabled:opacity-50"
       >
-        {submitting ? 'Creating account…' : 'Get Started'}
+        {submitting ? 'Creating account…' : 'Start Free Trial'}
+      </button>
+      <button
+        onClick={onSubmit}
+        disabled={submitting}
+        className="text-sm text-slate-500 hover:text-slate-300 transition-colors text-center -mt-3 disabled:opacity-50"
+      >
+        Skip & start trial
       </button>
     </div>
   );
@@ -403,9 +319,13 @@ export function SignupWizard({ onComplete, onBack }) {
       });
       if (error) throw error;
       if (data.session) {
-        onComplete(); // logged in immediately (email confirmation disabled)
+        // Stamp the profile with trial plan (DB trigger may have already created the row)
+        await supabase
+          .from('profiles')
+          .upsert({ id: data.session.user.id, plan: 'trial' }, { onConflict: 'id' });
+        onComplete();
       } else {
-        setStep(6); // email confirmation required — show check-your-email screen
+        setStep(5); // email confirmation required — show check-your-email screen
       }
     } catch (err) {
       setError(err.message ?? 'Sign up failed. Please try again.');
@@ -414,7 +334,7 @@ export function SignupWizard({ onComplete, onBack }) {
     }
   }
 
-  if (step === 6) {
+  if (step === 5) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-8 animate-fade-in"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}>
@@ -471,11 +391,6 @@ export function SignupWizard({ onComplete, onBack }) {
           <StepCoach
             value={coachName}
             onChange={setCoachName}
-            onNext={next}
-          />
-        )}
-        {step === 5 && (
-          <StepPlan
             onSubmit={handleSubmit}
             submitting={submitting}
             error={error}

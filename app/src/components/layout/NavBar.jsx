@@ -259,6 +259,37 @@ function ClipboardIcon({ active }) {
   );
 }
 
+const CHART_BARS = [
+  { x: 4,   yPct: 0.55, delay: 0   },
+  { x: 9,   yPct: 0.75, delay: 220 },
+  { x: 14,  yPct: 0.40, delay: 110 },
+  { x: 19,  yPct: 0.85, delay: 330 },
+];
+
+function ReportsChartIcon({ active }) {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#f97316' }}>
+      {/* Baseline */}
+      <line x1="2" y1="20" x2="22" y2="20" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      {/* Y-axis */}
+      <line x1="4" y1="4" x2="4" y2="20" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      {CHART_BARS.map((b, i) => {
+        const barH = b.yPct * 13;
+        return active ? (
+          <rect key={i}
+            x={b.x} y={20 - barH} width="3.5" height={barH} rx="0.8"
+            className="chart-bar-eq"
+            style={{ '--delay': `${b.delay}ms` }}
+            fill="#60a5fa" />
+        ) : (
+          <rect key={i} x={b.x} y={20 - barH} width="3.5" height={barH} rx="0.8"
+            fill="currentColor" fillOpacity="0.5" />
+        );
+      })}
+    </svg>
+  );
+}
+
 const GEAR_SPARKS = [
   { cx: 12,   cy: 2.6,  color: '#ffffff', delay: 0    },
   { cx: 18.7, cy: 5.35, color: '#60a5fa', delay: 250  },
@@ -300,7 +331,8 @@ const TABS = [
   { to: '/',         label: 'Home',    svg: HomeScoreboardIcon, end: true,  idleAnim: 'animate-home-pulse'      },
   { to: '/teams',    label: 'Teams',   svg: TeamsIcon, end: false, idleAnim: ''                        },
   { to: '/records',  label: 'Records', svg: ConfettiTrophy, end: false, idleAnim: 'animate-trophy-twinkle', requires: 'core' },
-  { to: '/history',  label: 'History', svg: HistoryBookIcon, end: false, idleAnim: 'animate-book-open', requires: 'core'  },
+  { to: '/history',  label: 'History', svg: HistoryBookIcon,   end: false, idleAnim: 'animate-book-open',  requires: 'core' },
+  { to: '/reports',  label: 'Reports', svg: ReportsChartIcon, end: false, idleAnim: 'animate-icon-bounce', requires: 'core' },
   { to: '/settings', label: 'Settings', svg: SettingsGearIcon, end: false, idleAnim: 'animate-gear-spin' },
 ];
 

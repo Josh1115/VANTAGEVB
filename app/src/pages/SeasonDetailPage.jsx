@@ -426,7 +426,7 @@ export function SeasonDetailPage() {
               {/* Team Totals */}
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white px-0.5">Team Totals</p>
               <div className="grid grid-cols-7 gap-2">
-                {STATS.map(({ label, ttKey, navKey, fmt, noAvg }) => {
+                {STATS.map(({ label, ttKey, fmt, noAvg }) => {
                   const val = seasonStats.team[ttKey];
                   const perMatch = !noAvg && val != null && mc > 0 ? val / mc : null;
                   const fmtPM = perMatch != null
@@ -435,7 +435,7 @@ export function SeasonDetailPage() {
                   return (
                     <button
                       key={ttKey}
-                      onClick={() => navigate(`/seasons/${id}/team?stat=${navKey}`)}
+                      onClick={() => navigate(`/seasons/${id}/team?stat=${ttKey}`)}
                       className="bg-surface rounded-xl p-2 text-center flex flex-col items-center gap-1 active:scale-95 transition-transform"
                     >
                       <span className="text-[10px] font-black uppercase tracking-wider text-white">{label}</span>

@@ -8,9 +8,11 @@ const corsHeaders = {
 
 // Map Stripe Price IDs back to plan names
 const PRICE_TO_PLAN: Record<string, string> = {
-  'price_1TfrN0EZO853IB28dlwniOCd': 'core',
-  'price_1TfrNYEZO853IB28Z01mpQWs': 'advantage',
-  'price_1TfrNkEZO853IB28QjaJqx7Q': 'topper',
+  'price_1Tgv6hEZO853IB28UMuYmThg': '1_team',
+  'price_1Tgv6hEZO853IB28oD6EK5Nv': '2_teams',
+  'price_1Tgv6iEZO853IB28yjTenLlh': '3_teams',
+  'price_1Tgv6iEZO853IB28cvivhAJ1': '4_teams',
+  'price_1Tgv6jEZO853IB28b5NnUVVJ': '5plus_teams',
 };
 
 Deno.serve(async (req) => {
