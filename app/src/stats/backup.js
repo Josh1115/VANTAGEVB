@@ -1,5 +1,6 @@
 import { db } from '../db/schema';
 import { STORAGE_KEYS } from '../utils/storage';
+import { supabase } from '../utils/supabase';
 
 const BACKUP_VERSION = 1;
 
@@ -98,6 +99,8 @@ export async function autoSaveBackup(label = 'auto') {
     const toDelete = all.slice(0, all.length - MAX_AUTO_BACKUPS).map((b) => b.id);
     await db.auto_backups.bulkDelete(toDelete);
   }
+
+  saveToCloud(supabase).catch(() => {});
 }
 
 export async function restoreAutoBackup(backupId) {

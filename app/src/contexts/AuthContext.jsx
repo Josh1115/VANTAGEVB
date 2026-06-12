@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../utils/supabase';
+import { saveToCloud, restoreFromCloud } from '../stats/backup';
+import { db } from '../db/schema';
 
 const AuthContext = createContext(null);
 
@@ -17,16 +19,33 @@ export function AuthProvider({ children }) {
     setProfile(data ?? null);
   }
 
+  async function autoSync() {
+    try {
+      const teamCount = await db.teams.count();
+      if (teamCount === 0) {
+        await restoreFromCloud(supabase);
+      } else {
+        await saveToCloud(supabase);
+      }
+    } catch {
+      // Sync failures are silent — app still works offline
+    }
+  }
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session ?? null);
       if (session) fetchProfile(session.user.id);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session ?? null);
-      if (session) fetchProfile(session.user.id);
-      else setProfile(null);
+      if (session) {
+        fetchProfile(session.user.id);
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') autoSync();
+      } else {
+        setProfile(null);
+      }
     });
 
     return () => subscription.unsubscribe();
