@@ -1197,8 +1197,8 @@ function useLastSetScore() {
 export function SettingsPage() {
   const showToast    = useUiStore((s) => s.showToast);
   const fileInputRef = useRef(null);
-  const { session } = useAuth();
-  const { isActive, isMaster, teamsAllowed } = usePlan();
+  const { session, refreshProfile } = useAuth();
+  const { isActive, isMaster, teamsAllowed, expiresAt } = usePlan();
   const navigate     = useNavigate();
   const [maxSubs, saveMaxSubs]           = useMaxSubs();
   const [defaultFormat, saveDefaultFormat] = useDefaultFormat();
@@ -1226,6 +1226,8 @@ export function SettingsPage() {
   const [soundsOn,     saveSounds]      = useToggleSetting(STORAGE_KEYS.SOUNDS);
   const [flipLayout,   saveFlipLayout]  = useToggleSetting(STORAGE_KEYS.FLIP_LAYOUT);
   const [assumeSetterRot1, saveAssumeSetterRot1] = useToggleSetting(STORAGE_KEYS.ASSUME_SETTER_ROT1, true);
+  const [promoCode,           setPromoCode]           = useState('');
+  const [promoLoading,        setPromoLoading]        = useState(false);
   const [confirmClear,        setConfirmClear]        = useState(false);
   const [confirmImport,       setConfirmImport]       = useState(false);
   const [confirmLogout,       setConfirmLogout]       = useState(false);
@@ -1338,6 +1340,34 @@ export function SettingsPage() {
     setConfirmClear(false);
   }
 
+  async function handleRedeemPromo() {
+    const code = promoCode.trim();
+    if (!code) return;
+    setPromoLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('redeem_promo_code', { p_code: code });
+      if (error) throw error;
+      if (data?.error) {
+        const msgs = {
+          invalid_code:     'That code is not valid.',
+          code_expired:     'That code has expired.',
+          code_exhausted:   'That code has already been fully redeemed.',
+          already_redeemed: 'You have already redeemed this code.',
+          not_authenticated:'You must be logged in to redeem a code.',
+        };
+        showToast(msgs[data.error] ?? 'Invalid code.', 'error');
+      } else {
+        setPromoCode('');
+        refreshProfile();
+        showToast('Code applied! Your plan is now active.', 'success');
+      }
+    } catch {
+      showToast('Something went wrong. Try again.', 'error');
+    } finally {
+      setPromoLoading(false);
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -1410,7 +1440,10 @@ export function SettingsPage() {
                   <div className="text-sm font-bold text-white">
                     {teamsAllowed === 99 ? '5+ Teams' : `${teamsAllowed} Team${teamsAllowed > 1 ? 's' : ''}`} / Season
                   </div>
-                  <div className="text-xs text-slate-400">All features included · 50 matches per team per season</div>
+                  <div className="text-xs text-slate-400">
+                    All features included · 50 matches per team per season
+                    {expiresAt && ` · Expires ${expiresAt.toLocaleDateString()}`}
+                  </div>
                 </div>
               </div>
             ) : (
@@ -1418,6 +1451,39 @@ export function SettingsPage() {
             )}
           </div>
         </section>
+
+        {/* Redeem promo code */}
+        {session && !isMaster && (
+          <section className="bg-surface rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-700">
+              <h2
+                className="text-[18.4px] font-black uppercase leading-none"
+                style={{ color: '#f97316', WebkitTextStroke: '0.5px rgba(255,255,255,0.6)', letterSpacing: '0.15em' }}
+              >Redeem Code</h2>
+            </div>
+            <div className="p-4">
+              <p className="text-xs text-slate-400 mb-3">Have a promo code? Enter it below to activate your plan.</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => e.key === 'Enter' && handleRedeemPromo()}
+                  placeholder="ENTER CODE"
+                  className="flex-1 bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm font-mono tracking-widest uppercase placeholder:text-slate-600 focus:outline-none focus:border-primary"
+                  maxLength={32}
+                />
+                <button
+                  onClick={handleRedeemPromo}
+                  disabled={promoLoading || !promoCode.trim()}
+                  className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-bold disabled:opacity-40 active:scale-95 transition-transform"
+                >
+                  {promoLoading ? '…' : 'Apply'}
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Storage warning */}
         {showStorageWarning && (
@@ -1722,9 +1788,10 @@ export function SettingsPage() {
                 className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
               >
                 <option value="">No default</option>
-                {(teams ?? []).map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
+                {(teams ?? []).map((t) => {
+                  const genderLabel = t.gender === 'F' ? 'Girls' : t.gender === 'M' ? 'Boys' : t.gender === 'Mixed' ? 'Mixed' : null;
+                  return <option key={t.id} value={t.id}>{genderLabel ? `${genderLabel} - ${t.name}` : t.name}</option>;
+                })}
               </select>
             </div>
 

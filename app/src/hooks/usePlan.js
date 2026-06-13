@@ -31,7 +31,10 @@ export const SEASON_MATCH_LIMIT = 50;
 
 export function usePlan() {
   const { profile } = useAuth();
-  const plan = profile?.plan ?? 'inactive';
+  const rawPlan = profile?.plan ?? 'inactive';
+  const expiresAt = profile?.plan_expires_at ? new Date(profile.plan_expires_at) : null;
+  const isExpired = expiresAt ? expiresAt < new Date() : false;
+  const plan = (rawPlan !== 'inactive' && rawPlan !== 'master' && isExpired) ? 'inactive' : rawPlan;
   const isMaster = plan === 'master';
   const isActive = plan !== 'inactive';
   const teamsAllowed = PLAN_TEAMS[plan] ?? 0;
@@ -40,5 +43,5 @@ export function usePlan() {
     return isActive;
   }
 
-  return { plan, isActive, isMaster, teamsAllowed, has };
+  return { plan, isActive, isMaster, teamsAllowed, has, expiresAt: isExpired ? null : expiresAt };
 }

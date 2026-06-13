@@ -86,6 +86,10 @@ function makeHistoricalRows(historicalAll, playerLookup = null) {
           ? (r.player_id ?? playerLookup.nameToPlayerId[r.player_name?.toLowerCase().trim() ?? ''])
           : null;
         const activeByRoster = pid ? playerLookup.activePlayerIds.has(pid) : false;
+        const csYear = playerLookup?.currentSeasonYear;
+        const seasonMatch = csYear != null
+          ? String(r.season_year) === String(csYear) && !playerLookup.currentSeasonEnded
+          : true;
         return {
           id:                r.id,
           name:              r.player_name ?? '',
@@ -96,7 +100,7 @@ function makeHistoricalRows(historicalAll, playerLookup = null) {
           class_year:        r.class_year ?? '',
           career_year_start: r.career_year_start ?? null,
           career_year_end:   r.career_year_end   ?? null,
-          active:            activeByRoster || (r.career_year_start != null && !r.career_year_end),
+          active:            (activeByRoster && seasonMatch) || (r.career_year_start != null && !r.career_year_end),
           player_id:         pid ?? undefined,
         };
       });
@@ -153,8 +157,8 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
       }
     }
 
-    // Build pre-VBSTAT baselines from player fields (avoids double-counting from historical records)
-    const offsetsByPid = {};
+    // Build pre-VBSTAT baselines from player fields
+    const preVbstatByPid = {};
     for (const p of players) {
       const b = {};
       if (p.pre_vbstat_k   != null) b.k   = p.pre_vbstat_k;
@@ -163,7 +167,35 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
       if (p.pre_vbstat_ast != null) b.ast = p.pre_vbstat_ast;
       if (p.pre_vbstat_dig != null) b.dig = p.pre_vbstat_dig;
       if (p.pre_vbstat_sp  != null) b.sp  = p.pre_vbstat_sp;
-      if (Object.keys(b).length) offsetsByPid[p.id] = b;
+      if (Object.keys(b).length) preVbstatByPid[p.id] = b;
+    }
+
+    // For players who have linked historical_records (manually entered before they had a profile)
+    // but no pre_vbstat_ fields, use those records as their career baseline offset.
+    // pre_vbstat_ always wins over historical to prevent double-counting.
+    const BASELINE_KEYS = new Set(['k', 'ace', 'blk', 'ast', 'dig', 'sp']);
+    const histOffsetByPid = {};
+    const histCareerStartByPid = {};
+    for (const r of historicalAll) {
+      if (!BASELINE_KEYS.has(r.stat)) continue;
+      const pid = r.player_id ?? nameToPlayerId[r.player_name?.toLowerCase().trim() ?? ''];
+      if (!pid || !playerNamesMap[pid]) continue; // standalone entries handled separately
+      if (!histOffsetByPid[pid]) histOffsetByPid[pid] = {};
+      // take max across duplicate entries for the same stat
+      histOffsetByPid[pid][r.stat] = Math.max(histOffsetByPid[pid][r.stat] ?? 0, r.value ?? 0);
+      // track earliest career_year_start from linked historical records
+      if (r.career_year_start != null) {
+        histCareerStartByPid[pid] = histCareerStartByPid[pid] != null
+          ? Math.min(histCareerStartByPid[pid], r.career_year_start)
+          : r.career_year_start;
+      }
+    }
+
+    // Merge: pre_vbstat_ fields win; linked historical fills any gaps
+    const offsetsByPid = {};
+    for (const pid of new Set([...Object.keys(preVbstatByPid), ...Object.keys(histOffsetByPid)].map(Number))) {
+      const merged = { ...(histOffsetByPid[pid] ?? {}), ...(preVbstatByPid[pid] ?? {}) };
+      if (Object.keys(merged).length) offsetsByPid[pid] = merged;
     }
 
     // Standalone historical = records with no matching in-app player (pure manual entries)
@@ -186,13 +218,17 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
             const offset       = offsetsByPid[pid]?.[key] ?? 0;
             const val          = fromContacts + offset;
             if (!val) return null;
-            const yearRange = playerYearRange[pid] ?? null;
-            const isActive  = activePlayerIds.has(pid);
+            const yearRange   = playerYearRange[pid] ?? null;
+            const isActive    = activePlayerIds.has(pid);
+            const histStart   = histCareerStartByPid[pid] ?? null;
+            const careerStart = yearRange
+              ? (histStart != null ? Math.min(yearRange.min, histStart) : yearRange.min)
+              : histStart;
             return {
               name:              playerNamesMap[pid] ?? '?',
               val,
               class_year:        playerClassYears[pid] ?? '',
-              career_year_start: yearRange?.min ?? null,
+              career_year_start: careerStart,
               career_year_end:   isActive ? null : (yearRange?.max ?? null),
               active:            isActive,
               player_id:         pid,
@@ -212,13 +248,17 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
   const activePlayerIds = new Set(players.filter(p => p.is_active).map(p => p.id));
   const playerYears = Object.fromEntries(players.filter(p => p.year).map(p => [p.id, p.year]));
   const nameToPlayerId = Object.fromEntries(players.map(p => [p.name?.toLowerCase().trim() ?? '', p.id]));
-  const playerLookup = { nameToPlayerId, activePlayerIds };
-  const historicalRows = makeHistoricalRows(historicalAll, playerLookup);
 
   const seasons = await db.seasons.where('team_id').equals(teamId).toArray();
-  if (!seasons.length) return Object.fromEntries(statsForTab.map(s => [s.key, mergeAndRank([], historicalRows(s.key))]));
+  if (!seasons.length) {
+    const historicalRows = makeHistoricalRows(historicalAll, { nameToPlayerId, activePlayerIds });
+    return Object.fromEntries(statsForTab.map(s => [s.key, mergeAndRank([], historicalRows(s.key))]));
+  }
 
   const currentSeasonEnded = seasons.find(s => s.id === currentSeasonId)?.status === 'ended';
+  const currentSeasonYear  = seasons.find(s => s.id === currentSeasonId)?.year ?? null;
+  const playerLookup = { nameToPlayerId, activePlayerIds, currentSeasonYear, currentSeasonEnded };
+  const historicalRows = makeHistoricalRows(historicalAll, playerLookup);
 
   const allMatches = await db.matches
     .where('season_id').anyOf(seasons.map(s => s.id))

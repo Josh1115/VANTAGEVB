@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, useCallback } from 'react';
 
 const LETTERS = 'VANTAGE'.split('');
-const FONT_PX = 81;
+const FONT_PX = 66;
 const BASELINE = FONT_PX + 4; // SVG y coordinate of text baseline
 
 // Animation timing (ms)
@@ -60,7 +60,7 @@ function buildCSS(totalWidth) {
   return [...lKFs, ulKF].join('');
 }
 
-export function VantageLogo({ animated = true, onClick, onPointerDown, onPointerUp, onPointerLeave }) {
+export function VantageLogo({ animated = true, onClick, onPointerDown, onPointerUp, onPointerLeave, onMeasure }) {
   const measureRef = useRef(null);
   const [m, setM] = useState(null); // { chars: [{x}], bbox }
 
@@ -70,11 +70,14 @@ export function VantageLogo({ animated = true, onClick, onPointerDown, onPointer
     try {
       const chars = LETTERS.map((_, i) => ({ x: el.getStartPositionOfChar(i).x }));
       const bbox  = el.getBBox();
-      if (bbox.width > 10) setM({ chars, bbox });
+      if (bbox.width > 10) {
+        setM({ chars, bbox });
+        onMeasure?.(bbox.width + 4); // +4 matches vbW calculation
+      }
     } catch {
       // SVG measurement APIs unavailable (e.g. hidden/unmounted)
     }
-  }, []);
+  }, [onMeasure]);
 
   useLayoutEffect(() => {
     doMeasure();
