@@ -53,21 +53,50 @@ Deno.serve(async (req) => {
 
         if (!userId || !plan) break;
 
+        // Plans expire 1 year from purchase date
+        const planExpiresAt = new Date();
+        planExpiresAt.setFullYear(planExpiresAt.getFullYear() + 1);
+
         await supabase
           .from('profiles')
           .update({
             plan,
             stripe_customer_id: session.customer as string,
+            plan_expires_at: planExpiresAt.toISOString(),
             updated_at: new Date().toISOString(),
           })
           .eq('id', userId);
 
-        console.log(`Updated user ${userId} to plan: ${plan}`);
+        console.log(`Updated user ${userId} to plan: ${plan}, expires: ${planExpiresAt.toISOString()}`);
         break;
       }
 
-      case 'payment_intent.succeeded': {
-        // Redundant safety net — checkout.session.completed is the primary handler
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        const customerId = charge.customer as string;
+        if (!customerId) break;
+
+        // Look up user by Stripe customer ID and revoke their plan
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('stripe_customer_id', customerId);
+
+        if (!profiles?.length) {
+          console.warn(`charge.refunded: no profile found for customer ${customerId}`);
+          break;
+        }
+
+        await supabase
+          .from('profiles')
+          .update({
+            plan: 'inactive',
+            plan_expires_at: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_customer_id', customerId);
+
+        console.log(`Revoked plan for customer ${customerId} (${profiles.length} profile(s))`);
         break;
       }
 

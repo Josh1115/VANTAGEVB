@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VANTAGE — Icon Concepts</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #0f172a;
+  font-family: system-ui, -apple-system, sans-serif;
+  padding: 48px 32px;
+  min-height: 100vh;
+}
+h1 {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #475569;
+  margin-bottom: 52px;
+}
+.concepts { display: flex; flex-direction: column; gap: 52px; }
+.concept-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #cbd5e1;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.concept-desc { font-size: 0.72rem; color: #475569; margin-bottom: 20px; }
+.sizes { display: flex; align-items: flex-end; gap: 28px; flex-wrap: wrap; }
+.size-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.size-label { font-size: 0.58rem; color: #334155; font-family: 'SF Mono', 'Fira Code', monospace; }
+.on-white { background: #ffffff; border-radius: 16px; padding: 10px; }
+.divider { border: none; border-top: 1px solid #1e293b; }
+</style>
+</head>
+<body>
+<h1>VANTAGE — Icon Sketches</h1>
+<div id="root" class="concepts"></div>
+
+<script>
+let uid = 0;
+
+function baseSVG(vShape, extraDefs = '', extra = '') {
+  const id = uid++;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+    <defs>
+      <filter id="gl${id}" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="13" result="blur"/>
+        <feMerge>
+          <feMergeNode in="blur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+      <radialGradient id="bg${id}" cx="50%" cy="62%" r="50%">
+        <stop offset="0%" stop-color="#f97316" stop-opacity="0.11"/>
+        <stop offset="100%" stop-color="#f97316" stop-opacity="0"/>
+      </radialGradient>
+      ${extraDefs}
+    </defs>
+    <rect width="512" height="512" rx="108" fill="#0a0a0a"/>
+    <rect width="512" height="512" rx="108" fill="url(#bg${id})"/>
+    ${vShape(id)}
+    ${extra}
+  </svg>`;
+}
+
+/* Concept A — Stroke V */
+function iconA() {
+  return baseSVG(id =>
+    `<path d="M 80 92 L 256 408 L 432 92" stroke="#f97316" stroke-width="66" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#gl${id})"/>`
+  );
+}
+
+/* Concept B — Stroke V + net line */
+function iconB() {
+  return baseSVG(id =>
+    `<path d="M 80 92 L 256 408 L 432 92" stroke="#f97316" stroke-width="66" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#gl${id})"/>`,
+    '',
+    `<line x1="30" y1="262" x2="482" y2="262" stroke="#f97316" stroke-width="3" stroke-opacity="0.28" stroke-linecap="round"/>`
+  );
+}
+
+/* Concept C — Stroke V + ball ring */
+function iconC() {
+  return baseSVG(id =>
+    `<path d="M 80 92 L 256 408 L 432 92" stroke="#f97316" stroke-width="66" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#gl${id})"/>`,
+    '',
+    `<circle cx="256" cy="260" r="170" stroke="white" stroke-width="2.5" fill="none" opacity="0.17"/>`
+  );
+}
+
+/* Concept D — Filled chevron */
+function iconD() {
+  return baseSVG(id =>
+    `<g filter="url(#gl${id})">
+       <path fill-rule="evenodd" fill="#f97316"
+         d="M 80 92 L 256 408 L 432 92 Z M 394 92 L 256 340 L 118 92 Z"/>
+       <circle cx="256" cy="406" r="33" fill="#f97316"/>
+     </g>`
+  );
+}
+
+/* Concept E — Double V (velocity / stat wave) */
+function iconE() {
+  return baseSVG(id =>
+    `<g filter="url(#gl${id})">
+       <path d="M 80 92 L 256 348 L 432 92" stroke="#f97316" stroke-width="58" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+       <path d="M 148 228 L 256 408 L 364 228" stroke="#f97316" stroke-width="40" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.45"/>
+     </g>`
+  );
+}
+
+function preview(label, desc, iconFn) {
+  const sizes = [[200, '512px'], [96, '192px'], [40, '64px']];
+  const blocks = sizes.map(([px, lbl]) =>
+    `<div class="size-wrap">
+       <div style="width:${px}px;height:${px}px">${iconFn()}</div>
+       <span class="size-label">${lbl}</span>
+     </div>`
+  ).join('');
+  const white =
+    `<div class="size-wrap">
+       <div class="on-white" style="width:96px;height:96px">${iconFn()}</div>
+       <span class="size-label">on white</span>
+     </div>`;
+  return `
+    <div class="concept">
+      <div class="concept-label">${label}</div>
+      <div class="concept-desc">${desc}</div>
+      <div class="sizes">${blocks}${white}</div>
+    </div>`;
+}
+
+document.getElementById('root').innerHTML = [
+  preview('A — Stroke V',
+    'Bold rounded V with orange glow. Maximum legibility. The baseline.',
+    iconA),
+  preview('B — Stroke V + Net',
+    'Adds a thin court net line at midpoint. Grounds the V in volleyball.',
+    iconB),
+  preview('C — Stroke V + Ball',
+    'Faint circle frames the V like a volleyball. Subtle, adds sport context.',
+    iconC),
+  preview('D — Solid Chevron',
+    'Filled V shape (even-odd cutout). Punchy and crisp at very small sizes — no stroke.',
+    iconD),
+  preview('E — Double V',
+    'Two stacked Vs suggesting depth/echo. More dynamic; more complex.',
+    iconE),
+].join('<hr class="divider"/>');
+</script>
+</body>
+</html>

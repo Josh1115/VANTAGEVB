@@ -1570,7 +1570,7 @@ export function MatchSummaryPage() {
               </Button>
               {match?.pv_token && (
                 <Button size="sm" variant="secondary" onClick={() => setShowPvShare(true)}>
-                  PV Share
+                  FS Share
                 </Button>
               )}
               <Button size="sm" variant="secondary" disabled={!stats} onClick={() => setShowCorrections(true)}>

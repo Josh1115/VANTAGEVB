@@ -3,26 +3,25 @@ import { TermsContent, TERMS_VERSION } from './TermsContent';
 
 export const TERMS_STORAGE_KEY = 'vbstat_terms_accepted';
 
-function isAccepted() {
+function getStoredVersion() {
   try {
     const raw = localStorage.getItem(TERMS_STORAGE_KEY);
-    if (!raw) return false;
+    if (!raw) return null;
     try {
-      const parsed = JSON.parse(raw);
-      return parsed.version === TERMS_VERSION;
+      return JSON.parse(raw).version ?? null;
     } catch {
-      // Old plain-string format — migrate to structured entry (acceptedAt unknown)
-      if (raw === TERMS_VERSION) {
-        try { localStorage.setItem(TERMS_STORAGE_KEY, JSON.stringify({ version: TERMS_VERSION, acceptedAt: null })); } catch {}
-        return true;
-      }
-      return false;
+      return raw === TERMS_VERSION ? TERMS_VERSION : null;
     }
-  } catch { return false; }
+  } catch { return null; }
+}
+
+function isAccepted() {
+  return getStoredVersion() === TERMS_VERSION;
 }
 
 export function TermsGate({ children }) {
   const [accepted, setAccepted] = useState(isAccepted);
+  const isUpdate = getStoredVersion() !== null && !accepted;
 
   if (accepted) return children;
 
@@ -37,8 +36,14 @@ export function TermsGate({ children }) {
       style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="bg-slate-900 border-b border-slate-700 px-4 py-3 shrink-0">
-        <h1 className="font-bold text-lg tracking-wide text-white">Terms &amp; Conditions</h1>
-        <p className="text-xs text-slate-400 mt-0.5">Review and accept to continue</p>
+        <h1 className="font-bold text-lg tracking-wide text-white">
+          {isUpdate ? 'Updated Terms & Conditions' : 'Terms & Conditions'}
+        </h1>
+        <p className="text-xs text-slate-400 mt-0.5">
+          {isUpdate
+            ? 'Our terms have been updated — please review and accept to continue'
+            : 'Review and accept to continue'}
+        </p>
       </div>
 
       <div className="flex-1 overflow-y-auto">

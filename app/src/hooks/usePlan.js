@@ -20,6 +20,7 @@ export const PLAN_PRICES = {
 };
 
 export const PLAN_LABELS = {
+  trial:         'Trial',
   '1_team':      '1 Team',
   '2_teams':     '2 Teams',
   '3_teams':     '3 Teams',

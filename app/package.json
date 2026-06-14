@@ -1,7 +1,7 @@
 {
-  "name": "app",
+  "name": "vantage",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@sentry/react": "^10.57.0",
     "@supabase/supabase-js": "^2.107.0",
     "clsx": "^2.1.1",
     "dexie": "^4.3.0",

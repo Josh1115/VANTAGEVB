@@ -20,7 +20,7 @@ const ALL_FEATURES = [
   'Opponent scouting & tracking',
   'Rotation optimizer',
   'Practice tools (serve tracker, serve receive, practice games)',
-  'ParentVantage live sharing',
+  'FamilyScope live sharing',
   'PDF, CSV & MaxPreps export',
   `${SEASON_MATCH_LIMIT} matches per team per season`,
 ];

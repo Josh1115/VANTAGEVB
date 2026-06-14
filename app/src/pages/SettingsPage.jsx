@@ -1197,7 +1197,7 @@ function useLastSetScore() {
 export function SettingsPage() {
   const showToast    = useUiStore((s) => s.showToast);
   const fileInputRef = useRef(null);
-  const { session, refreshProfile } = useAuth();
+  const { session, profile, refreshProfile } = useAuth();
   const { isActive, isMaster, teamsAllowed, expiresAt } = usePlan();
   const navigate     = useNavigate();
   const [maxSubs, saveMaxSubs]           = useMaxSubs();
@@ -1231,6 +1231,11 @@ export function SettingsPage() {
   const [confirmClear,        setConfirmClear]        = useState(false);
   const [confirmImport,       setConfirmImport]       = useState(false);
   const [confirmLogout,       setConfirmLogout]       = useState(false);
+  const [showChangePw,        setShowChangePw]        = useState(false);
+  const [newPassword,         setNewPassword]         = useState('');
+  const [confirmPassword,     setConfirmPassword]     = useState('');
+  const [changingPw,          setChangingPw]          = useState(false);
+  const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false);
   const [pendingFile,         setPendingFile]         = useState(null);
   const [importing,           setImporting]           = useState(false);
   const [showMerge,           setShowMerge]           = useState(false);
@@ -1240,6 +1245,7 @@ export function SettingsPage() {
   const [cloudRestoring,      setCloudRestoring]      = useState(false);
   const [lastCloudSave,       setLastCloudSave]       = useState(null);
   const [confirmCloudRestore, setConfirmCloudRestore] = useState(false);
+  const [portalLoading,       setPortalLoading]       = useState(false);
 
   const autoBackups = useLiveQuery(
     () => db.auto_backups.orderBy('created_at').reverse().limit(5).toArray(),
@@ -1368,6 +1374,48 @@ export function SettingsPage() {
     }
   }
 
+  async function handleManageBilling() {
+    setPortalLoading(true);
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-portal-session`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${s?.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      window.location.href = json.url;
+    } catch (e) {
+      showToast(e.message ?? 'Could not open billing portal', 'error');
+    } finally {
+      setPortalLoading(false);
+    }
+  }
+
+  async function handleChangePassword() {
+    if (newPassword.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
+    if (newPassword !== confirmPassword) { showToast('Passwords do not match.', 'error'); return; }
+    setChangingPw(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setNewPassword('');
+      setConfirmPassword('');
+      setShowChangePw(false);
+      showToast('Password updated successfully.', 'success');
+    } catch (e) {
+      showToast(e.message ?? 'Password update failed.', 'error');
+    } finally {
+      setChangingPw(false);
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -1434,20 +1482,55 @@ export function SettingsPage() {
                 </div>
               </div>
             ) : isActive ? (
-              <div className="flex items-center gap-3">
-                <span className="text-emerald-400 text-lg font-black">✓</span>
-                <div>
-                  <div className="text-sm font-bold text-white">
-                    {teamsAllowed === 99 ? '5+ Teams' : `${teamsAllowed} Team${teamsAllowed > 1 ? 's' : ''}`} / Season
-                  </div>
-                  <div className="text-xs text-slate-400">
-                    All features included · 50 matches per team per season
-                    {expiresAt && ` · Expires ${expiresAt.toLocaleDateString()}`}
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <span className="text-emerald-400 text-lg font-black">✓</span>
+                  <div>
+                    <div className="text-sm font-bold text-white">
+                      {teamsAllowed === 99 ? '5+ Teams' : `${teamsAllowed} Team${teamsAllowed > 1 ? 's' : ''}`} / Season
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      All features included · 50 matches per team per season
+                      {expiresAt && ` · Expires ${expiresAt.toLocaleDateString()}`}
+                    </div>
                   </div>
                 </div>
+                {expiresAt && (() => {
+                  const daysLeft = Math.ceil((expiresAt - new Date()) / (1000 * 60 * 60 * 24));
+                  if (daysLeft > 30) return null;
+                  return (
+                    <div className="flex items-center justify-between gap-3 bg-amber-900/30 border border-amber-600/40 rounded-xl px-3 py-2.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-amber-400 shrink-0">⚠</span>
+                        <p className="text-xs text-amber-300 font-semibold">
+                          {daysLeft <= 0 ? 'Your plan has expired' : `Expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => navigate('/upgrade')}
+                        className="text-xs font-bold text-primary hover:text-orange-300 transition-colors shrink-0"
+                      >
+                        Renew →
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             ) : (
               <p className="text-sm text-slate-400">No active subscription. Subscribe to unlock all features.</p>
+            )}
+            {profile?.stripe_customer_id && (
+              <button
+                onClick={handleManageBilling}
+                disabled={portalLoading}
+                className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-700/60 hover:bg-slate-700 active:scale-95 border border-slate-600/50 text-slate-300 hover:text-white font-semibold text-sm transition-all duration-150 disabled:opacity-50"
+              >
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+                  <line x1="1" y1="10" x2="23" y2="10" />
+                </svg>
+                {portalLoading ? 'Opening…' : 'Manage Billing'}
+              </button>
             )}
           </div>
         </section>
@@ -2211,7 +2294,7 @@ export function SettingsPage() {
           </div>
         </CollapsibleSection>
 
-        {/* Sign Out */}
+        {/* Account */}
         <section className="bg-surface rounded-xl p-4 space-y-3">
           {session && (
             <div className="flex items-center gap-3 pb-3 border-b border-slate-700/60">
@@ -2224,6 +2307,50 @@ export function SettingsPage() {
               </div>
             </div>
           )}
+
+          {/* Change Password */}
+          <button
+            onClick={() => { setShowChangePw(v => !v); setNewPassword(''); setConfirmPassword(''); }}
+            className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-700/50 hover:bg-slate-700 active:scale-95 border border-slate-600/50 text-slate-200 font-semibold text-sm transition-all duration-150"
+          >
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              Change Password
+            </span>
+            <span className={`text-slate-500 text-xs transition-transform duration-200 ${showChangePw ? 'rotate-180' : ''}`}>▼</span>
+          </button>
+
+          {showChangePw && (
+            <div className="space-y-2 pt-1">
+              <input
+                type="password"
+                placeholder="New password (min 6 characters)"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
+              />
+              <input
+                type="password"
+                placeholder="Confirm new password"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleChangePassword()}
+                className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
+              />
+              <button
+                onClick={handleChangePassword}
+                disabled={changingPw || !newPassword || !confirmPassword}
+                className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold tracking-wide disabled:opacity-40 active:scale-[0.98] transition-transform"
+              >
+                {changingPw ? 'Updating…' : 'Update Password'}
+              </button>
+            </div>
+          )}
+
+          {/* Sign Out */}
           <button
             onClick={() => setConfirmLogout(true)}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 active:scale-95 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 font-semibold text-sm transition-all duration-150"
@@ -2234,6 +2361,14 @@ export function SettingsPage() {
               <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
             Sign Out
+          </button>
+
+          {/* Delete Account */}
+          <button
+            onClick={() => setConfirmDeleteAccount(true)}
+            className="w-full text-center text-xs text-slate-600 hover:text-red-500 transition-colors pt-1"
+          >
+            Delete account
           </button>
         </section>
 
@@ -2292,6 +2427,33 @@ export function SettingsPage() {
           }}
           onCancel={() => setConfirmLogout(false)}
         />
+      )}
+
+      {confirmDeleteAccount && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="bg-slate-800 rounded-2xl p-6 max-w-sm w-full space-y-4">
+            <div className="text-base font-black text-white">Delete Account</div>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              To delete your account and all associated data, email us at:
+            </p>
+            <a
+              href={`mailto:vantagevb@gmail.com?subject=${encodeURIComponent('Account Deletion Request')}&body=${encodeURIComponent(`Please delete my Vantage account.\n\nEmail: ${session?.user?.email ?? ''}\n\nI understand this will permanently remove my account and all cloud-stored data.`)}`}
+              className="block w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold text-center tracking-wide"
+              onClick={() => setConfirmDeleteAccount(false)}
+            >
+              Send Deletion Request
+            </a>
+            <p className="text-xs text-slate-500 text-center leading-relaxed">
+              vantagevb@gmail.com — we'll process your request within 7 days. Local device data must be cleared separately via Settings → Data Management → Clear All.
+            </p>
+            <button
+              onClick={() => setConfirmDeleteAccount(false)}
+              className="w-full py-2 rounded-xl bg-slate-700 text-white text-sm font-semibold"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
 
       <HelpModal topic={helpTopic} onClose={() => setHelpTopic(null)} />

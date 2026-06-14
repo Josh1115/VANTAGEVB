@@ -30,6 +30,7 @@ export const STORAGE_KEYS = {
   HISTORY_COMMITS_OPEN: 'vbstat_history_commits_open',
   HISTORY_AWARDS_OPEN:  'vbstat_history_awards_open',
   HISTORY_PROGRAM_OPEN: 'vbstat_history_program_open',
+  HELP_GUIDE_SEEN:      'vbstat_help_guide_seen',
 };
 
 export function getStorageItem(key, defaultValue = null) {

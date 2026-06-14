@@ -105,14 +105,20 @@ export function LoginPage({ onSignup }) {
                 <NetDivider className="mt-2" />
               </div>
               <h2
-                className="text-[18.4px] font-black uppercase leading-none tracking-[0.15em] text-center section-twinkle"
-                style={{ color: '#f97316', WebkitTextStroke: '0.5px rgba(255,255,255,0.6)', paintOrder: 'stroke fill' }}
+                className="text-[36.8px] font-black uppercase leading-none tracking-[0.15em] text-center"
+                style={{ color: '#ffffff' }}
               >
-                FIND YOUR VANTAGE
+                ELEVATE TO YOUR VANTAGE
               </h2>
+              <p className="text-sm text-slate-400 text-center mt-1">How does Vantage compare to the competition?</p>
 
               {/* ── Feature Card: Live Stat View ── */}
               <div className="w-full mt-6">
+                <p
+                  className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white"
+                >
+                  VANTAGE POINT <span className="font-normal normal-case tracking-normal">— Live Stat Phase</span>
+                </p>
                 <svg viewBox="0 0 320 240" className="w-full rounded-xl" style={{ background: '#0f172a' }}>
                   {/* Score header */}
                   <rect x="0" y="0" width="320" height="34" fill="#1e293b" />
@@ -179,17 +185,15 @@ export function LoginPage({ onSignup }) {
                   <text x="174" y="232" fill="#94a3b8" fontSize="6" textAnchor="middle">ATTACK ZONE</text>
                 </svg>
 
-                <p
-                  className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mt-3 text-white"
-                >
-                  VANTAGE POINT <span className="font-normal normal-case tracking-normal">— Live Stat Phase</span>
-                </p>
-                <p className="text-sm text-slate-400 mt-1">
+                <p className="text-sm text-slate-400 mt-3">
                   Vantage Point (VP) allows you to seamlessly track every aspect on the court. Tag each kill, ace, block, and dig with more detail than ever. As data is logged, Vantage provides you Precision Sideline Analytics to make the most informed coaching decisions.
                 </p>
               </div>
               {/* ── Feature Card: Oppo Scoring Bar ── */}
               <div className="w-full mt-8">
+                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
+                  OPPONENT SCORING BAR
+                </p>
                 <svg viewBox="0 0 320 240" className="w-full rounded-xl" style={{ background: '#0f172a' }}>
                   {/* Score header */}
                   <rect x="0" y="0" width="320" height="34" fill="#1e293b" />
@@ -279,16 +283,16 @@ export function LoginPage({ onSignup }) {
                   <text x="259" y="206" fill="#ef4444" fontSize="6.5" fontWeight="800" textAnchor="middle">4-PT RUN — R4</text>
                 </svg>
 
-                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mt-3 text-white">
-                  OPPONENT SCORING BAR
-                </p>
-                <p className="text-sm text-slate-400 mt-1">
+                <p className="text-sm text-slate-400 mt-3">
                   Track how your opponent scores. How does your opponent score their points? The Opponent Scoring Bar vertically integrates to the right side of the screen, allowing the user to define if an opponent won the point by Kill, Serving Error, Attacking Error, Ball Handling Error, Net/Under Violation, or Rotation Overlapping Violation. Additionally, the app intuitively awards the opponent an ACE when the home team obtains a 0 rating in serve receive. Now coaches can see how their roster 'Earns', 'Gives', and are awarded 'Free' points from opponent errors.
                 </p>
               </div>
 
               {/* ── Feature Card: Earned vs Free vs Given ── */}
               <div className="w-full mt-8">
+                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
+                  EARNED vs FREE vs GIVEN
+                </p>
                 <svg viewBox="0 0 320 220" className="w-full rounded-xl" style={{ background: '#0f172a' }}>
                   {/* Header */}
                   <rect x="0" y="0" width="320" height="34" fill="#1e293b" />
@@ -344,16 +348,16 @@ export function LoginPage({ onSignup }) {
                   ))}
                 </svg>
 
-                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mt-3 text-white">
-                  EARNED vs FREE vs GIVEN
-                </p>
-                <p className="text-sm text-slate-400 mt-1">
+                <p className="text-sm text-slate-400 mt-3">
                   Every point your team scores falls into one of three categories. Points your team Earns through kills and aces. Points Given away through your own errors. And Free points — gifts from opponent mistakes. Vantage breaks down every point so you know exactly how your team is winning and where they're leaving points on the court.
                 </p>
               </div>
 
               {/* ── Feature Card: Run Bar Indicator ── */}
               <div className="w-full mt-8">
+                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
+                  RUN BAR INDICATOR
+                </p>
                 <svg viewBox="0 0 320 210" className="w-full rounded-xl" style={{ background: '#0f172a' }}>
                   {/* Header */}
                   <rect x="0" y="0" width="320" height="34" fill="#1e293b" />
@@ -432,16 +436,16 @@ export function LoginPage({ onSignup }) {
                   ))}
                 </svg>
 
-                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mt-3 text-white">
-                  RUN BAR INDICATOR
-                </p>
-                <p className="text-sm text-slate-400 mt-1">
+                <p className="text-sm text-slate-400 mt-3">
                   See momentum shift in real time. The Run Bar Indicator tracks every point of the set visually — color-coded by team — so you can instantly spot scoring runs, identify which rotations are leaking points, and know when to call a timeout before a run gets out of hand.
                 </p>
               </div>
 
               {/* ── Feature Card: HUD Stats — Team + Player ── */}
               <div className="w-full mt-8">
+                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
+                  LIVE TEAM & PLAYER STATS IN HUD
+                </p>
                 <svg viewBox="0 0 320 250" className="w-full rounded-xl" style={{ background: '#0f172a' }}>
                   {/* Header */}
                   <rect x="0" y="0" width="320" height="34" fill="#1e293b" />
@@ -503,16 +507,16 @@ export function LoginPage({ onSignup }) {
                   ))}
                 </svg>
 
-                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mt-3 text-white">
-                  LIVE TEAM & PLAYER STATS IN HUD
-                </p>
-                <p className="text-sm text-slate-400 mt-1">
+                <p className="text-sm text-slate-400 mt-3">
                   Essential stats for team and players fully visible on the HUD. See which players are on fire, and which have cooled off in recent rallies with eye-catching icons. Everything you need, exactly when you need it, with no navigation.
                 </p>
               </div>
 
               {/* ── Feature Card: Set Win Probability ── */}
               <div className="w-full mt-8">
+                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
+                  SET WIN PROBABILITY
+                </p>
                 <svg viewBox="0 0 320 230" className="w-full rounded-xl" style={{ background: '#0f172a' }}>
                   {/* Header */}
                   <rect x="0" y="0" width="320" height="34" fill="#1e293b" />
@@ -577,16 +581,16 @@ export function LoginPage({ onSignup }) {
                   ))}
                 </svg>
 
-                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mt-3 text-white">
-                  SET WIN PROBABILITY
-                </p>
-                <p className="text-sm text-slate-400 mt-1">
+                <p className="text-sm text-slate-400 mt-3">
                   After every rally, Vantage recalculates your team's probability of winning the set — powered by your historical serve receive win percentage, serve point win percentage, and live score differential. Watch the needle move in real time and know exactly when momentum is on your side.
                 </p>
               </div>
 
               {/* ── Feature Card: Serve Stat Detail ── */}
               <div className="w-full mt-8">
+                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
+                  SERVE STAT DETAIL
+                </p>
                 <svg viewBox="0 0 320 248" className="w-full rounded-xl" style={{ background: '#0f172a' }}>
                   {/* Header */}
                   <rect x="0" y="0" width="320" height="34" fill="#1e293b" />
@@ -676,16 +680,16 @@ export function LoginPage({ onSignup }) {
                   <text x="206" y="233" fill="#f59e0b" fontSize="6.5" fontWeight="800">0 Foot Fault</text>
                 </svg>
 
-                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mt-3 text-white">
-                  SERVE STAT DETAIL
-                </p>
-                <p className="text-sm text-slate-400 mt-1">
+                <p className="text-sm text-slate-400 mt-3">
                   Every serve tells a story. Before logging a serve, Vantage prompts you to tag it as a Float or Top — and if it's an error, one more tap specifies whether it went out of bounds, hit the net, or was a foot fault. Over time, these details reveal which serve type earns your team the most aces and exactly where errors are coming from.
                 </p>
               </div>
 
               {/* ── Feature Card: Serve Placement Map ── */}
               <div className="w-full mt-8">
+                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
+                  SERVE PLACEMENT MAP
+                </p>
                 <svg viewBox="0 0 320 248" className="w-full rounded-xl" style={{ background: '#0f172a' }}>
                   {/* Header */}
                   <rect x="0" y="0" width="320" height="34" fill="#1e293b" />
@@ -796,16 +800,16 @@ export function LoginPage({ onSignup }) {
                   <text x="294" y="243" fill="#64748b"  fontSize="6"   fontWeight="700" textAnchor="middle">Z4 12%</text>
                 </svg>
 
-                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mt-3 text-white">
-                  SERVE PLACEMENT MAP
-                </p>
-                <p className="text-sm text-slate-400 mt-1">
+                <p className="text-sm text-slate-400 mt-3">
                   After tagging a serve, tap anywhere on the court grid to mark exactly where it landed. Over time, the placement map reveals which zones a player targets most, where they're finding aces, and — critically — which zones of the opponent's court are receiving the ball poorly. Use it to expose weaknesses and put your best servers in position to attack them.
                 </p>
               </div>
 
               {/* ── Feature Card: IS/OOS & Free Ball/Transition by Rotation ── */}
               <div className="w-full mt-8">
+                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
+                  IN / OUT OF SYSTEM BY ROTATION
+                </p>
                 <svg viewBox="0 0 320 236" className="w-full rounded-xl" style={{ background: '#0f172a' }}>
                   {/* Header */}
                   <rect x="0" y="0" width="320" height="34" fill="#1e293b" />
@@ -919,16 +923,16 @@ export function LoginPage({ onSignup }) {
                   <text x="160" y="230" fill="#334155" fontSize="5.5" fontWeight="700" textAnchor="middle" letterSpacing="0.3">FILTER BY: ALL SETS · BY SET · BY PLAYER ROTATION POSITION</text>
                 </svg>
 
-                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mt-3 text-white">
-                  IN / OUT OF SYSTEM BY ROTATION
-                </p>
-                <p className="text-sm text-slate-400 mt-1">
+                <p className="text-sm text-slate-400 mt-3">
                   Not all opportunities are equal. Vantage breaks down kill percentage by system state — In System when the pass is clean, Out of System when your team is scrambling, and separately tracks Free Ball and Transition kill rates — for every rotation. See which rotations hold up under pressure and which collapse when the pass breaks down, so you can build smarter lineups and target practice exactly where it counts.
                 </p>
               </div>
 
               {/* ── Feature Card: Attack Detail — Kill Type & Errors ── */}
               <div className="w-full mt-8">
+                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
+                  ATTACK DETAIL — KILL TYPE &amp; ERRORS
+                </p>
                 <svg viewBox="0 0 320 248" className="w-full rounded-xl" style={{ background: '#0f172a' }}>
                   {/* Header */}
                   <rect x="0" y="0" width="320" height="34" fill="#1e293b" />
@@ -1018,15 +1022,15 @@ export function LoginPage({ onSignup }) {
                   <text x="255" y="246" fill="#3b82f6" fontSize="6" fontWeight="800">BLK 18%</text>
                 </svg>
 
-                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mt-3 text-white">
-                  ATTACK DETAIL — KILL TYPE &amp; ERRORS
-                </p>
-                <p className="text-sm text-slate-400 mt-1">
+                <p className="text-sm text-slate-400 mt-3">
                   Every kill and every error gets tagged. When a player puts the ball away, Vantage lets you log exactly how — a pure swing, a tool off the block, a tip or roll shot, a back row attack, or a touch kill. On the error side, tag whether it went out of bounds, hit the net, got blocked, or was a blocked and recovered attempt. Over a season, this reveals each hitter's tendencies and shows coaches exactly where efficiency is being left on the court.
                 </p>
               </div>
               {/* ── Feature Card: VER ── */}
               <div className="w-full mt-8">
+                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
+                  VANTAGE EFFICIENCY RATING (VER)
+                </p>
                 <svg viewBox="0 0 320 254" className="w-full rounded-xl" style={{ background: '#0f172a' }}>
                   {/* Header */}
                   <rect x="0" y="0" width="320" height="34" fill="#1e293b" />
@@ -1115,15 +1119,15 @@ export function LoginPage({ onSignup }) {
                   <text x="160" y="253" fill="#334155" fontSize="5.5" textAnchor="middle">★ LEXI (L) VER boosted by 1.65× — position adjustment levels the playing field</text>
                 </svg>
 
-                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mt-3 text-white">
-                  VANTAGE EFFICIENCY RATING (VER)
-                </p>
-                <p className="text-sm text-slate-400 mt-1">
+                <p className="text-sm text-slate-400 mt-3">
                   VER is Vantage's composite efficiency metric — a single number that captures how much a player contributes per set played. Kills, aces, blocks, digs, assists, and passing all earn points. Errors cost them. The result is position-adjusted so liberos and defensive specialists can be evaluated fairly alongside attackers. Track VER across a season to identify your most valuable contributors and spot efficiency trends before they show up in the box score.
                 </p>
               </div>
               {/* ── Feature Card: Detailed Timeout Screen ── */}
               <div className="w-full mt-8">
+                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
+                  DETAILED TIMEOUT SCREEN
+                </p>
                 <svg viewBox="0 0 440 254" className="w-full rounded-xl" style={{ background: '#0f172a' }}>
 
                   {/* Label strip */}
@@ -1340,16 +1344,16 @@ export function LoginPage({ onSignup }) {
                   <text x="364" y="250" fill="#fff" fontSize="6.5" fontWeight="900" textAnchor="middle" letterSpacing="1">RESUME</text>
                 </svg>
 
-                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mt-3 text-white">
-                  DETAILED TIMEOUT SCREEN
-                </p>
-                <p className="text-sm text-slate-400 mt-1">
+                <p className="text-sm text-slate-400 mt-3">
                   The moment you call a timeout, Vantage pulls up a full analytics overlay. The left panel gives you instant access to eleven stat tabs — Scoring, Insights, Trends, Serving, Passing, Attacking, Blocking, Defense, VER, Compare, and Opponent — with a SET/MATCH scope toggle and a live score timeline at the bottom. The right panel surfaces what matters most: current score, set win probability, last eight points broken down by type, match win % trend, rotation SO%/SP%, and an error leader flag. A 60-second countdown ring keeps you on pace, and a built-in court whiteboard lets you draw up a play before you hit Resume.
                 </p>
               </div>
 
               {/* ── Feature Card: Real-Time Win Factors ── */}
               <div className="w-full mt-8">
+                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
+                  REAL-TIME WIN FACTORS
+                </p>
                 <svg viewBox="0 0 320 290" className="w-full rounded-xl" style={{ background: '#0f172a' }}>
 
                   {/* Header */}
@@ -1404,11 +1408,322 @@ export function LoginPage({ onSignup }) {
                   })}
                 </svg>
 
-                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mt-3 text-white">
-                  REAL-TIME WIN FACTORS
-                </p>
-                <p className="text-sm text-slate-400 mt-1">
+                <p className="text-sm text-slate-400 mt-3">
                   Vantage continuously compares your live match stats to your season's historical win and loss averages. Twelve key metrics are ranked by win factor — the percentage of your win/loss gap that stat accounts for. Green means you're at win-level performance right now; amber means you're close; red means this metric is tracking closer to your loss average and needs attention. Open it during any timeout to instantly know where to focus.
+                </p>
+              </div>
+
+              {/* ── Feature Card: Records Tracker ── */}
+              <div className="w-full mt-8">
+                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
+                  INDIVIDUAL, TEAM &amp; PROGRAM RECORDS
+                </p>
+                <svg viewBox="0 0 320 260" className="w-full rounded-xl" style={{ background: '#0f172a' }}>
+                  {/* Header */}
+                  <rect x="0" y="0" width="320" height="34" fill="#1e293b" />
+                  <rect x="0" y="0" width="4" height="34" fill="#f97316" />
+                  <text x="16" y="12" fill="#94a3b8" fontSize="7" fontWeight="700" letterSpacing="1.2">RECORDS TRACKER · SEASON 25–26</text>
+                  <text x="16" y="26" fill="#f1f5f9" fontSize="11" fontWeight="900">LAKE ZURICH vs LIBERTYVILLE</text>
+                  <rect x="250" y="8" width="58" height="18" rx="4" fill="#f9731620" />
+                  <circle cx="260" cy="17" r="4" fill="#f97316" />
+                  <text x="267" y="21" fill="#f97316" fontSize="8" fontWeight="800">LIVE</text>
+
+                  {/* Scope tabs */}
+                  <rect x="0" y="34" width="320" height="16" fill="#0b1120" />
+                  {[
+                    { label: 'INDIVIDUAL', x: 8,   active: true  },
+                    { label: 'TEAM',       x: 118, active: false },
+                    { label: 'PROGRAM',    x: 172, active: false },
+                  ].map(t => (
+                    <g key={t.label}>
+                      <text x={t.x} y="46" fill={t.active ? '#f97316' : '#334155'} fontSize="7" fontWeight={t.active ? '900' : '700'} letterSpacing="0.5">{t.label}</text>
+                      {t.active && <rect x={t.x} y="48" width={t.label.length * 4.8} height="1.5" fill="#f97316" rx="0.5" />}
+                    </g>
+                  ))}
+
+                  {/* Column headers */}
+                  <rect x="0" y="50" width="320" height="14" fill="#060c14" />
+                  <text x="8"   y="60" fill="#334155" fontSize="5.5" fontWeight="700">PLAYER</text>
+                  <text x="92"  y="60" fill="#334155" fontSize="5.5" fontWeight="700">STAT</text>
+                  <text x="162" y="60" fill="#334155" fontSize="5.5" fontWeight="700">THIS MATCH</text>
+                  <text x="228" y="60" fill="#334155" fontSize="5.5" fontWeight="700">PERSONAL BEST</text>
+
+                  {/* Individual record rows */}
+                  {[
+                    { jersey: '#3',  name: 'SARA',  pos: 'OH', stat: 'Kills',  match: '14', best: '12', isNew: true,  isTied: false },
+                    { jersey: '#1',  name: 'LEXI',  pos: 'L',  stat: 'Aces',   match: '3',  best: '3',  isNew: false, isTied: true  },
+                    { jersey: '#7',  name: 'EMMA',  pos: 'OH', stat: 'Digs',   match: '18', best: '21', isNew: false, isTied: false },
+                    { jersey: '#11', name: 'AVA',   pos: 'MB', stat: 'Blocks', match: '4',  best: '3',  isNew: true,  isTied: false },
+                    { jersey: '#15', name: 'JESS',  pos: 'DS', stat: 'Digs',   match: '11', best: '14', isNew: false, isTied: false },
+                  ].map((p, i) => {
+                    const y = 64 + i * 18;
+                    const bg = p.isNew ? '#f9731608' : p.isTied ? '#38bdf808' : 'transparent';
+                    const sc = p.isNew ? '#f97316' : p.isTied ? '#38bdf8' : '#334155';
+                    const sl = p.isNew ? '★ NEW PR' : p.isTied ? '= TIED PR' : '—';
+                    return (
+                      <g key={p.jersey + '-' + p.stat}>
+                        <rect x="0" y={y} width="320" height="17" fill={bg} />
+                        <rect x="0" y={y} width="320" height="0.4" fill="#1e293b" />
+                        <text x="8"  y={y + 11} fill="#f97316" fontSize="7" fontWeight="800">{p.jersey}</text>
+                        <text x="30" y={y + 11} fill="#f1f5f9" fontSize="7" fontWeight="700">{p.name}</text>
+                        <text x="72" y={y + 11} fill="#475569" fontSize="6">{p.pos}</text>
+                        <text x="92" y={y + 11} fill="#94a3b8" fontSize="7">{p.stat}</text>
+                        <text x="188" y={y + 11} fill={p.isNew ? '#f97316' : p.isTied ? '#38bdf8' : '#f1f5f9'} fontSize="9" fontWeight="900" textAnchor="middle">{p.match}</text>
+                        <text x="260" y={y + 11} fill="#475569" fontSize="9" fontWeight="700" textAnchor="middle">{p.best}</text>
+                        <text x="312" y={y + 11} fill={sc} fontSize="6" fontWeight="800" textAnchor="end">{sl}</text>
+                      </g>
+                    );
+                  })}
+
+                  {/* Divider */}
+                  <rect x="0" y="154" width="320" height="0.5" fill="#1e293b" />
+
+                  {/* Team records mini-strip */}
+                  <text x="8" y="165" fill="#64748b" fontSize="6.5" fontWeight="700" letterSpacing="0.8">TEAM · THIS MATCH</text>
+                  {[
+                    { label: 'Kills / Set',  match: '22',   rec: '19',   isNew: true  },
+                    { label: 'Hit %',        match: '.412', rec: '.389', isNew: true  },
+                    { label: 'Aces / Match', match: '7',    rec: '9',    isNew: false },
+                  ].map((r, i) => {
+                    const x = 8 + i * 105;
+                    return (
+                      <g key={r.label}>
+                        <rect x={x} y="169" width="99" height="34" rx="4" fill="#1e293b" stroke={r.isNew ? '#f9731440' : '#33415530'} strokeWidth="0.75" />
+                        <text x={x + 50} y="180" fill="#64748b" fontSize="6" textAnchor="middle">{r.label}</text>
+                        <text x={x + 50} y="196" fill={r.isNew ? '#f97316' : '#f1f5f9'} fontSize="13" fontWeight="900" textAnchor="middle">{r.match}</text>
+                        <text x={x + 50} y="201" fill="#334155" fontSize="5" textAnchor="middle">rec {r.rec}</text>
+                        {r.isNew && <text x={x + 95} y="175" fill="#f97316" fontSize="5.5" fontWeight="900" textAnchor="end">NEW ★</text>}
+                      </g>
+                    );
+                  })}
+
+                  {/* Program record alert banner */}
+                  <rect x="8" y="210" width="304" height="24" rx="4" fill="#f9731614" stroke="#f97316" strokeWidth="0.75" />
+                  <text x="160" y="221" fill="#f97316" fontSize="7" fontWeight="900" textAnchor="middle" letterSpacing="0.3">★ PROGRAM RECORD — SARA: MOST KILLS IN A MATCH · 14</text>
+                  <text x="160" y="231" fill="#64748b" fontSize="5.5" textAnchor="middle">Previous: 12 · MEGAN H. vs MUNDELEIN · OCT 2023</text>
+
+                  {/* Scope footer */}
+                  <text x="160" y="252" fill="#334155" fontSize="5.5" fontWeight="700" textAnchor="middle" letterSpacing="0.3">TRACKED ACROSS: MATCH · SET · SEASON · ALL-TIME PROGRAM</text>
+                </svg>
+
+                <p className="text-sm text-slate-400 mt-3">
+                  Vantage tracks records at every level — individual player personal bests, single-match and single-set team records, and all-time program milestones — all updated in real time as the match unfolds. The moment a player threatens a personal record or a team stat crosses into historic territory, Vantage flags it so you never miss a milestone. Every match, every set, every stat is automatically benchmarked against your program's full history.
+                </p>
+              </div>
+
+              {/* ── Feature Card: FamilyScope ── */}
+              <div className="w-full mt-8">
+                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
+                  FAMILYSCOPE
+                </p>
+                <svg viewBox="0 0 320 260" className="w-full rounded-xl" style={{ background: '#0f172a' }}>
+                  {/* Header */}
+                  <rect x="0" y="0" width="320" height="34" fill="#1e293b" />
+                  <rect x="0" y="0" width="4" height="34" fill="#f97316" />
+                  <text x="16" y="12" fill="#94a3b8" fontSize="7" fontWeight="700" letterSpacing="1.2">FAMILYSCOPE · FAMILY VIEW</text>
+                  <text x="16" y="26" fill="#f1f5f9" fontSize="11" fontWeight="900">LAKE ZURICH vs LIBERTYVILLE</text>
+                  <rect x="250" y="8" width="58" height="18" rx="4" fill="#f9731620" />
+                  <circle cx="260" cy="17" r="4" fill="#f97316" />
+                  <text x="267" y="21" fill="#f97316" fontSize="8" fontWeight="800">LIVE</text>
+
+                  {/* Score section */}
+                  <rect x="0" y="34" width="320" height="50" fill="#060c14" />
+                  <text x="8"  y="47" fill="#334155" fontSize="6" fontWeight="700" letterSpacing="0.5">SETS WON</text>
+                  <text x="8"  y="59" fill="#f97316" fontSize="10" fontWeight="900">●●</text>
+                  <text x="30" y="59" fill="#334155" fontSize="10">○○○</text>
+                  <text x="310" y="59" fill="#64748b" fontSize="10" fontWeight="700" textAnchor="end">○○○</text>
+                  <text x="132" y="74" fill="#f1f5f9" fontSize="28" fontWeight="900" textAnchor="middle">14</text>
+                  <text x="160" y="72" fill="#334155" fontSize="20" fontWeight="700" textAnchor="middle">–</text>
+                  <text x="188" y="74" fill="#64748b" fontSize="28" fontWeight="700" textAnchor="middle">11</text>
+                  <text x="160" y="81" fill="#334155" fontSize="6" textAnchor="middle">SET 2</text>
+
+                  {/* Live feed header */}
+                  <rect x="0" y="84" width="320" height="14" fill="#1e293b" />
+                  <text x="8"   y="94" fill="#64748b" fontSize="6.5" fontWeight="700" letterSpacing="0.8">LIVE FEED</text>
+                  <text x="312" y="94" fill="#334155" fontSize="6" textAnchor="end">updated after every rally</text>
+
+                  {/* Feed rows */}
+                  {[
+                    { icon: '★', label: 'KILL',      detail: '#3 SARA  ·  S3  ·  Pure',   color: '#22c55e', us: true  },
+                    { icon: '▲', label: 'ACE',       detail: '#1 LEXI  ·  S1  ·  Float',  color: '#38bdf8', us: true  },
+                    { icon: '▼', label: 'OPP POINT', detail: 'Libertyville  ·  Kill',      color: '#ef4444', us: false },
+                    { icon: '★', label: 'KILL',      detail: '#3 SARA  ·  S3  ·  Tool',   color: '#22c55e', us: true  },
+                    { icon: '●', label: 'DIG',       detail: '#7 EMMA  ·  S4',             color: '#a78bfa', us: true  },
+                  ].map((e, i) => {
+                    const y = 98 + i * 14;
+                    return (
+                      <g key={i}>
+                        <rect x="0" y={y} width="320" height="13" fill={e.us ? (i % 2 === 0 ? '#0b1120' : 'transparent') : '#450a0a18'} />
+                        <text x="12" y={y + 9} fill={e.color} fontSize="7" fontWeight="900">{e.icon}</text>
+                        <text x="24" y={y + 9} fill={e.color} fontSize="7" fontWeight="800">{e.label}</text>
+                        <text x="88" y={y + 9} fill="#64748b" fontSize="6.5">{e.detail}</text>
+                      </g>
+                    );
+                  })}
+
+                  {/* Box score */}
+                  <rect x="0" y="168" width="320" height="14" fill="#1e293b" />
+                  <text x="8"   y="178" fill="#64748b" fontSize="6.5" fontWeight="700" letterSpacing="0.8">BOX SCORE</text>
+                  <text x="226" y="178" fill="#334155" fontSize="6" fontWeight="700" textAnchor="middle">K</text>
+                  <text x="254" y="178" fill="#334155" fontSize="6" fontWeight="700" textAnchor="middle">ACE</text>
+                  <text x="282" y="178" fill="#334155" fontSize="6" fontWeight="700" textAnchor="middle">DIG</text>
+                  <text x="310" y="178" fill="#334155" fontSize="6" fontWeight="700" textAnchor="middle">APR</text>
+
+                  {[
+                    { jersey: '#3',  name: 'SARA',  kills: 14, aces: 1, digs: 5,  apr: '2.4' },
+                    { jersey: '#1',  name: 'LEXI',  kills: 2,  aces: 3, digs: 9,  apr: '—'   },
+                    { jersey: '#7',  name: 'EMMA',  kills: 3,  aces: 0, digs: 18, apr: '2.1' },
+                    { jersey: '#11', name: 'AVA',   kills: 5,  aces: 0, digs: 2,  apr: '—'   },
+                  ].map((p, i) => {
+                    const y = 182 + i * 13;
+                    return (
+                      <g key={p.jersey}>
+                        <rect x="0" y={y} width="320" height="12" fill={i % 2 === 0 ? '#1e293b50' : 'transparent'} />
+                        <text x="8"   y={y + 8.5} fill="#f97316" fontSize="6.5" fontWeight="800">{p.jersey}</text>
+                        <text x="36"  y={y + 8.5} fill="#f1f5f9" fontSize="6.5" fontWeight="700">{p.name}</text>
+                        <text x="226" y={y + 8.5} fill="#22c55e" fontSize="7" fontWeight="900" textAnchor="middle">{p.kills}</text>
+                        <text x="254" y={y + 8.5} fill="#38bdf8" fontSize="7" fontWeight="700" textAnchor="middle">{p.aces}</text>
+                        <text x="282" y={y + 8.5} fill="#a78bfa" fontSize="7" fontWeight="700" textAnchor="middle">{p.digs}</text>
+                        <text x="310" y={y + 8.5} fill="#64748b" fontSize="7" textAnchor="middle">{p.apr}</text>
+                      </g>
+                    );
+                  })}
+
+                  {/* No account banner */}
+                  <rect x="8" y="237" width="304" height="18" rx="4" fill="#1e293b" stroke="#334155" strokeWidth="0.5" />
+                  <text x="160" y="246" fill="#64748b" fontSize="6.5" textAnchor="middle">No app download  ·  No login  ·  Share a QR code or link</text>
+                  <text x="160" y="253" fill="#334155" fontSize="5.5" textAnchor="middle">Parents follow from any device, in real time</text>
+                </svg>
+
+                <p className="text-sm text-slate-400 mt-3">
+                  FamilyScope gives parents and fans a live, read-only view of the match right on their phone — no app download, no account required. Share a QR code or link before tip-off and they'll see the live score, set-by-set results, a real-time action feed updated after every rally, and the full box score. You stay focused on the sideline; they stay connected to every point.
+                </p>
+              </div>
+
+              {/* ── Feature Card: Teams Page ── */}
+              <div className="w-full mt-8">
+                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
+                  THE TEAMS PAGE
+                </p>
+                <svg viewBox="0 0 320 258" className="w-full rounded-xl" style={{ background: '#0f172a' }}>
+                  {/* Header */}
+                  <rect x="0" y="0" width="320" height="34" fill="#1e293b" />
+                  <rect x="0" y="0" width="4" height="34" fill="#f97316" />
+                  <text x="16" y="12" fill="#94a3b8" fontSize="7" fontWeight="700" letterSpacing="1.2">TEAMS HUB · ORGANIZATION VIEW</text>
+                  <text x="16" y="26" fill="#f1f5f9" fontSize="11" fontWeight="900">LAKE ZURICH BEARS</text>
+
+                  {/* Org identity strip */}
+                  <rect x="0" y="34" width="320" height="22" fill="#0b1120" />
+                  <rect x="8" y="38" width="15" height="14" rx="3" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="1" />
+                  <text x="15.5" y="48" fill="#60a5fa" fontSize="6.5" fontWeight="900" textAnchor="middle">LZ</text>
+                  <text x="30" y="44" fill="#f1f5f9" fontSize="7" fontWeight="800">HIGH SCHOOL  ·  ILLINOIS  ·  NCS CONFERENCE</text>
+                  <text x="30" y="53" fill="#334155" fontSize="5.5">Also supports College · Club (USAV/AAU) · Program · Organization</text>
+                  <circle cx="268" cy="43" r="5" fill="#1d4ed8" />
+                  <circle cx="281" cy="43" r="5" fill="#f97316" />
+                  <circle cx="294" cy="43" r="5" fill="#f8fafc" stroke="#475569" strokeWidth="0.5" />
+
+                  {/* Tab strip */}
+                  <rect x="0" y="56" width="320" height="14" fill="#060c14" />
+                  {[
+                    { label: 'ROSTER',    x: 8,   active: true  },
+                    { label: 'ROTATIONS', x: 76,  active: false },
+                    { label: 'PRACTICE',  x: 158, active: false },
+                    { label: 'HISTORY',   x: 222, active: false },
+                  ].map(t => (
+                    <g key={t.label}>
+                      <text x={t.x} y="67" fill={t.active ? '#f97316' : '#334155'} fontSize="7" fontWeight={t.active ? '900' : '700'} letterSpacing="0.4">{t.label}</text>
+                      {t.active && <rect x={t.x} y="69" width={t.label.length * 4.4} height="1.5" fill="#f97316" rx="0.5" />}
+                    </g>
+                  ))}
+
+                  {/* Player profile cards — 2×2 */}
+                  {[
+                    { jersey: '#3',  name: 'SARA',  pos: 'OH', pc: '#f97316', stats: 'K 14  ·  ACE 3  ·  DIG 5',   ver: '+23.1', tier: 'ELITE',  tc: '#f97316' },
+                    { jersey: '#1',  name: 'LEXI',  pos: 'L',  pc: '#94a3b8', stats: 'DIG 18  ·  APR 2.4',          ver: '+18.6', tier: 'GOOD',   tc: '#22c55e' },
+                    { jersey: '#7',  name: 'EMMA',  pos: 'OH', pc: '#f97316', stats: 'K 12  ·  ACE 1  ·  DIG 11',  ver: '+28.4', tier: 'ELITE+', tc: '#22d3ee' },
+                    { jersey: '#11', name: 'AVA',   pos: 'MB', pc: '#22c55e', stats: 'K 6  ·  BLK 8',               ver: '+16.3', tier: 'GOOD',   tc: '#22c55e' },
+                  ].map((p, i) => {
+                    const col = i % 2;
+                    const row = Math.floor(i / 2);
+                    const x = 4 + col * 158;
+                    const y = 72 + row * 43;
+                    return (
+                      <g key={p.jersey}>
+                        <rect x={x} y={y} width="153" height="39" rx="4" fill="#1e293b" stroke="#334155" strokeWidth="0.5" />
+                        <rect x={x} y={y} width="3" height="39" rx="1.5" fill={p.pc} opacity="0.9" />
+                        <text x={x + 17} y={y + 24} fill={p.pc} fontSize="13" fontWeight="900" textAnchor="middle">{p.jersey}</text>
+                        <text x={x + 34} y={y + 13} fill="#f1f5f9" fontSize="8.5" fontWeight="800">{p.name}</text>
+                        <text x={x + 34} y={y + 22} fill="#475569" fontSize="6.5">{p.pos}</text>
+                        <text x={x + 34} y={y + 32} fill="#64748b" fontSize="5.5">{p.stats}</text>
+                        <rect x={x + 111} y={y + 4} width="38" height="12" rx="2" fill={p.tc + '18'} stroke={p.tc + '40'} strokeWidth="0.6" />
+                        <text x={x + 130} y={y + 13} fill={p.tc} fontSize="6" fontWeight="900" textAnchor="middle">{p.tier}</text>
+                        <text x={x + 130} y={y + 27} fill={p.tc} fontSize="9" fontWeight="900" textAnchor="middle">{p.ver}</text>
+                        <text x={x + 130} y={y + 36} fill="#334155" fontSize="5.5" textAnchor="middle">VER</text>
+                      </g>
+                    );
+                  })}
+
+                  {/* Divider */}
+                  <rect x="0" y="158" width="320" height="0.5" fill="#1e293b" />
+
+                  {/* Rotation optimizer */}
+                  <text x="8" y="167" fill="#64748b" fontSize="6.5" fontWeight="700" letterSpacing="0.8">ROTATION OPTIMIZER · R1 · CUSTOM SERVE RECEIVE PATTERN</text>
+                  <text x="312" y="167" fill="#334155" fontSize="6" textAnchor="end">← SRV</text>
+
+                  {[
+                    { pos: 'S4', jersey: '#7',  name: 'EMMA',  passer: false },
+                    { pos: 'S3', jersey: '#4',  name: 'KATE',  passer: false },
+                    { pos: 'S2', jersey: '#11', name: 'AVA',   passer: false },
+                    { pos: 'S5', jersey: '#15', name: 'JESS',  passer: true  },
+                    { pos: 'S6', jersey: '#3',  name: 'SARA',  passer: true  },
+                    { pos: 'S1', jersey: '#1',  name: 'LEXI',  passer: true  },
+                  ].map((p, i) => {
+                    const col = i % 3;
+                    const row = Math.floor(i / 3);
+                    const TW = 106, TH = 26;
+                    const x = col * TW + 1;
+                    const y = 170 + row * TH;
+                    return (
+                      <g key={p.pos}>
+                        <rect x={x} y={y} width={TW - 1} height={TH - 1}
+                          fill={p.passer ? '#0c2340' : '#1e293b'}
+                          stroke={p.passer ? '#38bdf8' : '#334155'}
+                          strokeWidth={p.passer ? 1 : 0.5}
+                          rx="3" />
+                        <text x={x + 6} y={y + 9} fill={p.passer ? '#38bdf8' : '#475569'} fontSize="6" fontWeight="700">{p.pos}</text>
+                        <text x={x + TW / 2} y={y + 19} fill={p.passer ? '#f1f5f9' : '#64748b'} fontSize="7.5" fontWeight="800" textAnchor="middle">{p.jersey} · {p.name}</text>
+                      </g>
+                    );
+                  })}
+
+                  {/* Net */}
+                  <rect x="0" y="222" width="320" height="2" fill="#f97316" opacity="0.35" rx="1" />
+                  <text x="160" y="231" fill="#f97316" fontSize="5.5" fontWeight="700" textAnchor="middle" opacity="0.35" letterSpacing="4">NET</text>
+
+                  {/* Passer key */}
+                  <rect x="8" y="234" width="9" height="6" rx="1.5" fill="#0c2340" stroke="#38bdf8" strokeWidth="0.75" />
+                  <text x="21" y="240" fill="#475569" fontSize="5.5">Designated passer</text>
+
+                  {/* Practice + history strip */}
+                  {[
+                    { label: 'Practice Games',   val: '3 this week',    sub: 'Avg score  25 – 21', color: '#f97316' },
+                    { label: 'Serve Receive',     val: '2.3 avg APR',    sub: '87 passes logged',  color: '#38bdf8' },
+                    { label: 'All-Time Roster',   val: '34 players',     sub: '6 seasons · 89 matches', color: '#a78bfa' },
+                  ].map((f, i) => {
+                    const x = 4 + i * 106;
+                    return (
+                      <g key={f.label}>
+                        <rect x={x} y={241} width="100" height="13" rx="2.5" fill="#1e293b" stroke={f.color + '30'} strokeWidth="0.6" />
+                        <text x={x + 6} y={250} fill={f.color} fontSize="6" fontWeight="800">{f.label}</text>
+                        <text x={x + 97} y={250} fill="#64748b" fontSize="6.5" fontWeight="900" textAnchor="end">{f.val}</text>
+                        <text x={x + 6} y={256} fill="#334155" fontSize="5">{f.sub}</text>
+                      </g>
+                    );
+                  })}
+                </svg>
+
+                <p className="text-sm text-slate-400 mt-3">
+                  Your Teams page is your program's home base. Set up any school, club, or organization with colors and logo, then build out your roster with full player profile cards — position, jersey number, season stats, and VER rating all in one view. The Rotations tab lets you define custom serve receive formations for each of your six rotations. The Practice tab logs serve tracker sessions, serve receive ratings, and practice game scores. And the History tab preserves your all-time roster across every season you've tracked.
                 </p>
               </div>
             </>

@@ -129,7 +129,7 @@ export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName
 
         {/* ── Help ── */}
         <button
-          onClick={() => { onClose(); navigate('/help/live-stat-labels', { state: { fromLive: true } }); }}
+          onClick={() => { onClose(); navigate('/help/live-match', { state: { fromLive: true } }); }}
           className="w-full flex items-center gap-3 mb-4 px-3 py-2.5 rounded-xl bg-primary/15 border border-primary/40 text-left active:brightness-90"
         >
           <span className="text-lg">📖</span>

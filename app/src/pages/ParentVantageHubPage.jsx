@@ -49,7 +49,7 @@ function HubContent() {
   }, [showToast]);
 
   const shareUrl = shareToken
-    ? `${window.location.origin}/pv/${shareToken}`
+    ? `${window.location.origin}/fs/${shareToken}`
     : null;
 
   const copyLink = async () => {
@@ -69,7 +69,7 @@ function HubContent() {
       const now = new Date().toISOString();
       await db.teams.update(selectedTeamId, { pv_last_published: now });
       setLastPublished(now);
-      showToast('Stats published to ParentVantage', 'success');
+      showToast('Stats published to FamilyScope', 'success');
     } catch (err) {
       console.error('[PV] publish failed:', err);
       showToast('Publish failed — check your connection', 'error');
@@ -98,7 +98,7 @@ function HubContent() {
     <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-black text-white tracking-tight">ParentVantage HUB</h1>
+        <h1 className="text-2xl font-black text-white tracking-tight">FamilyScope HUB</h1>
         <p className="text-sm text-slate-400 mt-1">
           Share a live view with parents and fans — no account needed.
         </p>
@@ -247,7 +247,7 @@ function HubContent() {
 
 export function ParentVantageHubPage() {
   return (
-    <PlanGate requires="core" feature="ParentVantage HUB">
+    <PlanGate requires="core" feature="FamilyScope HUB">
       <HubContent />
     </PlanGate>
   );

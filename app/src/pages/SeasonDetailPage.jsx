@@ -544,9 +544,9 @@ export function SeasonDetailPage() {
                             <button
                               onClick={() => setPvShareMatch(match)}
                               className="text-xs font-semibold px-2.5 py-1 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
-                              title="Share on ParentVantage"
+                              title="Share on FamilyScope"
                             >
-                              PV
+                              FS
                             </button>
                           )}
                           <button
@@ -614,7 +614,7 @@ export function SeasonDetailPage() {
                         <button
                           onClick={(e) => { e.stopPropagation(); setPvShareMatch(match); }}
                           className="text-xs font-bold px-2 py-1 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
-                          title="Share on ParentVantage"
+                          title="Share on FamilyScope"
                         >
                           PV
                         </button>

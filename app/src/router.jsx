@@ -64,9 +64,9 @@ function S({ children }) {
 }
 
 export const router = createBrowserRouter([
-  // Public parent view — outside the main Layout (no navbar)
+  // Public FamilyScope view — outside the main Layout (no navbar)
   {
-    path: '/pv/:token',
+    path: '/fs/:token',
     element: <S><ParentViewPage /></S>,
   },
   {

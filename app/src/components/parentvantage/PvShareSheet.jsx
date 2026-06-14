@@ -11,7 +11,7 @@ export function PvShareSheet({ match, teamName, onClose, onContinue, continueLab
 
   if (!match?.pv_token) return null;
 
-  const shareUrl = `${window.location.origin}/pv/${match.pv_token}`;
+  const shareUrl = `${window.location.origin}/fs/${match.pv_token}`;
 
   const status =
     match.status === 'in_progress' ? 'live' :
@@ -38,7 +38,7 @@ export function PvShareSheet({ match, teamName, onClose, onContinue, continueLab
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
-            <div className="text-base font-black text-white">ParentVantage</div>
+            <div className="text-base font-black text-white">FamilyScope</div>
             <div className="text-sm text-slate-400 mt-0.5">
               {teamName ? `${teamName} vs ${match.opponent_name}` : `vs ${match.opponent_name}`}
             </div>

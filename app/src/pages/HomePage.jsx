@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { VantageLogo } from '../components/ui/VantageLogo';
-import { STORAGE_KEYS, getStorageItem, setStorageItem, getIntStorage, getPlayoffLabel } from '../utils/storage';
+import { STORAGE_KEYS, getStorageItem, setStorageItem, getIntStorage, getPlayoffLabel, getBoolStorage, setBoolStorage } from '../utils/storage';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
@@ -511,6 +511,15 @@ export function HomePage() {
     return { ...m, opponent_name: opponentName };
   }, [defaultSeasonId]);
 
+  const setupState = useLiveQuery(async () => {
+    const [teamCount, seasonCount, playerCount] = await Promise.all([
+      db.teams.count(),
+      db.seasons.count(),
+      db.players.count(),
+    ]);
+    return { hasTeam: teamCount > 0, hasSeason: seasonCount > 0, hasPlayers: playerCount > 0 };
+  }, []);
+
   const seasonLeaders = useLiveQuery(async () => {
     if (!defaultTeamId || !defaultSeasonId) return null;
     const allMatches = await db.matches
@@ -716,9 +725,18 @@ export function HomePage() {
 
 
   const inProgress    = recentMatches?.find((m) => m.status === MATCH_STATUS.IN_PROGRESS);
+
+  const [storageUsagePct, setStorageUsagePct] = useState(0);
+  useEffect(() => {
+    if (!navigator.storage?.estimate) return;
+    navigator.storage.estimate().then(({ usage = 0, quota = 0 }) => {
+      if (quota > 0) setStorageUsagePct(usage / quota);
+    });
+  }, []);
   const [closestSortAsc, setClosestSortAsc] = useState(
     () => getStorageItem(STORAGE_KEYS.CLOSEST_SORT_ASC, 'true') !== 'false'
   );
+  const [guideVisible, setGuideVisible] = useState(() => !getBoolStorage(STORAGE_KEYS.HELP_GUIDE_SEEN));
   const displayMatches = recentMatches ?? [];
 
   function openEditMatch(match) {
@@ -865,6 +883,17 @@ export function HomePage() {
       </header>
 
       <div className="p-4 md:p-6 space-y-4">
+
+        {/* ── Storage quota warning ── */}
+        {storageUsagePct >= 0.9 && (
+          <div className="flex items-center gap-3 bg-amber-900/40 border border-amber-600/50 rounded-xl px-4 py-3">
+            <span className="text-amber-400 text-lg shrink-0">⚠️</span>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-amber-300">Storage almost full ({Math.round(storageUsagePct * 100)}%)</p>
+              <p className="text-xs text-amber-500 mt-0.5">Export a backup now to avoid losing data. <button onClick={() => navigate('/settings')} className="underline hover:text-amber-300 transition-colors">Go to Settings →</button></p>
+            </div>
+          </div>
+        )}
 
         {/* ── Active match banner ── */}
         {inProgress && (
@@ -1347,22 +1376,89 @@ export function HomePage() {
             </div>
           </div>
 
-          {displayMatches.length === 0 && (
-            <EmptyState
-              icon="🏐"
-              iconClassName="animate-ball-bounce"
-              title="No matches yet"
-              description={
-                <span>
-                  Tap{' '}
-                  <button onClick={() => navigate('/matches/new')} className="text-primary underline underline-offset-2">
-                    New Match
-                  </button>
-                  {' '}to start tracking stats
-                </span>
-              }
-            />
-          )}
+          {displayMatches.length === 0 && (() => {
+            const { hasTeam, hasSeason, hasPlayers } = setupState ?? {};
+            const allDone = hasTeam && hasPlayers && hasSeason;
+
+            if (!allDone) {
+              const steps = [
+                { label: 'Create a team', done: !!hasTeam,    action: () => navigate('/teams'),         hint: 'School, club, or program' },
+                { label: 'Add players',   done: !!hasPlayers, action: () => navigate('/teams'),         hint: 'Roster & jersey numbers' },
+                { label: 'Add a season',  done: !!hasSeason,  action: () => navigate('/seasons'),       hint: 'Year, name, and schedule' },
+                { label: 'Start a match', done: false,        action: () => navigate('/matches/new'),   hint: 'Record your first stats' },
+              ];
+              const nextIdx = steps.findIndex(s => !s.done);
+              return (
+                <div className="bg-surface rounded-xl p-4 space-y-1">
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-500 mb-3">Getting started</p>
+
+                  {guideVisible && (
+                    <div className="flex items-start gap-3 px-3 py-3 mb-3 rounded-xl bg-blue-900/30 border border-blue-700/40">
+                      <span className="text-xl shrink-0">📖</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-white">New to Vantage?</p>
+                        <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">Read the First Match Guide — setup to live stats in 5 minutes.</p>
+                        <button
+                          onClick={() => navigate('/help/first-match')}
+                          className="mt-2 text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors"
+                        >
+                          Read the guide →
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => { setBoolStorage(STORAGE_KEYS.HELP_GUIDE_SEEN, true); setGuideVisible(false); }}
+                        className="text-slate-600 hover:text-slate-400 text-xl leading-none shrink-0 px-1"
+                        aria-label="Dismiss"
+                      >×</button>
+                    </div>
+                  )}
+
+                  {steps.map((step, i) => {
+                    const isNext = i === nextIdx;
+                    const isPast = step.done;
+                    return (
+                      <button
+                        key={step.label}
+                        onClick={!isPast ? step.action : undefined}
+                        disabled={isPast}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors
+                          ${isPast ? 'opacity-40 cursor-default' : isNext ? 'bg-primary/10 hover:bg-primary/20 active:scale-[0.98]' : 'hover:bg-slate-700/50 active:scale-[0.98]'}`}
+                      >
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-black
+                          ${isPast ? 'bg-emerald-600 text-white' : isNext ? 'bg-primary text-white' : 'bg-slate-700 text-slate-400'}`}>
+                          {isPast ? '✓' : i + 1}
+                        </div>
+                        <div className="min-w-0">
+                          <p className={`text-sm font-bold ${isPast ? 'line-through text-slate-500' : isNext ? 'text-white' : 'text-slate-400'}`}>
+                            {step.label}
+                          </p>
+                          {!isPast && <p className="text-xs text-slate-500">{step.hint}</p>}
+                        </div>
+                        {!isPast && <span className={`ml-auto text-lg ${isNext ? 'text-primary' : 'text-slate-600'}`}>›</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            }
+
+            return (
+              <EmptyState
+                icon="🏐"
+                iconClassName="animate-ball-bounce"
+                title="No matches yet"
+                description={
+                  <span>
+                    Tap{' '}
+                    <button onClick={() => navigate('/matches/new')} className="text-primary underline underline-offset-2">
+                      New Match
+                    </button>
+                    {' '}to start tracking stats
+                  </span>
+                }
+              />
+            );
+          })()}
 
           {matchView === 'schedule' && displayMatches.length > 0 && (
             <ScheduleCalendar
