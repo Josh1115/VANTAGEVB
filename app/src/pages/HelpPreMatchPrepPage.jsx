@@ -56,7 +56,7 @@ function DiagInsightsBanner() {
 
       {/* Below threshold */}
       <rect x="8" y="60" width="304" height="30" rx="7" fill="rgba(248,113,113,0.1)" stroke="rgba(248,113,113,0.4)" strokeWidth="1" />
-      <text x="16" y="73" fill={TXT3} fontSize="8" fontWeight="900">BREAK POINT %</text>
+      <text x="16" y="73" fill={TXT3} fontSize="8" fontWeight="900">SERVING POINT %</text>
       <text x="306" y="73" fill={RED} fontSize="8" fontWeight="800" textAnchor="end">✗ Below threshold</text>
       <rect x="16" y="78" width="288" height="5" rx="2.5" fill="#334155" />
       <rect x="16" y="78" width="60" height="5" rx="2.5" fill={RED} />
@@ -157,7 +157,7 @@ export function HelpPreMatchPrepPage() {
         </div>
 
         <Step number={1} title="Check rotation weaknesses in Reports"
-          note="Open Reports → pick your team and season → tap the Rotation Analysis tab. The radar chart shows SO% and BP% by rotation at a glance. Any rotation sitting noticeably inside the others is a vulnerability. Cross-reference with the Rotation Spotlight section below the chart — it calls out the single worst SO% and BP% rotation with context.">
+          note="Open Reports → pick your team and season → tap the Rotation Analysis tab. The radar chart shows SO% and SP% by rotation at a glance. Any rotation sitting noticeably inside the others is a vulnerability. Cross-reference with the Rotation Spotlight section below the chart — it calls out the single worst SO% and SP% rotation with context.">
           <DiagRotationWeakness />
         </Step>
 

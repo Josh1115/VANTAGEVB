@@ -3,6 +3,7 @@ import { HoldProgressRing } from '../ui/HoldProgressRing';
 import { useNavigate } from 'react-router-dom';
 import { useMatchStore } from '../../store/matchStore';
 import { useUiStore } from '../../store/uiStore';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 
 const HOLD_MS = 450;
@@ -26,7 +27,8 @@ function useHoldButton(onFire) {
 
 
 export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStatsOpen, onSummaryOpen, liberoPlayer, onLiberoIn, onRotErrOpen, alertCount = 0 }) {
-  const navigate       = useNavigate();
+  const navigate          = useNavigate();
+  const [homeConfirm, setHomeConfirm] = useState(false);
   const rotateForward  = useMatchStore((s) => s.rotateForward);
   const rotateBackward = useMatchStore((s) => s.rotateBackward);
   const undoLast       = useMatchStore((s) => s.undoLast);
@@ -76,8 +78,9 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
   const btnBase = 'flex-1 h-full flex flex-col items-center justify-center font-bold rounded-none select-none transition-[transform,filter,background-color] duration-75 active:brightness-75 active:scale-y-90 active:scale-x-[0.97] border-r border-slate-700 last:border-r-0';
 
   return (
+    <>
     <div className="flex-none flex-col border-t border-slate-700 bg-surface">
-    <div className="flex h-[3.65vmin]">
+    <div className="flex h-[5.5vmin]">
 
       {/* Rotate backward — hold to confirm */}
       <button
@@ -175,7 +178,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
 
       {/* Home */}
       <button
-        onPointerDown={(e) => { e.preventDefault(); navigate('/'); }}
+        onPointerDown={(e) => { e.preventDefault(); setHomeConfirm(true); }}
         className={`${btnBase} bg-slate-800 text-slate-400 hover:bg-slate-700`}
       >
         <svg className="w-[2.4vmin] h-[2.4vmin]" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#f97316' }}>
@@ -209,5 +212,16 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
     </div>
     <div style={{ height: 'env(safe-area-inset-bottom)' }} />
     </div>
+
+    {homeConfirm && (
+      <ConfirmDialog
+        title="Leave match?"
+        message="The match is still in progress. You can return to it from the home screen."
+        confirmLabel="Leave"
+        onConfirm={() => navigate('/')}
+        onCancel={() => setHomeConfirm(false)}
+      />
+    )}
+    </>
   );
 });

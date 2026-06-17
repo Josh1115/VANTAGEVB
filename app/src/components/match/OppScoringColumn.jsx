@@ -16,7 +16,7 @@ export const OppScoringColumn = memo(function OppScoringColumn() {
   const addOppPoint = useMatchStore((s) => s.addOppPoint);
 
   return (
-    <div className="flex-none flex flex-col w-[4.485vmin] bg-slate-900 border-l-2 border-slate-400">
+    <div className="flex-none flex flex-col w-[7vmin] bg-slate-900 border-l-2 border-slate-400">
       {BUTTONS.map(({ reason, label, pointsUs }) => (
         <button
           key={reason}

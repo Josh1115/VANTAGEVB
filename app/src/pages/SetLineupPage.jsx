@@ -47,6 +47,7 @@ export function SetLineupPage() {
   useEffect(() => {
     if (!matchId) return;
     async function load() {
+      try {
       const match = await db.matches.get(matchId);
       if (!match) return;
 
@@ -63,6 +64,10 @@ export function SetLineupPage() {
       if (!currentSet) return;
 
       await loadSetData(currentSet);
+      } catch (err) {
+        console.error('[VBStat] SetLineupPage load failed:', err);
+        setError('Failed to load lineup data. Please go back and try again.');
+      }
     }
     load();
   }, [matchId, revisingSetId]);

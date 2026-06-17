@@ -17,7 +17,7 @@ function DiagRotationGrid() {
       {/* Column headers */}
       <text x="76" y="32" textAnchor="middle" fill={TXT5} fontSize="8" fontWeight="700">ROTATION</text>
       <text x="174" y="32" textAnchor="middle" fill={TXT4} fontSize="8" fontWeight="700">SO% (receive)</text>
-      <text x="266" y="32" textAnchor="middle" fill={TXT4} fontSize="8" fontWeight="700">BP% (serve)</text>
+      <text x="266" y="32" textAnchor="middle" fill={TXT4} fontSize="8" fontWeight="700">SP% (serve)</text>
 
       {rotations.map(({ r, so, bp, soColor, bpColor }, i) => {
         const y = 40 + i * 30;
@@ -50,7 +50,7 @@ function DiagWeakRotationAction() {
       {/* Weak rotation card */}
       <rect x="12" y="30" width="130" height="60" rx="8" fill="#7f1d1d22" stroke={RED} strokeWidth="1" />
       <text x="77" y="50" textAnchor="middle" fill={RED} fontSize="13" fontWeight="900">R6</text>
-      <text x="77" y="64" textAnchor="middle" fill={TXT4} fontSize="8">SO% 58% · BP% 36%</text>
+      <text x="77" y="64" textAnchor="middle" fill={TXT4} fontSize="8">SO% 58% · SP% 36%</text>
       <text x="77" y="78" textAnchor="middle" fill={RED} fontSize="8" fontWeight="700">WEAKEST ROTATION</text>
 
       {/* Arrow */}
@@ -86,8 +86,8 @@ function DiagSOvsBP() {
 
       {/* BP side */}
       <rect x="168" y="26" width="140" height="62" rx="8" fill="#1f2d1a" />
-      <text x="238" y="46" textAnchor="middle" fill={TXT} fontSize="11" fontWeight="900">Break Point %</text>
-      <text x="238" y="60" textAnchor="middle" fill={GREEN} fontSize="18" fontWeight="900">BP%</text>
+      <text x="238" y="46" textAnchor="middle" fill={TXT} fontSize="11" fontWeight="900">Serving Point %</text>
+      <text x="238" y="60" textAnchor="middle" fill={GREEN} fontSize="18" fontWeight="900">SP%</text>
       <text x="238" y="78" textAnchor="middle" fill={TXT4} fontSize="8">Scoring when serving</text>
     </svg>
   );
@@ -102,12 +102,12 @@ export function HelpVantageRotationsPage() {
         <div className="bg-surface rounded-xl p-4 border border-slate-700 space-y-2">
           <p className="text-white font-semibold">Find where you win and lose sets</p>
           <p className="text-slate-400 text-sm leading-relaxed">
-            Every team has strong and weak rotations. The app tracks your Sideout % and Break Point % in all six rotations so you can see exactly where points are slipping away — and make lineup and strategy decisions to fix it.
+            Every team has strong and weak rotations. The app tracks your Sideout % and Serving Point % in all six rotations so you can see exactly where points are slipping away — and make lineup and strategy decisions to fix it.
           </p>
         </div>
 
         <div className="space-y-8">
-          <Step number={1} title="Understand Sideout % and Break Point %"
+          <Step number={1} title="Understand Sideout % and Serving Point %"
             note="These are the two ways your team scores points in volleyball. Together they determine who wins every set.">
             <DiagSOvsBP />
           </Step>
@@ -118,7 +118,7 @@ export function HelpVantageRotationsPage() {
           </Step>
 
           <Step number={3} title="Identify your weakest rotation"
-            note="Look for the rotation with the lowest SO% (if you struggle receiving serve in it) or the lowest BP% (if you struggle serving in it). A rotation with both stats low is a significant liability — this is where sets slip away." />
+            note="Look for the rotation with the lowest SO% (if you struggle receiving serve in it) or the lowest SP% (if you struggle serving in it). A rotation with both stats low is a significant liability — this is where sets slip away." />
 
           <Step number={4} title="Build a response plan"
             note="Once you know your weak rotation, you have several tools to respond. The key is to make the decision before the match, not during it.">
@@ -138,7 +138,7 @@ export function HelpVantageRotationsPage() {
             ['Call timeouts in your weak rotation', 'If you know R6 is your worst rotation and the opponent is serving into it, use a timeout proactively rather than reacting to a 3-0 run.'],
             ['Track trends over time', 'A rotation that was weak early in the season may strengthen as players develop chemistry. Check every 5 matches to see if your weak rotation has improved.'],
             ['SO% below 60% is a problem', 'Elite teams sideout 65%+. If any rotation is below 60%, it\'s giving opponents easy scoring opportunities every time through the rotation cycle.'],
-            ['BP% above 45% is elite', 'Most teams break serve at 40–45%. If you have a rotation above 45%, make sure you\'re serving aggressively into it to maximize that advantage.'],
+            ['SP% above 45% is elite', 'Most teams earn serving points at 40–45%. If you have a rotation above 45%, make sure you\'re serving aggressively into it to maximize that advantage.'],
           ].map(([title, body]) => (
             <div key={title} className="flex gap-3">
               <span className="text-primary mt-0.5 shrink-0">›</span>

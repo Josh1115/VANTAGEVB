@@ -134,6 +134,12 @@ export const ACCENT_COLORS = [
   { id: 'red',    label: 'Red',    hex: '#ef4444', rgb: '239 68 68'  },
   { id: 'purple', label: 'Purple', hex: '#a855f7', rgb: '168 85 247' },
   { id: 'yellow', label: 'Yellow', hex: '#eab308', rgb: '234 179 8'  },
+  { id: 'maroon', label: 'Maroon', hex: '#9b1c1c', rgb: '155 28 28'  },
+  { id: 'navy',   label: 'Navy',   hex: '#1e3a5f', rgb: '30 58 95'   },
+  { id: 'forest', label: 'Forest', hex: '#166534', rgb: '22 101 52'  },
+  { id: 'gold',   label: 'Gold',   hex: '#b45309', rgb: '180 83 9'   },
+  { id: 'teal',   label: 'Teal',   hex: '#0f766e', rgb: '15 118 110' },
+  { id: 'pink',   label: 'Pink',   hex: '#db2777', rgb: '219 39 119' },
 ];
 
 export const COLLEGE_DIVISIONS = [

@@ -1,13 +1,21 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
-import { getIntStorage, setStorageItem, STORAGE_KEYS } from '../utils/storage';
+import { getIntStorage, getStorageItem, setStorageItem, STORAGE_KEYS } from '../utils/storage';
 import { PageHeader } from '../components/layout/PageHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Button } from '../components/ui/Button';
 import { SwipeableMatchCard } from '../components/ui/SwipeableMatchCard';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+
+function loadArchivedIds() {
+  try { return new Set(JSON.parse(getStorageItem(STORAGE_KEYS.ARCHIVED_OPPONENTS, '[]'))); }
+  catch { return new Set(); }
+}
+function saveArchivedIds(set) {
+  setStorageItem(STORAGE_KEYS.ARCHIVED_OPPONENTS, JSON.stringify([...set]));
+}
 
 const selectClass = 'bg-surface border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary';
 
@@ -85,6 +93,17 @@ export function OpponentListPage() {
   const [deleteTarget,  setDeleteTarget]  = useState(null); // { id, name }
   const [deleting,      setDeleting]      = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState(() => getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID, null));
+  const [archivedIds,   setArchivedIds]   = useState(loadArchivedIds);
+  const [showArchived,  setShowArchived]  = useState(false);
+
+  const toggleArchive = useCallback((id) => {
+    setArchivedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      saveArchivedIds(next);
+      return next;
+    });
+  }, []);
 
   const opponents     = useLiveQuery(() => db.opponents.toArray(), []);
   const teams         = useLiveQuery(() => db.teams.toArray(), []);
@@ -149,6 +168,12 @@ export function OpponentListPage() {
     if (lb !== la) return lb.localeCompare(la);
     return (a.name ?? '').localeCompare(b.name ?? '');
   }), [opponents, oppStats]);
+
+  const archivedCount    = useMemo(() => sortedOpponents.filter(o => archivedIds.has(o.id)).length, [sortedOpponents, archivedIds]);
+  const visibleOpponents = useMemo(
+    () => showArchived ? sortedOpponents : sortedOpponents.filter(o => !archivedIds.has(o.id)),
+    [sortedOpponents, archivedIds, showArchived]
+  );
 
   // Tendencies for the scouting report:
   // - match-linked tendencies from the current season's matches
@@ -276,40 +301,63 @@ export function OpponentListPage() {
               title="No opponents yet"
               description="Opponents are created automatically when you set up a match."
             />
-          ) : sortedOpponents.map((opp, i) => {
-            const s = oppStats[opp.id] ?? {};
-            const record   = s.total > 0 ? `${s.wins}–${s.losses}` : null;
-            const lastDate = s.latest
-              ? new Date(s.latest).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-              : null;
-            const scoutCount = scoutCountByOpp[opp.id] ?? 0;
-            return (
-              <SwipeableMatchCard
-                key={opp.id}
-                animDelay={`${i * 30}ms`}
-                onDeleteConfirm={() => setDeleteTarget({ id: opp.id, name: opp.name })}
-              >
+          ) : (
+            <>
+              {archivedCount > 0 && (
                 <button
-                  onClick={() => navigate(`/opponents/${opp.id}`)}
-                  className="w-full bg-surface rounded-xl px-4 py-3 flex items-center gap-3 text-left hover:bg-slate-700 active:scale-[0.98] transition-[transform,background-color] duration-75"
+                  onClick={() => setShowArchived(v => !v)}
+                  className="w-full text-xs text-slate-500 hover:text-slate-300 text-center py-2 mb-2 transition-colors"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-white truncate">{opp.name}</div>
-                    <div className="flex items-center gap-3 mt-0.5">
-                      {lastDate && <span className="text-xs text-slate-400">Last played {lastDate}</span>}
-                      {scoutCount > 0 && (
-                        <span className="text-xs text-primary/80">🔭 {scoutCount}</span>
-                      )}
-                    </div>
-                  </div>
-                  {record && (
-                    <span className="text-sm font-semibold text-slate-300 shrink-0">{record}</span>
-                  )}
-                  <span className="text-slate-600 text-lg">›</span>
+                  {showArchived ? `Hide ${archivedCount} archived opponent${archivedCount !== 1 ? 's' : ''}` : `Show ${archivedCount} archived opponent${archivedCount !== 1 ? 's' : ''}`}
                 </button>
-              </SwipeableMatchCard>
-            );
-          })}
+              )}
+              {visibleOpponents.map((opp, i) => {
+                const s = oppStats[opp.id] ?? {};
+                const isArchived = archivedIds.has(opp.id);
+                const record   = s.total > 0 ? `${s.wins}–${s.losses}` : null;
+                const lastDate = s.latest
+                  ? new Date(s.latest).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                  : null;
+                const scoutCount = scoutCountByOpp[opp.id] ?? 0;
+                return (
+                  <SwipeableMatchCard
+                    key={opp.id}
+                    animDelay={`${i * 30}ms`}
+                    onDeleteConfirm={() => setDeleteTarget({ id: opp.id, name: opp.name })}
+                  >
+                    <div className={`w-full bg-surface rounded-xl px-4 py-3 flex items-center gap-3 ${isArchived ? 'opacity-50' : ''}`}>
+                      <button
+                        onClick={() => navigate(`/opponents/${opp.id}`)}
+                        className="flex-1 min-w-0 text-left"
+                      >
+                        <div className="font-semibold text-white truncate">{opp.name}</div>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          {lastDate && <span className="text-xs text-slate-400">Last played {lastDate}</span>}
+                          {scoutCount > 0 && (
+                            <span className="text-xs text-primary/80">🔭 {scoutCount}</span>
+                          )}
+                        </div>
+                      </button>
+                      {record && (
+                        <span className="text-sm font-semibold text-slate-300 shrink-0">{record}</span>
+                      )}
+                      <button
+                        onClick={() => toggleArchive(opp.id)}
+                        title={isArchived ? 'Unarchive' : 'Archive (hide from list)'}
+                        className="text-slate-600 hover:text-slate-400 transition-colors shrink-0 px-1"
+                      >
+                        {isArchived ? '↩' : '⊘'}
+                      </button>
+                      <button
+                        onClick={() => navigate(`/opponents/${opp.id}`)}
+                        className="text-slate-600 text-lg shrink-0"
+                      >›</button>
+                    </div>
+                  </SwipeableMatchCard>
+                );
+              })}
+            </>
+          )}
         </div>
       )}
 

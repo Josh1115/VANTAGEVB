@@ -32,8 +32,9 @@ const ToolsPage        = lazy(() => import('./pages/ToolsPage').then(m => ({ def
 const ServeReceivePage = lazy(() => import('./pages/tools/ServeReceivePage').then(m => ({ default: m.ServeReceivePage })));
 const ServeTrackerPage = lazy(() => import('./pages/tools/ServeTrackerPage').then(m => ({ default: m.ServeTrackerPage })));
 const PracticeGamePage = lazy(() => import('./pages/tools/PracticeGamePage').then(m => ({ default: m.PracticeGamePage })));
-const ParentViewPage       = lazy(() => import('./pages/ParentViewPage').then(m => ({ default: m.ParentViewPage })));
+const FamilyScopeViewPage  = lazy(() => import('./pages/ParentViewPage').then(m => ({ default: m.FamilyScopeViewPage })));
 const TermsPage                = lazy(() => import('./pages/TermsPage').then(m => ({ default: m.TermsPage })));
+const PrivacyPolicyPage        = lazy(() => import('./pages/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
 const HelpServeReceivePage     = lazy(() => import('./pages/HelpServeReceivePage').then(m => ({ default: m.HelpServeReceivePage })));
 const HelpDefaultTeamPage      = lazy(() => import('./pages/HelpDefaultTeamPage').then(m => ({ default: m.HelpDefaultTeamPage })));
 const HelpMatchSummaryPage     = lazy(() => import('./pages/HelpMatchSummaryPage').then(m => ({ default: m.HelpMatchSummaryPage })));
@@ -67,7 +68,7 @@ export const router = createBrowserRouter([
   // Public FamilyScope view — outside the main Layout (no navbar)
   {
     path: '/fs/:token',
-    element: <S><ParentViewPage /></S>,
+    element: <S><FamilyScopeViewPage /></S>,
   },
   {
     path: '/',
@@ -91,7 +92,6 @@ export const router = createBrowserRouter([
       { path: 'records',                     element: <PlanGate requires="core" feature="Career records"><S><RecordsPage /></S></PlanGate> },
       { path: 'history',                     element: <PlanGate requires="core" feature="Season history"><S><HistoryPage /></S></PlanGate> },
       { path: 'reports',                     element: <PlanGate requires="core" feature="Analytics & reports"><S><ReportsPage /></S></PlanGate> },
-      { path: 'hub',                         element: <S><TeamsPage /></S> },
       { path: 'settings',                    element: <S><SettingsPage /></S> },
       { path: 'upgrade',                     element: <S><UpgradePage /></S> },
       { path: 'tools',                       element: <PlanGate requires="core" feature="Practice tools"><S><ToolsPage /></S></PlanGate> },
@@ -99,6 +99,7 @@ export const router = createBrowserRouter([
       { path: 'tools/serve-tracker',         element: <PlanGate requires="core" feature="Practice tools"><S><ServeTrackerPage /></S></PlanGate> },
       { path: 'tools/practice-game',         element: <PlanGate requires="core" feature="Practice tools"><S><PracticeGamePage /></S></PlanGate> },
       { path: 'terms',                       element: <S><TermsPage /></S> },
+      { path: 'privacy',                     element: <S><PrivacyPolicyPage /></S> },
       { path: 'help/serve-receive',          element: <S><HelpServeReceivePage /></S> },
       { path: 'help/default-team',           element: <S><HelpDefaultTeamPage /></S> },
       { path: 'help/match-summary',          element: <S><HelpMatchSummaryPage /></S> },

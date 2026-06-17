@@ -219,7 +219,7 @@ export function HelpMatchSummaryPage() {
         </Step>
 
         <Step number={6} title="Trends tab — score timeline & win probability"
-          note="The Trends tab has three sub-views. TRENDS shows a set-by-set score timeline charting both teams' scoring momentum. ROTATION shows a radar chart of SO% and BP% by rotation for this match. WIN PROB shows a live rally-by-rally win probability graph — you can see exactly which stretch of rallies in a set swung the match.">
+          note="The Trends tab has three sub-views. TRENDS shows a set-by-set score timeline charting both teams' scoring momentum. ROTATION shows a radar chart of SO% and SP% by rotation for this match. WIN PROB shows a live rally-by-rally win probability graph — you can see exactly which stretch of rallies in a set swung the match.">
           <DiagTimeline />
         </Step>
 

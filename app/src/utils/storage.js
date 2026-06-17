@@ -31,6 +31,8 @@ export const STORAGE_KEYS = {
   HISTORY_AWARDS_OPEN:  'vbstat_history_awards_open',
   HISTORY_PROGRAM_OPEN: 'vbstat_history_program_open',
   HELP_GUIDE_SEEN:      'vbstat_help_guide_seen',
+  SIDELINE_MODE:        'vbstat_sideline_mode',
+  ARCHIVED_OPPONENTS:   'vbstat_archived_opponents',
 };
 
 export function getStorageItem(key, defaultValue = null) {

@@ -46,7 +46,7 @@ export function TermsContent() {
           Vantage requires you to create an account with a valid email address and password. Account authentication is handled by Supabase, a third-party authentication provider. By creating an account, you:
         </p>
         <ul className="list-disc list-inside space-y-1 ml-2">
-          <li>Represent that you are at least 13 years of age (or the applicable age of digital consent in your jurisdiction)</li>
+          <li>Represent that you are at least 18 years of age and are using the App in a coaching, athletic staff, or educational capacity</li>
           <li>Agree to provide accurate and current information during signup</li>
           <li>Are responsible for maintaining the confidentiality of your password</li>
           <li>Are responsible for all activity that occurs under your account</li>
@@ -75,6 +75,9 @@ export function TermsContent() {
       </Section>
 
       <Section title="5. Data Storage and Privacy">
+        <p>
+          Your use of the App is also governed by our <a href="/privacy" className="text-orange-400 underline">Privacy Policy</a>, which is incorporated into these Terms by reference.
+        </p>
         <p>
           Vantage stores data in two places:
         </p>
@@ -110,7 +113,7 @@ export function TermsContent() {
 
       <Section title="7. Intellectual Property">
         <p>
-          The App, including its design, code, statistical algorithms (including the Shua Stat Engine and VER metric), graphics, and all associated content, is proprietary and protected by applicable intellectual property laws. You may not:
+          The App, including its design, code, statistical algorithms (including the Vantage Stat Engine and VER metric), graphics, and all associated content, is proprietary and protected by applicable intellectual property laws. You may not:
         </p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>Copy, modify, distribute, sell, or lease any part of the App</li>
@@ -211,7 +214,7 @@ export function TermsContent() {
 
       <div className="border-t border-slate-800 pt-6 mt-4">
         <p className="text-xs text-slate-600 text-center">
-          Vantage — Powered by the Shua Stat Engine<br />
+          Vantage — Powered by Vantage Analytics<br />
           © 2026 Vantage. All rights reserved.
         </p>
       </div>

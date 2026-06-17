@@ -110,6 +110,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   const numberColor  = LIGHT_JERSEYS.has(jerseyColor) ? '#1e293b' : '#f1f5f9';
   const jerseyRef   = useRef(null);
   const [serveType,          setServeType]          = useState(null);
+  const [receiveType,        setReceiveType]        = useState(null);
   const [serveRecorded,      setServeRecorded]      = useState(false);
   const [sePending,          setSePending]          = useState(false);
   const [aePending,          setAePending]          = useState(false);
@@ -126,6 +127,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   useEffect(() => {
     setServeRecorded(false);
     setServeType(null);
+    setReceiveType(null);
     setSePending(false);
     setAePending(false);
     setAssistPickerOpen(false);
@@ -139,6 +141,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
     if (rallyPhase === 'pre_serve') {
       setServeRecorded(false);
       setServeType(null);
+      setReceiveType(null);
       setSePending(false);
       setAePending(false);
       setAssistPickerOpen(false);
@@ -202,8 +205,9 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   };
 
   const tapPass = (rating, scoreThem = false) => {
-    if (scoreThem) tapAndScoreThem(ACTION.PASS, String(rating));
-    else           tap(ACTION.PASS, String(rating));
+    const extra = receiveType ? { receive_type: receiveType } : {};
+    if (scoreThem) tapAndScoreThem(ACTION.PASS, String(rating), extra);
+    else           tap(ACTION.PASS, String(rating), extra);
     clearTimeout(passRingTimer.current);
     setPassRing(rating);
     passRingTimer.current = setTimeout(() => setPassRing(null), 520);
@@ -447,14 +451,14 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
                   <Btn label="TOP"
                     onTap={() => setServeType(SERVE_TYPE.TOPSPIN)}
                     cls={serveType === SERVE_TYPE.TOPSPIN ? 'bg-teal-600/80 text-white' : 'bg-violet-900/70 text-violet-400 hover:bg-violet-800/70'} />
-                  <Btn key={`att-${!!serveType}`} label="ATT"
+                  <Btn key={`att-${!!serveType}`} label={serveType ? 'ATT' : '← PICK'}
                     onTap={serveType ? () => { tap(ACTION.SERVE, RESULT.IN, { serve_type: serveType }); setServeRecorded(true); } : undefined}
-                    cls={`${!serveType ? 'bg-slate-800/40 text-slate-700 cursor-not-allowed pointer-events-none'
+                    cls={`${!serveType ? 'bg-slate-800/40 text-slate-600 cursor-not-allowed pointer-events-none text-[1.6vmin]'
                       : serveType === SERVE_TYPE.FLOAT ? 'bg-emerald-950/80 text-emerald-300 hover:bg-emerald-900/80'
                       : 'bg-teal-950/80 text-teal-300 hover:bg-teal-900/80'}${serveType ? ' serve-unlock-btn' : ''}`} />
-                  <Btn key={`ace-${!!serveType}`} label="ACE"
+                  <Btn key={`ace-${!!serveType}`} label={serveType ? 'ACE' : '← TYPE'}
                     onTap={serveType ? () => { tapAndScore(ACTION.SERVE, RESULT.ACE, { serve_type: serveType }); setServeRecorded(true); } : undefined}
-                    cls={`${!serveType ? 'bg-slate-800/40 text-slate-700 cursor-not-allowed pointer-events-none'
+                    cls={`${!serveType ? 'bg-slate-800/40 text-slate-600 cursor-not-allowed pointer-events-none text-[1.6vmin]'
                       : serveType === SERVE_TYPE.FLOAT ? 'bg-emerald-700/80 text-white hover:bg-emerald-600/90'
                       : 'bg-teal-600/80 text-white hover:bg-teal-500/90'}${serveType ? ' serve-unlock-btn' : ''}`}
                     style={serveType ? { animationDelay: '50ms' } : undefined} />
@@ -573,8 +577,22 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
           />
         </div>
 
-        {/* Row 4 — Pass ratings: 0 1 2 3 */}
+        {/* Row 4 — S/R label */}
         <div className="px-[7.5%]"><span className="text-[1.3vmin] font-bold uppercase tracking-wide text-slate-500 leading-none">S/R</span></div>
+
+        {/* Row 5 — Receive type: FL / TP toggle */}
+        <div className="flex flex-none h-[2.8vmin] py-0 px-[7.5%] gap-[0.5vmin]">
+          <button
+            onPointerDown={(e) => { e.preventDefault(); setReceiveType(receiveType === SERVE_TYPE.FLOAT ? null : SERVE_TYPE.FLOAT); }}
+            className={`flex-1 rounded text-[1.2vmin] font-bold transition-colors ${receiveType === SERVE_TYPE.FLOAT ? 'bg-emerald-700/80 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+          >FLOAT SRV</button>
+          <button
+            onPointerDown={(e) => { e.preventDefault(); setReceiveType(receiveType === SERVE_TYPE.TOPSPIN ? null : SERVE_TYPE.TOPSPIN); }}
+            className={`flex-1 rounded text-[1.2vmin] font-bold transition-colors ${receiveType === SERVE_TYPE.TOPSPIN ? 'bg-teal-600/80 text-white' : 'bg-violet-900/70 text-violet-400 hover:bg-violet-800/70'}`}
+          >TOP SRV</button>
+        </div>
+
+        {/* Row 6 — Pass ratings: 0 1 2 3 */}
         <div className="flex flex-none h-[3.837vmin] py-0 px-[7.5%] gap-[0.5vmin] border-b border-black/30">
           <PassBtn rating={0} label="0" onTap={() => tapPass(0, true)}  cls="bg-red-950/80 text-red-300" />
           <PassBtn rating={1} label="1" onTap={() => tapPass(1, false)} cls="bg-yellow-950/80 text-yellow-300" />
@@ -582,7 +600,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
           <PassBtn rating={3} label="3" onTap={() => tapPass(3, false)} cls="bg-teal-900/80 text-teal-200" />
         </div>
 
-        {/* Row 5 — Penalty errors: L DBL NET BHE (opponent scores) */}
+        {/* Row 6 — Penalty errors: L DBL NET BHE (opponent scores) */}
         <div className="px-[7.5%]"><span className="text-[1.3vmin] font-bold uppercase tracking-wide text-slate-500 leading-none">Errors</span></div>
         <div className="flex flex-none h-[3.837vmin] py-0 px-[7.5%] gap-[0.5vmin]">
           <Btn label="L"   onTap={() => tapAndScoreThem(ACTION.ERROR, RESULT.LIFT)}                    cls="bg-rose-950/60 text-rose-300 border border-rose-800/50 hover:bg-rose-900/70" />

@@ -99,8 +99,8 @@ export function VideoCorrectionsModal({ matchId, sets, playerList, displayStats,
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-white">Video Corrections</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Adjust individual stat counts from tagged footage</p>
+            <h2 className="text-lg font-bold text-white">Stat Corrections</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Manually adjust individual stat counts after review</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white text-xl leading-none">×</button>
         </div>

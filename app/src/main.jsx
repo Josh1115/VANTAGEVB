@@ -1,16 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import * as Sentry from '@sentry/react';
 import './index.css';
 import App from './App.jsx';
-
-Sentry.init({
-  dsn: import.meta.env.VITE_SENTRY_DSN,
-  enabled: !!import.meta.env.VITE_SENTRY_DSN && import.meta.env.PROD,
-  environment: import.meta.env.MODE,
-  release: '1.0.0',
-  tracesSampleRate: 0,
-});
 import { seedDevData, patchSeedPositions } from './db/seeds.js';
 import { STORAGE_KEYS, getBoolStorage, getStorageItem } from './utils/storage.js';
 import { ACCENT_COLORS } from './constants/index.js';
@@ -20,6 +11,11 @@ if (getBoolStorage(STORAGE_KEYS.AMOLED)) {
   document.documentElement.classList.add('amoled');
 }
 
+// Apply persisted sideline mode before first render to avoid flash
+if (getBoolStorage(STORAGE_KEYS.SIDELINE_MODE)) {
+  document.documentElement.classList.add('sideline');
+}
+
 // Apply persisted accent color before first render
 {
   const saved = getStorageItem(STORAGE_KEYS.ACCENT, 'orange');
@@ -27,6 +23,10 @@ if (getBoolStorage(STORAGE_KEYS.AMOLED)) {
   document.documentElement.style.setProperty('--color-primary', c.hex);
   document.documentElement.style.setProperty('--color-primary-rgb', c.rgb);
 }
+
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('[VANTAGE] Unhandled promise rejection:', e.reason);
+});
 
 // Seed dev data if DB is empty, then patch any missing positions
 if (import.meta.env.DEV) {

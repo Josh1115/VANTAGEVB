@@ -74,7 +74,7 @@ export async function computeMatchSnapshot(matchId) {
 }
 
 /**
- * Builds the full ParentVantage snapshot payload for a team.
+ * Builds the full FamilyScope snapshot payload for a team.
  * Reads all active seasons, completed matches, players, and contacts from Dexie.
  * Returns the JSON payload suitable for publishing to pv_stats.
  */

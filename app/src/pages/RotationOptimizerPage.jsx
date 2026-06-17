@@ -184,7 +184,7 @@ export function RotationOptimizerPage() {
               <span className="text-slate-600 ml-1">({activeRot.so_win}/{activeRot.so_opp})</span>
             </span>
             <span className="text-slate-400">
-              BP% <span className="text-white font-semibold">{(activeRot.bp_pct * 100).toFixed(1)}%</span>
+              SP% <span className="text-white font-semibold">{(activeRot.bp_pct * 100).toFixed(1)}%</span>
               <span className="text-slate-600 ml-1">({activeRot.bp_win}/{activeRot.bp_opp})</span>
             </span>
           </>

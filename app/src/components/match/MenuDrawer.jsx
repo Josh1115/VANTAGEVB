@@ -40,6 +40,7 @@ export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName
   const [confirmReset,        setConfirmReset]        = useState(false);
   const [confirmMatchSetup,   setConfirmMatchSetup]   = useState(false);
   const [confirmEndSet,       setConfirmEndSet]       = useState(false);
+  const [confirmEndMatch,     setConfirmEndMatch]     = useState(false);
   const [resetRotationOpen,   setResetRotationOpen]   = useState(false);
 
   const computeWinner = () => {
@@ -169,7 +170,7 @@ export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName
           <Button variant="secondary" className="w-full justify-start" onClick={() => setConfirmEndSet(true)}>
             End Current Set
           </Button>
-          <Button variant="danger" className="w-full justify-start" onClick={handleEndMatch}>
+          <Button variant="danger" className="w-full justify-start" onClick={() => setConfirmEndMatch(true)}>
             End Match
           </Button>
         </div>
@@ -203,6 +204,17 @@ export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName
           danger
           onConfirm={handleResetConfirmed}
           onCancel={() => setConfirmReset(false)}
+        />
+      )}
+
+      {confirmEndMatch && (
+        <ConfirmDialog
+          title="End Match?"
+          message={`Final score: ${ourScore} – ${oppScore}. This will permanently close the match and take you to the match summary.`}
+          confirmLabel="End Match"
+          danger
+          onConfirm={() => { setConfirmEndMatch(false); handleEndMatch(); }}
+          onCancel={() => setConfirmEndMatch(false)}
         />
       )}
 

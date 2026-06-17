@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -47,7 +47,7 @@ function PlayerOutGrid({ slots, selected, onSelect, lockedIds = [], exhaustedIds
           >
             <div className="flex items-center gap-1">
               <button
-                onClick={() => { if (!disabled) onSelect(sl.playerId); }}
+                onPointerDown={(e) => { e.preventDefault(); if (!disabled) onSelect(sl.playerId); }}
                 disabled={disabled}
                 className={`flex-1 px-2 py-1.5 text-xs font-bold text-left
                   ${disabled ? 'text-slate-600 cursor-not-allowed' : sel ? selText : 'text-slate-200'}`}
@@ -61,7 +61,7 @@ function PlayerOutGrid({ slots, selected, onSelect, lockedIds = [], exhaustedIds
               </button>
               {onEditPos && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); onEditPos(editingPos ? null : sl.playerId); }}
+                  onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); onEditPos(editingPos ? null : sl.playerId); }}
                   className="px-1.5 py-1.5 text-slate-500 hover:text-amber-400 transition-colors shrink-0"
                   title="Edit position"
                 >✎</button>
@@ -72,7 +72,7 @@ function PlayerOutGrid({ slots, selected, onSelect, lockedIds = [], exhaustedIds
                 {POSITION_OPTIONS.map((pos) => (
                   <button
                     key={pos}
-                    onClick={() => { setPositionLabel(sl.playerId, pos); onEditPos(null); }}
+                    onPointerDown={(e) => { e.preventDefault(); setPositionLabel(sl.playerId, pos); onEditPos(null); }}
                     className={`px-2 py-0.5 rounded text-xs font-bold border transition-colors
                       ${sl.positionLabel === pos
                         ? 'bg-amber-500 text-black border-amber-400'
@@ -105,7 +105,7 @@ function PlayerInGrid({ bench, selected, onSelect, disabled: globalDisabled, sub
         return (
           <button
             key={p.id}
-            onClick={() => { if (!globalDisabled) onSelect(p.id); }}
+            onPointerDown={(e) => { e.preventDefault(); if (!globalDisabled) onSelect(p.id); }}
             disabled={globalDisabled}
             className={`px-2 py-1.5 rounded text-xs font-bold border transition-colors text-left relative
               ${sel
@@ -136,7 +136,7 @@ function RoleChips({ value, onChange, color = 'blue' }) {
       {POSITION_OPTIONS.map((pos) => (
         <button
           key={pos}
-          onClick={() => onChange(pos)}
+          onPointerDown={(e) => { e.preventDefault(); onChange(pos); }}
           className={`px-3 py-1 rounded text-xs font-bold border transition-colors
             ${value === pos ? selBg : 'bg-slate-700 text-slate-300 border-slate-600 hover:border-slate-400'}`}
         >{pos}</button>
@@ -209,22 +209,28 @@ export function SubstitutionModal({ onClose }) {
   const pair2Ready = !!outPlayerId2 && !!inPlayerId2;
   const confirmDisabled = !pair1Ready || atMax || (showSecondSub && !pair2Ready);
 
+  const confirmingRef = useRef(false);
   const handleConfirm = async () => {
-    if (!pair1Ready) return;
-    const inPlayer1 = bench1.find((p) => p.id === inPlayerId);
-    if (!inPlayer1) return;
+    if (!pair1Ready || confirmingRef.current) return;
+    confirmingRef.current = true;
+    try {
+      const inPlayer1 = bench1.find((p) => p.id === inPlayerId);
+      if (!inPlayer1) return;
 
-    const ok1 = await substitutePlayer(outPlayerId, inPlayer1, roleOverride || undefined);
-    if (!ok1) { setError('First substitution failed. Check sub limits.'); return; }
+      const ok1 = await substitutePlayer(outPlayerId, inPlayer1, roleOverride || undefined);
+      if (!ok1) { setError('First substitution failed. Check sub limits.'); return; }
 
-    if (showSecondSub && pair2Ready) {
-      const inPlayer2 = bench2.find((p) => p.id === inPlayerId2);
-      if (!inPlayer2) { setError('Second substitution failed.'); return; }
-      const ok2 = await substitutePlayer(outPlayerId2, inPlayer2, roleOverride2 || undefined);
-      if (!ok2) { setError('Second substitution failed. Check sub limits.'); return; }
+      if (showSecondSub && pair2Ready) {
+        const inPlayer2 = bench2.find((p) => p.id === inPlayerId2);
+        if (!inPlayer2) { setError('Second substitution failed.'); return; }
+        const ok2 = await substitutePlayer(outPlayerId2, inPlayer2, roleOverride2 || undefined);
+        if (!ok2) { setError('Second substitution failed. Check sub limits.'); return; }
+      }
+
+      onClose();
+    } finally {
+      confirmingRef.current = false;
     }
-
-    onClose();
   };
 
   const confirmLabel = showSecondSub && pair2Ready
@@ -237,8 +243,8 @@ export function SubstitutionModal({ onClose }) {
       onClose={onClose}
       footer={
         <>
-          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
-          <Button size="sm" disabled={confirmDisabled} onClick={handleConfirm}>
+          <Button variant="ghost" size="sm" onPointerDown={(e) => { e.preventDefault(); onClose(); }}>Cancel</Button>
+          <Button size="sm" disabled={confirmDisabled} onPointerDown={(e) => { e.preventDefault(); handleConfirm(); }}>
             {confirmLabel}
           </Button>
         </>
@@ -304,7 +310,7 @@ export function SubstitutionModal({ onClose }) {
         {/* ── Add 2nd Sub button ── */}
         {!showSecondSub && !atMax && subsLeft >= 2 && (
           <button
-            onClick={() => setShowSecondSub(true)}
+            onPointerDown={(e) => { e.preventDefault(); setShowSecondSub(true); }}
             className="w-full py-2 rounded-lg border border-dashed border-amber-600/60 text-amber-500
               text-xs font-bold tracking-wide hover:bg-amber-900/20 transition-colors"
           >
@@ -318,7 +324,7 @@ export function SubstitutionModal({ onClose }) {
             <div className="flex items-center justify-between">
               <SectionLabel color="amber">Sub 2</SectionLabel>
               <button
-                onClick={() => { setShowSecondSub(false); setOutPlayerId2(null); setInPlayerId2(null); setRoleOverride2(''); }}
+                onPointerDown={(e) => { e.preventDefault(); setShowSecondSub(false); setOutPlayerId2(null); setInPlayerId2(null); setRoleOverride2(''); }}
                 className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
               >✕ Remove</button>
             </div>

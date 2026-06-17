@@ -5,7 +5,7 @@ export const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-// ── ParentVantage HUB helpers ─────────────────────────────────────────────────
+// ── FamilyScope HUB helpers ───────────────────────────────────────────────────
 
 export async function publishPvStats(token, teamName, payload) {
   const { error } = await supabase

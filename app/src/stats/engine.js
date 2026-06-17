@@ -186,7 +186,8 @@ function deriveStats(p, sp, posLabel = null) {
           3.0  * p.bhe  -
           3.0  * p.fbe  -
           3.0  * p.lift -
-          3.0  * p.net
+          3.0  * p.net  -
+          3.0  * p.dbl
         )
       : null,
     pos_label: posLabel ?? null,
@@ -1291,7 +1292,7 @@ export function computePlayerWPA(contacts, rallies, p = WP_FALLBACK_P, q = WP_FA
     // Detect deciding set by total points: deciding sets end ~15, regular sets end ~25
     const ourPts = setRallies.filter(r => r.point_winner === 'us').length;
     const oppPts = setRallies.filter(r => r.point_winner === 'them').length;
-    const isDecider = Math.max(ourPts, oppPts) <= 20;
+    const isDecider = Math.max(ourPts, oppPts) < 25;
     const target = isDecider ? 15 : 25;
 
     let ourScore = 0, oppScore = 0;

@@ -244,7 +244,7 @@ const NudgeBtn = memo(function NudgeBtn({ label, onTap }) {
   );
 });
 
-export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, opponentName, onTimeoutCalled, onAssignLibero, flipLayout = false }) {
+export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, opponentName, onTimeoutCalled, onAssignLibero, flipLayout = false, broadcastEnabled = false, hasFamilyScope = false }) {
   const flipped = flipLayout;
   const ourScore      = useMatchStore((s) => s.ourScore);
   const oppScore      = useMatchStore((s) => s.oppScore);
@@ -363,56 +363,72 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
         style={{ height: 'calc(10vmin + env(safe-area-inset-top))', paddingTop: 'env(safe-area-inset-top)', background: '#08090b', borderBottom: '1px solid rgba(249,115,22,0.2)' }}
       >
 
-        {/* ── Far left: US sets won + our timeouts + sub counter  (swaps when flipped) ── */}
+        {/* ── Far left: sets won (standalone) + FamScope badge above timeout circles + sub counter ── */}
         <div className="flex items-center gap-1 shrink-0">
-          {flipped ? (
-            // Flipped: show opponent corner on the left
-            <>
-              <div className="flex flex-col items-center">
-                <div className="border-2 border-slate-500 rounded px-[1.8vmin] py-[0.5vmin] bg-slate-800/40">
-                  <span className="text-[3.1vmin] font-black text-slate-300 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{oppSetsWon}</span>
-                </div>
+          {/* Sets won box — spacer matches badge height so it aligns with the timeout row */}
+          <div className="flex flex-col items-center justify-center">
+            {(broadcastEnabled || hasFamilyScope) && <div className="mb-[0.4vmin] invisible text-[1.2vmin] py-[0.3vmin]">·</div>}
+            {flipped ? (
+              <div className="border-2 border-slate-500 rounded px-[1.8vmin] py-[0.5vmin] bg-slate-800/40">
+                <span className="text-[3.1vmin] font-black text-slate-300 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{oppSetsWon}</span>
               </div>
-              <TimeoutBox used={oppTimeouts} onTap={() => setTimeoutConfirm('them')} />
-            </>
-          ) : (
-            // Normal: show our corner on the left
-            <>
-              <div className="flex flex-col items-center">
-                <div className="border-2 border-orange-500 rounded px-[1.8vmin] py-[0.5vmin] bg-orange-950/30">
-                  <span className="text-[3.1vmin] font-black text-orange-400 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{ourSetsWon}</span>
-                </div>
+            ) : (
+              <div className="border-2 border-orange-500 rounded px-[1.8vmin] py-[0.5vmin] bg-orange-950/30">
+                <span className="text-[3.1vmin] font-black text-orange-400 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{ourSetsWon}</span>
               </div>
-              <TimeoutBox used={ourTimeouts} onTap={() => setTimeoutConfirm('us')} />
-            </>
-          )}
-          {(() => {
-            const subsLeft  = maxSubsPerSet - subsUsed;
-            const isMaxed   = subsLeft <= 0;
-            const isRed     = !isMaxed  && subsUsed >= 14;
-            const isYellow  = !isRed    && !isMaxed && subsUsed >= 10;
-            const colorKey  = isMaxed ? 'maxed' : isRed ? `red-${subsUsed}` : isYellow ? `yellow-${subsUsed}` : 'ok';
-            const numClass  = isMaxed  ? 'text-red-400 sub-maxed-blink'
-                            : isRed    ? 'text-red-400 sub-warn-pulse'
-                            : isYellow ? 'text-yellow-400'
-                            : 'text-slate-300';
-            const lblClass  = isMaxed  ? 'text-red-600'
-                            : isRed    ? 'text-red-600'
-                            : isYellow ? 'text-yellow-600'
-                            : 'text-slate-500';
-            return (
-              <div className="flex flex-col items-center shrink-0 ml-1">
-                <span key={colorKey} className={`text-[2.1vmin] font-bold leading-none ${numClass}`}>
-                  {subsUsed}/{maxSubsPerSet}
-                </span>
-                <span className={`text-[1.7vmin] leading-none ${lblClass}`}>SUB</span>
-              </div>
-            );
-          })()}
-        </div>
+            )}
+          </div>
 
-        {/* ── Libero box — sits between sub tracker and center score block ── */}
-        <LiberoBox liberoPlayer={liberoPlayer} onAssignLibero={onAssignLibero} />
+          {/* Badge + timeout circles + sub counter stacked */}
+          <div className="flex flex-col items-start justify-center">
+            {(broadcastEnabled || hasFamilyScope) && (
+              <div className="mb-[0.4vmin]">
+                {broadcastEnabled ? (
+                  <div className="flex items-center gap-[0.6vmin] bg-slate-800/90 border border-slate-600/60 text-slate-400 text-[1.2vmin] font-bold px-[1.2vmin] py-[0.3vmin] rounded-full pointer-events-none">
+                    <span className="w-[1vmin] h-[1vmin] rounded-full bg-red-500 animate-pulse shrink-0" />
+                    FamScope
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-[0.6vmin] bg-slate-800/90 border border-slate-600/60 text-slate-400 text-[1.2vmin] font-bold px-[1.2vmin] py-[0.3vmin] rounded-full pointer-events-none">
+                    <span className="w-[1vmin] h-[1vmin] flex items-center justify-center text-slate-500 shrink-0 leading-none" style={{ fontSize: '0.9vmin' }}>✕</span>
+                    FamScope
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="flex items-center gap-1">
+              {flipped ? (
+                <TimeoutBox used={oppTimeouts} onTap={() => setTimeoutConfirm('them')} />
+              ) : (
+                <TimeoutBox used={ourTimeouts} onTap={() => setTimeoutConfirm('us')} />
+              )}
+              {(() => {
+                const subsLeft  = maxSubsPerSet - subsUsed;
+                const isMaxed   = subsLeft <= 0;
+                const isRed     = !isMaxed  && subsUsed >= 14;
+                const isYellow  = !isRed    && !isMaxed && subsUsed >= 10;
+                const colorKey  = isMaxed ? 'maxed' : isRed ? `red-${subsUsed}` : isYellow ? `yellow-${subsUsed}` : 'ok';
+                const numClass  = isMaxed  ? 'text-red-400 sub-maxed-blink'
+                                : isRed    ? 'text-red-400 sub-warn-pulse'
+                                : isYellow ? 'text-yellow-400'
+                                : 'text-slate-300';
+                const lblClass  = isMaxed  ? 'text-red-600'
+                                : isRed    ? 'text-red-600'
+                                : isYellow ? 'text-yellow-600'
+                                : 'text-slate-500';
+                return (
+                  <div className="flex flex-col items-center shrink-0 ml-1">
+                    <span key={colorKey} className={`text-[2.1vmin] font-bold leading-none ${numClass}`}>
+                      {subsUsed}/{maxSubsPerSet}
+                    </span>
+                    <span className={`text-[1.7vmin] leading-none ${lblClass}`}>SUB</span>
+                  </div>
+                );
+              })()}
+              <LiberoBox liberoPlayer={liberoPlayer} onAssignLibero={onAssignLibero} />
+            </div>
+          </div>
+        </div>
 
         {/* ── Left spacer ── */}
         <div className="flex-1" />
@@ -517,34 +533,40 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
         </div>
 
         {/* ── Rotation tracker — right of center to avoid score overlap ── */}
-        <div className="flex flex-col items-center shrink-0 mr-1 px-[1vmin] py-[0.4vmin] rounded border border-purple-700 bg-purple-950/40">
-          <span className="text-[1.1vmin] font-bold text-purple-500 leading-none uppercase tracking-wide">ROT</span>
-          <span className="text-[2.6vmin] font-black text-purple-400 leading-none tabular-nums">{rotationNum}</span>
+        <div className="flex flex-col items-center justify-center shrink-0">
+          {(broadcastEnabled || hasFamilyScope) && <div className="mb-[0.4vmin] invisible text-[1.2vmin] py-[0.3vmin]">·</div>}
+          <div className="flex flex-col items-center mr-1 px-[1vmin] py-[0.4vmin] rounded border border-purple-700 bg-purple-950/40">
+            <span className="text-[1.1vmin] font-bold text-purple-500 leading-none uppercase tracking-wide">ROT</span>
+            <span className="text-[2.6vmin] font-black text-purple-400 leading-none tabular-nums">{rotationNum}</span>
+          </div>
         </div>
 
         {/* ── Far right: their timeouts + THEM sets won  (swaps when flipped) ── */}
-        <div className="flex items-center gap-1 shrink-0">
-          {flipped ? (
-            // Flipped: show our corner on the right
-            <>
-              <TimeoutBox used={ourTimeouts} onTap={() => setTimeoutConfirm('us')} />
-              <div className="flex flex-col items-center">
-                <div className="border-2 border-orange-500 rounded px-[1.8vmin] py-[0.5vmin] bg-orange-950/30">
-                  <span className="text-[3.1vmin] font-black text-orange-400 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{ourSetsWon}</span>
+        <div className="flex flex-col items-end justify-center shrink-0">
+          {(broadcastEnabled || hasFamilyScope) && <div className="mb-[0.4vmin] invisible text-[1.2vmin] py-[0.3vmin]">·</div>}
+          <div className="flex items-center gap-1 shrink-0">
+            {flipped ? (
+              // Flipped: show our corner on the right
+              <>
+                <TimeoutBox used={ourTimeouts} onTap={() => setTimeoutConfirm('us')} />
+                <div className="flex flex-col items-center">
+                  <div className="border-2 border-orange-500 rounded px-[1.8vmin] py-[0.5vmin] bg-orange-950/30">
+                    <span className="text-[3.1vmin] font-black text-orange-400 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{ourSetsWon}</span>
+                  </div>
                 </div>
-              </div>
-            </>
-          ) : (
-            // Normal: show opponent corner on the right
-            <>
-              <TimeoutBox used={oppTimeouts} onTap={() => setTimeoutConfirm('them')} />
-              <div className="flex flex-col items-center">
-                <div className="border-2 border-slate-500 rounded px-[1.8vmin] py-[0.5vmin] bg-slate-800/40">
-                  <span className="text-[3.1vmin] font-black text-slate-300 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{oppSetsWon}</span>
+              </>
+            ) : (
+              // Normal: show opponent corner on the right
+              <>
+                <TimeoutBox used={oppTimeouts} onTap={() => setTimeoutConfirm('them')} />
+                <div className="flex flex-col items-center">
+                  <div className="border-2 border-slate-500 rounded px-[1.8vmin] py-[0.5vmin] bg-slate-800/40">
+                    <span className="text-[3.1vmin] font-black text-slate-300 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{oppSetsWon}</span>
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
 
       </div>

@@ -102,6 +102,10 @@ const makeSetResetState = () => ({
   rallyPhase:                  'pre_serve',
   currentRun:                  { side: null, count: 0 },
   pointHistory:                [],
+  liberoOnCourt:               false,
+  liberoReplacedPlayerId:      null,
+  liberoReplacedName:          '',
+  liberoReplacedJersey:        '',
   liberoReplacedPositionLabel: '',
   pendingServeContact:         null,
   serveReticles:               [],
@@ -263,6 +267,7 @@ const INITIAL_STATE = {
   serveReceiveFormations: null, // { [rotationNum]: number[6] } | null — soIdx per grid cell
   plannedSubs:            [],   // [{ rotation, player_out_so, player_in_id }]
   _undoInFlight:          false, // guard against concurrent undo taps
+  _hblkInFlight:          false, // guard against concurrent HBLK double-taps
 
   broadcastEnabled:       false,
   _pvChannel:             null,
@@ -325,10 +330,10 @@ export const useMatchStore = create((set, get) => ({
   setPlayerNicknames: (map)    => set({ playerNicknames: map }),
   setTeamJerseyColor:   (color) => set({ teamJerseyColor: color }),
   setLiberoJerseyColor: (color) => set({ liberoJerseyColor: color }),
-  setLibero:  (liberoId) => set({ liberoId }),
+  setLibero: (liberoId, name, jersey) => set({ liberoId, liberoName: name ?? '', liberoJersey: jersey ?? '' }),
 
-  rotateForward:  () => set((s) => ({ lineup: rotateFwd(s.lineup) })),
-  rotateBackward: () => set((s) => ({ lineup: rotateBwd(s.lineup) })),
+  rotateForward:  () => set((s) => ({ lineup: rotateFwd(s.lineup), rotationNum: (s.rotationNum % 6) + 1 })),
+  rotateBackward: () => set((s) => ({ lineup: rotateBwd(s.lineup), rotationNum: ((s.rotationNum - 2 + 6) % 6) + 1 })),
 
   setPositionLabel: (playerId, label) => set((s) => ({
     lineup: s.lineup.map((sl) =>
@@ -339,7 +344,11 @@ export const useMatchStore = create((set, get) => ({
   adjustScore: (side, delta) =>
     set((s) => {
       const key = side === SIDE.US ? 'ourScore' : 'oppScore';
-      return { [key]: Math.max(0, s[key] + delta) };
+      const newScore = Math.max(0, s[key] + delta);
+      const newOur  = side === SIDE.US ? newScore : s.ourScore;
+      const newOpp  = side === SIDE.US ? s.oppScore : newScore;
+      const winner  = checkSetWin(newOur, newOpp, s.setNumber, s.format, s.lastSetScore);
+      return { [key]: newScore, ...(winner ? { pendingSetWin: winner } : {}) };
     }),
 
   addPoint: async (side) => {
@@ -557,11 +566,13 @@ export const useMatchStore = create((set, get) => ({
       case 'hblk_contact': {
         await db.contacts.delete(action.contactId1);
         await db.contacts.delete(action.contactId2);
+        const { finalRest: hRest, pointUpdates: hPt } = await resolveLinkedPoint(s, action, rest);
         set({
-          actionHistory:     rest,
+          actionHistory:     hRest,
           committedContacts: s.committedContacts
             .filter(c => c.id !== action.contactId1 && c.id !== action.contactId2),
           lastFeedItem: null,
+          ...hPt,
         });
         break;
       }
@@ -814,58 +825,70 @@ export const useMatchStore = create((set, get) => ({
 
   // HBLK requires two players to tap — first tap sets pending, second completes both
   tapHblk: async (playerId) => {
-    const s = get();
-    const { pendingHblk, matchId, currentSetId } = s;
+    if (get()._hblkInFlight) return;
+    set({ _hblkInFlight: true });
+    try {
+      const s = get();
+      const { pendingHblk, matchId, currentSetId } = s;
 
-    if (pendingHblk) {
-      if (pendingHblk.playerId === playerId) {
-        // Same player tapping again — cancel
-        set({ pendingHblk: null });
+      if (pendingHblk) {
+        if (pendingHblk.playerId === playerId) {
+          // Same player tapping again — cancel
+          set({ pendingHblk: null });
+        } else {
+          // Partner confirmed — write both block assist contacts
+          const now = Date.now();
+          const contact1 = {
+            match_id:     matchId, set_id: currentSetId,
+            player_id:    pendingHblk.playerId,
+            action:       ACTION.BLOCK, result: RESULT.BLOCK_ASSIST,
+            rally_number: s.rallyCount,
+            rotation_num: s.rotationNum,
+            serve_side:   s.serveSide,
+            timestamp:    now,
+          };
+          const contact2 = {
+            match_id:     matchId, set_id: currentSetId,
+            player_id:    playerId,
+            action:       ACTION.BLOCK, result: RESULT.BLOCK_ASSIST,
+            rally_number: s.rallyCount,
+            rotation_num: s.rotationNum,
+            serve_side:   s.serveSide,
+            timestamp:    now + 1,
+          };
+          try {
+            const id1 = await db.contacts.add(contact1);
+            const id2 = await db.contacts.add(contact2);
+            const newCommittedContacts = [
+              ...s.committedContacts,
+              { ...contact1, id: id1 },
+              { ...contact2, id: id2 },
+            ];
+            const prevHistory = get().actionHistory;
+            set({
+              pendingHblk:   null,
+              actionHistory: [{ type: 'hblk_contact', contactId1: id1, contactId2: id2, causedPoint: SIDE.US }, ...prevHistory],
+              committedContacts: newCommittedContacts,
+            });
+
+            const slot1 = s.lineup.find((p) => p.playerId === pendingHblk.playerId);
+            const slot2 = s.lineup.find((p) => p.playerId === playerId);
+            const n1 = slot1?.playerName?.split(' ').pop() ?? '';
+            const n2 = slot2?.playerName?.split(' ').pop() ?? '';
+            setFeed(set, `+1 ${n1} & ${n2} Blk Ast`);
+
+            await get().addPoint(SIDE.US);
+          } catch (err) {
+            console.error('[VBStat] tapHblk write failed:', err);
+            useUiStore.getState().showToast('Block record failed. Try again.', 'error');
+            set({ pendingHblk: null });
+          }
+        }
       } else {
-        // Partner confirmed — write both block assist contacts
-        const now = Date.now();
-        const contact1 = {
-          match_id:     matchId, set_id: currentSetId,
-          player_id:    pendingHblk.playerId,
-          action:       ACTION.BLOCK, result: RESULT.BLOCK_ASSIST,
-          rally_number: s.rallyCount,
-          rotation_num: s.rotationNum,
-          serve_side:   s.serveSide,
-          timestamp:    now,
-        };
-        const contact2 = {
-          match_id:     matchId, set_id: currentSetId,
-          player_id:    playerId,
-          action:       ACTION.BLOCK, result: RESULT.BLOCK_ASSIST,
-          rally_number: s.rallyCount,
-          rotation_num: s.rotationNum,
-          serve_side:   s.serveSide,
-          timestamp:    now + 1,
-        };
-        const id1 = await db.contacts.add(contact1);
-        const id2 = await db.contacts.add(contact2);
-        const newCommittedContacts = [
-          ...s.committedContacts,
-          { ...contact1, id: id1 },
-          { ...contact2, id: id2 },
-        ];
-        const prevHistory = get().actionHistory;
-        set({
-          pendingHblk:   null,
-          actionHistory: [{ type: 'hblk_contact', contactId1: id1, contactId2: id2 }, ...prevHistory],
-          committedContacts: newCommittedContacts,
-        });
-
-        const slot1 = s.lineup.find((p) => p.playerId === pendingHblk.playerId);
-        const slot2 = s.lineup.find((p) => p.playerId === playerId);
-        const n1 = slot1?.playerName?.split(' ').pop() ?? '';
-        const n2 = slot2?.playerName?.split(' ').pop() ?? '';
-        setFeed(set, `+1 ${n1} & ${n2} Blk Ast`);
-
-        await get().addPoint(SIDE.US);
+        set({ pendingHblk: { playerId } });
       }
-    } else {
-      set({ pendingHblk: { playerId } });
+    } finally {
+      set({ _hblkInFlight: false });
     }
   },
 
@@ -897,16 +920,23 @@ export const useMatchStore = create((set, get) => ({
       ? [...s.exhaustedPlayerIds, outPlayerId, inPlayer.id]
       : s.exhaustedPlayerIds;
 
-    const subDbId = await db.substitutions.add({
-      set_id:            s.currentSetId,
-      rally_number:      0,
-      player_out:        outPlayerId,
-      player_in:         inPlayer.id,
-      position:          slotIdx + 1,
-      libero_swap:       false,
-      in_position_label: inPositionLabel,
-      timestamp:         Date.now(),
-    });
+    let subDbId;
+    try {
+      subDbId = await db.substitutions.add({
+        set_id:            s.currentSetId,
+        rally_number:      0,
+        player_out:        outPlayerId,
+        player_in:         inPlayer.id,
+        position:          slotIdx + 1,
+        libero_swap:       false,
+        in_position_label: inPositionLabel,
+        timestamp:         Date.now(),
+      });
+    } catch (err) {
+      console.error('[VBStat] substitutePlayer DB write failed:', err);
+      useUiStore.getState().showToast('Sub failed. Check device storage.', 'error');
+      return false;
+    }
 
     set({
       lineup: s.lineup.map((sl, i) =>
@@ -941,12 +971,14 @@ export const useMatchStore = create((set, get) => ({
   swapLibero: async (liberoPlayer, explicitTargetIdx) => {
     const s = get();
 
-    // Snapshot state before the swap for undo
-    const prevLiberoOnCourt       = s.liberoOnCourt;
-    const prevLineup              = s.lineup;
-    const prevReplacedId          = s.liberoReplacedPlayerId;
-    const prevReplacedName        = s.liberoReplacedName;
-    const prevReplacedJersey      = s.liberoReplacedJersey;
+    // Snapshot state before the swap for undo + DB write rollback
+    const prevLiberoOnCourt         = s.liberoOnCourt;
+    const prevLineup                = s.lineup;
+    const prevLiberoName            = s.liberoName;
+    const prevLiberoJersey          = s.liberoJersey;
+    const prevReplacedId            = s.liberoReplacedPlayerId;
+    const prevReplacedName          = s.liberoReplacedName;
+    const prevReplacedJersey        = s.liberoReplacedJersey;
     const prevReplacedPositionLabel = s.liberoReplacedPositionLabel;
 
     if (s.liberoOnCourt) {
@@ -990,12 +1022,29 @@ export const useMatchStore = create((set, get) => ({
       });
     }
 
-    const subDbId = await db.substitutions.add({
-      set_id:       s.currentSetId,
-      rally_number: 0,
-      libero_swap:  true,
-      timestamp:    Date.now(),
-    });
+    let subDbId;
+    try {
+      subDbId = await db.substitutions.add({
+        set_id:       s.currentSetId,
+        rally_number: 0,
+        libero_swap:  true,
+        timestamp:    Date.now(),
+      });
+    } catch (err) {
+      console.error('[VBStat] swapLibero DB write failed:', err);
+      useUiStore.getState().showToast('Libero swap failed. Check device storage.', 'error');
+      set({
+        lineup:                      prevLineup,
+        liberoOnCourt:               prevLiberoOnCourt,
+        liberoName:                  prevLiberoName,
+        liberoJersey:                prevLiberoJersey,
+        liberoReplacedPlayerId:      prevReplacedId,
+        liberoReplacedName:          prevReplacedName,
+        liberoReplacedJersey:        prevReplacedJersey,
+        liberoReplacedPositionLabel: prevReplacedPositionLabel,
+      });
+      return;
+    }
 
     pushAction(get, set, {
       type:                    'libero_swap',
@@ -1012,7 +1061,7 @@ export const useMatchStore = create((set, get) => ({
   recordHomeRotError: async () => {
     const s = get();
     const currentRally = s.rallyCount;
-    get().addPoint(SIDE.THEM);
+    await get().addPoint(SIDE.THEM);
     setFeed(set, 'ROT Violation');
     const contactFull = {
       match_id:         s.matchId,
@@ -1034,6 +1083,7 @@ export const useMatchStore = create((set, get) => ({
       }));
     } catch (err) {
       console.error('[VBStat] recordHomeRotError contact write failed:', err);
+      useUiStore.getState().showToast('Rotation error not recorded. Try again.', 'error');
     }
   },
 
@@ -1053,7 +1103,7 @@ export const useMatchStore = create((set, get) => ({
     };
     // Score update is independent of the DB write — call it first so the
     // scoreboard always reflects the tap even if the contact write fails.
-    get().addPoint(pointSide);
+    await get().addPoint(pointSide);
     setFeed(set, feedLabel);
     try {
       const id = await db.contacts.add(contactFull);
@@ -1111,34 +1161,40 @@ export const useMatchStore = create((set, get) => ({
 
   endSet: async (winner) => {
     const s = get();
-    await db.sets.update(s.currentSetId, {
-      status:    SET_STATUS.COMPLETE,
-      our_score: s.ourScore,
-      opp_score: s.oppScore,
-      winner,
-    });
+    try {
+      await db.sets.update(s.currentSetId, {
+        status:    SET_STATUS.COMPLETE,
+        our_score: s.ourScore,
+        opp_score: s.oppScore,
+        winner,
+      });
 
-    const newSetsUs   = s.ourSetsWon + (winner === SIDE.US   ? 1 : 0);
-    const newSetsThem = s.oppSetsWon + (winner === SIDE.THEM ? 1 : 0);
-    const nextSetNum  = s.setNumber + 1;
+      const newSetsUs   = s.ourSetsWon + (winner === SIDE.US   ? 1 : 0);
+      const newSetsThem = s.oppSetsWon + (winner === SIDE.THEM ? 1 : 0);
+      const nextSetNum  = s.setNumber + 1;
 
-    const newSetId = await db.sets.add({
-      match_id:   s.matchId,
-      set_number: nextSetNum,
-      status:     SET_STATUS.IN_PROGRESS,
-      our_score:  0,
-      opp_score:  0,
-    });
+      const newSetId = await db.sets.add({
+        match_id:   s.matchId,
+        set_number: nextSetNum,
+        status:     SET_STATUS.IN_PROGRESS,
+        our_score:  0,
+        opp_score:  0,
+      });
 
-    set({
-      ...makeSetResetState(),
-      currentSetId:  newSetId,
-      setNumber:     nextSetNum,
-      ourSetsWon:    newSetsUs,
-      oppSetsWon:    newSetsThem,
-      pendingSetWin: null,
-    });
-    get().broadcastUpdate();
+      set({
+        ...makeSetResetState(),
+        currentSetId:  newSetId,
+        setNumber:     nextSetNum,
+        ourSetsWon:    newSetsUs,
+        oppSetsWon:    newSetsThem,
+        pendingSetWin: null,
+      });
+      get().broadcastUpdate();
+    } catch (err) {
+      console.error('[VBStat] endSet failed:', err);
+      useUiStore.getState().showToast('Failed to end set. Please try again.', 'error');
+      throw err;
+    }
   },
 
   confirmServeZone: async (contactId, court_x, court_y, zone) => {
@@ -1217,29 +1273,35 @@ export const useMatchStore = create((set, get) => ({
 
   endMatch: async (winner) => {
     const s = get();
-    await db.sets.update(s.currentSetId, {
-      status:    SET_STATUS.COMPLETE,
-      our_score: s.ourScore,
-      opp_score: s.oppScore,
-      winner,
-    });
+    try {
+      await db.sets.update(s.currentSetId, {
+        status:    SET_STATUS.COMPLETE,
+        our_score: s.ourScore,
+        opp_score: s.oppScore,
+        winner,
+      });
 
-    const newSetsUs   = s.ourSetsWon + (winner === SIDE.US   ? 1 : 0);
-    const newSetsThem = s.oppSetsWon + (winner === SIDE.THEM ? 1 : 0);
+      const newSetsUs   = s.ourSetsWon + (winner === SIDE.US   ? 1 : 0);
+      const newSetsThem = s.oppSetsWon + (winner === SIDE.THEM ? 1 : 0);
 
-    await db.matches.update(s.matchId, {
-      status:       MATCH_STATUS.COMPLETE,
-      our_sets_won: newSetsUs,
-      opp_sets_won: newSetsThem,
-    });
+      await db.matches.update(s.matchId, {
+        status:       MATCH_STATUS.COMPLETE,
+        our_sets_won: newSetsUs,
+        opp_sets_won: newSetsThem,
+      });
 
-    // Delete any orphan in-progress sets (created by old endSet() calls that were never played)
-    await db.sets
-      .where('match_id').equals(s.matchId)
-      .filter((row) => row.status === SET_STATUS.IN_PROGRESS)
-      .delete();
+      // Delete any orphan in-progress sets (created by old endSet() calls that were never played)
+      await db.sets
+        .where('match_id').equals(s.matchId)
+        .filter((row) => row.status === SET_STATUS.IN_PROGRESS)
+        .delete();
 
-    set({ ourSetsWon: newSetsUs, oppSetsWon: newSetsThem });
+      set({ ourSetsWon: newSetsUs, oppSetsWon: newSetsThem });
+    } catch (err) {
+      console.error('[VBStat] endMatch failed:', err);
+      useUiStore.getState().showToast('Failed to end match. Please try again.', 'error');
+      throw err;
+    }
   },
 
   // ── Set Revision ──────────────────────────────────────────────────────────

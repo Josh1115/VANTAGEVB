@@ -229,7 +229,13 @@ function StepSchool({ data, onChange, onNext, error }) {
 
 // ── Step 4: Coach (final step — triggers account creation) ───────────────────
 function StepCoach({ value, onChange, onSubmit, submitting, error }) {
+  const [ageAck, setAgeAck] = useState(false);
   const inp = 'w-full rounded-2xl border-2 border-slate-600 bg-slate-800/40 px-5 py-4 text-lg text-white placeholder-slate-500 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all';
+
+  function handleSubmit() {
+    if (!ageAck) return;
+    onSubmit();
+  }
 
   return (
     <div className="w-full flex flex-col gap-6 animate-slide-up-fade">
@@ -243,7 +249,7 @@ function StepCoach({ value, onChange, onSubmit, submitting, error }) {
         placeholder="Head coach name"
         value={value}
         onChange={e => onChange(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && onSubmit()}
+        onKeyDown={e => e.key === 'Enter' && handleSubmit()}
         className={inp}
       />
 
@@ -253,21 +259,41 @@ function StepCoach({ value, onChange, onSubmit, submitting, error }) {
         <p className="text-xs text-slate-400">Try everything. Upgrade anytime.</p>
       </div>
 
+      {/* Age & role acknowledgment */}
+      <label className="flex items-start gap-3 cursor-pointer group">
+        <div className="relative mt-0.5 shrink-0">
+          <input
+            type="checkbox"
+            checked={ageAck}
+            onChange={e => setAgeAck(e.target.checked)}
+            className="sr-only"
+          />
+          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+            ageAck ? 'bg-primary border-primary' : 'border-slate-600 bg-slate-800/40 group-hover:border-slate-400'
+          }`}>
+            {ageAck && (
+              <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+          </div>
+        </div>
+        <p className="text-xs text-slate-400 leading-relaxed">
+          I am 18 or older and am using Vantage in a coaching or athletic staff capacity. I agree to the{' '}
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary underline" onClick={e => e.stopPropagation()}>Terms &amp; Conditions</a>
+          {' '}and{' '}
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline" onClick={e => e.stopPropagation()}>Privacy Policy</a>.
+        </p>
+      </label>
+
       {error && <p className="text-sm text-red-400 text-center">{error}</p>}
 
       <button
-        onClick={onSubmit}
-        disabled={submitting}
+        onClick={handleSubmit}
+        disabled={submitting || !ageAck}
         className="w-full rounded-2xl bg-primary py-4 text-base font-black text-white tracking-wide active:scale-[0.97] transition-transform disabled:opacity-50"
       >
         {submitting ? 'Creating account…' : 'Start Free Trial'}
-      </button>
-      <button
-        onClick={onSubmit}
-        disabled={submitting}
-        className="text-sm text-slate-500 hover:text-slate-300 transition-colors text-center -mt-3 disabled:opacity-50"
-      >
-        Skip & start trial
       </button>
     </div>
   );

@@ -31,7 +31,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons/*.png', 'offline.html'],
+      includeAssets: ['icons/*.png', 'offline.html', 'fonts/*.woff2'],
       manifest: {
         name: 'VANTAGE',
         short_name: 'VANTAGE',
@@ -39,7 +39,7 @@ export default defineConfig({
         theme_color: '#f97316',
         background_color: '#0f172a',
         display: 'standalone',
-        orientation: 'portrait',
+        orientation: 'any',
         start_url: '/',
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
@@ -49,12 +49,10 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Take control of all open tabs immediately when a new SW activates.
-        // Without this, old code keeps running in open tabs until a manual reload.
-        clientsClaim: true,
-
-        // Serve offline.html if navigation fails while offline
-        navigateFallback: '/offline.html',
+        // SPA navigation fallback — serves index.html for all unmatched routes so
+        // the React router handles them. offline.html is served by the network-first
+        // handler when the device is truly offline and index.html itself can't be fetched.
+        navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
 
         // Pre-cache all built assets (content-hashed filenames handle versioning)

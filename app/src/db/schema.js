@@ -2,7 +2,7 @@ import Dexie from 'dexie';
 
 export const db = new Dexie('VBAPPv2');
 
-// v21: add share_token to teams for ParentVantage HUB sharing.
+// v21: add share_token to teams for FamilyScope HUB sharing.
 db.version(21).stores({
   rallies:            '++id, set_id, rally_number',
   sets:               '++id, match_id, set_number',

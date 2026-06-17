@@ -85,7 +85,7 @@ const pct = (v) => v != null ? `${Math.round(v * 100)}%` : '—';
 const INSIGHT_METRICS = [
   { label: 'Pass Rating',    key: 'apr',        src: 'team',  fmt: (v) => v != null ? v.toFixed(2) : '—', higherBetter: true  },
   { label: 'Sideout %',     key: 'so_pct',     src: 'rot',   fmt: pct,                                    higherBetter: true  },
-  { label: 'Break Point %', key: 'bp_pct',     src: 'rot',   fmt: pct,                                    higherBetter: true  },
+  { label: 'Serving Point %', key: 'bp_pct',   src: 'rot',   fmt: pct,                                    higherBetter: true  },
   { label: '3OPT %',        key: 'win_pct',    src: 'isOos', fmt: pct,                                    higherBetter: true  },
   { label: 'Kill %',        key: 'k_pct',      src: 'team',  fmt: pct,                                    higherBetter: true  },
   { label: 'Kills',         key: 'k',          src: 'team',  fmt: (v) => v != null ? String(Math.round(v)) : '—', higherBetter: true  },
@@ -749,8 +749,8 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
                                 <th className="px-2 py-2 text-right font-bold text-slate-400">SO%</th>
                                 <th className="px-2 py-2 text-right font-bold text-slate-400">SZN SO%</th>
                                 <th className="px-2 py-2 text-right font-bold text-slate-400">Δ</th>
-                                <th className="px-2 py-2 text-right font-bold text-slate-400">BP%</th>
-                                <th className="px-2 py-2 text-right font-bold text-slate-400">SZN BP%</th>
+                                <th className="px-2 py-2 text-right font-bold text-slate-400">SP%</th>
+                                <th className="px-2 py-2 text-right font-bold text-slate-400">SZN SP%</th>
                               </tr>
                             </thead>
                             <tbody>

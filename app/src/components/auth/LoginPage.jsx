@@ -78,7 +78,7 @@ export function LoginPage({ onSignup }) {
             className="text-[18px] italic text-slate-500 -mt-[5px]"
             style={{ opacity: phase >= 5 ? 1 : 0, transition: 'opacity 0.8s ease' }}
           >
-            Powered by the S.S.E (Shua Stat Engine)
+            Powered by Vantage Analytics
           </p>
 
           {/* Buttons */}

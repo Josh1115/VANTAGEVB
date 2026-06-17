@@ -877,7 +877,7 @@ export function HomePage() {
             Precision Sideline Analytics
           </span>
           <span className="text-slate-400 font-normal text-[17.5px] tracking-wide italic">
-            powered by the SSE (Shua Stat Engine)
+            powered by Vantage Analytics
           </span>
         </h1>
       </header>
@@ -953,43 +953,50 @@ export function HomePage() {
           <div className="bg-surface rounded-xl overflow-hidden animate-slide-up-fade card-top-glow" style={{ animationDelay: '200ms' }}>
             {/* Header */}
             <div className="px-4 py-2 border-b border-slate-700/60 text-center">
-              <span
-                className="text-[17.5px] font-black tracking-widest text-white uppercase"
-                style={{ fontFamily: "'Orbitron', sans-serif" }}
-              >
-                {seasonRecord.teamName}
-              </span>
-              <span className="text-slate-600 mx-2">·</span>
-              <span className="text-[15px] text-slate-400 font-semibold">{seasonRecord.seasonName}</span>
-              {seasonRecord.stateRank != null && (
-                <>
-                  <span className="text-slate-600 mx-2">·</span>
-                  <span className="text-[15px] font-black text-amber-400 tracking-wide">
-                    {seasonRecord.teamState ?? 'STATE'}: #{seasonRecord.stateRank}
-                  </span>
-                  {seasonRecord.prevStateRank != null && seasonRecord.prevStateRank !== seasonRecord.stateRank && (() => {
-                    const delta = seasonRecord.prevStateRank - seasonRecord.stateRank;
-                    return (
-                      <span className={`text-[12.5px] font-bold ml-1 ${delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                        ({delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`})
+              <div>
+                <span
+                  className="text-[17.5px] font-black tracking-widest text-white uppercase"
+                  style={{ fontFamily: "'Orbitron', sans-serif" }}
+                >
+                  {seasonRecord.teamName}
+                </span>
+                <span className="text-slate-600 mx-2">·</span>
+                <span className="text-[15px] text-slate-400 font-semibold">{seasonRecord.seasonName}</span>
+              </div>
+              {(seasonRecord.stateRank != null || seasonRecord.nationalRank != null) && (
+                <div className="mt-0.5">
+                  {seasonRecord.stateRank != null && (
+                    <>
+                      <span className="text-[15px] font-black text-amber-400 tracking-wide">
+                        {seasonRecord.teamState ?? 'STATE'}: #{seasonRecord.stateRank}
                       </span>
-                    );
-                  })()}
-                </>
-              )}
-              {seasonRecord.nationalRank != null && (
-                <>
-                  <span className="text-slate-600 mx-2">·</span>
-                  <span className="text-[15px] font-black text-amber-400 tracking-wide">NATIONAL: #{seasonRecord.nationalRank}</span>
-                  {seasonRecord.prevNationalRank != null && seasonRecord.prevNationalRank !== seasonRecord.nationalRank && (() => {
-                    const delta = seasonRecord.prevNationalRank - seasonRecord.nationalRank;
-                    return (
-                      <span className={`text-[12.5px] font-bold ml-1 ${delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                        ({delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`})
-                      </span>
-                    );
-                  })()}
-                </>
+                      {seasonRecord.prevStateRank != null && seasonRecord.prevStateRank !== seasonRecord.stateRank && (() => {
+                        const delta = seasonRecord.prevStateRank - seasonRecord.stateRank;
+                        return (
+                          <span className={`text-[12.5px] font-bold ml-1 ${delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            ({delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`})
+                          </span>
+                        );
+                      })()}
+                    </>
+                  )}
+                  {seasonRecord.stateRank != null && seasonRecord.nationalRank != null && (
+                    <span className="text-slate-600 mx-2">·</span>
+                  )}
+                  {seasonRecord.nationalRank != null && (
+                    <>
+                      <span className="text-[15px] font-black text-amber-400 tracking-wide">NATIONAL: #{seasonRecord.nationalRank}</span>
+                      {seasonRecord.prevNationalRank != null && seasonRecord.prevNationalRank !== seasonRecord.nationalRank && (() => {
+                        const delta = seasonRecord.prevNationalRank - seasonRecord.nationalRank;
+                        return (
+                          <span className={`text-[12.5px] font-bold ml-1 ${delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            ({delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`})
+                          </span>
+                        );
+                      })()}
+                    </>
+                  )}
+                </div>
               )}
             </div>
 

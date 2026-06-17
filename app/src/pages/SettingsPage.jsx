@@ -565,7 +565,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Team / Rotation',
-        body: 'SO% = Sideout Percentage — how often you score when the opponent is serving. BP% = Break Point Percentage — how often you score when you are serving. These are the two most important team efficiency metrics.',
+        body: 'SO% = Sideout Percentage — how often you score when the opponent is serving. SP% = Serving Point % — how often you score when you are serving. These are the two most important team efficiency metrics.',
       },
       {
         heading: 'MP / SP',
@@ -615,7 +615,7 @@ const FAQ_TOPICS = [
     content: [
       {
         heading: 'What is Rotation Analysis?',
-        body: 'Every rally is tagged with which rotation your team was in when the rally started. Rotation analysis groups all rallies by rotation (1–6) and shows sideout % and break-point % for each one.',
+        body: 'Every rally is tagged with which rotation your team was in when the rally started. Rotation analysis groups all rallies by rotation (1–6) and shows sideout % and serving point % for each one.',
       },
       {
         heading: 'Rotation Numbering',
@@ -626,8 +626,8 @@ const FAQ_TOPICS = [
         body: 'Sideout % shows how often you score when receiving in each rotation. A low SO% in rotation 3 means your lineup struggles to side out when a specific player is in P3 — the front-row in that rotation may have a weak passer.',
       },
       {
-        heading: 'BP% by Rotation',
-        body: 'Break Point % shows how often you score points while serving in each rotation. A low BP% in rotation 5 might mean the server in P5 is giving away too many points, or the blocking scheme is weak from that rotation.',
+        heading: 'SP% by Rotation',
+        body: 'Serving Point % shows how often you score points while serving in each rotation. A low SP% in rotation 5 might mean the server in P5 is giving away too many points, or the blocking scheme is weak from that rotation.',
       },
       {
         heading: 'Live Rotation Tab',
@@ -667,7 +667,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Rotation Analysis Tab',
-        body: 'Shows SO% and BP% by rotation with a radar chart and per-rotation breakdown. The "Rotation Spotlight" section highlights your best and worst performing rotations with trend context.',
+        body: 'Shows SO% and SP% by rotation with a radar chart and per-rotation breakdown. The "Rotation Spotlight" section highlights your best and worst performing rotations with trend context.',
       },
       {
         heading: 'Trends Tab',
@@ -679,7 +679,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Insights Tab',
-        body: 'Requires at least 2 wins and 2 losses in the selected season. Shows 8 key metrics (Pass Rating, SO%, BP%, Kill %, Hitting Efficiency, Ace %, Serve Error %, Blocks/Set) comparing your win averages vs. your loss averages. The bar shows where your season average sits between those two extremes.',
+        body: 'Requires at least 2 wins and 2 losses in the selected season. Shows 8 key metrics (Pass Rating, SO%, SP%, Kill %, Hitting Efficiency, Ace %, Serve Error %, Blocks/Set) comparing your win averages vs. your loss averages. The bar shows where your season average sits between those two extremes.',
       },
       {
         heading: 'Insights Status Labels',
@@ -718,7 +718,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Serve Side Sync',
-        body: 'After a timeout, net violation, or long replay review, double-check the serve indicator. If it\'s wrong, tap it once to flip. Everything downstream (rotation tracking, SO%/BP%) depends on this being correct.',
+        body: 'After a timeout, net violation, or long replay review, double-check the serve indicator. If it\'s wrong, tap it once to flip. Everything downstream (rotation tracking, SO%/SP%) depends on this being correct.',
       },
       {
         heading: 'Between Sets',
@@ -855,7 +855,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'MaxPreps Export',
-        body: 'Settings → Exports → paste your MaxPreps Team ID (found in your team\'s MaxPreps URL). Once set, the Match Summary page will offer a MaxPreps .txt export formatted for direct upload.',
+        body: 'Settings → Data Management → paste your MaxPreps Team ID (found in your team\'s MaxPreps URL). Once set, the Match Summary page will offer a MaxPreps .txt export formatted for direct upload.',
       },
       {
         heading: 'What\'s Included in the Export',
@@ -921,7 +921,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Which Metrics Are Tracked',
-        body: 'Pass Rating, Sideout %, Break Point %, 3OPT % (in-system win rate), Kill %, Kills/Set, Attack Errors/Set, Hitting Efficiency, Earned Points %, Ace %, Serve Error %, and Blocks/Set. These 12 metrics represent the full picture of team efficiency across every phase of the game.',
+        body: 'Pass Rating, Sideout %, Serving Point %, 3OPT % (in-system win rate), Kill %, Kills/Set, Attack Errors/Set, Hitting Efficiency, Earned Points %, Ace %, Serve Error %, and Blocks/Set. These 12 metrics represent the full picture of team efficiency across every phase of the game.',
       },
       {
         heading: 'Using Insights Strategically',
@@ -983,7 +983,7 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Rotation Optimizer',
-        body: 'Inside a team\'s page (Teams → your team → Optimizer), the Rotation Optimizer uses your season\'s SO% and BP% data by rotation to suggest optimal serve-order pairings for your specific roster. It\'s powered by your recorded match data, so it becomes more accurate as the season progresses.',
+        body: 'Inside a team\'s page (Teams → your team → Optimizer), the Rotation Optimizer uses your season\'s SO% and SP% data by rotation to suggest optimal serve-order pairings for your specific roster. It\'s powered by your recorded match data, so it becomes more accurate as the season progresses.',
       },
       {
         heading: 'Tools vs Live Match',
@@ -1125,7 +1125,7 @@ function CollapsibleSection({ id, title, subtitle, children, defaultOpen = true 
         <div>
           <h2
             className="text-[18.4px] font-black uppercase leading-none section-twinkle"
-            style={{ color: '#f97316', WebkitTextStroke: '0.5px rgba(255,255,255,0.6)', letterSpacing: '0.15em' }}
+            style={{ color: '#ffffff', letterSpacing: '0.15em' }}
           >{title}</h2>
           {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
         </div>
@@ -1140,6 +1140,16 @@ function useToggleSetting(key, defaultVal = false) {
   const [val, setVal] = useState(() => defaultVal ? getBoolStorageDefaultTrue(key) : getBoolStorage(key));
   const save = (next) => { setBoolStorage(key, next); setVal(next); };
   return [val, save];
+}
+
+function useSidelineMode() {
+  const [on, setOn] = useState(() => getBoolStorage(STORAGE_KEYS.SIDELINE_MODE));
+  const save = (next) => {
+    setBoolStorage(STORAGE_KEYS.SIDELINE_MODE, next);
+    document.documentElement.classList.toggle('sideline', next);
+    setOn(next);
+  };
+  return [on, save];
 }
 
 function useAccentColor() {
@@ -1204,6 +1214,7 @@ export function SettingsPage() {
   const [defaultFormat, saveDefaultFormat] = useDefaultFormat();
   const [lastSetScore, saveLastSetScore] = useLastSetScore();
 
+  const [sidelineMode, saveSidelineMode] = useSidelineMode();
   const [accent,      saveAccent]      = useAccentColor();
   const [defaultTeamId,    saveDefaultTeam]    = useNullableIntSetting(STORAGE_KEYS.DEFAULT_TEAM_ID);
   const [defaultSeasonId,  saveDefaultSeason]  = useNullableIntSetting(STORAGE_KEYS.DEFAULT_SEASON_ID);
@@ -1241,6 +1252,7 @@ export function SettingsPage() {
   const [showMerge,           setShowMerge]           = useState(false);
   const [restoringId,         setRestoringId]         = useState(null);
   const [helpTopic,           setHelpTopic]           = useState(null);
+  const [helpSearch,          setHelpSearch]          = useState('');
   const [cloudSaving,         setCloudSaving]         = useState(false);
   const [cloudRestoring,      setCloudRestoring]      = useState(false);
   const [lastCloudSave,       setLastCloudSave]       = useState(null);
@@ -1432,7 +1444,7 @@ export function SettingsPage() {
           </div>
           <div className="border-t border-slate-700 mb-4" />
           <p className="text-sm text-slate-200 leading-relaxed italic text-center">
-            VANTAGE is a comprehensive volleyball statistics platform built for coaches who want a competitive edge. Record every contact live during a match — serves, passes, attacks, blocks, and digs — and instantly access deep analytics: rotation efficiency, player VER ratings, win correlation insights, and real-time performance alerts. All data lives on your device and works offline. From pre-match lineup prep to post-match film review, VANTAGE gives your program the same data-driven tools used at the highest levels of the sport.
+            VANTAGE is a comprehensive volleyball statistics platform built for coaches who want a competitive edge. Record every contact live during a match — serves, passes, attacks, blocks, and digs — and instantly access deep analytics: rotation efficiency, player VER ratings, win correlation insights, and real-time performance alerts. All data lives on your device and works offline. From pre-match lineup prep to gametime decisions, VANTAGE gives your program the same data-driven tools used at the highest levels of the sport.
           </p>
           <div className="border-t border-slate-700 mt-4 pt-3">
             <p className="text-[11px] text-slate-500 text-center tracking-wide">New accounts include a full-featured 5-match trial. Upgrade anytime.</p>
@@ -1460,8 +1472,8 @@ export function SettingsPage() {
         <section className="bg-surface rounded-xl overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
             <h2
-              className="text-[18.4px] font-black uppercase leading-none"
-              style={{ color: '#f97316', WebkitTextStroke: '0.5px rgba(255,255,255,0.6)', letterSpacing: '0.15em' }}
+              className="text-[18.4px] font-black uppercase leading-none section-twinkle"
+              style={{ color: '#ffffff', letterSpacing: '0.15em' }}
             >Subscription</h2>
             {!isMaster && (
               <button
@@ -1541,7 +1553,7 @@ export function SettingsPage() {
             <div className="px-4 py-3 border-b border-slate-700">
               <h2
                 className="text-[18.4px] font-black uppercase leading-none"
-                style={{ color: '#f97316', WebkitTextStroke: '0.5px rgba(255,255,255,0.6)', letterSpacing: '0.15em' }}
+                style={{ color: '#ffffff', letterSpacing: '0.15em' }}
               >Redeem Code</h2>
             </div>
             <div className="p-4">
@@ -1617,6 +1629,76 @@ export function SettingsPage() {
         {/* Help & Guides */}
         <CollapsibleSection id="help-guides" title="Help & Guides">
           <div className="p-4">
+
+            {/* Search */}
+            <div className="relative mb-4">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm pointer-events-none">🔍</span>
+              <input
+                type="search"
+                placeholder="Search help topics…"
+                value={helpSearch}
+                onChange={e => setHelpSearch(e.target.value)}
+                className="w-full bg-bg border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-primary"
+              />
+            </div>
+
+            {helpSearch.trim() ? (() => {
+              const q = helpSearch.trim().toLowerCase();
+              const allGuides = [
+                { to: '/help/first-match',         icon: '🆕', label: 'Your First Match'                 },
+                { to: '/help/default-team',         icon: '🏠', label: 'Setting Up Default Team & Season' },
+                { to: '/help/roster',               icon: '👥', label: 'Managing Your Roster'             },
+                { to: '/help/live-match',           icon: '📲', label: 'Live Match Screen Guide'          },
+                { to: '/help/serve-receive',        icon: '📐', label: 'Serve-Receive Formation Setup'    },
+                { to: '/help/substitutions',        icon: '🔄', label: 'Substitutions & Lineup Changes'   },
+                { to: '/help/match-summary',        icon: '📋', label: 'Match Summary Walkthrough'        },
+                { to: '/help/exporting',            icon: '📤', label: 'Exporting & Sharing Stats'        },
+                { to: '/help/reports',              icon: '📈', label: 'Reading the Reports Page'         },
+                { to: '/help/player-report',        icon: '📊', label: 'Reading Player Reports'           },
+                { to: '/help/pre-match-prep',       icon: '🎯', label: 'Pre-Match Prep Workflow'          },
+                { to: '/help/season-history',       icon: '🏆', label: 'Season History & Playoff Entry'   },
+                { to: '/help/end-season',           icon: '🏁', label: 'How to End a Season'              },
+                { to: '/help/vantage-win-factors',  icon: '🏆', label: 'Reading Your Win Factors'         },
+                { to: '/help/vantage-rotations',    icon: '🔄', label: 'Rotation Intelligence'            },
+                { to: '/help/vantage-attack',       icon: '⚡', label: 'Attack Analytics'                 },
+              ];
+              const matchedGuides = allGuides.filter(g => g.label.toLowerCase().includes(q));
+              const matchedFaqs   = FAQ_TOPICS.filter(t => t.label.toLowerCase().includes(q));
+              const hasResults = matchedGuides.length > 0 || matchedFaqs.length > 0;
+              return (
+                <div className="space-y-1">
+                  {!hasResults && (
+                    <p className="text-sm text-slate-500 text-center py-4">No results for &ldquo;{helpSearch.trim()}&rdquo;</p>
+                  )}
+                  {matchedGuides.map(({ to, icon, label }) => (
+                    <Link key={to} to={to}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors text-left"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <span className="text-base">{icon}</span>
+                        <span className="text-sm font-medium text-slate-200">{label}</span>
+                        <span className="text-[9px] font-bold text-primary border border-primary/50 rounded px-1 py-px">GUIDE</span>
+                      </span>
+                      <span className="text-slate-500 text-sm">›</span>
+                    </Link>
+                  ))}
+                  {matchedFaqs.map((topic) => (
+                    <button
+                      key={topic.id}
+                      onClick={() => setHelpTopic(topic)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-slate-700 hover:border-primary/60 hover:bg-primary/5 transition-colors text-left"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <span className="text-base">{topic.icon}</span>
+                        <span className="text-sm font-medium text-slate-200">{topic.label}</span>
+                        <span className="text-[9px] font-bold text-slate-500 border border-slate-600 rounded px-1 py-px">FAQ</span>
+                      </span>
+                      <span className="text-slate-500 text-sm">›</span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })() : (
             <div className="space-y-4">
 
               {/* Getting Started */}
@@ -1779,6 +1861,7 @@ export function SettingsPage() {
               </div>
 
             </div>
+            )}
           </div>
         </CollapsibleSection>
 
@@ -1941,6 +2024,30 @@ export function SettingsPage() {
                   >
                     <span>{label}</span>
                     <span className={`text-[10px] font-normal ${matchViewDefault === val ? 'text-orange-100/70' : 'text-slate-500'}`}>{example}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Theme */}
+            <div>
+              <div className="text-sm font-medium mb-1">Theme</div>
+              <div className="flex gap-2">
+                {[
+                  { val: false, label: 'Dark',  example: 'default'        },
+                  { val: true,  label: 'Light', example: 'full-sun mode'  },
+                ].map(({ val, label, example }) => (
+                  <button
+                    key={label}
+                    onClick={() => saveSidelineMode(val)}
+                    className={`flex-1 py-2 px-2 rounded-lg text-sm font-semibold border transition-colors flex flex-col items-center gap-0.5 ${
+                      sidelineMode === val
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-bg text-slate-300 border-slate-600 hover:border-slate-400'
+                    }`}
+                  >
+                    <span>{label}</span>
+                    <span className={`text-[10px] font-normal ${sidelineMode === val ? 'text-orange-100/70' : 'text-slate-500'}`}>{example}</span>
                   </button>
                 ))}
               </div>
@@ -2175,26 +2282,22 @@ export function SettingsPage() {
           </div>
         </CollapsibleSection>
 
-        {/* Exports */}
-        <CollapsibleSection id="exports" title="Exports">
-          <div className="p-4">
-            <label className="block text-sm font-medium mb-1">MaxPreps Team ID</label>
-            <div className="text-xs text-slate-400 mb-2">
-              Required for MaxPreps .txt export. To find your ID: go to your team's MaxPreps page → Roster/Stats → Import Stats → the UUID in that page's URL is your Team ID.
-            </div>
-            <input
-              type="text"
-              value={maxPrepsId}
-              onChange={(e) => saveMaxPrepsId(e.target.value)}
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-primary placeholder:text-slate-600"
-            />
-          </div>
-        </CollapsibleSection>
-
         {/* Data Management */}
         <CollapsibleSection id="data-management" title="Data Management">
           <div className="p-4 space-y-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">MaxPreps Team ID</label>
+              <div className="text-xs text-slate-400 mb-2">
+                Required for MaxPreps .txt export. To find your ID: go to your team's MaxPreps page → Roster/Stats → Import Stats → the UUID in that page's URL is your Team ID.
+              </div>
+              <input
+                type="text"
+                value={maxPrepsId}
+                onChange={(e) => saveMaxPrepsId(e.target.value)}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-primary placeholder:text-slate-600"
+              />
+            </div>
             <Button className="w-full" variant="secondary" onClick={handleExport}>
               Export Full Backup (JSON)
             </Button>
@@ -2293,6 +2396,44 @@ export function SettingsPage() {
             </Button>
           </div>
         </CollapsibleSection>
+
+        {/* Legal */}
+        <section className="bg-surface rounded-xl p-4">
+          <h2
+            className="text-[18.4px] font-black uppercase leading-none mb-3 section-twinkle"
+            style={{ color: '#ffffff', letterSpacing: '0.15em' }}
+          >Legal</h2>
+          <div className="flex flex-col gap-2">
+            <Link
+              to="/terms"
+              className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-700/50 hover:bg-slate-700 active:scale-95 border border-slate-600/50 text-slate-200 font-semibold text-sm transition-all duration-150"
+            >
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                  <polyline points="10 9 9 9 8 9" />
+                </svg>
+                Terms &amp; Conditions
+              </span>
+              <span className="text-slate-500 text-xs">›</span>
+            </Link>
+            <Link
+              to="/privacy"
+              className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-700/50 hover:bg-slate-700 active:scale-95 border border-slate-600/50 text-slate-200 font-semibold text-sm transition-all duration-150"
+            >
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                Privacy Policy
+              </span>
+              <span className="text-slate-500 text-xs">›</span>
+            </Link>
+          </div>
+        </section>
 
         {/* Account */}
         <section className="bg-surface rounded-xl p-4 space-y-3">

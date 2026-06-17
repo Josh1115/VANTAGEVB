@@ -10,8 +10,8 @@ export function TabBar({ tabs, active, onChange }) {
           className={clsx(
             'px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
             active === tab.value
-              ? 'border-primary text-primary'
-              : 'border-transparent text-slate-400 hover:text-white'
+              ? 'border-primary text-white'
+              : 'border-transparent text-white hover:text-white'
           )}
         >
           {tab.label}

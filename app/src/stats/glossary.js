@@ -10,7 +10,7 @@ export const STAT_GLOSSARY = {
 
   // ── Serving (all / float / topspin) ──────────────────────────────────────
   sa:           { abbr: 'SA',       full: 'Serve Attempts',             def: 'Total serves attempted.' },
-  srv_pt:       { abbr: 'SRV PT',   full: 'Serving Points',             def: 'Rallies won by our team while this player was the server. Counts sideouts held AND break points earned.' },
+  srv_pt:       { abbr: 'SRV PT',   full: 'Serving Points',             def: 'Rallies won by our team while this player was the server. Counts sideouts held AND serving points earned.' },
   att_pt:       { abbr: 'ATT:PT',   full: 'Attempts per Serving Point', def: 'SA ÷ SRV PT. How many serve attempts it takes this player to earn one serving point. Lower is better.' },
   ace:          { abbr: 'ACE',      full: 'Aces',                       def: 'Serves that score a point directly, untouched by the opponent.' },
   se:           { abbr: 'SE',       full: 'Serve Errors',               def: 'Total serves resulting in a point for the opponent.' },

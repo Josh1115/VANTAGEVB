@@ -585,8 +585,7 @@ function TeamRow({ team, onSelectTeam, onEditTeam, onDeleteTeam }) {
       >
         <div className="font-semibold text-base">{team.name}</div>
         <div className="flex items-center gap-2.5">
-          <Badge color="gray">{LEVEL_LABELS[team.level] ?? team.level}</Badge>
-          {team.classification && <Badge color="purple">{team.classification}</Badge>}
+          <Badge color="gray">VIEW</Badge>
           <span className="text-slate-400">→</span>
         </div>
       </button>

@@ -21,6 +21,7 @@ import { SavedLineupModal } from '../components/team/SavedLineupModal';
 import { RosterImportModal } from '../components/team/RosterImportModal';
 import { PostSeasonModal } from '../components/shared/PostSeasonModal';
 import { applyInferredSeasonFinish } from '../utils/seasonUtils';
+import { SeasonScheduleTab } from '../components/team/SeasonScheduleTab';
 
 const POS_COLOR = { S: 'blue', OH: 'orange', OPP: 'orange', MB: 'green', L: 'gray', DS: 'gray', RS: 'orange' };
 
@@ -235,7 +236,7 @@ export function TeamDetailPage() {
         tabs={[
           { value: 'roster',   label: isCurrentSeason ? `Roster (${activePlayers.length})` : 'Roster' },
           { value: 'lineups',  label: 'Lineups' },
-          { value: 'seasons',  label: 'Seasons' },
+          { value: 'seasons',  label: 'Schedule' },
           { value: 'practice', label: 'Practice' },
         ]}
         active={tab}
@@ -599,64 +600,16 @@ export function TeamDetailPage() {
       )}
 
       {tab === 'seasons' && (
-        <div className="p-4 md:p-6">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-sm text-slate-400">{seasons?.length ?? 0} seasons</span>
-            <Button size="sm" onClick={() => setShowSeasonModal(true)}>+ Season</Button>
-          </div>
-
-          {seasons?.length === 0 ? (
-            <EmptyState
-              icon="📅"
-              title="No seasons yet"
-              description="Add a season to organize your matches"
-              action={<Button onClick={() => setShowSeasonModal(true)}>Add Season</Button>}
-            />
-          ) : (
-            <div className="space-y-2">
-              {seasons?.map((season) => (
-                <div key={season.id} className="bg-surface rounded-xl flex items-center hover:bg-slate-700 transition-colors">
-                  <button
-                    onClick={() => navigate(`/seasons/${season.id}`)}
-                    className="flex-1 px-4 py-3 text-left flex items-center justify-between"
-                  >
-                    <div>
-                      <div className="font-semibold capitalize flex items-center gap-2">
-                        {season.name}
-                        {season.status === 'ended' && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-600/60 text-slate-400">DONE</span>
-                        )}
-                      </div>
-                      <div className="text-sm text-slate-400">{season.year}</div>
-                    </div>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500">
-                      <path d="M9 18l6-6-6-6" />
-                    </svg>
-                  </button>
-                  {season.status !== 'ended' && (
-                    <button
-                      onClick={() => setConfirmEndSeasonId(season.id)}
-                      className="px-2 py-3 text-xs font-semibold text-slate-500 hover:text-red-400 transition-colors"
-                      title="End season"
-                    >
-                      End
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setEditSeason(season)}
-                    className="px-3 py-3 text-slate-500 hover:text-slate-300 transition-colors"
-                    title="Edit season"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
+        selectedSeasonId
+          ? <SeasonScheduleTab seasonId={selectedSeasonId} />
+          : <div className="p-4 md:p-6">
+              <EmptyState
+                icon="📅"
+                title="No seasons yet"
+                description="Add a season to organize your matches"
+                action={<Button onClick={() => setShowSeasonModal(true)}>Add Season</Button>}
+              />
             </div>
-          )}
-        </div>
       )}
 
       {tab === 'practice' && (

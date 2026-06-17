@@ -1,9 +1,47 @@
-import { Component, useEffect } from 'react';
+import { Component, useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { NavBar } from './NavBar';
 import { UpdatePrompt } from './UpdatePrompt';
 import { useUiStore, selectToast } from '../../store/uiStore';
 import { autoSaveBackup } from '../../stats/backup';
+
+const IOS_BANNER_KEY = 'vbstat_ios_install_dismissed';
+
+function IosInstallBanner() {
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone === true;
+  const [visible, setVisible] = useState(
+    () => isIos && !isStandalone && !localStorage.getItem(IOS_BANNER_KEY)
+  );
+
+  if (!visible) return null;
+
+  function dismiss() {
+    localStorage.setItem(IOS_BANNER_KEY, '1');
+    setVisible(false);
+  }
+
+  return (
+    <div className="fixed bottom-20 left-0 right-0 z-50 px-3 pb-1" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <div className="bg-slate-800 border border-slate-600 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-xl">
+        <div className="text-2xl shrink-0">📲</div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-white leading-snug">Install VBSTAT</p>
+          <p className="text-xs text-slate-400 leading-snug mt-0.5">
+            Tap <span className="inline-block text-primary font-bold">⬆ Share</span> then <span className="font-semibold text-slate-300">"Add to Home Screen"</span> for the full app experience.
+          </p>
+        </div>
+        <button
+          onClick={dismiss}
+          className="shrink-0 text-slate-500 hover:text-white text-xl leading-none px-1"
+          aria-label="Dismiss"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+}
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -87,11 +125,12 @@ export function Layout() {
       </main>
 
       {!hideNav && <NavBar />}
+      <IosInstallBanner />
 
       {/* Toast */}
       {toast && (
         <div
-          className={`fixed left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg text-sm font-medium shadow-lg
+          className={`fixed left-1/2 -translate-x-1/2 z-[9999] px-4 py-2 rounded-lg text-sm font-medium shadow-lg
             ${toast.variant === 'error' ? 'bg-red-600' : toast.variant === 'success' ? 'bg-green-600' : 'bg-slate-700'}`}
           style={{ top: 'max(1rem, env(safe-area-inset-top))' }}
         >

@@ -100,7 +100,7 @@ function TeamStatBar({ teamStats }) {
   );
 }
 
-export function ParentViewPage() {
+export function FamilyScopeViewPage() {
   const { token } = useParams();
   const [snapshot, setSnapshot]       = useState(null);
   const [loading, setLoading]         = useState(true);
@@ -252,6 +252,17 @@ export function ParentViewPage() {
         {/* Team stat totals */}
         {snapshot?.teamStats && matchStatus !== 'scheduled' && (
           <TeamStatBar teamStats={snapshot.teamStats} />
+        )}
+
+        {/* No-data state when snapshot exists but no players published yet */}
+        {players.length === 0 && matchStatus !== 'scheduled' && (
+          <div className="bg-slate-800/60 rounded-xl px-4 py-5 text-center space-y-2">
+            <div className="text-2xl">📊</div>
+            <div className="text-sm font-semibold text-white">No stats published yet</div>
+            <div className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
+              Check back after the match — the coach will publish stats when available.
+            </div>
+          </div>
         )}
 
         {/* Play-by-play / Box Score tabs */}

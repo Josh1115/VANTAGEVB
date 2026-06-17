@@ -328,6 +328,19 @@ export function ReportsPage() {
     [selectedSeasonId]
   );
 
+  // Timeouts for the selected season — used for pattern analytics
+  const seasonTimeouts = useLiveQuery(
+    async () => {
+      if (!selectedSeasonId) return [];
+      const ids = (seasonMatches ?? [])
+        .filter(m => m.status !== 'scheduled')
+        .map(m => m.id);
+      if (!ids.length) return [];
+      return db.timeouts.where('match_id').anyOf(ids).toArray();
+    },
+    [selectedSeasonId, seasonMatches]
+  );
+
   // Players for the selected team
   const players = useLiveQuery(
     () => selectedTeamId
@@ -375,11 +388,11 @@ export function ReportsPage() {
     });
   }
 
-  // When specific matches are selected OR L5/L10 is active, conference/site/type chips are hidden
-  const showChipFilters = !selectedMatchIds?.length && result !== 'l5' && result !== 'l10';
+  // When specific matches are selected OR L5/L10/H1/H2 is active, conference/site/type chips are hidden
+  const showChipFilters = !selectedMatchIds?.length && result !== 'l5' && result !== 'l10' && result !== 'h1' && result !== 'h2';
 
-  // Build active filters object. L5/L10 and individual match selection are mutually exclusive
-  // with the conf/location/type chip filters — they use matchIds only.
+  // Build active filters object. L5/L10, H1/H2, and individual match selection are mutually
+  // exclusive with the conf/location/type chip filters — they use matchIds only.
   const activeFilters = {};
   if (selectedMatchIds?.length) {
     activeFilters.matchIds = selectedMatchIds;
@@ -390,6 +403,13 @@ export function ReportsPage() {
       .slice(-n)
       .map((m) => m.id);
     if (lastN.length) activeFilters.matchIds = lastN;
+  } else if (result === 'h1' || result === 'h2') {
+    const played = (seasonMatches ?? []).filter((m) => m.status !== 'scheduled');
+    const mid = Math.ceil(played.length / 2);
+    const halfIds = result === 'h1'
+      ? played.slice(0, mid).map((m) => m.id)
+      : played.slice(mid).map((m) => m.id);
+    if (halfIds.length) activeFilters.matchIds = halfIds;
   } else {
     if (conference) activeFilters.conference = conference;
     if (location)   activeFilters.location   = location;
@@ -570,11 +590,22 @@ export function ReportsPage() {
     ];
   }, [stats]);
 
+  const timeoutPatterns = useMemo(() => {
+    const ours = (seasonTimeouts ?? []).filter(t => t.side === 'us');
+    if (!ours.length) return null;
+    const total    = ours.length;
+    const trailing = ours.filter(t => t.our_score < t.opp_score).length;
+    const tied     = ours.filter(t => t.our_score === t.opp_score).length;
+    const leading  = ours.filter(t => t.our_score > t.opp_score).length;
+    const avgDiff  = ours.reduce((s, t) => s + (t.our_score - t.opp_score), 0) / total;
+    return { total, trailing, tied, leading, avgDiff };
+  }, [seasonTimeouts]);
+
   const selectClass = 'bg-surface border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary';
 
   return (
     <div>
-      <PageHeader title="Reports — Powered by Shua Stat Engine" />
+      <PageHeader title="Reports" />
 
       {/* Filters */}
       <div className="px-4 pt-4 pb-2 flex gap-3 flex-wrap">
@@ -667,9 +698,19 @@ export function ReportsPage() {
                 {[['reg-season', 'Reg Season'], ['tourney', 'Tourney'], ['ihsa-playoffs', playoffLabel], ['exhibition', 'Exhibition']].map(([val, label]) => (
                   <button
                     key={val}
-                    onClick={() => setMatchTypes(prev =>
-                      prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]
-                    )}
+                    onClick={() => {
+                      if (val === 'reg-season') {
+                        setMatchTypes(prev =>
+                          prev.includes('reg-season')
+                            ? prev.filter(v => v !== 'reg-season')
+                            : [...new Set([...prev, 'reg-season', 'tourney'])]
+                        );
+                      } else {
+                        setMatchTypes(prev =>
+                          prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]
+                        );
+                      }
+                    }}
                     className={chipClass(matchTypes.includes(val))}
                   >{label}</button>
                 ))}
@@ -679,7 +720,7 @@ export function ReportsPage() {
           {!selectedMatchIds?.length && (
             <div className="flex gap-1.5 flex-wrap items-center">
               <span className="text-[10px] text-slate-500 uppercase tracking-wide mr-1">Result</span>
-              {[['', 'All'], ['win', 'Win'], ['loss', 'Loss'], ['l5', 'L5'], ['l10', 'L10']].map(([val, label]) => (
+              {[['', 'All'], ['win', 'Win'], ['loss', 'Loss'], ['l5', 'L5'], ['l10', 'L10'], ['h1', '1st Half'], ['h2', '2nd Half']].map(([val, label]) => (
                 <button key={val} onClick={() => setResult(val)} className={chipClass(result === val)}>{label}</button>
               ))}
             </div>
@@ -1126,6 +1167,34 @@ export function ReportsPage() {
                   );
                 })()}
 
+                {/* Timeout Patterns — score situation when timeouts were called */}
+                {timeoutPatterns && (
+                  <div className="bg-surface rounded-xl p-3 space-y-3">
+                    <div>
+                      <SectionHeader>Timeout Patterns</SectionHeader>
+                      <p className="text-[11px] text-slate-500 -mt-1">Score situation when you called a timeout (full season)</p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      {[
+                        { label: 'Trailing', count: timeoutPatterns.trailing, color: 'text-red-400' },
+                        { label: 'Tied',     count: timeoutPatterns.tied,     color: 'text-amber-400' },
+                        { label: 'Leading',  count: timeoutPatterns.leading,  color: 'text-emerald-400' },
+                      ].map(({ label, count, color }) => (
+                        <div key={label} className="bg-slate-800/60 rounded-xl p-2 space-y-1">
+                          <div className={`text-2xl font-black tabular-nums ${color}`}>
+                            {Math.round(count / timeoutPatterns.total * 100)}%
+                          </div>
+                          <div className="text-[10px] font-semibold text-slate-400">{label}</div>
+                          <div className="text-[9px] text-slate-600">{count} TO{count !== 1 ? 's' : ''}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-center text-[11px] text-slate-500">
+                      Avg score at timeout: {timeoutPatterns.avgDiff > 0 ? '+' : ''}{timeoutPatterns.avgDiff.toFixed(1)} &nbsp;·&nbsp; {timeoutPatterns.total} total TOs
+                    </p>
+                  </div>
+                )}
+
                 {/* Team vs Opponents comparison */}
                 {stats.opp && (
                   <div>
@@ -1552,6 +1621,22 @@ export function ReportsPage() {
                 })()}
 
                 <SetDistByRotationPanel contacts={contacts} positionMap={positionMap} />
+
+                {/* Optimizer CTA */}
+                {selectedTeamId && (
+                  <div className="bg-surface rounded-xl p-4 flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-white">Rotation Optimizer</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Build optimal lineups based on season rotation data.</p>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/teams/${selectedTeamId}/optimizer`)}
+                      className="shrink-0 px-4 py-2 rounded-xl bg-primary text-white text-xs font-black tracking-wide active:brightness-90 transition-all"
+                    >
+                      Open →
+                    </button>
+                  </div>
+                )}
               </>
             )}
 
@@ -1560,9 +1645,11 @@ export function ReportsPage() {
               <div className="bg-surface rounded-xl p-4">
                 <SectionHeader>Player Trends by Match</SectionHeader>
                 {(stats.trends?.matches.length ?? 0) < 2 ? (
-                  <p className="text-sm text-slate-500 text-center py-6">
-                    Record at least 2 matches to see trends.
-                  </p>
+                  <EmptyState
+                    icon="📈"
+                    title="Not enough data yet"
+                    description="Record at least 2 complete matches in this season to see player trend charts."
+                  />
                 ) : (
                   <PlayerTrendsChart trends={stats.trends} playerNames={playerNames} />
                 )}

@@ -8,7 +8,7 @@ const INSIGHTS_GLOSSARY = [
   { abbr: 'Colors',       full: 'Green / Amber / Red',      def: 'Green = currently at or near win-level performance. Amber = close, worth monitoring. Red = currently tracking closer to your loss average — prioritize improvement here.' },
   { abbr: 'APR',          full: 'Pass Rating',               def: 'Average pass quality on a 0–3 scale (0 = no attack opportunity, 3 = perfect). Higher APR gives your setter more options and leads to better offensive efficiency.' },
   { abbr: 'SO%',          full: 'Sideout %',                 def: 'How often you score a point when receiving serve. Elite teams sideout 65%+. This is one of the most predictive stats for set and match outcomes.' },
-  { abbr: 'BP%',          full: 'Break Point %',             def: 'How often you score a point when serving. Break points are harder to earn than sideouts — 45%+ is strong. High BP% means your serve/defense creates extra points.' },
+  { abbr: 'SP%',          full: 'Serving Point %',           def: 'How often you score a point when serving. Serving points are harder to earn than sideouts — 45%+ is strong. High SP% means your serve/defense creates extra points.' },
   { abbr: '3OPT%',        full: 'In-System Win %',           def: 'Win rate on attacks following a perfect pass (rated 3). Measures how well you convert your best offensive opportunities into points.' },
   { abbr: 'K%',           full: 'Kill %',                    def: 'Kills divided by total attack attempts. League average is roughly 35–40%. Reflects raw finishing rate independent of errors.' },
   { abbr: 'K/Set',        full: 'Kills per Set',             def: 'Total kills divided by sets played. Volume metric — high K/Set means your offense is producing consistently across the match.' },
@@ -25,7 +25,7 @@ const pctFmt = (v) => v != null ? `${Math.round(v * 100)}%` : '—';
 const INSIGHT_METRICS = [
   { label: 'Pass Rating',          key: 'apr',         src: 'team',         fmt: (v) => v?.toFixed(2) ?? '—', higherBetter: true  },
   { label: 'Sideout %',            key: 'so_pct',      src: 'rotation',     fmt: pctFmt,                      higherBetter: true  },
-  { label: 'Break Point %',        key: 'bp_pct',      src: 'rotation',     fmt: pctFmt,                      higherBetter: true  },
+  { label: 'Serving Point %',       key: 'bp_pct',      src: 'rotation',     fmt: pctFmt,                      higherBetter: true  },
   { label: '3OPT %',               key: 'win_pct',     src: 'isOos_is',     fmt: pctFmt,                      higherBetter: true  },
   { label: 'Kill %',               key: 'k_pct',       src: 'team',         fmt: pctFmt,                      higherBetter: true  },
   { label: 'Kills / Set',          key: 'kps',         src: 'team',         fmt: (v) => v?.toFixed(1) ?? '—', higherBetter: true  },

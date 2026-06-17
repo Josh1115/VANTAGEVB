@@ -58,6 +58,8 @@ export function MatchSetupPage() {
   const [servingSide, setServingSide] = useState(SIDE.US);
   const [teamJerseyColor,   setTeamJerseyColor]   = useState('black');
   const [liberoJerseyColor, setLiberoJerseyColor] = useState('black');
+  const [matchDate, setMatchDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [matchTime, setMatchTime] = useState('');
   const [saving,         setSaving]         = useState(false);
   const [error,          setError]          = useState('');
   const [pvShareMatch,   setPvShareMatch]   = useState(null);
@@ -83,6 +85,11 @@ export function MatchSetupPage() {
   const selectedTeam = useLiveQuery(
     () => selectedSeason?.team_id ? db.teams.get(selectedSeason.team_id) : Promise.resolve(null),
     [selectedSeason?.team_id]
+  );
+
+  const orgLogoDataUrl = useLiveQuery(
+    () => selectedTeam?.org_id ? db.organizations.get(selectedTeam.org_id).then(o => o?.logo_data_url ?? null) : Promise.resolve(null),
+    [selectedTeam?.org_id]
   );
 
   const players = useLiveQuery(
@@ -217,7 +224,8 @@ export function MatchSetupPage() {
         tournament_round:       matchType === 'tourney' ? tournamentRound : null,
         playoff_round:          matchType === 'ihsa-playoffs' ? playoffRound.trim() || null : null,
         opponent_playoff_seed:  matchType === 'ihsa-playoffs' && oppPlayoffSeed !== '' ? parseInt(oppPlayoffSeed, 10) : null,
-        date:                   new Date().toISOString(),
+        date:                   matchDate ? new Date(matchDate + (matchTime ? `T${matchTime}:00` : 'T12:00:00')).toISOString() : new Date().toISOString(),
+        match_time:             matchTime || null,
         our_sets_won:           ourSetsWon,
         opp_sets_won:           oppSetsWon,
       });
@@ -288,9 +296,10 @@ export function MatchSetupPage() {
       } else {
         effectiveMatchId = await db.matches.add({
           ...matchPayload,
-          season_id: Number(seasonId),
-          pv_token:  crypto.randomUUID(),
-          date:      new Date().toISOString(),
+          season_id:  Number(seasonId),
+          pv_token:   crypto.randomUUID(),
+          date:       matchDate ? new Date(matchDate + (matchTime ? `T${matchTime}:00` : 'T12:00:00')).toISOString() : new Date().toISOString(),
+          match_time: matchTime || null,
         });
       }
 
@@ -641,6 +650,29 @@ export function MatchSetupPage() {
           </div>
         )}
 
+        {/* Date & Time — only shown when creating a brand-new match, not from a pre-scheduled one */}
+        {!scheduledMatchId && (
+          <div>
+            <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+              Match Date & Time
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={matchDate}
+                onChange={(e) => setMatchDate(e.target.value)}
+                className="flex-1 bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+              />
+              <input
+                type="time"
+                value={matchTime}
+                onChange={(e) => setMatchTime(e.target.value)}
+                className="w-32 bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+              />
+            </div>
+          </div>
+        )}
+
         {/* Serve / Serve-Rec */}
         <div>
           <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
@@ -852,7 +884,8 @@ export function MatchSetupPage() {
       {pvShareMatch && pvNav && (
         <PvShareSheet
           match={pvShareMatch}
-          teamName={null}
+          teamName={selectedSeason?.teamName ?? null}
+          logoDataUrl={orgLogoDataUrl ?? null}
           onClose={() => { setPvShareMatch(null); navigate(pvNav); }}
           onContinue={() => { setPvShareMatch(null); navigate(pvNav); }}
           continueLabel={pvNav.includes('/live') ? 'Start Match →' : 'View Summary →'}

@@ -685,7 +685,7 @@ const pctFmt = (v) => v != null ? `${Math.round(v * 100)}%` : '—';
 const INSIGHT_METRICS = [
   { label: 'Pass Rating',         key: 'apr',        src: 'team',         fmt: (v) => v?.toFixed(2) ?? '—', higherBetter: true  },
   { label: 'Sideout %',           key: 'so_pct',     src: 'rotation',     fmt: pctFmt,                      higherBetter: true  },
-  { label: 'Break Point %',       key: 'bp_pct',     src: 'rotation',     fmt: pctFmt,                      higherBetter: true  },
+  { label: 'Serving Point %',      key: 'bp_pct',     src: 'rotation',     fmt: pctFmt,                      higherBetter: true  },
   { label: '3OPT %',              key: 'win_pct',    src: 'isOos_is',     fmt: pctFmt,                      higherBetter: true  },
   { label: 'Kill %',              key: 'k_pct',      src: 'team',         fmt: pctFmt,                      higherBetter: true  },
   { label: 'Kills / Set',         key: 'kps',        src: 'team',         fmt: (v) => v?.toFixed(1) ?? '—', higherBetter: true  },
@@ -935,7 +935,7 @@ export function MatchSummaryPage() {
     [players]
   );
 
-  // Team colors for share card gradient
+  // Team colors + logo for share card
   const teamColors = useLiveQuery(async () => {
     if (!match?.season_id) return null;
     const season = await db.seasons.get(match.season_id);
@@ -944,7 +944,7 @@ export function MatchSummaryPage() {
     const colorIds = org?.colors?.length ? org.colors : (team?.team_jersey_color ?? []);
     const primary   = ORG_COLOR_HEX[colorIds[0]] ?? '#ea580c';
     const secondary = ORG_COLOR_HEX[colorIds[1]] ?? ORG_COLOR_HEX[colorIds[0]] ?? '#1e1b4b';
-    return { primary, secondary };
+    return { primary, secondary, logoDataUrl: org?.logo_data_url ?? null };
   }, [match?.season_id]);
 
   // Season W–L record (includes this match)
@@ -1072,7 +1072,7 @@ export function MatchSummaryPage() {
           name: `${playerNames[pid] ?? `#${pid}`}${correctedPlayerIds.has(Number(pid)) ? ' ✎' : ''}`,
           ...s,
           srv_pt:   displayStats.servingPoints?.[pid] ?? 0,
-          att_pt:   (() => { const sp = displayStats.servingPoints?.[pid] ?? 0; return sp > 0 ? s.srv_pt / sp : null; })(),
+          att_pt:   (() => { const sp = displayStats.servingPoints?.[pid] ?? 0; return sp > 0 ? s.sa / sp : null; })(),
           f_se_pct: s.f_sa > 0 ? s.f_se / s.f_sa : null,
           t_se_pct: s.t_sa > 0 ? s.t_se / s.t_sa : null,
         }))
@@ -1570,7 +1570,7 @@ export function MatchSummaryPage() {
               </Button>
               {match?.pv_token && (
                 <Button size="sm" variant="secondary" onClick={() => setShowPvShare(true)}>
-                  FS Share
+                  FamilyScope
                 </Button>
               )}
               <Button size="sm" variant="secondary" disabled={!stats} onClick={() => setShowCorrections(true)}>
@@ -2323,31 +2323,31 @@ export function MatchSummaryPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Date</label>
-              <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)}
+              <input type="date" value={editForm.date} onChange={(e) => setEditForm(f => ({ ...f, date: e.target.value }))}
                 className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
             </div>
             <div>
               <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Opponent</label>
-              <input type="text" value={editOpp} onChange={(e) => setEditOpp(e.target.value)}
+              <input type="text" value={editForm.opp} onChange={(e) => setEditForm(f => ({ ...f, opp: e.target.value }))}
                 className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
             </div>
             <div className="flex gap-3">
               <div className="flex-1">
                 <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Abbr</label>
-                <input type="text" value={editOppAbbr} maxLength={3}
-                  onChange={(e) => setEditOppAbbr(e.target.value.toUpperCase())}
+                <input type="text" value={editForm.oppAbbr} maxLength={3}
+                  onChange={(e) => setEditForm(f => ({ ...f, oppAbbr: e.target.value.toUpperCase() }))}
                   className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
               </div>
               <div className="flex-1">
                 <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Record</label>
-                <input type="text" value={editOppRecord} placeholder="12-3"
-                  onChange={(e) => setEditOppRecord(e.target.value)}
+                <input type="text" value={editForm.oppRecord} placeholder="12-3"
+                  onChange={(e) => setEditForm(f => ({ ...f, oppRecord: e.target.value }))}
                   className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
               </div>
               <div style={{ width: '5rem' }}>
                 <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Rank</label>
-                <input type="number" min="1" value={editOppRank} placeholder="—"
-                  onChange={(e) => setEditOppRank(e.target.value)}
+                <input type="number" min="1" value={editForm.oppRank} placeholder="—"
+                  onChange={(e) => setEditForm(f => ({ ...f, oppRank: e.target.value }))}
                   className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
               </div>
             </div>
@@ -2355,9 +2355,9 @@ export function MatchSummaryPage() {
               <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Location</label>
               <div className="flex gap-2">
                 {['home', 'away', 'neutral'].map((loc) => (
-                  <button key={loc} onClick={() => setEditLoc(loc)}
+                  <button key={loc} onClick={() => setEditForm(f => ({ ...f, loc }))}
                     className={`flex-1 py-2 rounded-lg text-sm font-semibold capitalize transition-colors
-                      ${editLoc === loc ? 'bg-primary text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
+                      ${editForm.loc === loc ? 'bg-primary text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
                     {loc}
                   </button>
                 ))}
@@ -2367,9 +2367,9 @@ export function MatchSummaryPage() {
               <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Conference</label>
               <div className="flex gap-2">
                 {[['conference', 'Con'], ['non-con', 'Non-Con']].map(([val, label]) => (
-                  <button key={val} onClick={() => setEditConf(val)}
+                  <button key={val} onClick={() => setEditForm(f => ({ ...f, conf: val }))}
                     className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors
-                      ${editConf === val ? 'bg-primary text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
+                      ${editForm.conf === val ? 'bg-primary text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
                     {label}
                   </button>
                 ))}
@@ -2379,9 +2379,9 @@ export function MatchSummaryPage() {
               <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Type</label>
               <div className="grid grid-cols-2 gap-2">
                 {[['reg-season', 'Reg Season'], ['tourney', 'Tourney'], ['ihsa-playoffs', playoffLabel], ['exhibition', 'Exhibition']].map(([val, label]) => (
-                  <button key={val} onClick={() => setEditMatchType(val)}
+                  <button key={val} onClick={() => setEditForm(f => ({ ...f, matchType: val }))}
                     className={`py-2 rounded-lg text-sm font-semibold transition-colors
-                      ${editMatchType === val ? 'bg-primary text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
+                      ${editForm.matchType === val ? 'bg-primary text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
                     {label}
                   </button>
                 ))}
@@ -2389,7 +2389,7 @@ export function MatchSummaryPage() {
             </div>
 
             {/* Tournament Name + Round */}
-            {editMatchType === 'tourney' && (
+            {editForm.matchType === 'tourney' && (
               <>
                 <div>
                   <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
@@ -2397,8 +2397,8 @@ export function MatchSummaryPage() {
                   </label>
                   <input
                     type="text"
-                    value={editTourneyName}
-                    onChange={(e) => setEditTourneyName(e.target.value)}
+                    value={editForm.tourneyName}
+                    onChange={(e) => setEditForm(f => ({ ...f, tourneyName: e.target.value }))}
                     placeholder="e.g. Holiday Classic, IHSA Sectional…"
                     className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
                   />
@@ -2409,9 +2409,9 @@ export function MatchSummaryPage() {
                     {[['pool', 'Pool Play'], ['bracket', 'Bracket / Playoffs']].map(([val, label]) => (
                       <button
                         key={val}
-                        onClick={() => setEditTourneyRound(val)}
+                        onClick={() => setEditForm(f => ({ ...f, tourneyRound: val }))}
                         className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors
-                          ${editTourneyRound === val ? 'bg-primary text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                          ${editForm.tourneyRound === val ? 'bg-primary text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
                       >
                         {label}
                       </button>
@@ -2422,13 +2422,13 @@ export function MatchSummaryPage() {
             )}
 
             {/* Playoff Round */}
-            {editMatchType === 'ihsa-playoffs' && (
+            {editForm.matchType === 'ihsa-playoffs' && (
               <div>
                 <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Playoff Round</label>
                 <input
                   type="text"
-                  value={editPlayoffRound}
-                  onChange={(e) => setEditPlayoffRound(e.target.value)}
+                  value={editForm.playoffRound}
+                  onChange={(e) => setEditForm(f => ({ ...f, playoffRound: e.target.value }))}
                   placeholder="e.g. Regional, Sectional, Super-Sectional, State…"
                   className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
                 />
@@ -2544,6 +2544,7 @@ export function MatchSummaryPage() {
         <PvShareSheet
           match={match}
           teamName={match.team_name ?? null}
+          logoDataUrl={teamColors?.logoDataUrl ?? null}
           onClose={() => setShowPvShare(false)}
         />
       )}

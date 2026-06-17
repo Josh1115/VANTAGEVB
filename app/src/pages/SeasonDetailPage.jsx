@@ -16,6 +16,7 @@ import { SwipeableMatchCard } from '../components/ui/SwipeableMatchCard';
 import { PostSeasonModal } from '../components/shared/PostSeasonModal';
 import { applyInferredSeasonFinish } from '../utils/seasonUtils';
 import { PvShareSheet } from '../components/parentvantage/PvShareSheet';
+import { ScheduleImportModal } from '../components/match/ScheduleImportModal';
 
 
 export function SeasonDetailPage() {
@@ -47,6 +48,11 @@ export function SeasonDetailPage() {
 
     return { season, team, matches, playerNames, playerJerseys };
   }, [id]);
+
+  const orgLogoDataUrl = useLiveQuery(
+    () => data?.team?.org_id ? db.organizations.get(data.team.org_id).then(o => o?.logo_data_url ?? null) : Promise.resolve(null),
+    [data?.team?.org_id]
+  );
 
   const historyEntry = useLiveQuery(
     () => data?.season
@@ -102,6 +108,7 @@ export function SeasonDetailPage() {
   const [pvShareMatch, setPvShareMatch] = useState(null);
   const [showPostSeason,   setShowPostSeason]   = useState(false);
 
+  const [showImport, setShowImport] = useState(false);
   const [schedOpen,      setSchedOpen]      = useState(false);
   const [editMatchId,    setEditMatchId]    = useState(null);
   const [schedOpp,       setSchedOpp]       = useState('');
@@ -475,13 +482,99 @@ export function SeasonDetailPage() {
           );
         })()}
 
+        {/* Tournament Summary — only shown when there are tourney matches */}
+        {(() => {
+          const tourney = matches.filter(m => m.match_type === 'tourney');
+          if (!tourney.length) return null;
+          const grouped = {};
+          for (const m of tourney) {
+            const key = m.tournament_name?.trim() || 'Unnamed Tournament';
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(m);
+          }
+          const groups = Object.entries(grouped).sort((a, b) => {
+            const aDate = a[1][0]?.date ?? '';
+            const bDate = b[1][0]?.date ?? '';
+            return aDate.localeCompare(bDate);
+          });
+          return (
+            <section>
+              <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-2">
+                Tournaments ({groups.length})
+              </h2>
+              <div className="space-y-3">
+                {groups.map(([name, tMatches]) => {
+                  const completed = tMatches.filter(m => m.status === MATCH_STATUS.COMPLETE);
+                  const wins   = completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
+                  const losses = completed.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
+                  return (
+                    <div key={name} className="bg-surface rounded-xl px-4 py-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-white text-sm">{name}</span>
+                        {completed.length > 0 && (
+                          <span className="text-sm font-mono font-bold">{wins}–{losses}</span>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        {tMatches.map(m => {
+                          const won  = (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0);
+                          const lost = (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0);
+                          return (
+                            <button
+                              key={m.id}
+                              onClick={() => m.status === MATCH_STATUS.COMPLETE
+                                ? navigate(`/matches/${m.id}/summary`)
+                                : m.status === MATCH_STATUS.IN_PROGRESS
+                                ? navigate(`/matches/${m.id}/live`)
+                                : null
+                              }
+                              disabled={m.status === MATCH_STATUS.SCHEDULED}
+                              className="w-full flex items-center justify-between text-sm px-2 py-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-colors disabled:cursor-default disabled:hover:bg-slate-800/50"
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                {m.status === MATCH_STATUS.COMPLETE && (
+                                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded shrink-0 ${won ? 'bg-emerald-900/60 text-emerald-400' : lost ? 'bg-red-900/60 text-red-400' : 'bg-slate-700 text-slate-400'}`}>
+                                    {won ? 'W' : 'L'}
+                                  </span>
+                                )}
+                                <span className="text-slate-200 truncate">{m.opponent_name}</span>
+                                {m.tournament_round && (
+                                  <span className="text-[10px] text-slate-500 capitalize shrink-0">{m.tournament_round}</span>
+                                )}
+                              </div>
+                              <div className="shrink-0 ml-2">
+                                {m.status === MATCH_STATUS.COMPLETE && (
+                                  <span className="text-xs font-mono text-slate-400">{m.our_sets_won ?? 0}–{m.opp_sets_won ?? 0}</span>
+                                )}
+                                {m.status === MATCH_STATUS.SCHEDULED && (
+                                  <span className="text-[10px] font-semibold text-amber-400">Scheduled</span>
+                                )}
+                                {m.status === MATCH_STATUS.IN_PROGRESS && (
+                                  <span className="text-[10px] font-semibold text-primary">Live</span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })()}
+
         {/* Matches */}
         <section>
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">
               Matches ({matches.length})
             </h2>
-            <Button size="sm" variant="secondary" className="bg-blue-600 border-blue-600 text-white hover:bg-blue-500 hover:border-blue-500" onClick={() => setSchedOpen(true)}>+ Schedule</Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="secondary" onClick={() => setShowImport(true)}>Import CSV</Button>
+              <Button size="sm" variant="secondary" className="bg-blue-600 border-blue-600 text-white hover:bg-blue-500 hover:border-blue-500" onClick={() => setSchedOpen(true)}>+ Schedule</Button>
+            </div>
           </div>
 
           {matches.length === 0 ? (
@@ -712,7 +805,15 @@ export function SeasonDetailPage() {
         <PvShareSheet
           match={pvShareMatch}
           teamName={team?.name}
+          logoDataUrl={orgLogoDataUrl ?? null}
           onClose={() => setPvShareMatch(null)}
+        />
+      )}
+
+      {showImport && (
+        <ScheduleImportModal
+          seasonId={id}
+          onClose={() => setShowImport(false)}
         />
       )}
 

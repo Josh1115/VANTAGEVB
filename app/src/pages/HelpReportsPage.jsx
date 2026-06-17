@@ -121,7 +121,7 @@ export function HelpReportsPage() {
             <div className="flex-1 min-w-0"><DiagRotationTable /></div>
           </div>
           <p className="text-sm text-slate-400 mt-3 leading-relaxed">
-            The radar shows all 6 rotations' Sideout % in a single shape — a pointy spike means one rotation is clearly dominant, a flat shape means they're balanced. The table below ranks every rotation by SO% and Break Point %. R1 highlighted red or marked with a warning means that rotation needs attention. The Expected Pts Per Set chart at the bottom lets you compare projected outcomes if the set opens in each rotation.
+            The radar shows all 6 rotations' Sideout % in a single shape — a pointy spike means one rotation is clearly dominant, a flat shape means they're balanced. The table below ranks every rotation by SO% and Serving Point %. R1 highlighted red or marked with a warning means that rotation needs attention. The Expected Pts Per Set chart at the bottom lets you compare projected outcomes if the set opens in each rotation.
           </p>
         </Step>
 
@@ -142,7 +142,7 @@ export function HelpReportsPage() {
           <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider pl-10">Key terms</p>
           {[
             ['SO% — Sideout Percentage', 'How often you score the point when receiving serve. League average is roughly 55–65%. Elite teams target 65%+.'],
-            ['BP% — Break Point Percentage', 'How often you score the point when serving. Harder to control than sideout, but critical in close matches.'],
+            ['SP% — Serving Point %', 'How often you score the point when serving. Harder to control than sideout, but critical in close matches.'],
             ['VER — Volleyball Efficiency Rating', 'A composite score that weighs positive contacts (kills, aces, digs on live ball) against negative ones (errors, poor passes). Higher is better; above +10 per set is strong.'],
             ['HIT% — Hitting Efficiency', 'Standard formula: (kills − errors) ÷ attempts. .250 is considered good at the high school level. Negative means more errors than kills.'],
           ].map(([title, body]) => (

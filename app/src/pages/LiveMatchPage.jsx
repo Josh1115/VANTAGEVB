@@ -36,6 +36,7 @@ export function LiveMatchPage() {
   const isRevising     = searchParams.get('revise') === '1';
   const revisingSetId  = searchParams.get('setId') ? parseInt(searchParams.get('setId'), 10) : null;
   const [ready,        setReady]        = useState(false);
+  const [initError,    setInitError]    = useState(false);
   const [screenH,      setScreenH]      = useState(() => window.innerHeight);
   const [subOpen,      setSubOpen]      = useState(false);
   const [menuOpen,     setMenuOpen]     = useState(false);
@@ -56,6 +57,7 @@ export function LiveMatchPage() {
   const [aceZoneHints,        setAceZoneHints]        = useState({}); // { [playerId]: { [zone]: count } }
   const [seasonRotation,      setSeasonRotation]      = useState(null);
   const [seasonId,            setSeasonId]            = useState(null);
+  const [hasFamilyScope,      setHasFamilyScope]      = useState(false);
   const [flipLayout,          setFlipLayout]          = useState(() => getBoolStorage(STORAGE_KEYS.FLIP_LAYOUT));
 
   const handleToggleFlip = useCallback(() => {
@@ -68,17 +70,20 @@ export function LiveMatchPage() {
 
   const {
     recordHomeRotError,
+    resetMatch,
     setMatch, setLineup, setPlayerNicknames, setLibero, swapLibero,
     startBroadcast, stopBroadcast,
     endSet, endMatch, finishRevisedSet, clearPendingSetWin,
     confirmServeZone, dismissServeZoneModal, loadServeReticles, loadSetFormationData,
-    pendingSetWin, ourScore, oppScore, ourSetsWon, oppSetsWon, format,
+    pendingSetWin, ourScore, oppScore, ourSetsWon, oppSetsWon, ourTimeouts, oppTimeouts, format,
     pendingServeContact, serveReticles,
-    teamId, lineup, setNumber, currentRun,
+    teamId, lineup, setNumber, currentRun, broadcastEnabled,
   } = useMatchStore(useShallow((s) => ({
     recordHomeRotError:   s.recordHomeRotError,
+    resetMatch:           s.resetMatch,
     startBroadcast:       s.startBroadcast,
     stopBroadcast:        s.stopBroadcast,
+    broadcastEnabled:     s.broadcastEnabled,
     setMatch:             s.setMatch,
     setLineup:            s.setLineup,
     setPlayerNicknames:   s.setPlayerNicknames,
@@ -97,6 +102,8 @@ export function LiveMatchPage() {
     oppScore:             s.oppScore,
     ourSetsWon:           s.ourSetsWon,
     oppSetsWon:           s.oppSetsWon,
+    ourTimeouts:          s.ourTimeouts,
+    oppTimeouts:          s.oppTimeouts,
     format:               s.format,
     pendingServeContact:  s.pendingServeContact,
     serveReticles:        s.serveReticles,
@@ -175,7 +182,7 @@ export function LiveMatchPage() {
     setTimeoutOpen(false);
   }, []);
   const handleLiberoPick   = useCallback((player) => {
-    setLibero(player.id);
+    setLibero(player.id, player.name, player.jersey_number);
     setLiberoPlayer(player);
     setLiberoPickerOpen(false);
   }, [setLibero]);
@@ -208,6 +215,7 @@ export function LiveMatchPage() {
     if (!matchId) return;
 
     async function init() {
+      resetMatch();
       try {
       // Level 1: match + target set in parallel
       const [match, currentSetOrNull] = await Promise.all([
@@ -276,7 +284,7 @@ export function LiveMatchPage() {
           .first();
       }
       if (libero) {
-        setLibero(libero.id);
+        setLibero(libero.id, libero.name, libero.jersey_number);
         setLiberoPlayer(libero);
       }
 
@@ -305,6 +313,7 @@ export function LiveMatchPage() {
       setOpponentName(oppDisplayName);
       setMatch(matchId, currentSet.id, season?.team_id ?? null, match.format ?? null, match.last_set_score ?? 15);
       if (match.season_id) setSeasonId(match.season_id);
+      setHasFamilyScope(!!match.pv_token && navigator.onLine);
       loadSetFormationData(currentSet);
       setReady(true);
       await loadServeReticles(currentSet.id);
@@ -353,11 +362,34 @@ export function LiveMatchPage() {
       }
       } catch (err) {
         console.error('LiveMatchPage init failed:', err);
+        setInitError(true);
       }
     }
 
     init();
   }, [matchIdParam, isRevising, revisingSetId]);
+
+  if (initError) {
+    return (
+      <div className="h-screen bg-bg flex flex-col items-center justify-center gap-4 p-8 text-center">
+        <p className="text-4xl">⚠️</p>
+        <p className="text-white font-bold text-lg">Failed to load match</p>
+        <p className="text-slate-400 text-sm">There was a problem reading match data. Check available storage and try again.</p>
+        <button
+          className="mt-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold"
+          onClick={() => { setInitError(false); setReady(false); }}
+        >
+          Retry
+        </button>
+        <button
+          className="px-4 py-2 text-slate-400 text-sm"
+          onClick={() => navigate('/')}
+        >
+          Go Home
+        </button>
+      </div>
+    );
+  }
 
   if (!ready) {
     return (
@@ -384,21 +416,63 @@ export function LiveMatchPage() {
         style={{ '--scanline-alpha': scanlineAlpha }}
       />
 
-      {/* Portrait orientation guard — Safari on iPad ignores orientation lock */}
+
+      {/* Portrait fallback — shows live score + timeout button; stat tiles require landscape */}
       {isPortrait && (
-        <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center gap-6 text-center px-8">
-          <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="5" y="2" width="14" height="20" rx="2" />
-            <path d="M12 18h.01" />
-          </svg>
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-90deg)' }}>
-            <path d="M4.5 10.5 12 3l7.5 7.5" />
-            <path d="M12 3v18" />
-          </svg>
-          <div>
-            <p className="text-white text-xl font-bold mb-2">Rotate to Landscape</p>
-            <p className="text-slate-400 text-sm">The stat screen requires landscape orientation</p>
-            <p className="text-slate-600 text-xs mt-3">Tip: lock rotation in Control Center to keep landscape locked</p>
+        <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col safe-area-inset">
+          {/* Live score area */}
+          <div className="flex-1 flex flex-col items-center justify-center gap-5 px-8">
+            {/* Team name strip */}
+            <div className="flex w-full justify-between items-baseline">
+              <span className="text-sm font-black text-white truncate max-w-[40%]">{teamName || 'Us'}</span>
+              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Set {setNumber}</span>
+              <span className="text-sm font-black text-slate-400 truncate max-w-[40%] text-right">{opponentName || 'Them'}</span>
+            </div>
+
+            {/* Big score */}
+            <div className="flex items-center justify-center gap-6">
+              <span className="text-8xl font-black tabular-nums text-white leading-none">{ourScore}</span>
+              <span className="text-4xl font-black text-slate-700">–</span>
+              <span className="text-8xl font-black tabular-nums text-slate-400 leading-none">{oppScore}</span>
+            </div>
+
+            {/* Set tally */}
+            <div className="flex gap-6 text-sm font-bold text-slate-500">
+              <span>{ourSetsWon} set{ourSetsWon !== 1 ? 's' : ''}</span>
+              <span className="text-slate-700">·</span>
+              <span>{oppSetsWon} set{oppSetsWon !== 1 ? 's' : ''}</span>
+            </div>
+
+            {/* Timeout dots */}
+            <div className="flex w-full justify-between px-4">
+              <div className="flex gap-2">
+                {[0, 1].map(i => (
+                  <span key={i} className={`text-xl leading-none ${i < ourTimeouts ? 'text-slate-700' : 'text-slate-400'}`}>
+                    {i < ourTimeouts ? '✕' : '○'}
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                {[0, 1].map(i => (
+                  <span key={i} className={`text-xl leading-none ${i < oppTimeouts ? 'text-slate-700' : 'text-slate-400'}`}>
+                    {i < oppTimeouts ? '✕' : '○'}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Action footer */}
+          <div className="px-6 pb-10 space-y-3">
+            <button
+              onClick={() => setTimeoutOpen(true)}
+              className="w-full py-4 rounded-2xl bg-primary text-white font-black tracking-wide text-base active:scale-[0.98] transition-transform"
+            >
+              Call Timeout
+            </button>
+            <p className="text-center text-xs text-slate-600">
+              Rotate to landscape for full stat tracking
+            </p>
           </div>
         </div>
       )}
@@ -412,6 +486,8 @@ export function LiveMatchPage() {
           onTimeoutCalled={() => setTimeoutOpen(true)}
           onAssignLibero={!liberoPlayer ? () => setLiberoPickerOpen(true) : undefined}
           flipLayout={flipLayout}
+          broadcastEnabled={broadcastEnabled}
+          hasFamilyScope={hasFamilyScope}
         />
         <div className="flex flex-row flex-1 min-h-0">
           <CourtGrid aceZoneHints={aceZoneHints} />
@@ -476,6 +552,7 @@ export function LiveMatchPage() {
           winner={summaryModalData.winner}
           teamName={teamName}
           opponentName={opponentName}
+          onClose={() => setSummaryModalData(null)}
           onContinue={async () => {
             const { winner } = summaryModalData;
             setSummaryModalData(null);

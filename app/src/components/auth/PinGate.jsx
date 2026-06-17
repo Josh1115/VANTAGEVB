@@ -100,7 +100,7 @@ export function PinGate({ children }) {
             className="text-[21px] italic text-slate-500"
             style={{ opacity: phase >= 5 ? 1 : 0, transition: 'opacity 0.8s ease' }}
           >
-            Powered by the S.S.E (Shua Stat Engine)
+            Powered by Vantage Analytics
           </p>
         </div>
 

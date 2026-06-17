@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { db } from '../db/schema';
 import { PlanGate } from '../components/shared/PlanGate';
@@ -8,6 +9,7 @@ import { useMatchStore } from '../store/matchStore';
 import { useUiStore } from '../store/uiStore';
 
 function HubContent() {
+  const navigate = useNavigate();
   const [teams, setTeams] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState(null);
   const [shareToken, setShareToken] = useState(null);
@@ -202,6 +204,14 @@ function HubContent() {
             >
               {broadcastEnabled ? '● Broadcasting — Tap to Stop' : 'Go Live'}
             </button>
+            {!matchId && (
+              <button
+                onClick={() => navigate('/')}
+                className="w-full py-2 text-xs font-semibold text-primary hover:text-orange-300 transition-colors"
+              >
+                Go to Home to start a match →
+              </button>
+            )}
           </div>
 
           {/* Instructions */}
@@ -245,7 +255,7 @@ function HubContent() {
   );
 }
 
-export function ParentVantageHubPage() {
+export function FamilyScopeHubPage() {
   return (
     <PlanGate requires="core" feature="FamilyScope HUB">
       <HubContent />

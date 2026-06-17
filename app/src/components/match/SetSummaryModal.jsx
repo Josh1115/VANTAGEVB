@@ -3,7 +3,7 @@ import { useMatchStore } from '../../store/matchStore';
 import { SIDE } from '../../constants';
 import { LiveStatsModal } from '../stats/LiveStatsModal';
 
-export const SetSummaryModal = memo(function SetSummaryModal({ winner, teamName, opponentName, onContinue }) {
+export const SetSummaryModal = memo(function SetSummaryModal({ winner, teamName, opponentName, onContinue, onClose }) {
   const ourScore  = useMatchStore((s) => s.ourScore);
   const oppScore  = useMatchStore((s) => s.oppScore);
   const setNumber = useMatchStore((s) => s.setNumber);
@@ -14,7 +14,14 @@ export const SetSummaryModal = memo(function SetSummaryModal({ winner, teamName,
   return (
     <>
       <div className={`fixed inset-0 z-[70] bg-black/80 flex flex-col items-center justify-center px-4 ${showStats ? 'hidden' : ''}`}>
-        <div className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl px-8 py-8 flex flex-col gap-5">
+        <div className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl px-8 py-8 flex flex-col gap-5 relative">
+          {onClose && (
+            <button
+              onPointerDown={(e) => { e.preventDefault(); onClose(); }}
+              className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-300 text-xl leading-none select-none"
+              aria-label="Dismiss"
+            >×</button>
+          )}
 
           {/* Win / Loss banner */}
           <div className="text-center">
