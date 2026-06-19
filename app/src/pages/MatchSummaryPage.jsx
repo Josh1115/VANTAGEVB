@@ -555,7 +555,7 @@ const ShareCard = ({ cardRef, match, sets, stats, teamColors, seasonRecord, play
           VANTAGE
         </div>
         <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.06em' }}>
-          Precision Sideline Analytics
+          Immediate Impact Analytics
         </div>
       </div>
     </div>

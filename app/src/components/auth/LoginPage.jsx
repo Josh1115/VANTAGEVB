@@ -3,6 +3,19 @@ import { VantageLogo } from '../ui/VantageLogo';
 import { NetDivider } from '../ui/NetDivider';
 import { supabase } from '../../utils/supabase';
 
+function friendlyAuthError(msg) {
+  if (!msg) return 'Something went wrong. Please try again.';
+  // Never expose raw JWTs or Bearer tokens to the user
+  if (/^Bearer/i.test(msg) || /^ey[A-Za-z0-9_-]{10,}\.ey/.test(msg)) {
+    return 'Authentication service error. Please try again or contact vantagevb@gmail.com.';
+  }
+  if (/invalid login credentials/i.test(msg)) return 'Incorrect email or password.';
+  if (/email not confirmed/i.test(msg))        return 'Please confirm your email before logging in.';
+  if (/too many requests/i.test(msg))          return 'Too many attempts. Please wait a moment and try again.';
+  if (/network/i.test(msg) || /fetch/i.test(msg)) return 'Network error. Check your connection and try again.';
+  return msg;
+}
+
 export function LoginPage({ onSignup }) {
   const [phase,      setPhase]      = useState(0);
   const [showForm,   setShowForm]   = useState(false);
@@ -28,7 +41,7 @@ export function LoginPage({ onSignup }) {
     setLoading(true);
     setError('');
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
-    if (error) setError(error.message);
+    if (error) setError(friendlyAuthError(error.message));
     setLoading(false);
     // On success, AuthContext onAuthStateChange fires automatically
   }
@@ -101,6 +114,10 @@ export function LoginPage({ onSignup }) {
               >
                 SIGN UP
               </button>
+              <p className="text-center text-sm rounded-xl px-4 py-2" style={{ color: '#fbbf24', border: '1px solid rgba(249,115,22,0.5)', background: 'rgba(249,115,22,0.1)' }}>
+                Experiencing technical difficulties?{' '}
+                <a href="mailto:vantagevb@gmail.com" className="underline font-bold">vantagevb@gmail.com</a>
+              </p>
               <div className="self-center" style={{ width: logoSvgW ? logoSvgW * 2 : undefined }}>
                 <NetDivider className="mt-2" />
               </div>
@@ -186,7 +203,7 @@ export function LoginPage({ onSignup }) {
                 </svg>
 
                 <p className="text-sm text-slate-400 mt-3">
-                  Vantage Point (VP) allows you to seamlessly track every aspect on the court. Tag each kill, ace, block, and dig with more detail than ever. As data is logged, Vantage provides you Precision Sideline Analytics to make the most informed coaching decisions.
+                  Vantage Point (VP) allows you to seamlessly track every aspect on the court. Tag each kill, ace, block, and dig with more detail than ever. As data is logged, Vantage provides you Immediate Impact Analytics to make the most informed coaching decisions.
                 </p>
               </div>
               {/* ── Feature Card: Oppo Scoring Bar ── */}

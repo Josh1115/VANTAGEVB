@@ -15,7 +15,7 @@ export function NotFoundPage() {
           VANTAGE
         </h1>
         <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-500">
-          Precision Sideline Analytics
+          Immediate Impact Analytics
         </p>
       </div>
 

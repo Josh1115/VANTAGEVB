@@ -14,7 +14,7 @@ import { db } from '../db/schema';
 import { useUiStore } from '../store/uiStore';
 import { FORMAT, ACCENT_COLORS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
-import { usePlan } from '../hooks/usePlan';
+import { usePlan, PLAN_TEAMS, PLAN_PRICES, PLAN_LABELS, SEASON_MATCH_LIMIT } from '../hooks/usePlan';
 import {
   getStorageItem, setStorageItem,
   getBoolStorage, setBoolStorage,
@@ -1208,7 +1208,7 @@ export function SettingsPage() {
   const showToast    = useUiStore((s) => s.showToast);
   const fileInputRef = useRef(null);
   const { session, profile, refreshProfile } = useAuth();
-  const { isActive, isMaster, teamsAllowed, expiresAt } = usePlan();
+  const { plan, isActive, isMaster, teamsAllowed, expiresAt } = usePlan();
   const navigate     = useNavigate();
   const [maxSubs, saveMaxSubs]           = useMaxSubs();
   const [defaultFormat, saveDefaultFormat] = useDefaultFormat();
@@ -1223,6 +1223,18 @@ export function SettingsPage() {
   const [playerNameFormat, savePlayerNameFormat] = useStrSetting(STORAGE_KEYS.PLAYER_NAME_FORMAT, 'initial_last');
   const [rosterSort,       saveRosterSort]       = useStrSetting(STORAGE_KEYS.ROSTER_SORT, 'jersey');
   const teams = useLiveQuery(() => db.teams.orderBy('name').toArray(), []);
+  const teamMatchCounts = useLiveQuery(async () => {
+    if (!teams?.length) return {};
+    const result = {};
+    for (const team of teams) {
+      const seasons = await db.seasons.where('team_id').equals(team.id).sortBy('year');
+      if (!seasons.length) { result[team.id] = { matchCount: 0, seasonYear: null }; continue; }
+      const latest = seasons[seasons.length - 1];
+      const matchCount = await db.matches.where('season_id').equals(latest.id).count();
+      result[team.id] = { matchCount, seasonYear: latest.year };
+    }
+    return result;
+  }, [teams]);
   const defaultTeamSeasons = useLiveQuery(
     () => defaultTeamId ? db.seasons.where('team_id').equals(defaultTeamId).sortBy('year') : Promise.resolve([]),
     [defaultTeamId]
@@ -1440,7 +1452,7 @@ export function SettingsPage() {
         <section className="bg-surface rounded-xl p-5">
           <div className="text-center mb-4">
             <h2 className="text-2xl font-black tracking-[0.25em] uppercase text-[#f97316]">VANTAGE</h2>
-            <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-400 mt-1">Precision Sideline Analytics</p>
+            <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-400 mt-1">Immediate Impact Analytics</p>
           </div>
           <div className="border-t border-slate-700 mb-4" />
           <p className="text-sm text-slate-200 leading-relaxed italic text-center">
@@ -1531,6 +1543,95 @@ export function SettingsPage() {
             ) : (
               <p className="text-sm text-slate-400">No active subscription. Subscribe to unlock all features.</p>
             )}
+            {/* Credit usage */}
+            {(() => {
+              const teamsUsed = teams?.length ?? 0;
+              const teamsAllowedDisplay = isMaster ? 'Unlimited' : teamsAllowed === 99 ? '5+' : String(teamsAllowed);
+              const teamsRemaining = isMaster ? 'Unlimited' : teamsAllowed === 99 ? 'Unlimited' : String(Math.max(0, teamsAllowed - teamsUsed));
+              return (
+                <div className="bg-slate-800/60 rounded-xl p-3 space-y-3">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Your Credits</p>
+
+                  {/* Team credits */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-300">Team Credits</span>
+                    <span className="text-sm font-bold text-white">
+                      {isMaster ? (
+                        <span className="text-emerald-400">Unlimited</span>
+                      ) : (
+                        <>{teamsUsed} used / {teamsAllowedDisplay} · <span className="text-emerald-400">{teamsRemaining} remaining</span></>
+                      )}
+                    </span>
+                  </div>
+
+                  {/* Per-team match counters */}
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">Season Match Credits (current season)</p>
+                    {!teams?.length ? (
+                      <p className="text-xs text-slate-500 italic">No teams yet</p>
+                    ) : teams.map((team) => {
+                      const info = teamMatchCounts?.[team.id];
+                      const used = info?.matchCount ?? 0;
+                      const remaining = isMaster ? null : Math.max(0, SEASON_MATCH_LIMIT - used);
+                      const pct = isMaster ? 0 : Math.min(100, (used / SEASON_MATCH_LIMIT) * 100);
+                      return (
+                        <div key={team.id} className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-300 font-medium truncate max-w-[55%]">{team.name}{info?.seasonYear ? ` · ${info.seasonYear}` : ''}</span>
+                            <span className="text-xs font-bold text-white">
+                              {isMaster ? (
+                                <span className="text-emerald-400">Unlimited</span>
+                              ) : (
+                                <>{used} / {SEASON_MATCH_LIMIT} · <span className={remaining === 0 ? 'text-red-400' : 'text-emerald-400'}>{remaining} left</span></>
+                              )}
+                            </span>
+                          </div>
+                          {!isMaster && (
+                            <div className="h-1 rounded-full bg-slate-700 overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{ width: `${pct}%`, background: pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#22c55e' }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Pricing table */}
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Plan Options</p>
+              <div className="rounded-xl overflow-hidden border border-slate-700 divide-y divide-slate-700">
+                {isMaster && (
+                  <div className="flex items-center justify-between px-3 py-2.5 bg-yellow-400/10">
+                    <div className="flex items-center gap-2">
+                      <span className="text-yellow-400 text-xs font-black">★</span>
+                      <span className="text-sm font-semibold text-yellow-300">Master Account</span>
+                      <span className="text-xs text-slate-500">· ∞ teams · ∞ matches/season</span>
+                    </div>
+                    <span className="text-sm font-bold text-yellow-400">Unlimited</span>
+                  </div>
+                )}
+                {Object.entries(PLAN_LABELS).filter(([key]) => key !== 'trial').map(([key, label]) => (
+                  <div
+                    key={key}
+                    className={`flex items-center justify-between px-3 py-2.5 ${plan === key && !isMaster ? 'bg-primary/10' : 'bg-slate-800/40'}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {plan === key && !isMaster && <span className="text-primary text-xs font-black">✓</span>}
+                      <span className={`text-sm font-semibold ${plan === key && !isMaster ? 'text-primary' : 'text-slate-300'}`}>{label}</span>
+                      <span className="text-xs text-slate-500">· {PLAN_TEAMS[key] === 99 ? '5+' : PLAN_TEAMS[key]} team{PLAN_TEAMS[key] !== 1 ? 's' : ''} · {SEASON_MATCH_LIMIT} matches/season</span>
+                    </div>
+                    <span className={`text-sm font-bold ${plan === key && !isMaster ? 'text-primary' : 'text-slate-300'}`}>{PLAN_PRICES[key]}<span className="text-xs font-normal text-slate-500">/yr</span></span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {profile?.stripe_customer_id && (
               <button
                 onClick={handleManageBilling}
@@ -1629,6 +1730,11 @@ export function SettingsPage() {
         {/* Help & Guides */}
         <CollapsibleSection id="help-guides" title="Help & Guides">
           <div className="p-4">
+
+            <p className="text-center text-sm rounded-xl px-4 py-2 mb-4" style={{ color: '#fbbf24', border: '1px solid rgba(249,115,22,0.5)', background: 'rgba(249,115,22,0.1)' }}>
+              Experiencing technical difficulties?{' '}
+              <a href="mailto:vantagevb@gmail.com" className="underline font-bold">vantagevb@gmail.com</a>
+            </p>
 
             {/* Search */}
             <div className="relative mb-4">

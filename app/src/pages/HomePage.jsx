@@ -874,7 +874,7 @@ export function HomePage() {
             onPointerLeave={handleLogoPointerUp}
           />
           <span className="text-[17.5px] font-semibold tracking-[0.22em] text-slate-300 uppercase">
-            Precision Sideline Analytics
+            Immediate Impact Analytics
           </span>
           <span className="text-slate-400 font-normal text-[17.5px] tracking-wide italic">
             powered by Vantage Analytics
@@ -1666,6 +1666,11 @@ export function HomePage() {
         >
           {todayDisplay}
         </div>
+
+        <p className="text-center text-sm mx-4 mb-4 rounded-xl px-4 py-2" style={{ color: '#fbbf24', border: '1px solid rgba(249,115,22,0.5)', background: 'rgba(249,115,22,0.1)' }}>
+          Experiencing technical difficulties?{' '}
+          <a href="mailto:vantagevb@gmail.com" className="underline font-bold">vantagevb@gmail.com</a>
+        </p>
       </div>
 
       {showWhiteboard && (

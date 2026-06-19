@@ -138,7 +138,7 @@ export async function parseMergePreview(file) {
 
 // decisions: { [importedMatchId]: 'keep' | 'replace' }
 // matches absent from decisions are new and always imported
-export async function executeMerge(preview, decisions) {
+export async function executeMerge(preview, decisions, { isMaster = true, matchLimit = Infinity } = {}) {
   const data = preview._data;
 
   const impSetsByMatch   = groupBy(data.sets,                  'match_id');
@@ -156,6 +156,13 @@ export async function executeMerge(preview, decisions) {
     db.matches.toArray(),
   ]);
 
+  // Build per-season effective count (high-water mark of live vs stored peak)
+  const seasonEffectiveCounts = new Map();
+  for (const s of exSeasons) {
+    const live = exMatches.filter(m => m.season_id === s.id).length;
+    seasonEffectiveCounts.set(s.id, Math.max(live, s.peak_match_count ?? 0));
+  }
+
   const exOrgByKey    = new Map(exOrgs.map(o    => [nkOrg(o),                       o]));
   const exTeamByKey   = new Map(exTeams.map(t   => [`${t.org_id}|${nkTeam(t)}`,     t]));
   const exSeasonByKey = new Map(exSeasons.map(s => [`${s.team_id}|${nkSeason(s)}`,  s]));
@@ -171,6 +178,7 @@ export async function executeMerge(preview, decisions) {
 
   let matchesAdded    = 0;
   let matchesReplaced = 0;
+  let matchesSkipped  = 0;
 
   await db.transaction('rw', db.tables, async () => {
 
@@ -237,6 +245,15 @@ export async function executeMerge(preview, decisions) {
 
       if (decision === 'keep') continue;
 
+      // Net-new matches are subject to the per-season match limit
+      if (decision == null && !isMaster) {
+        const effectiveCount = seasonEffectiveCounts.get(exSeasonId) ?? 0;
+        if (effectiveCount >= matchLimit) {
+          matchesSkipped++;
+          continue;
+        }
+      }
+
       if (decision === 'replace') {
         const ex = exMatchByKey.get(`${exSeasonId}|${nkMatch(impMatch)}`);
         if (ex) {
@@ -262,7 +279,12 @@ export async function executeMerge(preview, decisions) {
         ? (oppMap.get(impMatch.opponent_id) ?? null)
         : null;
       const newMatchId = await db.matches.add(matchToInsert);
-      if (decision !== 'replace') matchesAdded++;
+      if (decision == null) {
+        matchesAdded++;
+        const newPeak = (seasonEffectiveCounts.get(exSeasonId) ?? 0) + 1;
+        seasonEffectiveCounts.set(exSeasonId, newPeak);
+        await db.seasons.update(exSeasonId, { peak_match_count: newPeak });
+      }
 
       // ── Sets ──────────────────────────────────────────────────────────
       const impSets  = impSetsByMatch.get(impMatch.id) ?? [];
@@ -467,5 +489,5 @@ export async function executeMerge(preview, decisions) {
 
   });
 
-  return { matchesAdded, matchesReplaced };
+  return { matchesAdded, matchesReplaced, matchesSkipped };
 }

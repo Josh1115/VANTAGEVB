@@ -10,7 +10,7 @@ import { useMatchStore } from '../store/matchStore';
 import { MATCH_STATUS, SET_STATUS, FORMAT, SIDE } from '../constants';
 import { serveOrderToZone } from '../components/court/CourtZonePicker';
 import { LineupForm } from '../components/match/LineupForm';
-import { usePlan, SEASON_MATCH_LIMIT } from '../hooks/usePlan';
+import { usePlan } from '../hooks/usePlan';
 import { PvShareSheet } from '../components/parentvantage/PvShareSheet';
 
 
@@ -24,7 +24,7 @@ export function MatchSetupPage() {
   const rawMatchId = searchParams.get('match');
   const scheduledMatchId = rawMatchId ? parseInt(rawMatchId, 10) || null : null;
 
-  const { isActive, isMaster } = usePlan();
+  const { isActive, isMaster, matchLimit } = usePlan();
 
   const [seasonId,  setSeasonId]  = useState(searchParams.get('season') ?? '');
   const [opponent,           setOpponent]           = useState('');
@@ -79,7 +79,11 @@ export function MatchSetupPage() {
 
   const seasonMatchCount = useLiveQuery(async () => {
     if (!selectedSeason?.id) return undefined;
-    return db.matches.where('season_id').equals(selectedSeason.id).count();
+    const [liveCount, season] = await Promise.all([
+      db.matches.where('season_id').equals(selectedSeason.id).count(),
+      db.seasons.get(selectedSeason.id),
+    ]);
+    return Math.max(liveCount, season?.peak_match_count ?? 0);
   }, [selectedSeason?.id]);
 
   const selectedTeam = useLiveQuery(
@@ -229,6 +233,8 @@ export function MatchSetupPage() {
         our_sets_won:           ourSetsWon,
         opp_sets_won:           oppSetsWon,
       });
+      const _s1 = await db.seasons.get(Number(seasonId));
+      await db.seasons.update(Number(seasonId), { peak_match_count: (_s1?.peak_match_count ?? 0) + 1 });
 
       await db.sets.bulkAdd(
         parsedSets.map((s, i) => ({
@@ -301,6 +307,8 @@ export function MatchSetupPage() {
           date:       matchDate ? new Date(matchDate + (matchTime ? `T${matchTime}:00` : 'T12:00:00')).toISOString() : new Date().toISOString(),
           match_time: matchTime || null,
         });
+        const _s2 = await db.seasons.get(Number(seasonId));
+        await db.seasons.update(Number(seasonId), { peak_match_count: (_s2?.peak_match_count ?? 0) + 1 });
       }
 
       // Remove any orphaned in-progress sets from a previous back-and-restart cycle
@@ -360,17 +368,17 @@ export function MatchSetupPage() {
       <div className="p-4 md:p-6 space-y-5 max-w-lg mx-auto">
 
         {/* Season match limit warning */}
-        {!isMaster && selectedSeason && seasonMatchCount !== undefined && seasonMatchCount >= SEASON_MATCH_LIMIT && (
+        {!isMaster && selectedSeason && seasonMatchCount !== undefined && seasonMatchCount >= matchLimit && (
           <div className="rounded-xl border border-red-700/50 bg-red-900/20 px-4 py-3">
             <p className="text-sm text-red-300">
-              This season has reached the <span className="font-black">{SEASON_MATCH_LIMIT}-match</span> limit.
+              This season has reached the <span className="font-black">{matchLimit}-match</span> limit.
             </p>
           </div>
         )}
-        {!isMaster && selectedSeason && seasonMatchCount !== undefined && seasonMatchCount >= SEASON_MATCH_LIMIT * 0.9 && seasonMatchCount < SEASON_MATCH_LIMIT && (
+        {!isMaster && selectedSeason && seasonMatchCount !== undefined && seasonMatchCount >= matchLimit * 0.9 && seasonMatchCount < matchLimit && (
           <div className="rounded-xl border border-amber-700/50 bg-amber-900/20 px-4 py-3">
             <p className="text-sm text-amber-300">
-              Match <span className="font-black">{seasonMatchCount + 1} of {SEASON_MATCH_LIMIT}</span> this season.
+              Match <span className="font-black">{seasonMatchCount + 1} of {matchLimit}</span> this season.
             </p>
           </div>
         )}
@@ -871,11 +879,11 @@ export function MatchSetupPage() {
 
         {/* Primary action */}
         {manualEntry ? (
-          <Button size="lg" className="w-full" disabled={saving || (!isMaster && seasonMatchCount >= SEASON_MATCH_LIMIT)} onClick={handleManualSave}>
+          <Button size="lg" className="w-full" disabled={saving || (!isMaster && seasonMatchCount >= matchLimit)} onClick={handleManualSave}>
             {saving ? 'Saving…' : 'Save Match'}
           </Button>
         ) : (
-          <Button size="lg" className="w-full" disabled={saving || (!isMaster && seasonMatchCount >= SEASON_MATCH_LIMIT)} onClick={handleStart}>
+          <Button size="lg" className="w-full" disabled={saving || (!isMaster && seasonMatchCount >= matchLimit)} onClick={handleStart}>
             {saving ? 'Creating…' : 'Start Match'}
           </Button>
         )}

@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 // Number of teams allowed per plan
 export const PLAN_TEAMS = {
   inactive:      0,
+  trial:         1,
   '1_team':      1,
   '2_teams':     2,
   '3_teams':     3,
@@ -29,6 +30,7 @@ export const PLAN_LABELS = {
 };
 
 export const SEASON_MATCH_LIMIT = 50;
+export const TRIAL_MATCH_LIMIT  = 5;
 
 export function usePlan() {
   const { profile } = useAuth();
@@ -44,5 +46,7 @@ export function usePlan() {
     return isActive;
   }
 
-  return { plan, isActive, isMaster, teamsAllowed, has, expiresAt: isExpired ? null : expiresAt };
+  const matchLimit = isMaster ? Infinity : plan === 'trial' ? TRIAL_MATCH_LIMIT : SEASON_MATCH_LIMIT;
+
+  return { plan, isActive, isMaster, teamsAllowed, matchLimit, has, expiresAt: isExpired ? null : expiresAt };
 }

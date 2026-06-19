@@ -16,10 +16,12 @@ import { PostSeasonModal } from '../shared/PostSeasonModal';
 import { applyInferredSeasonFinish } from '../../utils/seasonUtils';
 import { PvShareSheet } from '../parentvantage/PvShareSheet';
 import { ScheduleImportModal } from '../match/ScheduleImportModal';
+import { usePlan } from '../../hooks/usePlan';
 
 export function SeasonScheduleTab({ seasonId }) {
   const navigate = useNavigate();
   const playoffLabel = getPlayoffLabel();
+  const { isMaster, matchLimit } = usePlan();
 
   const data = useLiveQuery(async () => {
     if (!seasonId) return null;
@@ -226,6 +228,13 @@ export function SeasonScheduleTab({ seasonId }) {
 
   async function handleScheduleGame() {
     if (!schedOpp.trim()) return;
+    if (!editMatchId && !isMaster) {
+      const [liveCount, season] = await Promise.all([
+        db.matches.where('season_id').equals(seasonId).count(),
+        db.seasons.get(seasonId),
+      ]);
+      if (Math.max(liveCount, season?.peak_match_count ?? 0) >= matchLimit) return;
+    }
     setSchedSaving(true);
     try {
       let oppRecord = await db.opponents.where('name').equals(schedOpp.trim()).first();
@@ -254,6 +263,8 @@ export function SeasonScheduleTab({ seasonId }) {
         await db.matches.update(editMatchId, { ...fields, pv_token: existing?.pv_token ?? crypto.randomUUID() });
       } else {
         await db.matches.add({ season_id: seasonId, status: MATCH_STATUS.SCHEDULED, pv_token: crypto.randomUUID(), ...fields });
+        const _s = await db.seasons.get(seasonId);
+        await db.seasons.update(seasonId, { peak_match_count: (_s?.peak_match_count ?? 0) + 1 });
       }
       resetSchedForm();
     } finally {

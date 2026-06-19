@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { parseMergePreview, executeMerge } from '../../stats/merge';
+import { usePlan } from '../../hooks/usePlan';
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -75,6 +76,7 @@ export function MergeBackupModal({ onClose, onSuccess }) {
   const [preview,   setPreview]   = useState(null);
   const [decisions, setDecisions] = useState({});       // { [importedMatchId]: 'keep' | 'replace' }
   const [result,    setResult]    = useState(null);
+  const { isMaster, matchLimit }  = usePlan();
 
   async function handleFile(e) {
     const file = e.target.files?.[0];
@@ -101,7 +103,7 @@ export function MergeBackupModal({ onClose, onSuccess }) {
     if (!preview) return;
     setPhase('executing');
     try {
-      const res = await executeMerge(preview, decisions);
+      const res = await executeMerge(preview, decisions, { isMaster, matchLimit });
       setResult(res);
       setPhase('done');
     } catch (err) {
@@ -259,6 +261,11 @@ export function MergeBackupModal({ onClose, onSuccess }) {
               {result.matchesReplaced > 0 && (
                 <p className="text-sm text-slate-300">
                   <span className="font-bold text-primary">{result.matchesReplaced}</span> {result.matchesReplaced === 1 ? 'match' : 'matches'} replaced with imported data
+                </p>
+              )}
+              {result.matchesSkipped > 0 && (
+                <p className="text-sm text-slate-300">
+                  <span className="font-bold text-amber-400">{result.matchesSkipped}</span> {result.matchesSkipped === 1 ? 'match' : 'matches'} skipped — season match limit reached
                 </p>
               )}
               {result.matchesAdded === 0 && result.matchesReplaced === 0 && (

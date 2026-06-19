@@ -4,7 +4,7 @@ import { useUiStore, selectShowToast } from '../../store/uiStore';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 
-export function SeasonFormModal({ onClose, teamId, season }) {
+export function SeasonFormModal({ onClose, teamId, season, required = false }) {
   const [name, setName] = useState(season?.name ?? '');
   const [year, setYear] = useState(season?.year ?? new Date().getFullYear());
   const [classification, setClassification] = useState(season?.classification ?? '');
@@ -28,16 +28,20 @@ export function SeasonFormModal({ onClose, teamId, season }) {
 
   return (
     <Modal
-      title={season ? 'Edit Season' : 'New Season'}
-      onClose={onClose}
+      title={season ? 'Edit Season' : 'Add a Season'}
+      onClose={required ? undefined : onClose}
+      hideClose={required}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          {!required && <Button variant="secondary" onClick={onClose}>Cancel</Button>}
           <Button onClick={save}>Save</Button>
         </>
       }
     >
       <div className="space-y-3">
+        {required && (
+          <p className="text-sm text-slate-400">Every team needs a season to track matches. Create one now to get started.</p>
+        )}
         <div>
           <label className="block text-sm text-slate-400 mb-1">Season Name</label>
           <input

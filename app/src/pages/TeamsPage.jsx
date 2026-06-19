@@ -14,6 +14,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { Badge } from '../components/ui/Badge';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { LogoPickerModal } from '../components/team/LogoPickerModal';
+import { SeasonFormModal } from '../components/team/SeasonFormModal';
 
 
 const ORG_COLORS = [
@@ -328,10 +329,11 @@ function TeamFormModal({ onClose, orgId, team }) {
       };
       if (team) {
         await db.teams.update(team.id, fields);
+        onClose();
       } else {
-        await db.teams.add({ org_id: orgId, ...fields });
+        const newTeamId = await db.teams.add({ org_id: orgId, ...fields });
+        onClose(newTeamId);
       }
-      onClose();
     } catch (err) {
       showToast(`Save failed: ${err.message}`, 'error');
     }
@@ -459,10 +461,11 @@ export function TeamsPage() {
   const [orgModal,    setOrgModal]    = useState(null); // null | { org? }
   const [teamModal,   setTeamModal]   = useState(null); // null | { orgId, team? }
   const [deleteOrg,   setDeleteOrg]   = useState(null); // org object to delete
-  const [deleteTeam,  setDeleteTeam]  = useState(null); // team object to delete
+  const [deleteTeam,          setDeleteTeam]          = useState(null); // team object to delete
+  const [pendingSeasonTeamId, setPendingSeasonTeamId] = useState(null); // new team id awaiting first season
   const showToast = useUiStore(selectShowToast);
 
-  const atTeamLimit = !isMaster && teamsAllowed > 0 && (allTeams?.length ?? 0) >= teamsAllowed;
+  const atTeamLimit = !isMaster && (allTeams?.length ?? 0) >= teamsAllowed;
 
   const handleDeleteOrg = async () => {
     try {
@@ -476,7 +479,47 @@ export function TeamsPage() {
 
   const handleDeleteTeam = async () => {
     try {
-      await db.teams.delete(deleteTeam.id);
+      const seasons     = await db.seasons.where('team_id').equals(deleteTeam.id).toArray();
+      const seasonIds   = seasons.map(s => s.id);
+      const matches     = seasonIds.length ? await db.matches.where('season_id').anyOf(seasonIds).toArray() : [];
+      const matchIds    = matches.map(m => m.id);
+      const sets        = matchIds.length ? await db.sets.where('match_id').anyOf(matchIds).toArray() : [];
+      const setIds      = sets.map(s => s.id);
+      const accoTypes   = await db.accolade_types.where('team_id').equals(deleteTeam.id).toArray();
+      const accoTypeIds = accoTypes.map(a => a.id);
+
+      await db.transaction('rw', db.tables, async () => {
+        if (setIds.length) {
+          await Promise.all([
+            db.contacts.where('set_id').anyOf(setIds).delete(),
+            db.rallies.where('set_id').anyOf(setIds).delete(),
+            db.lineups.where('set_id').anyOf(setIds).delete(),
+            db.substitutions.where('set_id').anyOf(setIds).delete(),
+          ]);
+          await db.sets.bulkDelete(setIds);
+        }
+        if (matchIds.length) {
+          await db.opp_tendencies.where('match_id').anyOf(matchIds).delete();
+          await db.timeouts.where('match_id').anyOf(matchIds).delete();
+          await db.matches.bulkDelete(matchIds);
+        }
+        if (seasonIds.length) await db.seasons.bulkDelete(seasonIds);
+        if (accoTypeIds.length) {
+          await db.accolade_winners.where('type_id').anyOf(accoTypeIds).delete();
+          await db.accolade_types.bulkDelete(accoTypeIds);
+        }
+        await Promise.all([
+          db.players.where('team_id').equals(deleteTeam.id).delete(),
+          db.saved_lineups.where('team_id').equals(deleteTeam.id).delete(),
+          db.historical_records.where('team_id').equals(deleteTeam.id).delete(),
+          db.season_history.where('team_id').equals(deleteTeam.id).delete(),
+          db.tourney_entries.where('team_id').equals(deleteTeam.id).delete(),
+          db.player_commits.where('team_id').equals(deleteTeam.id).delete(),
+          db.practice_sessions.where('team_id').equals(deleteTeam.id).delete(),
+          db.accolade_winners.where('team_id').equals(deleteTeam.id).delete(),
+        ]);
+        await db.teams.delete(deleteTeam.id);
+      });
       setDeleteTeam(null);
     } catch (err) {
       showToast(`Delete failed: ${err.message}`, 'error');
@@ -513,6 +556,11 @@ export function TeamsPage() {
             onAllTimeRoster={(gender) => navigate(`/orgs/${org.id}/all-time-roster${gender ? `?gender=${gender}` : ''}`)}
           />
         ))}
+
+        <p className="text-center text-sm rounded-xl px-4 py-2" style={{ color: '#fbbf24', border: '1px solid rgba(249,115,22,0.5)', background: 'rgba(249,115,22,0.1)' }}>
+          Experiencing technical difficulties?{' '}
+          <a href="mailto:vantagevb@gmail.com" className="underline font-bold">vantagevb@gmail.com</a>
+        </p>
       </div>
 
       {orgModal && (
@@ -522,7 +570,17 @@ export function TeamsPage() {
         <TeamFormModal
           orgId={teamModal.orgId}
           team={teamModal.team}
-          onClose={() => setTeamModal(null)}
+          onClose={(newTeamId) => {
+            setTeamModal(null);
+            if (newTeamId) setPendingSeasonTeamId(newTeamId);
+          }}
+        />
+      )}
+      {pendingSeasonTeamId && (
+        <SeasonFormModal
+          teamId={pendingSeasonTeamId}
+          required
+          onClose={() => setPendingSeasonTeamId(null)}
         />
       )}
 
@@ -540,7 +598,7 @@ export function TeamsPage() {
       {deleteTeam && (
         <ConfirmDialog
           title="Delete Team"
-          message={`Delete "${deleteTeam.name}"? This cannot be undone.`}
+          message={`Delete "${deleteTeam.name}"? All seasons, matches, players, and stats will be permanently erased. This cannot be undone.`}
           confirmLabel="Delete"
           danger
           onConfirm={handleDeleteTeam}

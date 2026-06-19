@@ -3,6 +3,7 @@ import Papa from 'papaparse';
 import { db } from '../../db/schema';
 import { MATCH_STATUS } from '../../constants';
 import { useUiStore, selectShowToast } from '../../store/uiStore';
+import { usePlan } from '../../hooks/usePlan';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 
@@ -53,6 +54,7 @@ export function ScheduleImportModal({ seasonId, onClose }) {
   const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
   const showToast = useUiStore(selectShowToast);
+  const { isMaster, matchLimit } = usePlan();
 
   function handleFile(file) {
     if (!file) return;
@@ -106,7 +108,25 @@ export function ScheduleImportModal({ seasonId, onClose }) {
     if (!rows?.length) return;
     setSaving(true);
     try {
+      const [liveCount, season] = await Promise.all([
+        db.matches.where('season_id').equals(seasonId).count(),
+        db.seasons.get(seasonId),
+      ]);
+      let effectiveCount = Math.max(liveCount, season?.peak_match_count ?? 0);
+      const slotsRemaining = isMaster ? Infinity : matchLimit - effectiveCount;
+
+      if (!isMaster && slotsRemaining <= 0) {
+        setParseError(`This season has reached its ${matchLimit}-match limit. No matches were imported.`);
+        return;
+      }
+
+      let added = 0;
+      let skipped = 0;
       for (const row of rows) {
+        if (!isMaster && added >= slotsRemaining) {
+          skipped++;
+          continue;
+        }
         const nameLower = row.opponent.toLowerCase();
         const allOpps = await db.opponents.toArray();
         let opp = allOpps.find(o => o.name.toLowerCase() === nameLower) ?? null;
@@ -130,8 +150,16 @@ export function ScheduleImportModal({ seasonId, onClose }) {
           status:          MATCH_STATUS.SCHEDULED,
           pv_token:        crypto.randomUUID(),
         });
+        added++;
+        effectiveCount++;
+        await db.seasons.update(seasonId, { peak_match_count: effectiveCount });
       }
-      showToast(`${rows.length} match${rows.length !== 1 ? 'es' : ''} added to schedule`, 'success');
+
+      if (skipped > 0) {
+        showToast(`${added} match${added !== 1 ? 'es' : ''} imported. ${skipped} skipped — season limit of ${matchLimit} reached.`, 'error');
+      } else {
+        showToast(`${added} match${added !== 1 ? 'es' : ''} added to schedule`, 'success');
+      }
       onClose();
     } catch (err) {
       setParseError('Import failed: ' + err.message);
