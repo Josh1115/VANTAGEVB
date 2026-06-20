@@ -17,8 +17,10 @@ export function SeasonFormModal({ onClose, teamId, season, required = false }) {
       const data = { name: name.trim(), year: Number(year), classification: classification.trim() || null, class_rank: classRank.trim() || null };
       if (season) {
         await db.seasons.update(season.id, data);
+        showToast('Season updated', 'success');
       } else {
         await db.seasons.add({ team_id: teamId, ...data });
+        showToast('Season added', 'success');
       }
       onClose();
     } catch (err) {

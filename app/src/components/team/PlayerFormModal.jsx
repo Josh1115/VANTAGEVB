@@ -49,8 +49,10 @@ export function PlayerFormModal({ onClose, teamId, player }) {
       const data = buildData();
       if (player) {
         await db.players.update(player.id, data);
+        showToast('Player updated', 'success');
       } else {
         await db.players.add({ team_id: teamId, ...data, is_active: true });
+        showToast('Player added', 'success');
       }
       onClose();
     } catch (err) {
@@ -63,6 +65,7 @@ export function PlayerFormModal({ onClose, teamId, player }) {
     try {
       const data = buildData();
       await db.players.add({ team_id: teamId, ...data, is_active: true });
+      showToast('Player added', 'success');
       setName('');
       setNickname('');
       setJersey('');

@@ -27,8 +27,10 @@ export function SavedLineupModal({ onClose, teamId, savedLineup, activePlayers }
       };
       if (savedLineup) {
         await db.saved_lineups.update(savedLineup.id, data);
+        showToast('Lineup updated', 'success');
       } else {
         await db.saved_lineups.add(data);
+        showToast('Lineup saved', 'success');
       }
       onClose();
     } catch (err) {

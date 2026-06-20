@@ -2619,6 +2619,8 @@ export function SettingsPage() {
           </button>
         </section>
 
+        <p className="text-center text-xs text-slate-700 pb-2">VANTAGE v{__APP_VERSION__}</p>
+
       </div>
 
       {/* Dialogs */}

@@ -80,8 +80,10 @@ function OrgFormModal({ onClose, org }) {
       };
       if (org) {
         await db.organizations.update(org.id, fields);
+        showToast('Organization updated', 'success');
       } else {
         await db.organizations.add(fields);
+        showToast('Organization added', 'success');
       }
       onClose();
     } catch (err) {
@@ -329,9 +331,11 @@ function TeamFormModal({ onClose, orgId, team }) {
       };
       if (team) {
         await db.teams.update(team.id, fields);
+        showToast('Team updated', 'success');
         onClose();
       } else {
         const newTeamId = await db.teams.add({ org_id: orgId, ...fields });
+        showToast('Team added', 'success');
         onClose(newTeamId);
       }
     } catch (err) {
