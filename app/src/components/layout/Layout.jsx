@@ -4,8 +4,10 @@ import { NavBar } from './NavBar';
 import { UpdatePrompt } from './UpdatePrompt';
 import { useUiStore, selectToast } from '../../store/uiStore';
 import { autoSaveBackup } from '../../stats/backup';
+import { useInstallPrompt } from '../../hooks/useInstallPrompt';
 
-const IOS_BANNER_KEY = 'vbstat_ios_install_dismissed';
+const IOS_BANNER_KEY     = 'vbstat_ios_install_dismissed';
+const ANDROID_BANNER_KEY = 'vbstat_android_install_dismissed';
 
 function IosInstallBanner() {
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -31,6 +33,48 @@ function IosInstallBanner() {
             Tap <span className="inline-block text-primary font-bold">⬆ Share</span> then <span className="font-semibold text-slate-300">"Add to Home Screen"</span> for the full app experience.
           </p>
         </div>
+        <button
+          onClick={dismiss}
+          className="shrink-0 text-slate-500 hover:text-white text-xl leading-none px-1"
+          aria-label="Dismiss"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AndroidInstallBanner() {
+  const { canInstall, isInstalled, promptInstall } = useInstallPrompt();
+  const [dismissed, setDismissed] = useState(
+    () => !!localStorage.getItem(ANDROID_BANNER_KEY)
+  );
+
+  if (!canInstall || isInstalled || dismissed) return null;
+
+  function dismiss() {
+    localStorage.setItem(ANDROID_BANNER_KEY, '1');
+    setDismissed(true);
+  }
+
+  return (
+    <div className="fixed bottom-20 left-0 right-0 z-50 px-3 pb-1" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <div className="bg-slate-800 border border-slate-600 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-xl">
+        <div className="text-2xl shrink-0">📲</div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-white leading-snug">Install VANTAGE</p>
+          <p className="text-xs text-slate-400 leading-snug mt-0.5">
+            Add to your home screen for full-screen mode and faster load times.
+          </p>
+        </div>
+        <button
+          onClick={promptInstall}
+          className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold text-white"
+          style={{ background: '#f97316' }}
+        >
+          Install
+        </button>
         <button
           onClick={dismiss}
           className="shrink-0 text-slate-500 hover:text-white text-xl leading-none px-1"
@@ -126,6 +170,7 @@ export function Layout() {
 
       {!hideNav && <NavBar />}
       <IosInstallBanner />
+      <AndroidInstallBanner />
 
       {/* Toast */}
       {toast && (

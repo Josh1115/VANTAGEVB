@@ -210,31 +210,43 @@ export function MatchSetupPage() {
       const ourSetsWon = parsedSets.filter((s) => s.ourScore > s.oppScore).length;
       const oppSetsWon = parsedSets.filter((s) => s.oppScore > s.ourScore).length;
 
-      const matchId = await db.matches.add({
-        season_id:              Number(seasonId),
-        opponent_id:            oppRecord.id,
-        opponent_name:          oppRecord.name,
-        opponent_abbr:          opponentAbbr.trim().toUpperCase() || null,
-        opponent_record:        opponentRecord.trim() || null,
-        opponent_maxpreps_rank: opponentMaxprepsRank !== '' ? parseInt(opponentMaxprepsRank, 10) : null,
-        status:                 MATCH_STATUS.COMPLETE,
-        pv_token:               crypto.randomUUID(),
-        format,
-        last_set_score:         matchType === 'tourney' ? tourneySet3 : lastSetScore,
-        location,
-        conference,
-        match_type:             matchType,
-        tournament_name:        matchType === 'tourney' ? tournamentName.trim() || null : null,
-        tournament_round:       matchType === 'tourney' ? tournamentRound : null,
-        playoff_round:          matchType === 'ihsa-playoffs' ? playoffRound.trim() || null : null,
-        opponent_playoff_seed:  matchType === 'ihsa-playoffs' && oppPlayoffSeed !== '' ? parseInt(oppPlayoffSeed, 10) : null,
-        date:                   matchDate ? new Date(matchDate + (matchTime ? `T${matchTime}:00` : 'T12:00:00')).toISOString() : new Date().toISOString(),
-        match_time:             matchTime || null,
-        our_sets_won:           ourSetsWon,
-        opp_sets_won:           oppSetsWon,
+      const matchId = await db.transaction('rw', [db.matches, db.seasons], async () => {
+        const [liveCount, season] = await Promise.all([
+          db.matches.where('season_id').equals(Number(seasonId)).count(),
+          db.seasons.get(Number(seasonId)),
+        ]);
+        const effective = Math.max(liveCount, season?.peak_match_count ?? 0);
+        if (!isMaster && effective >= matchLimit) {
+          const e = new Error('Season match limit reached.');
+          e.code = 'MATCH_LIMIT';
+          throw e;
+        }
+        const id = await db.matches.add({
+          season_id:              Number(seasonId),
+          opponent_id:            oppRecord.id,
+          opponent_name:          oppRecord.name,
+          opponent_abbr:          opponentAbbr.trim().toUpperCase() || null,
+          opponent_record:        opponentRecord.trim() || null,
+          opponent_maxpreps_rank: opponentMaxprepsRank !== '' ? parseInt(opponentMaxprepsRank, 10) : null,
+          status:                 MATCH_STATUS.COMPLETE,
+          pv_token:               crypto.randomUUID(),
+          format,
+          last_set_score:         matchType === 'tourney' ? tourneySet3 : lastSetScore,
+          location,
+          conference,
+          match_type:             matchType,
+          tournament_name:        matchType === 'tourney' ? tournamentName.trim() || null : null,
+          tournament_round:       matchType === 'tourney' ? tournamentRound : null,
+          playoff_round:          matchType === 'ihsa-playoffs' ? playoffRound.trim() || null : null,
+          opponent_playoff_seed:  matchType === 'ihsa-playoffs' && oppPlayoffSeed !== '' ? parseInt(oppPlayoffSeed, 10) : null,
+          date:                   matchDate ? new Date(matchDate + (matchTime ? `T${matchTime}:00` : 'T12:00:00')).toISOString() : new Date().toISOString(),
+          match_time:             matchTime || null,
+          our_sets_won:           ourSetsWon,
+          opp_sets_won:           oppSetsWon,
+        });
+        await db.seasons.update(Number(seasonId), { peak_match_count: effective + 1 });
+        return id;
       });
-      const _s1 = await db.seasons.get(Number(seasonId));
-      await db.seasons.update(Number(seasonId), { peak_match_count: (_s1?.peak_match_count ?? 0) + 1 });
 
       await db.sets.bulkAdd(
         parsedSets.map((s, i) => ({
@@ -249,7 +261,8 @@ export function MatchSetupPage() {
       const savedMatch = await db.matches.get(matchId);
       setPvShareMatch(savedMatch);
       setPvNav(`/matches/${matchId}/summary`);
-    } catch {
+    } catch (err) {
+      if (err.code === 'MATCH_LIMIT') { setError('This season has reached its match limit.'); return; }
       showToast('Failed to save match. Try again.', 'error');
       setError('Failed to save match. Try again.');
     } finally {
@@ -300,15 +313,27 @@ export function MatchSetupPage() {
         });
         effectiveMatchId = scheduledMatchId;
       } else {
-        effectiveMatchId = await db.matches.add({
-          ...matchPayload,
-          season_id:  Number(seasonId),
-          pv_token:   crypto.randomUUID(),
-          date:       matchDate ? new Date(matchDate + (matchTime ? `T${matchTime}:00` : 'T12:00:00')).toISOString() : new Date().toISOString(),
-          match_time: matchTime || null,
+        effectiveMatchId = await db.transaction('rw', [db.matches, db.seasons], async () => {
+          const [liveCount, season] = await Promise.all([
+            db.matches.where('season_id').equals(Number(seasonId)).count(),
+            db.seasons.get(Number(seasonId)),
+          ]);
+          const effective = Math.max(liveCount, season?.peak_match_count ?? 0);
+          if (!isMaster && effective >= matchLimit) {
+            const e = new Error('Season match limit reached.');
+            e.code = 'MATCH_LIMIT';
+            throw e;
+          }
+          const id = await db.matches.add({
+            ...matchPayload,
+            season_id:  Number(seasonId),
+            pv_token:   crypto.randomUUID(),
+            date:       matchDate ? new Date(matchDate + (matchTime ? `T${matchTime}:00` : 'T12:00:00')).toISOString() : new Date().toISOString(),
+            match_time: matchTime || null,
+          });
+          await db.seasons.update(Number(seasonId), { peak_match_count: effective + 1 });
+          return id;
         });
-        const _s2 = await db.seasons.get(Number(seasonId));
-        await db.seasons.update(Number(seasonId), { peak_match_count: (_s2?.peak_match_count ?? 0) + 1 });
       }
 
       // Remove any orphaned in-progress sets from a previous back-and-restart cycle
@@ -353,7 +378,8 @@ export function MatchSetupPage() {
       const savedMatch = await db.matches.get(effectiveMatchId);
       setPvShareMatch(savedMatch);
       setPvNav(`/matches/${effectiveMatchId}/live`);
-    } catch {
+    } catch (err) {
+      if (err.code === 'MATCH_LIMIT') { setError('This season has reached its match limit.'); return; }
       showToast('Failed to create match. Try again.', 'error');
       setError('Failed to create match. Try again.');
     } finally {

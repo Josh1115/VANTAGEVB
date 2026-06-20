@@ -245,13 +245,6 @@ export function SeasonDetailPage() {
 
   async function handleScheduleGame() {
     if (!schedOpp.trim()) return;
-    if (!editMatchId && !isMaster) {
-      const [liveCount, season] = await Promise.all([
-        db.matches.where('season_id').equals(id).count(),
-        db.seasons.get(id),
-      ]);
-      if (Math.max(liveCount, season?.peak_match_count ?? 0) >= matchLimit) return;
-    }
     setSchedSaving(true);
     try {
       let oppRecord = await db.opponents.where('name').equals(schedOpp.trim()).first();
@@ -282,11 +275,24 @@ export function SeasonDetailPage() {
           pv_token: existing?.pv_token ?? crypto.randomUUID(),
         });
       } else {
-        await db.matches.add({ season_id: id, status: MATCH_STATUS.SCHEDULED, pv_token: crypto.randomUUID(), ...fields });
-        const _s = await db.seasons.get(id);
-        await db.seasons.update(id, { peak_match_count: (_s?.peak_match_count ?? 0) + 1 });
+        await db.transaction('rw', [db.matches, db.seasons], async () => {
+          const [liveCount, season] = await Promise.all([
+            db.matches.where('season_id').equals(id).count(),
+            db.seasons.get(id),
+          ]);
+          const effective = Math.max(liveCount, season?.peak_match_count ?? 0);
+          if (!isMaster && effective >= matchLimit) {
+            const e = new Error('limit');
+            e.code = 'MATCH_LIMIT';
+            throw e;
+          }
+          await db.matches.add({ season_id: id, status: MATCH_STATUS.SCHEDULED, pv_token: crypto.randomUUID(), ...fields });
+          await db.seasons.update(id, { peak_match_count: effective + 1 });
+        });
       }
       resetSchedForm();
+    } catch (e) {
+      if (e.code !== 'MATCH_LIMIT') throw e;
     } finally {
       setSchedSaving(false);
     }
@@ -592,8 +598,13 @@ export function SeasonDetailPage() {
             <EmptyState
               icon="🏐"
               title="No matches yet"
-              description="Record the first match for this season"
-              action={<Button onClick={() => navigate(`/matches/new?season=${id}`)}>New Match</Button>}
+              description="Schedule upcoming games ahead of time, or jump straight into recording a live match."
+              action={
+                <div className="flex gap-3 justify-center flex-wrap">
+                  <Button variant="secondary" onClick={() => setSchedOpen(true)}>+ Schedule Game</Button>
+                  <Button onClick={() => navigate(`/matches/new?season=${id}`)}>Start Match Now</Button>
+                </div>
+              }
             />
           ) : (
             <div className="space-y-2">

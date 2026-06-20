@@ -13,7 +13,7 @@ function friendlyAuthError(msg) {
   if (/email not confirmed/i.test(msg))        return 'Please confirm your email before logging in.';
   if (/too many requests/i.test(msg))          return 'Too many attempts. Please wait a moment and try again.';
   if (/network/i.test(msg) || /fetch/i.test(msg)) return 'Network error. Check your connection and try again.';
-  return msg;
+  return 'Something went wrong. Please try again.';
 }
 
 export function LoginPage({ onSignup }) {
@@ -23,9 +23,15 @@ export function LoginPage({ onSignup }) {
   const [password,   setPassword]   = useState('');
   const [error,      setError]      = useState('');
   const [loading,    setLoading]    = useState(false);
-  const [forgotSent, setForgotSent] = useState(false);
-  const [logoSvgW,   setLogoSvgW]  = useState(null);
+  const [forgotSent,   setForgotSent]   = useState(false);
+  const [logoSvgW,     setLogoSvgW]    = useState(null);
+  const [pricingOpen,  setPricingOpen]  = useState(false);
   const passRef = useRef(null);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    document.title = 'Vantage: Immediate Impact Analytics';
+  }, []);
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase(p => Math.max(p, 1)), 80);
@@ -114,6 +120,57 @@ export function LoginPage({ onSignup }) {
               >
                 SIGN UP
               </button>
+              {/* ── Pricing ── */}
+              <div className="w-full rounded-2xl border border-slate-700 overflow-hidden">
+                <button
+                  onClick={() => setPricingOpen(o => !o)}
+                  className="w-full relative overflow-hidden flex items-center justify-center px-4 py-3 bg-slate-800/60 hover:bg-slate-800 transition-colors btn-shimmer"
+                >
+                  <span className="text-sm font-bold text-white tracking-wide">VIEW PRICING PLANS</span>
+                  <svg
+                    className="w-4 h-4 text-slate-400 transition-transform duration-300 absolute right-4"
+                    style={{ transform: pricingOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {pricingOpen && (
+                  <div className="px-4 pb-4 pt-3 bg-slate-900/60 space-y-2">
+                    {/* Trial */}
+                    <div className="rounded-xl border border-slate-700 px-3 py-2.5 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-bold text-white">Trial</p>
+                        <p className="text-xs text-slate-400">1 team · 5 matches</p>
+                      </div>
+                      <span className="text-sm font-black" style={{ color: '#f97316' }}>FREE</span>
+                    </div>
+                    {[
+                      { label: '1 Team',   price: '$79.99',  desc: '1 team · 50 matches/season' },
+                      { label: '2 Teams',  price: '$139.99', desc: '2 teams · 50 matches/season each' },
+                      { label: '3 Teams',  price: '$189.99', desc: '3 teams · 50 matches/season each' },
+                      { label: '4 Teams',  price: '$229.99', desc: '4 teams · 50 matches/season each' },
+                      { label: '5+ Teams', price: '$259.99', desc: 'Unlimited teams · 50 matches/season each' },
+                    ].map(({ label, price, desc }) => (
+                      <div key={label} className="rounded-xl border border-slate-700 px-3 py-2.5 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-bold text-white">{label}</p>
+                          <p className="text-xs text-slate-400">{desc}</p>
+                        </div>
+                        <div className="text-right shrink-0 ml-3">
+                          <p className="text-sm font-black" style={{ color: '#f97316' }}>{price}</p>
+                          <p className="text-[10px] text-slate-500">/year</p>
+                        </div>
+                      </div>
+                    ))}
+                    <p className="text-[11px] text-slate-500 text-center pt-1">
+                      Contact <a href="mailto:vantagevb@gmail.com" className="underline text-slate-400">vantagevb@gmail.com</a> to purchase a plan.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <p className="text-center text-sm rounded-xl px-4 py-2" style={{ color: '#fbbf24', border: '1px solid rgba(249,115,22,0.5)', background: 'rgba(249,115,22,0.1)' }}>
                 Experiencing technical difficulties?{' '}
                 <a href="mailto:vantagevb@gmail.com" className="underline font-bold">vantagevb@gmail.com</a>
@@ -128,6 +185,7 @@ export function LoginPage({ onSignup }) {
                 ELEVATE TO YOUR VANTAGE
               </h2>
               <p className="text-sm text-slate-400 text-center mt-1">How does Vantage compare to the competition?</p>
+              <img src="/icons/logo2.png" alt="Vantage logo" className="mx-auto mt-4" style={{ width: '40%' }} />
 
               {/* ── Feature Card: Live Stat View ── */}
               <div className="w-full mt-6">
@@ -147,7 +205,7 @@ export function LoginPage({ onSignup }) {
                 <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
                   OPPONENT SCORING BAR
                 </p>
-                <img src="/screenshots/OppoBar.png" alt="Opponent Scoring Bar" className="rounded-xl mx-auto block" style={{ width: '20%' }} />
+                <img loading="lazy" src="/screenshots/OppoBar.png" alt="Opponent Scoring Bar" className="rounded-xl mx-auto block" style={{ width: '20%' }} />
 
                 <p className="text-sm text-slate-400 mt-3">
                   Track how your opponent scores. How does your opponent score their points? The Opponent Scoring Bar vertically integrates to the right side of the screen, allowing the user to define if an opponent won the point by Kill, Serving Error, Attacking Error, Ball Handling Error, Net/Under Violation, or Rotation Overlapping Violation. Additionally, the app intuitively awards the opponent an ACE when the home team obtains a 0 rating in serve receive. Now coaches can see how their roster 'Earns', 'Gives', and are awarded 'Free' points from opponent errors.
@@ -159,7 +217,7 @@ export function LoginPage({ onSignup }) {
                 <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
                   EARNED vs FREE vs GIVEN
                 </p>
-                <img src="/screenshots/Earned vs Free vs Given.png" alt="Earned vs Free vs Given" className="w-full rounded-xl" />
+                <img loading="lazy" src="/screenshots/Earned vs Free vs Given.png" alt="Earned vs Free vs Given" className="w-full rounded-xl" />
 
                 <p className="text-sm text-slate-400 mt-3">
                   Every point your team scores falls into one of three categories. Points your team Earns through kills and aces. Points Given away through your own errors. And Free points — gifts from opponent mistakes. Vantage breaks down every point so you know exactly how your team is winning and where they're leaving points on the court.
@@ -171,7 +229,7 @@ export function LoginPage({ onSignup }) {
                 <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
                   RUN BAR INDICATOR
                 </p>
-                <img src="/screenshots/RunBar.png" alt="Run Bar Indicator" className="w-full rounded-xl" />
+                <img loading="lazy" src="/screenshots/RunBar.png" alt="Run Bar Indicator" className="w-full rounded-xl" />
 
                 <p className="text-sm text-slate-400 mt-3">
                   See momentum shift in real time. The Run Bar Indicator tracks every point of the set visually — color-coded by team — so you can instantly spot scoring runs, identify which rotations are leaking points, and know when to call a timeout before a run gets out of hand.
@@ -184,8 +242,8 @@ export function LoginPage({ onSignup }) {
                   LIVE TEAM & PLAYER STATS IN HUD
                 </p>
                 <div className="flex flex-col gap-2">
-                  <img src="/screenshots/Live Team Stats.png" alt="Live team stats HUD" className="w-full rounded-xl" />
-                  <img src="/screenshots/Live Player Stats.png" alt="Live player stats HUD" className="w-full rounded-xl" />
+                  <img loading="lazy" src="/screenshots/Live Team Stats.png" alt="Live team stats HUD" className="w-full rounded-xl" />
+                  <img loading="lazy" src="/screenshots/Live Player Stats.png" alt="Live player stats HUD" className="w-full rounded-xl" />
                 </div>
 
                 <p className="text-sm text-slate-400 mt-3">
@@ -197,7 +255,7 @@ export function LoginPage({ onSignup }) {
                 <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
                   SET WIN PROBABILITY
                 </p>
-                <img src="/screenshots/Win Prob.png" alt="Set Win Probability" className="w-full rounded-xl" />
+                <img loading="lazy" src="/screenshots/Win Prob.png" alt="Set Win Probability" className="w-full rounded-xl" />
 
                 <p className="text-sm text-slate-400 mt-3">
                   After every rally, Vantage recalculates your team's probability of winning the set — powered by your historical serve receive win percentage, serve point win percentage, and live score differential. Watch the needle move in real time and know exactly when momentum is on your side.
@@ -210,8 +268,8 @@ export function LoginPage({ onSignup }) {
                   SERVE STAT DETAIL
                 </p>
                 <div className="flex flex-col gap-2">
-                  <img src="/screenshots/Serve Type.png" alt="Serve type selection" className="w-full rounded-xl" />
-                  <img src="/screenshots/Serve Error.png" alt="Serve error classification" className="w-full rounded-xl" />
+                  <img loading="lazy" src="/screenshots/Serve Type.png" alt="Serve type selection" className="w-full rounded-xl" />
+                  <img loading="lazy" src="/screenshots/Serve Error.png" alt="Serve error classification" className="w-full rounded-xl" />
                 </div>
 
                 <p className="text-sm text-slate-400 mt-3">
@@ -224,7 +282,7 @@ export function LoginPage({ onSignup }) {
                 <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
                   SERVE PLACEMENT MAP
                 </p>
-                <img src="/screenshots/Service Grid.png" alt="Serve Placement Map" className="w-full rounded-xl" />
+                <img loading="lazy" src="/screenshots/Service Grid.png" alt="Serve Placement Map" className="w-full rounded-xl" />
 
                 <p className="text-sm text-slate-400 mt-3">
                   After tagging a serve, tap anywhere on the court grid to mark exactly where it landed. Over time, the placement map reveals which zones a player targets most, where they're finding aces, and — critically — which zones of the opponent's court are receiving the ball poorly. Use it to expose weaknesses and put your best servers in position to attack them.
@@ -236,7 +294,7 @@ export function LoginPage({ onSignup }) {
                 <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
                   IN / OUT OF SYSTEM BY ROTATION
                 </p>
-                <img src="/screenshots/In vs Out of System.png" alt="In vs Out of System by Rotation" className="w-full rounded-xl" />
+                <img loading="lazy" src="/screenshots/In vs Out of System.png" alt="In vs Out of System by Rotation" className="w-full rounded-xl" />
 
                 <p className="text-sm text-slate-400 mt-3">
                   Not all opportunities are equal. Vantage breaks down kill percentage by system state — In System when the pass is clean, Out of System when your team is scrambling, and separately tracks Free Ball and Transition kill rates — for every rotation. See which rotations hold up under pressure and which collapse when the pass breaks down, so you can build smarter lineups and target practice exactly where it counts.
@@ -249,8 +307,8 @@ export function LoginPage({ onSignup }) {
                   ATTACK DETAIL — KILL TYPE &amp; ERRORS
                 </p>
                 <div className="flex flex-col gap-2">
-                  <img src="/screenshots/Kill Details.png" alt="Kill type detail" className="w-full rounded-xl" />
-                  <img src="/screenshots/Attack Error.png" alt="Attack error classification" className="w-full rounded-xl" />
+                  <img loading="lazy" src="/screenshots/Kill Details.png" alt="Kill type detail" className="w-full rounded-xl" />
+                  <img loading="lazy" src="/screenshots/Attack Error.png" alt="Attack error classification" className="w-full rounded-xl" />
                 </div>
 
                 <p className="text-sm text-slate-400 mt-3">
@@ -262,7 +320,7 @@ export function LoginPage({ onSignup }) {
                 <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
                   VANTAGE EFFICIENCY RATING (VER)
                 </p>
-                <img src="/screenshots/VER.png" alt="Vantage Efficiency Rating" className="w-full rounded-xl" />
+                <img loading="lazy" src="/screenshots/VER.png" alt="Vantage Efficiency Rating" className="w-full rounded-xl" />
 
                 <p className="text-sm text-slate-400 mt-3">
                   VER is Vantage's composite efficiency metric — a single number that captures how much a player contributes per set played. Kills, aces, blocks, digs, assists, and passing all earn points. Errors cost them. The result is position-adjusted so liberos and defensive specialists can be evaluated fairly alongside attackers. Track VER across a season to identify your most valuable contributors and spot efficiency trends before they show up in the box score.
@@ -499,7 +557,7 @@ export function LoginPage({ onSignup }) {
                 <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
                   REAL-TIME WIN FACTORS
                 </p>
-                <img src="/screenshots/Insights.png" alt="Real-Time Win Factors" className="w-full rounded-xl" />
+                <img loading="lazy" src="/screenshots/Insights.png" alt="Real-Time Win Factors" className="w-full rounded-xl" />
 
                 <p className="text-sm text-slate-400 mt-3">
                   Vantage continuously compares your live match stats to your season's historical win and loss averages. Twelve key metrics are ranked by win factor — the percentage of your win/loss gap that stat accounts for. Green means you're at win-level performance right now; amber means you're close; red means this metric is tracking closer to your loss average and needs attention. Open it during any timeout to instantly know where to focus.
@@ -512,8 +570,8 @@ export function LoginPage({ onSignup }) {
                   INDIVIDUAL, TEAM &amp; PROGRAM RECORDS
                 </p>
                 <div className="flex flex-col gap-2">
-                  <img src="/screenshots/Team Records 1.png" alt="Team Records tracker" className="w-full rounded-xl" />
-                  <img src="/screenshots/Team Records 2.png" alt="Team Records detail" className="w-full rounded-xl" />
+                  <img loading="lazy" src="/screenshots/Team Records 1.png" alt="Team Records tracker" className="w-full rounded-xl" />
+                  <img loading="lazy" src="/screenshots/Team Records 2.png" alt="Team Records detail" className="w-full rounded-xl" />
                 </div>
 
                 <p className="text-sm text-slate-400 mt-3">
@@ -526,7 +584,7 @@ export function LoginPage({ onSignup }) {
                 <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
                   FAMILYSCOPE
                 </p>
-                <img src="/screenshots/FamilyScope.png" alt="FamilyScope parent view" className="w-full rounded-xl" />
+                <img loading="lazy" src="/screenshots/FamilyScope.png" alt="FamilyScope parent view" className="w-full rounded-xl" />
 
                 <p className="text-sm text-slate-400 mt-3">
                   FamilyScope gives parents and fans a live, read-only view of the match right on their phone — no app download, no account required. Share a QR code or link before tip-off and they'll see the live score, set-by-set results, a real-time action feed updated after every rally, and the full box score. You stay focused on the sideline; they stay connected to every point.
@@ -538,12 +596,20 @@ export function LoginPage({ onSignup }) {
                 <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
                   THE TEAMS PAGE
                 </p>
-                <img src="/screenshots/Teams Page.png" alt="Teams page" className="w-full rounded-xl" />
+                <img loading="lazy" src="/screenshots/Teams Page.png" alt="Teams page" className="w-full rounded-xl" />
 
                 <p className="text-sm text-slate-400 mt-3">
                   Your Teams page is your program's home base. Set up any school, club, or organization with colors and logo, then build out your roster with full player profile cards — position, jersey number, season stats, and VER rating all in one view. The Rotations tab lets you define custom serve receive formations for each of your six rotations. The Practice tab logs serve tracker sessions, serve receive ratings, and practice game scores. And the History tab preserves your all-time roster across every season you've tracked.
                 </p>
               </div>
+
+              <h2
+                className="text-[36.8px] font-black uppercase leading-none tracking-[0.15em] text-center mt-8"
+                style={{ color: '#ffffff' }}
+              >
+                AND MUCH MORE...!
+              </h2>
+              <img src="/icons/logo2.png" alt="Vantage logo" className="mx-auto mt-4" style={{ width: '40%' }} />
             </>
           ) : (
             <div className="w-full flex flex-col gap-4 animate-slide-up-fade">

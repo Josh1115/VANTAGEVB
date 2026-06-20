@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './router';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -13,6 +13,12 @@ function AppShell() {
   const wasLoggedOut = useRef(false);
 
   if (!loading && !session) wasLoggedOut.current = true;
+
+  useEffect(() => {
+    if (!loading) {
+      document.title = session ? 'VANTAGE' : 'Vantage: Immediate Impact Analytics';
+    }
+  }, [session, loading]);
 
   // When transitioning from logged-out → logged-in, reset URL to home
   // so the router doesn't land on whatever page was open before login.

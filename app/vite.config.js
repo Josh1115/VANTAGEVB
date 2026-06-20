@@ -35,7 +35,7 @@ export default defineConfig({
       manifest: {
         name: 'VANTAGE',
         short_name: 'VANTAGE',
-        description: 'Precision sideline analytics for volleyball coaches',
+        description: 'Immediate impact volleyball analytics — live stats, win probability, and player insights.',
         theme_color: '#f97316',
         background_color: '#0f172a',
         display: 'standalone',

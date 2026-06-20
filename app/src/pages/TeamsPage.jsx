@@ -465,7 +465,7 @@ export function TeamsPage() {
   const [pendingSeasonTeamId, setPendingSeasonTeamId] = useState(null); // new team id awaiting first season
   const showToast = useUiStore(selectShowToast);
 
-  const atTeamLimit = !isMaster && (allTeams?.length ?? 0) >= teamsAllowed;
+  const atTeamLimit = !isMaster && (allTeams?.length ?? 0) >= (Number.isFinite(teamsAllowed) ? teamsAllowed : 0);
 
   const handleDeleteOrg = async () => {
     try {
@@ -719,7 +719,18 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
       </div>
 
       {(teams ?? []).length === 0 ? (
-        <p className="text-slate-500 px-5 py-5">No teams yet</p>
+        <div className="px-5 py-2 pb-5">
+          <EmptyState
+            icon="👥"
+            title="No teams yet"
+            description="Add your first team to start tracking stats"
+            action={
+              onAddTeam
+                ? <Button onClick={onAddTeam}>+ Add Team</Button>
+                : <p className="text-xs text-slate-500">Upgrade your plan to add more teams</p>
+            }
+          />
+        </div>
       ) : multiGender ? (
         genderGroups.map(({ gender, teams: gTeams }) => {
           const info = yearRangeInfo(gTeams.map((t) => t.id), yearsByTeam);

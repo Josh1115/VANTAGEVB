@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { supabase } from '../utils/supabase';
 import { createPortal } from 'react-dom';
 import { VantageLogo } from '../components/ui/VantageLogo';
 import { STORAGE_KEYS, getStorageItem, setStorageItem, getIntStorage, getPlayoffLabel, getBoolStorage, setBoolStorage } from '../utils/storage';
@@ -353,6 +354,7 @@ export function HomePage() {
   const fmtDelta = (val) => val > 0 ? `(▲${val})` : `(▼${Math.abs(val)})`;
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const [matchView, setMatchView] = useState(() => {
     const v = getStorageItem(STORAGE_KEYS.MATCH_VIEW_DEFAULT, 'closest');
     return v === 'recent' ? 'closest' : v;
@@ -1671,7 +1673,32 @@ export function HomePage() {
           Experiencing technical difficulties?{' '}
           <a href="mailto:vantagevb@gmail.com" className="underline font-bold">vantagevb@gmail.com</a>
         </p>
+
+        <div className="border-t border-slate-800 mx-4 mb-6 pt-6">
+          <button
+            onClick={() => setConfirmLogout(true)}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 active:scale-95 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 font-semibold text-sm transition-all duration-150"
+          >
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            Sign Out
+          </button>
+        </div>
       </div>
+
+      {confirmLogout && (
+        <ConfirmDialog
+          title="Sign Out"
+          message="Are you sure you want to sign out?"
+          confirmLabel="Sign Out"
+          danger
+          onConfirm={async () => { await supabase.auth.signOut(); }}
+          onCancel={() => setConfirmLogout(false)}
+        />
+      )}
 
       {showWhiteboard && (
         <CourtWhiteboard onClose={() => setShowWhiteboard(false)} />
