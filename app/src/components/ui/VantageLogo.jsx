@@ -60,7 +60,7 @@ function buildCSS(totalWidth) {
   return [...lKFs, ulKF].join('');
 }
 
-export function VantageLogo({ animated = true, onClick, onPointerDown, onPointerUp, onPointerLeave, onMeasure }) {
+export function VantageLogo({ animated = true, onClick, onPointerDown, onPointerUp, onPointerLeave, onMeasure, svgStyle }) {
   const measureRef = useRef(null);
   const [m, setM] = useState(null); // { chars: [{x}], bbox }
 
@@ -100,7 +100,7 @@ export function VantageLogo({ animated = true, onClick, onPointerDown, onPointer
   return (
     <svg
       className={`${animated ? 'scoreboard-flicker' : ''} cursor-pointer select-none`}
-      style={{ overflow: 'visible' }}
+      style={{ overflow: 'visible', ...svgStyle }}
       width={vbW}
       height={vbH}
       viewBox={`0 ${vbY} ${vbW} ${vbH}`}

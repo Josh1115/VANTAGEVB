@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { VantageLogo } from '../ui/VantageLogo';
 import { NetDivider } from '../ui/NetDivider';
 import { supabase } from '../../utils/supabase';
+import { router } from '../../router';
 
 function friendlyAuthError(msg) {
   if (!msg) return 'Something went wrong. Please try again.';
@@ -24,14 +25,17 @@ export function LoginPage({ onSignup }) {
   const [error,      setError]      = useState('');
   const [loading,    setLoading]    = useState(false);
   const [forgotSent,   setForgotSent]   = useState(false);
-  const [logoSvgW,     setLogoSvgW]    = useState(null);
-  const [pricingOpen,  setPricingOpen]  = useState(false);
+  const [pricingOpen,  setPricingOpen]  = useState(true);
   const passRef = useRef(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
     document.title = 'Vantage: Immediate Impact Analytics';
   }, []);
+
+  useEffect(() => {
+    if (showForm) window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [showForm]);
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase(p => Math.max(p, 1)), 80);
@@ -47,9 +51,12 @@ export function LoginPage({ onSignup }) {
     setLoading(true);
     setError('');
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
-    if (error) setError(friendlyAuthError(error.message));
-    setLoading(false);
-    // On success, AuthContext onAuthStateChange fires automatically
+    if (error) {
+      setError(friendlyAuthError(error.message));
+      setLoading(false);
+    } else {
+      router.navigate('/', { replace: true });
+    }
   }
 
   async function handleForgot() {
@@ -61,7 +68,7 @@ export function LoginPage({ onSignup }) {
     setForgotSent(true);
   }
 
-  const inp = 'w-full rounded-2xl border-2 border-slate-600 bg-slate-800/40 px-5 py-4 text-lg text-white placeholder-slate-500 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all';
+  const inp = 'w-full rounded-2xl border-2 border-slate-600 bg-slate-800/40 px-5 py-4 text-lg text-white placeholder-slate-500 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed';
 
   return (
     <div
@@ -72,7 +79,19 @@ export function LoginPage({ onSignup }) {
 
         {/* Brandmark */}
         <div className="flex flex-col items-center gap-5 w-full">
+          {/* Mobile: fill container width to avoid viewport clipping */}
           <div
+            className="md:hidden w-full"
+            style={{ opacity: phase >= 1 ? 1 : 0, transition: 'opacity 1.3s ease' }}
+          >
+            <VantageLogo
+              animated={phase >= 2}
+              svgStyle={{ width: '100%', height: 'auto' }}
+            />
+          </div>
+          {/* Desktop: scale 2x — wide enough that overflow doesn't clip */}
+          <div
+            className="hidden md:block"
             style={{
               opacity: phase >= 1 ? 1 : 0,
               transition: 'opacity 1.3s ease',
@@ -81,9 +100,9 @@ export function LoginPage({ onSignup }) {
               marginBottom: '5.5rem',
             }}
           >
-            <VantageLogo animated={phase >= 2} onMeasure={setLogoSvgW} />
+            <VantageLogo animated={phase >= 2} />
           </div>
-          <p className="text-2xl font-semibold tracking-[0.25em] text-slate-400 flex gap-3">
+          <p className="text-2xl font-semibold tracking-[0.25em] text-slate-400 flex flex-col items-center gap-1 md:flex-row md:gap-3">
             {['IMMEDIATE', 'IMPACT', 'ANALYTICS'].map((word, i) => (
               <span
                 key={word}
@@ -93,13 +112,6 @@ export function LoginPage({ onSignup }) {
               </span>
             ))}
           </p>
-          <p
-            className="text-[18px] italic text-slate-500 -mt-[5px]"
-            style={{ opacity: phase >= 5 ? 1 : 0, transition: 'opacity 0.8s ease' }}
-          >
-            Powered by Vantage Analytics
-          </p>
-
           {/* Buttons */}
           <div
             className="w-full flex flex-col gap-4 mt-6"
@@ -164,18 +176,19 @@ export function LoginPage({ onSignup }) {
                         </div>
                       </div>
                     ))}
-                    <p className="text-[11px] text-slate-500 text-center pt-1">
-                      Contact <a href="mailto:vantagevb@gmail.com" className="underline text-slate-400">vantagevb@gmail.com</a> to purchase a plan.
-                    </p>
                   </div>
                 )}
               </div>
+              <p className="text-[11px] text-slate-500 text-center -mt-2">
+                Ready to purchase?{' '}
+                <a href="mailto:vantagevb@gmail.com" className="underline text-slate-400 hover:text-slate-300 transition-colors">vantagevb@gmail.com</a>
+              </p>
 
               <p className="text-center text-sm rounded-xl px-4 py-2" style={{ color: '#fbbf24', border: '1px solid rgba(249,115,22,0.5)', background: 'rgba(249,115,22,0.1)' }}>
                 Experiencing technical difficulties?{' '}
                 <a href="mailto:vantagevb@gmail.com" className="underline font-bold">vantagevb@gmail.com</a>
               </p>
-              <div className="self-center" style={{ width: logoSvgW ? logoSvgW * 2 : undefined }}>
+              <div className="w-full">
                 <NetDivider className="mt-2" />
               </div>
               <h2
@@ -184,7 +197,6 @@ export function LoginPage({ onSignup }) {
               >
                 ELEVATE TO YOUR VANTAGE
               </h2>
-              <p className="text-sm text-slate-400 text-center mt-1">How does Vantage compare to the competition?</p>
               <img src="/icons/logo2.png" alt="Vantage logo" className="mx-auto mt-4" style={{ width: '40%' }} />
 
               {/* ── Feature Card: Live Stat View ── */}
@@ -609,7 +621,21 @@ export function LoginPage({ onSignup }) {
               >
                 AND MUCH MORE...!
               </h2>
-              <img src="/icons/logo2.png" alt="Vantage logo" className="mx-auto mt-4" style={{ width: '40%' }} />
+              <p className="text-sm text-slate-400 text-center mt-6">
+                Start your free trial — no credit card required.
+              </p>
+              <button
+                onClick={onSignup}
+                className="relative overflow-hidden w-full rounded-2xl bg-primary py-4 text-[18.4px] leading-none font-black text-white tracking-wide active:scale-[0.97] transition-transform btn-shimmer mt-2"
+              >
+                SIGN UP FREE
+              </button>
+              <button
+                onClick={() => setShowForm(true)}
+                className="w-full rounded-2xl border border-slate-700 bg-slate-800/40 py-3 text-sm font-bold text-slate-400 tracking-wide active:scale-[0.97] transition-transform mb-12"
+              >
+                Already have an account? Log in
+              </button>
             </>
           ) : (
             <div className="w-full flex flex-col gap-4 animate-slide-up-fade">
@@ -620,6 +646,7 @@ export function LoginPage({ onSignup }) {
                 autoFocus
                 placeholder="Email"
                 value={email}
+                disabled={loading}
                 onChange={e => { setEmail(e.target.value); setError(''); setForgotSent(false); }}
                 onKeyDown={e => e.key === 'Enter' && passRef.current?.focus()}
                 className={inp}
@@ -630,6 +657,7 @@ export function LoginPage({ onSignup }) {
                 autoComplete="current-password"
                 placeholder="Password"
                 value={password}
+                disabled={loading}
                 onChange={e => { setPassword(e.target.value); setError(''); }}
                 onKeyDown={e => e.key === 'Enter' && handleLogin()}
                 className={inp}

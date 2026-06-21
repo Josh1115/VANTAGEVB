@@ -8,6 +8,16 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { MATCH_STATUS } from '../constants';
 import { fmtDate, fmtHitting, fmtPct } from '../stats/formatters';
+import { computePlayerStats, computeTeamStats } from '../stats/engine';
+import { deleteMatch } from '../stats/queries';
+import { Button } from '../components/ui/Button';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { NetDivider } from '../components/ui/NetDivider';
+import { SwipeableMatchCard } from '../components/ui/SwipeableMatchCard';
+import { VBPlayerScene } from '../components/ui/VBPlayerScene';
+import { CourtWhiteboard } from '../components/match/CourtWhiteboard';
+import { Spinner } from '../components/ui/Spinner';
 
 // Converts "HH:MM" (24h) → "H:MM AM/PM"
 function fmtTime(t) {
@@ -20,22 +30,20 @@ function fmtTime(t) {
 
 // Sort matches by date, breaking same-day ties with match_time ("HH:MM" 24h). No time = sorts last within the day.
 function sortByDateTime(a, b) {
-  const da = a.date?.slice(0, 10) ?? '';
-  const db = b.date?.slice(0, 10) ?? '';
-  if (da !== db) return da < db ? -1 : 1;
+  const da    = a.date?.slice(0, 10) ?? '';
+  const dateB = b.date?.slice(0, 10) ?? '';
+  if (da !== dateB) return da < dateB ? -1 : 1;
   const ta = a.match_time ?? '99:99';
   const tb = b.match_time ?? '99:99';
   return ta < tb ? -1 : ta > tb ? 1 : 0;
 }
-import { computePlayerStats, computeTeamStats } from '../stats/engine';
-import { deleteMatch } from '../stats/queries';
-import { Button } from '../components/ui/Button';
-import { EmptyState } from '../components/ui/EmptyState';
-import { ConfirmDialog } from '../components/ui/ConfirmDialog';
-import { NetDivider } from '../components/ui/NetDivider';
-import { SwipeableMatchCard } from '../components/ui/SwipeableMatchCard';
-import { VBPlayerScene } from '../components/ui/VBPlayerScene';
-import { CourtWhiteboard } from '../components/match/CourtWhiteboard';
+
+function computeTodayDisplay() {
+  const d = new Date();
+  const day   = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+  const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+  return `${day} · ${month} ${d.getDate()}`;
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -351,7 +359,6 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
 export function HomePage() {
   const navigate = useNavigate();
   const isWin = (match) => (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
-  const fmtDelta = (val) => val > 0 ? `(▲${val})` : `(▼${Math.abs(val)})`;
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
@@ -379,12 +386,13 @@ export function HomePage() {
   const [schedOppSeed,      setSchedOppSeed]      = useState('');
   const [schedTime,         setSchedTime]         = useState('');
   const [schedSaving,    setSchedSaving]    = useState(false);
+  const [schedError,     setSchedError]     = useState('');
 
-  const todayDisplay = useMemo(() => {
-    const d = new Date();
-    const day = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-    const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-    return `${day} · ${month} ${d.getDate()}`;
+  const [todayDisplay, setTodayDisplay] = useState(computeTodayDisplay);
+  useEffect(() => {
+    const refresh = () => setTodayDisplay(computeTodayDisplay());
+    document.addEventListener('visibilitychange', refresh);
+    return () => document.removeEventListener('visibilitychange', refresh);
   }, []);
 
   const defaultTeamId   = getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID);
@@ -465,7 +473,6 @@ export function HomePage() {
       .where('team_id').equals(defaultTeamId)
       .filter(h => h.year === (season.name ?? String(season.year)))
       .first();
-    const isWin = m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0);
     const wins   = matches.filter(isWin).length;
     const losses = matches.length - wins;
     const homeW  = matches.filter(m => m.location === 'home'    &&  isWin(m)).length;
@@ -760,8 +767,9 @@ export function HomePage() {
   }
 
   async function handleScheduleGame() {
-    if (!schedOpp.trim()) return;
+    if (!schedOpp.trim() || !editMatchId) return;
     setSchedSaving(true);
+    setSchedError('');
     try {
       let oppRecord = await db.opponents.where('name').equals(schedOpp.trim()).first();
       if (!oppRecord) {
@@ -786,12 +794,15 @@ export function HomePage() {
       };
       await db.matches.update(editMatchId, fields);
       resetSchedForm();
+    } catch {
+      setSchedError('Failed to save. Please try again.');
     } finally {
       setSchedSaving(false);
     }
   }
 
   function resetSchedForm() {
+    setSchedError('');
     setEditMatchId(null);
     setSchedOpp('');
     setSchedOppAbbr('');
@@ -877,9 +888,6 @@ export function HomePage() {
           />
           <span className="text-[17.5px] font-semibold tracking-[0.22em] text-slate-300 uppercase">
             Immediate Impact Analytics
-          </span>
-          <span className="text-slate-400 font-normal text-[17.5px] tracking-wide italic">
-            powered by Vantage Analytics
           </span>
         </h1>
       </header>
@@ -1179,7 +1187,7 @@ export function HomePage() {
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white px-0.5 animate-slide-up-fade" style={{ animationDelay: '250ms' }}>
                 Season Leaders{seasonRecord?.seasonName ? <span className="ml-1.5 normal-case font-semibold tracking-normal text-white">· {seasonRecord.seasonName}</span> : ''}
               </p>
-              <div className="grid grid-cols-7 gap-2">
+              <div className="grid grid-cols-7 gap-1">
                 {LEADERS.map(({ label, key, ttKey, fmt }, i) => {
                   const leader = seasonLeaders?.[key];
                   const canNav = leader?.id && defaultTeamId;
@@ -1188,7 +1196,7 @@ export function HomePage() {
                       key={key}
                       onClick={() => canNav && navigate(`/teams/${defaultTeamId}/players/${leader.id}?season=${defaultSeasonId}&stat=${ttKey}`)}
                       disabled={!canNav}
-                      className="bg-surface rounded-xl p-2 text-center flex flex-col items-center gap-1 animate-slide-up-fade active:scale-95 transition-transform disabled:active:scale-100"
+                      className="bg-surface rounded-xl p-1.5 text-center flex flex-col items-center gap-1 animate-slide-up-fade active:scale-95 transition-transform disabled:active:scale-100"
                       style={{ animationDelay: `${260 + i * 45}ms` }}
                     >
                       <span className="text-[10px] font-black uppercase tracking-wider text-white">{label}</span>
@@ -1206,7 +1214,7 @@ export function HomePage() {
                 })}
               </div>
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white px-0.5 animate-slide-up-fade" style={{ animationDelay: `${260 + LEADERS.length * 45}ms` }}>Team Totals</p>
-              <div className="grid grid-cols-7 gap-2">
+              <div className="grid grid-cols-7 gap-1">
                 {LEADERS.map(({ label, ttKey, fmt, noAvg }, i) => {
                   const teamVal = tt?.[ttKey];
                   const canNav  = !!defaultSeasonId;
@@ -1221,7 +1229,7 @@ export function HomePage() {
                       key={ttKey}
                       onClick={() => canNav && navigate(`/seasons/${defaultSeasonId}/team?stat=${ttKey}`)}
                       disabled={!canNav}
-                      className="bg-surface rounded-xl p-2 text-center flex flex-col items-center gap-1 animate-slide-up-fade active:scale-95 transition-transform disabled:active:scale-100"
+                      className="bg-surface rounded-xl p-1.5 text-center flex flex-col items-center gap-1 animate-slide-up-fade active:scale-95 transition-transform disabled:active:scale-100"
                       style={{ animationDelay: `${320 + LEADERS.length * 45 + i * 45}ms` }}
                     >
                       <span className="text-[10px] font-black uppercase tracking-wider text-white">{label}</span>
@@ -1244,7 +1252,7 @@ export function HomePage() {
         <div className="flex gap-2 animate-slide-up-fade" style={{ animationDelay: '180ms' }}>
           <button
             onClick={() => navigate('/opponents')}
-            className="group flex-1 card-top-glow bg-blue-800/60 hover:bg-blue-800/80 border border-blue-700/40 hover:border-blue-600/60 rounded-xl p-3 text-left flex items-center gap-2.5 active:scale-[0.97] transition-[transform,background-color,border-color] duration-75"
+            className={`group card-top-glow bg-blue-800/60 hover:bg-blue-800/80 border border-blue-700/40 hover:border-blue-600/60 rounded-xl p-3 text-left flex items-center gap-2.5 active:scale-[0.97] transition-[transform,background-color,border-color] duration-75 ${nextMatch ? 'flex-1' : 'w-full'}`}
           >
             <span className="text-2xl inline-block transition-transform duration-75 group-active:-translate-y-1 group-active:scale-125">🔭</span>
             <div className="min-w-0">
@@ -1365,13 +1373,13 @@ export function HomePage() {
             <div className="flex items-center gap-2">
               <div className="flex bg-slate-800 rounded-lg p-0.5">
                 <button
-                  onClick={() => setMatchView('closest')}
+                  onClick={() => { setMatchView('closest'); setStorageItem(STORAGE_KEYS.MATCH_VIEW_DEFAULT, 'closest'); }}
                   className={`text-[10px] font-semibold px-2 py-1 rounded-md transition-colors ${matchView === 'closest' ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
                 >
                   Closest
                 </button>
                 <button
-                  onClick={() => setMatchView('schedule')}
+                  onClick={() => { setMatchView('schedule'); setStorageItem(STORAGE_KEYS.MATCH_VIEW_DEFAULT, 'schedule'); }}
                   className={`text-[10px] font-semibold px-2 py-1 rounded-md transition-colors ${matchView === 'schedule' ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
                 >
                   Schedule
@@ -1385,7 +1393,11 @@ export function HomePage() {
             </div>
           </div>
 
-          {displayMatches.length === 0 && (() => {
+          {recentMatches === undefined && (
+            <div className="flex justify-center py-8"><Spinner /></div>
+          )}
+
+          {recentMatches !== undefined && displayMatches.length === 0 && (() => {
             const { hasTeam, hasSeason, hasPlayers } = setupState ?? {};
             const allDone = hasTeam && hasPlayers && hasSeason;
 
@@ -1469,7 +1481,7 @@ export function HomePage() {
             );
           })()}
 
-          {matchView === 'schedule' && displayMatches.length > 0 && (
+          {recentMatches !== undefined && matchView === 'schedule' && displayMatches.length > 0 && (
             <ScheduleCalendar
               matches={displayMatches}
               navigate={navigate}
@@ -1480,7 +1492,7 @@ export function HomePage() {
             />
           )}
 
-          {matchView !== 'schedule' && (closestSortAsc ? displayMatches : [...displayMatches].reverse()).map((match, idx) => (
+          {recentMatches !== undefined && matchView !== 'schedule' && (closestSortAsc ? displayMatches : [...displayMatches].reverse()).map((match, idx) => (
             <SwipeableMatchCard
               key={match.id}
               onDeleteConfirm={() => setConfirmDelete(match)}
@@ -1669,10 +1681,6 @@ export function HomePage() {
           {todayDisplay}
         </div>
 
-        <p className="text-center text-sm mx-4 mb-4 rounded-xl px-4 py-2" style={{ color: '#fbbf24', border: '1px solid rgba(249,115,22,0.5)', background: 'rgba(249,115,22,0.1)' }}>
-          Experiencing technical difficulties?{' '}
-          <a href="mailto:vantagevb@gmail.com" className="underline font-bold">vantagevb@gmail.com</a>
-        </p>
 
         <div className="border-t border-slate-800 mx-4 mb-6 pt-6">
           <button
@@ -1930,6 +1938,9 @@ export function HomePage() {
             )}
 
             {/* Actions */}
+            {schedError && (
+              <p className="text-sm text-red-400 text-center">{schedError}</p>
+            )}
             <div className="flex gap-3 pt-2">
               <Button variant="secondary" className="flex-1" onClick={resetSchedForm}>
                 Cancel

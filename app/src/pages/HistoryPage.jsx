@@ -79,9 +79,21 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
     try {
       const newStateRank    = form.state_rank    ? Number(form.state_rank)    : null;
       const newNationalRank = form.national_rank ? Number(form.national_rank) : null;
+
+      // Resolve the target record: prefer the explicit editId, but fall back to
+      // any existing entry with the same (team_id, year) so we never create
+      // duplicate entries. Duplicates cause prev_state_rank to always track from
+      // the first-ever value instead of the most-recent one.
+      const resolvedId = editId ?? (
+        await db.season_history
+          .where('team_id').equals(teamId)
+          .filter(h => String(h.year) === yearStr)
+          .first()
+      )?.id ?? null;
+
       let prevRanks = {};
-      if (editId) {
-        const existing = await db.season_history.get(editId);
+      if (resolvedId) {
+        const existing = await db.season_history.get(resolvedId);
         if (existing) {
           if (newStateRank !== existing.state_rank)
             prevRanks.prev_state_rank = existing.state_rank ?? null;
@@ -109,8 +121,8 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
         playoff_rounds: (form.playoff_rounds ?? []).filter(r => r.round?.trim() || r.opponent?.trim()),
         ...prevRanks,
       };
-      if (editId) { await db.season_history.update(editId, fields); }
-      else        { await db.season_history.add(fields); }
+      if (resolvedId) { await db.season_history.update(resolvedId, fields); }
+      else             { await db.season_history.add(fields); }
       onClose();
     } catch {
       setError('Failed to save. Please try again.');
@@ -472,7 +484,7 @@ function CommitCard({ entry, onEdit, onDelete }) {
           Edit
         </button>
         <button
-          onClick={() => onDelete(entry.id)}
+          onClick={() => onDelete(entry)}
           className="flex-1 flex items-center justify-center bg-red-600 rounded-r-xl text-white text-xs font-bold"
         >
           Delete
@@ -648,7 +660,7 @@ function WinnerCard({ entry, onEdit, onDelete }) {
     <div className="relative overflow-hidden rounded-xl">
       <div className="absolute inset-y-0 right-0 flex" style={{ width: REVEAL }}>
         <button onClick={() => { setOffset(0); setIsSnapping(true); onEdit(entry); }} className="flex-1 flex items-center justify-center bg-primary text-white text-xs font-bold">Edit</button>
-        <button onClick={() => onDelete(entry.id)} className="flex-1 flex items-center justify-center bg-red-600 rounded-r-xl text-white text-xs font-bold">Delete</button>
+        <button onClick={() => onDelete(entry)} className="flex-1 flex items-center justify-center bg-red-600 rounded-r-xl text-white text-xs font-bold">Delete</button>
       </div>
       <div
         style={{ transform: `translateX(-${offset}px)`, transition: isSnapping ? 'transform 280ms cubic-bezier(0.25, 1, 0.5, 1)' : 'none', willChange: 'transform' }}
@@ -948,7 +960,7 @@ function SeasonCard({ entry, onEdit, onDelete, isWinRecord, isStateRankRecord, i
             Edit
           </button>
           <button
-            onClick={() => onDelete(entry.id)}
+            onClick={() => onDelete(entry)}
             className="text-xs text-red-400 font-semibold px-2 py-1 rounded-lg hover:bg-slate-600/50 transition-colors"
           >
             Delete
@@ -1038,6 +1050,10 @@ export function HistoryPage() {
   const [editAward,      setEditAward]      = useState(null);
   const [showAddWinner,  setShowAddWinner]  = useState(false);
   const [editWinner,     setEditWinner]     = useState(null);
+  const [confirmDeleteEntry,     setConfirmDeleteEntry]     = useState(null);
+  const [confirmDeleteAwardType, setConfirmDeleteAwardType] = useState(null);
+  const [confirmDeleteCommit,    setConfirmDeleteCommit]    = useState(null);
+  const [confirmDeleteWinner,    setConfirmDeleteWinner]    = useState(null);
 
   // Default team/season from settings (read once — localStorage is synchronous)
   const defaultTeamId   = useMemo(() => getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID),   []);
@@ -1203,21 +1219,27 @@ export function HistoryPage() {
     [awardWinners]
   );
 
-  async function handleDelete(id) {
+  async function doDeleteEntry(id) {
     await db.season_history.delete(id);
+    setConfirmDeleteEntry(null);
   }
 
-  async function handleDeleteCommit(id) {
+  async function doDeleteCommit(id) {
     await db.player_commits.delete(id);
+    setConfirmDeleteCommit(null);
   }
 
-  async function handleDeleteAwardType(id) {
-    await db.accolade_winners.where('type_id').equals(id).delete();
-    await db.accolade_types.delete(id);
+  async function doDeleteAwardType(id) {
+    await db.transaction('rw', [db.accolade_winners, db.accolade_types], async () => {
+      await db.accolade_winners.where('type_id').equals(id).delete();
+      await db.accolade_types.delete(id);
+    });
+    setConfirmDeleteAwardType(null);
   }
 
-  async function handleDeleteWinner(id) {
+  async function doDeleteWinner(id) {
     await db.accolade_winners.delete(id);
+    setConfirmDeleteWinner(null);
   }
 
   const multiTeam = gender ? (genderTeams[gender]?.length ?? 0) > 1 : false;
@@ -1601,7 +1623,7 @@ export function HistoryPage() {
                       </svg>
                     </div>
                   </button>
-                  {commitsOpen && (
+                  {commitsOpen && commits !== undefined && (
                     sortedCommits.length === 0 ? (
                       <p className="text-xs text-slate-500 italic">No commits recorded yet.</p>
                     ) : (
@@ -1611,7 +1633,7 @@ export function HistoryPage() {
                             key={c.id}
                             entry={c}
                             onEdit={setEditCommit}
-                            onDelete={handleDeleteCommit}
+                            onDelete={setConfirmDeleteCommit}
                           />
                         ))}
                       </div>
@@ -1647,7 +1669,7 @@ export function HistoryPage() {
                     </div>
                   </button>
 
-                  {awardsOpen && (
+                  {awardsOpen && awardTypes !== undefined && (
                     sortedAwardTypes.length === 0 ? (
                       <p className="text-xs text-slate-500 italic">No awards created yet.</p>
                     ) : (
@@ -1676,7 +1698,7 @@ export function HistoryPage() {
                                       title="Rename"
                                     >✎</button>
                                     <button
-                                      onClick={() => handleDeleteAwardType(type.id)}
+                                      onClick={() => setConfirmDeleteAwardType(type)}
                                       className="px-2 py-1.5 bg-red-700/80 text-white text-xs font-bold rounded-r-full hover:bg-red-600 transition-colors"
                                       title="Delete award"
                                     >×</button>
@@ -1696,7 +1718,7 @@ export function HistoryPage() {
                             >
                               + Winner
                             </button>
-                            {sortedAwardWinners.length === 0 ? (
+                            {awardWinners === undefined ? null : sortedAwardWinners.length === 0 ? (
                               <p className="text-xs text-slate-500 italic">No winners recorded yet.</p>
                             ) : (() => {
                               const groups = [];
@@ -1715,7 +1737,7 @@ export function HistoryPage() {
                                         key={w.id}
                                         entry={w}
                                         onEdit={setEditWinner}
-                                        onDelete={handleDeleteWinner}
+                                        onDelete={setConfirmDeleteWinner}
                                       />
                                     ))}
                                   </div>
@@ -1764,9 +1786,7 @@ export function HistoryPage() {
                           </div>
                           <div className="text-center pl-3">
                             <div className="text-4xl font-black text-primary tabular-nums leading-none">
-                              {displayProgramRecord.wins + displayProgramRecord.losses > 0
-                                ? fmtWinPct(displayProgramRecord.wins, displayProgramRecord.wins + displayProgramRecord.losses)
-                                : '—'}
+                              {programRecord.winPct ?? '—'}
                             </div>
                             <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">Win%</div>
                           </div>
@@ -1851,7 +1871,7 @@ export function HistoryPage() {
                         />
                       )}
 
-                      {sortedHistory.length === 0 && !showLiveCard ? (
+                      {history === undefined ? null : sortedHistory.length === 0 && !showLiveCard ? (
                         <EmptyState
                           icon="📖"
                           title="No seasons recorded"
@@ -1863,7 +1883,7 @@ export function HistoryPage() {
                             key={entry.id}
                             entry={entry}
                             onEdit={setEditEntry}
-                            onDelete={handleDelete}
+                            onDelete={setConfirmDeleteEntry}
                             isWinRecord={maxWins > 0 && (liveRecordsByYear?.[String(entry.year)]?.wins ?? entry.wins) === maxWins}
                             isStateRankRecord={bestStateRank != null && entry.state_rank === bestStateRank}
                             isNationalRankRecord={bestNationalRank != null && entry.national_rank === bestNationalRank}
@@ -1995,6 +2015,50 @@ export function HistoryPage() {
           teamId={activeSeason.team_id}
           year={activeSeason.year}
           onClose={() => setShowPostSeason(false)}
+        />
+      )}
+
+      {confirmDeleteEntry && (
+        <ConfirmDialog
+          title="Delete Season"
+          message={`Delete the ${confirmDeleteEntry.year} season record? All rankings, playoff results, and coach info for that year will be permanently lost.`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={() => doDeleteEntry(confirmDeleteEntry.id)}
+          onCancel={() => setConfirmDeleteEntry(null)}
+        />
+      )}
+
+      {confirmDeleteCommit && (
+        <ConfirmDialog
+          title="Delete Commit"
+          message={`Delete ${confirmDeleteCommit.player_name}'s commit to ${confirmDeleteCommit.college}? This cannot be undone.`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={() => doDeleteCommit(confirmDeleteCommit.id)}
+          onCancel={() => setConfirmDeleteCommit(null)}
+        />
+      )}
+
+      {confirmDeleteAwardType && (
+        <ConfirmDialog
+          title="Delete Award"
+          message={`Delete "${confirmDeleteAwardType.name}" and all its recorded winners? This cannot be undone.`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={() => doDeleteAwardType(confirmDeleteAwardType.id)}
+          onCancel={() => setConfirmDeleteAwardType(null)}
+        />
+      )}
+
+      {confirmDeleteWinner && (
+        <ConfirmDialog
+          title="Delete Winner"
+          message={`Delete ${confirmDeleteWinner.player_name}'s entry? This cannot be undone.`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={() => doDeleteWinner(confirmDeleteWinner.id)}
+          onCancel={() => setConfirmDeleteWinner(null)}
         />
       )}
 

@@ -814,7 +814,7 @@ export function TeamDetailPage() {
       {deletePlayer && (
         <ConfirmDialog
           title="Remove Player"
-          message={`Remove ${deletePlayer.name} from the active roster?`}
+          message={`Remove ${deletePlayer.name} from the active roster? Their recorded stats are preserved — this only hides them from the roster.`}
           confirmLabel="Remove"
           danger
           onConfirm={removePlayer}
