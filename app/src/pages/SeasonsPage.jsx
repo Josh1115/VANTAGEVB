@@ -12,6 +12,13 @@ import { useUiStore, selectShowToast } from '../store/uiStore';
 const JERSEY_HEX = Object.fromEntries(JERSEY_COLORS.map(c => [c.id, c.bg]));
 const DEFAULT_ACCENT = '#f97316'; // app orange
 
+const GENDER_ORDER  = ['F', 'M'];
+const GENDER_LABELS = { F: 'Girls', M: 'Boys' };
+const LEVEL_ORDER   = ['varsity', 'jv', 'frosh', 'freshman', 'other'];
+const LEVEL_LABELS  = { varsity: 'Varsity', jv: 'JV', frosh: 'Freshman', freshman: 'Freshman' };
+const levelLabel = (l) => LEVEL_LABELS[l?.toLowerCase()] ?? (l ? l.charAt(0).toUpperCase() + l.slice(1) : 'Other');
+const levelRank  = (l) => { const i = LEVEL_ORDER.indexOf(l?.toLowerCase()); return i === -1 ? 99 : i; };
+
 function getAccent(team) {
   const color = Array.isArray(team?.team_jersey_color)
     ? team.team_jersey_color[0]
@@ -22,11 +29,23 @@ function getAccent(team) {
 function NewSeasonModal({ onClose }) {
   const navigate = useNavigate();
   const showToast = useUiStore(selectShowToast);
+  const [gender, setGender] = useState('');
   const [teamId, setTeamId] = useState('');
   const [name, setName] = useState('');
   const [year, setYear] = useState(new Date().getFullYear());
 
   const teams = useLiveQuery(() => db.teams.orderBy('name').toArray(), []);
+
+  const filteredTeams = gender
+    ? (teams ?? []).filter(t => t.gender === gender)
+    : (teams ?? []);
+
+  function handleGenderChange(e) {
+    setGender(e.target.value);
+    setTeamId('');
+  }
+
+  const sel = 'w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white';
 
   const save = async () => {
     if (!teamId) { showToast('Select a team', 'error'); return; }
@@ -53,15 +72,18 @@ function NewSeasonModal({ onClose }) {
     >
       <div className="space-y-3">
         <div>
+          <label className="block text-sm text-slate-400 mb-1">Gender</label>
+          <select className={sel} value={gender} onChange={handleGenderChange} autoFocus>
+            <option value="">— All —</option>
+            <option value="F">Girls</option>
+            <option value="M">Boys</option>
+          </select>
+        </div>
+        <div>
           <label className="block text-sm text-slate-400 mb-1">Team</label>
-          <select
-            className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
-            value={teamId}
-            onChange={(e) => setTeamId(e.target.value)}
-            autoFocus
-          >
+          <select className={sel} value={teamId} onChange={(e) => setTeamId(e.target.value)}>
             <option value="">— Select team —</option>
-            {(teams ?? []).map((t) => (
+            {filteredTeams.map((t) => (
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
           </select>
@@ -69,7 +91,7 @@ function NewSeasonModal({ onClose }) {
         <div>
           <label className="block text-sm text-slate-400 mb-1">Season Name</label>
           <input
-            className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
+            className={sel}
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Fall 2025"
@@ -79,7 +101,7 @@ function NewSeasonModal({ onClose }) {
           <label className="block text-sm text-slate-400 mb-1">Year</label>
           <input
             type="number"
-            className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
+            className={sel}
             value={year}
             onChange={(e) => setYear(e.target.value)}
           />
@@ -146,66 +168,87 @@ export function SeasonsPage() {
             description="Create a season to organize your matches by team and year"
             action={<Button onClick={() => setShowModal(true)}>New Season</Button>}
           />
-        ) : (
-          <div className="space-y-2">
-            {(seasons ?? []).map((season) => {
-              const accent = getAccent(season.team);
-              const pct = season.total > 0 ? (season.played / season.total) * 100 : 0;
-              return (
-                <button
-                  key={season.id}
-                  onClick={() => navigate(`/seasons/${season.id}`)}
-                  className="w-full bg-surface rounded-xl overflow-hidden text-left hover:bg-slate-700 transition-colors"
-                  style={{ borderLeft: `4px solid ${accent}` }}
-                >
-                  <div className="px-4 py-3">
-                    {/* Top row: name + badge + W/L + chevron */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-semibold truncate">{season.name ?? String(season.year)}</span>
-                        <span
-                          className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                            season.isActive
-                              ? 'bg-green-500/20 text-green-400'
-                              : 'bg-slate-600/60 text-slate-400'
-                          }`}
-                        >
-                          {season.isActive ? 'ACTIVE' : 'DONE'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        {season.played > 0 && (
-                          <span className="font-mono font-bold text-sm tabular-nums">
-                            {season.wins}–{season.losses}
-                          </span>
-                        )}
-                        <span className="text-slate-500 text-lg">›</span>
-                      </div>
-                    </div>
+        ) : (() => {
+          const all = seasons ?? [];
 
-                    {/* Sub-label: team · year · match count */}
-                    <div className="text-xs text-slate-400 mt-0.5">
-                      {season.team?.name ?? '—'} · {season.year}
-                      {season.total > 0 && (
-                        <> · {season.played}/{season.total} matches</>
+          // Group by gender → level
+          const byGender = {};
+          for (const s of all) {
+            const g = GENDER_ORDER.includes(s.team?.gender) ? s.team.gender : 'other';
+            const l = s.team?.level?.toLowerCase() ?? 'other';
+            (byGender[g] ??= {})[l] ??= [];
+            byGender[g][l].push(s);
+          }
+
+          const genders = [...GENDER_ORDER.filter(g => byGender[g]), ...(byGender['other'] ? ['other'] : [])];
+
+          const SeasonCard = (season) => {
+            const accent = getAccent(season.team);
+            const pct = season.total > 0 ? (season.played / season.total) * 100 : 0;
+            return (
+              <button
+                key={season.id}
+                onClick={() => navigate(`/seasons/${season.id}`)}
+                className="w-full bg-surface rounded-xl overflow-hidden text-left hover:bg-slate-700 transition-colors"
+                style={{ borderLeft: `4px solid ${accent}` }}
+              >
+                <div className="px-4 py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-semibold truncate">{season.name ?? String(season.year)}</span>
+                      <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${season.isActive ? 'bg-green-500/20 text-green-400' : 'bg-slate-600/60 text-slate-400'}`}>
+                        {season.isActive ? 'ACTIVE' : 'DONE'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      {season.played > 0 && (
+                        <span className="font-mono font-bold text-sm tabular-nums">{season.wins}–{season.losses}</span>
                       )}
+                      <span className="text-slate-500 text-lg">›</span>
                     </div>
-
-                    {/* Progress bar */}
-                    {season.total > 0 && (
-                      <div className="mt-2 h-1 bg-slate-700 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{ width: `${pct}%`, backgroundColor: accent }}
-                        />
-                      </div>
-                    )}
                   </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
+                  <div className="text-xs text-slate-400 mt-0.5">
+                    {season.team?.name ?? '—'} · {season.year}
+                    {season.total > 0 && <> · {season.played}/{season.total} matches</>}
+                  </div>
+                  {season.total > 0 && (
+                    <div className="mt-2 h-1 bg-slate-700 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: accent }} />
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+          };
+
+          return (
+            <div className="space-y-6">
+              {genders.map(g => {
+                const levelMap = byGender[g];
+                const levels = Object.keys(levelMap).sort((a, b) => levelRank(a) - levelRank(b));
+                return (
+                  <div key={g}>
+                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500 mb-3">
+                      {GENDER_LABELS[g] ?? 'Other'}
+                    </p>
+                    <div className="space-y-4">
+                      {levels.map(l => (
+                        <div key={l}>
+                          <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600 mb-2 pl-1">
+                            {levelLabel(l)}
+                          </p>
+                          <div className="space-y-2">
+                            {levelMap[l].map(SeasonCard)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       {showModal && <NewSeasonModal onClose={() => setShowModal(false)} />}
