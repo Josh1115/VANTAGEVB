@@ -192,12 +192,10 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
       }
     }
 
-    // Merge: pre_vbstat_ fields win; linked historical fills any gaps
-    const offsetsByPid = {};
-    for (const pid of new Set([...Object.keys(preVbstatByPid), ...Object.keys(histOffsetByPid)].map(Number))) {
-      const merged = { ...(histOffsetByPid[pid] ?? {}), ...(preVbstatByPid[pid] ?? {}) };
-      if (Object.keys(merged).length) offsetsByPid[pid] = merged;
-    }
+    // Only pre_vbstat_ fields contribute as offsets on top of in-app contacts.
+    // Linked historical_records are NOT added as offsets — they represent career totals
+    // entered manually and would double-count stats already captured in contacts.
+    const offsetsByPid = preVbstatByPid;
 
     // Standalone historical = records with no matching in-app player (pure manual entries)
     const standaloneHistorical = historicalAll.filter(r => {
