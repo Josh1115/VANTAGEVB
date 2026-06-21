@@ -938,6 +938,8 @@ export async function computeSeasonStats(seasonId, filters = {}) {
   for (const [pid, dg] of Object.entries(digToKillSeason.byPlayer)) {
     if (players[pid]) Object.assign(players[pid], dg);
   }
+  const wins   = matches.filter(m => m.status !== MATCH_STATUS.SCHEDULED && (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
+  const losses = matches.filter(m => m.status !== MATCH_STATUS.SCHEDULED && (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
   return {
     players,
     team:             computeTeamStats(contacts, setsPlayed),
@@ -956,6 +958,8 @@ export async function computeSeasonStats(seasonId, filters = {}) {
     setsPlayed,
     matchCount:       playedMatchIds.length,
     totalMatchCount,
+    wins,
+    losses,
     oppScored,
     ourScored,
     contacts,

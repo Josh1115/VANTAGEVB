@@ -278,7 +278,10 @@ const chipClass = (active) =>
 export function ReportsPage() {
   const navigate = useNavigate();
   const playoffLabel = getPlayoffLabel();
-  const [tab, setTab] = useState('team');
+  const [tab, setTab] = useState(() => {
+    const t = new URLSearchParams(window.location.search).get('tab');
+    return TAB_VALUES.includes(t) ? t : 'team';
+  });
   const [teamView,              setTeamView]              = useState('totals');
   const [playerStatView,        setPlayerStatView]        = useState('serving');
   const [playerServeView,       setPlayerServeView]       = useState('all');
@@ -290,13 +293,14 @@ export function ReportsPage() {
   const [conference, setConference] = useState('');
   const [location,   setLocation]   = useState('');
   const [matchTypes, setMatchTypes] = useState([]);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [result,     setResult]     = useState(() => searchParams.get('result') ?? '');
   const [stats, setStats] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showAllMatches, setShowAllMatches] = useState(false);
   const [prodSort, setProdSort] = useState({ key: 'ptPct', dir: 'desc' });
+  const [oppView,  setOppView]  = useState('totals');
   const statsDebounceRef = useRef(null);
   const genderInitRef = useRef(false);
 
@@ -352,6 +356,11 @@ export function ReportsPage() {
   const positionMap = useMemo(() => players
     ? Object.fromEntries((Array.isArray(players) ? players : Object.values(players)).map(p => [p.id, p.position]))
     : {}, [players]);
+
+  function handleTabChange(newTab) {
+    setTab(newTab);
+    setSearchParams(prev => { const n = new URLSearchParams(prev); n.set('tab', newTab); return n; }, { replace: true });
+  }
 
   function handleGenderChange(e) {
     setSelectedGender(e.target.value);
@@ -418,11 +427,12 @@ export function ReportsPage() {
   }
   const hasFilters = Object.keys(activeFilters).length > 0;
 
-  // Short date label for match chips — "3/15"
+  // Short date label for match chips — "3/15". Parse date parts directly to avoid UTC-to-local
+  // timezone shift that causes date-only ISO strings (midnight UTC) to display one day early.
   const fmtShortDate = (iso) => {
     if (!iso) return '';
-    const d = new Date(iso);
-    return `${d.getMonth() + 1}/${d.getDate()}`;
+    const [, m, d] = iso.split('T')[0].split('-');
+    return `${Number(m)}/${Number(d)}`;
   };
 
   // Seed gender from the default team on first load (teams arrive async from Dexie)
@@ -631,7 +641,7 @@ export function ReportsPage() {
           disabled={!selectedTeamId}
         >
           <option value="">Select Season</option>
-          {(seasons ?? []).map(s => (
+          {[...(seasons ?? [])].sort((a, b) => String(b.year ?? b.name ?? '').localeCompare(String(a.year ?? a.name ?? ''))).map(s => (
             <option key={s.id} value={s.id}>{s.year ?? s.name ?? `Season ${s.id}`}</option>
           ))}
         </select>
@@ -639,7 +649,7 @@ export function ReportsPage() {
 
       {/* Match picker — individual match chips, shown once a season is selected */}
       {selectedSeasonId && (seasonMatches ?? []).length > 0 && (() => {
-        const all = seasonMatches ?? [];
+        const all = (seasonMatches ?? []).filter(m => m.status !== 'scheduled');
         const SHOW = 8;
         const visible = showAllMatches ? all : all.slice(0, SHOW);
         const hasMore = all.length > SHOW;
@@ -725,6 +735,16 @@ export function ReportsPage() {
               ))}
             </div>
           )}
+          {hasFilters && (
+            <div className="flex justify-end">
+              <button
+                onClick={() => { setConference(''); setLocation(''); setMatchTypes([]); setResult(''); setSelectedMatchIds(null); }}
+                className="text-[11px] text-slate-500 hover:text-primary transition-colors"
+              >
+                × Reset all filters
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -764,7 +784,7 @@ export function ReportsPage() {
       {!loading && stats && !stats.empty && (
         <>
           {/* Summary strip */}
-          <div className="mx-4 mb-1 bg-surface rounded-xl p-3 grid grid-cols-2 gap-2 text-center text-sm">
+          <div className="mx-4 mb-1 bg-surface rounded-xl p-3 grid grid-cols-3 gap-2 text-center text-sm">
             <div>
               <div className="text-xs text-slate-400">Matches</div>
               <div className="font-bold text-primary">
@@ -774,12 +794,20 @@ export function ReportsPage() {
               </div>
             </div>
             <div>
+              <div className="text-xs text-slate-400">Record</div>
+              <div className="font-bold">
+                <span className="text-emerald-400">{stats.wins ?? 0}</span>
+                <span className="text-slate-500 font-normal">–</span>
+                <span className="text-red-400">{stats.losses ?? 0}</span>
+              </div>
+            </div>
+            <div>
               <div className="text-xs text-slate-400">Sets</div>
               <div className="font-bold">{stats.setsPlayed}</div>
             </div>
           </div>
 
-          <TabBar tabs={TABS} active={tab} onChange={setTab} />
+          <TabBar tabs={TABS} active={tab} onChange={handleTabChange} />
 
           <div key={tab} className="p-4 md:p-6 space-y-6 animate-slide-up-fade">
 
@@ -1397,6 +1425,7 @@ export function ReportsPage() {
                           </div>
                           {dgRows.length > 0 && (
                             <XPassRatingTable
+                              title="By Player"
                               rows={dgRows}
                               cols={[
                                 { key: 'dg',        label: 'DIG',    fmt: (v) => v ?? 0 },
@@ -1668,22 +1697,39 @@ export function ReportsPage() {
 
             {tab === 'oppo' && stats?.opp && (
               <div className="space-y-3">
-                <p className="text-xs text-slate-400 mb-4">Opponent performance across selected matches</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-slate-400">Opponent performance across selected matches</p>
+                  <div className="flex gap-1.5">
+                    {[
+                      { value: 'totals',    label: 'Totals'      },
+                      { value: 'per_set',   label: 'Avg / Set'   },
+                      { value: 'per_match', label: 'Avg / Match' },
+                    ].map(({ value, label }) => (
+                      <button key={value} onClick={() => setOppView(value)} className={chipClass(oppView === value)}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="grid grid-cols-3 gap-3">
                   {[
-                    { label: 'ACE',  val: stats.opp.ace,  desc: 'Aces vs us'          },
-                    { label: 'SE',   val: stats.opp.se,   desc: 'Serve errors'         },
-                    { label: 'K',    val: stats.opp.k,    desc: 'Kills'                },
-                    { label: 'AE',   val: stats.opp.ae,   desc: 'Attack errors'        },
-                    { label: 'BLK',  val: stats.opp.blk,  desc: 'Blocked by us'        },
-                    { label: 'ERR',  val: stats.opp.errs, desc: 'Ball handling errors' },
-                  ].map(({ label, val, desc }) => (
-                    <div key={label} className="bg-surface rounded-xl p-3 text-center">
-                      <div className="text-xs text-slate-400 mb-1">{desc}</div>
-                      <div className="text-2xl font-black text-primary">{val}</div>
-                      <div className="text-xs font-bold text-slate-300 mt-0.5">{label}</div>
-                    </div>
-                  ))}
+                    { label: 'ACE',  raw: stats.opp.ace,  desc: 'Aces vs us'          },
+                    { label: 'SE',   raw: stats.opp.se,   desc: 'Serve errors'         },
+                    { label: 'K',    raw: stats.opp.k,    desc: 'Kills'                },
+                    { label: 'AE',   raw: stats.opp.ae,   desc: 'Attack errors'        },
+                    { label: 'BLK',  raw: stats.opp.blk,  desc: 'Blocked by us'        },
+                    { label: 'ERR',  raw: stats.opp.errs, desc: 'Ball handling errors' },
+                  ].map(({ label, raw, desc }) => {
+                    const divisor = oppView === 'per_set' ? (stats.setsPlayed || 1) : oppView === 'per_match' ? (stats.matchCount || 1) : 1;
+                    const val = oppView === 'totals' ? raw : raw != null ? (raw / divisor).toFixed(1) : '—';
+                    return (
+                      <div key={label} className="bg-surface rounded-xl p-3 text-center">
+                        <div className="text-xs text-slate-400 mb-1">{desc}</div>
+                        <div className="text-2xl font-black text-primary">{val}</div>
+                        <div className="text-xs font-bold text-slate-300 mt-0.5">{label}</div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

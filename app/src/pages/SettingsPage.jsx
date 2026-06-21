@@ -1052,7 +1052,7 @@ function HelpModal({ topic, onClose }) {
   );
 }
 
-function useStorageEstimate() {
+function useStorageEstimate(refreshKey = 0) {
   const [estimate, setEstimate] = useState(null);
 
   useEffect(() => {
@@ -1060,7 +1060,7 @@ function useStorageEstimate() {
     navigator.storage.estimate().then((est) => {
       setEstimate({ usage: est.usage ?? 0, quota: est.quota ?? 0 });
     });
-  }, []);
+  }, [refreshKey]);
 
   return estimate;
 }
@@ -1263,6 +1263,8 @@ export function SettingsPage() {
   const [importing,           setImporting]           = useState(false);
   const [showMerge,           setShowMerge]           = useState(false);
   const [restoringId,         setRestoringId]         = useState(null);
+  const [confirmRestoreBackup, setConfirmRestoreBackup] = useState(null);
+  const [storageRefreshKey,   setStorageRefreshKey]   = useState(0);
   const [helpTopic,           setHelpTopic]           = useState(null);
   const [helpSearch,          setHelpSearch]          = useState('');
   const [cloudSaving,         setCloudSaving]         = useState(false);
@@ -1277,7 +1279,7 @@ export function SettingsPage() {
   );
 
   const { canInstall, isIOS, isInstalled, promptInstall } = useInstallPrompt();
-  const storage = useStorageEstimate();
+  const storage = useStorageEstimate(storageRefreshKey);
 
   const usagePct = storage?.quota ? storage.usage / storage.quota : 0;
   const showStorageWarning = usagePct > 0.8;
@@ -1293,6 +1295,7 @@ export function SettingsPage() {
     try {
       await exportBackup();
       showToast('Backup exported', 'success');
+      setStorageRefreshKey(k => k + 1);
     } catch {
       showToast('Export failed', 'error');
     }
@@ -1305,6 +1308,7 @@ export function SettingsPage() {
       const now = new Date().toISOString();
       setLastCloudSave(now);
       showToast('Saved to cloud', 'success');
+      setStorageRefreshKey(k => k + 1);
     } catch (e) {
       showToast(e.message ?? 'Cloud save failed', 'error');
     } finally {
@@ -1334,10 +1338,11 @@ export function SettingsPage() {
     e.target.value = '';
   }
 
-  async function handleRestoreAutoBackup(id) {
-    setRestoringId(id);
+  async function handleRestoreAutoBackup(backup) {
+    setRestoringId(backup.id);
+    setConfirmRestoreBackup(null);
     try {
-      await restoreAutoBackup(id);
+      await restoreAutoBackup(backup.id);
       showToast('Backup restored', 'success');
       window.location.reload();
     } catch (e) {
@@ -1354,9 +1359,9 @@ export function SettingsPage() {
     try {
       await importBackup(pendingFile);
       showToast('Backup imported successfully', 'success');
+      window.location.reload();
     } catch (e) {
       showToast(e.message ?? 'Import failed', 'error');
-    } finally {
       setImporting(false);
       setPendingFile(null);
     }
@@ -1366,8 +1371,12 @@ export function SettingsPage() {
     await db.transaction('rw', db.tables, async () => {
       for (const table of db.tables) await table.clear();
     });
+    setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, null);
+    setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, null);
+    clearSectionStates();
     showToast('All data cleared', 'info');
     setConfirmClear(false);
+    window.location.reload();
   }
 
   async function handleRedeemPromo() {
@@ -1453,6 +1462,7 @@ export function SettingsPage() {
           <div className="text-center mb-4">
             <h2 className="text-2xl font-black tracking-[0.25em] uppercase text-[#f97316]">VANTAGE</h2>
             <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-400 mt-1">Immediate Impact Analytics</p>
+            <p className="text-[10px] text-slate-600 mt-1 font-mono">v{__APP_VERSION__}</p>
           </div>
           <div className="border-t border-slate-700 mb-4" />
           <p className="text-sm text-slate-200 leading-relaxed italic text-center">
@@ -1696,7 +1706,10 @@ export function SettingsPage() {
         {!isInstalled && (canInstall || isIOS) && (
           <section className="bg-surface rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-700">
-              <h2 className="font-semibold">Install App</h2>
+              <h2
+                className="text-[18.4px] font-black uppercase leading-none"
+                style={{ color: '#ffffff', letterSpacing: '0.15em' }}
+              >Install App</h2>
               <p className="text-xs text-slate-400 mt-0.5">Add VANTAGE to your home screen for the best experience</p>
             </div>
             <div className="p-4">
@@ -2214,7 +2227,7 @@ export function SettingsPage() {
             <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
               <div>
                 <div className="text-sm font-medium">Haptic Feedback</div>
-                <div className="text-xs text-slate-400 mt-0.5">Brief vibration on each point scored</div>
+                <div className="text-xs text-slate-400 mt-0.5">Brief vibration on each contact tap</div>
               </div>
               <button
                 onClick={() => saveHaptic(!hapticOn)}
@@ -2456,7 +2469,7 @@ export function SettingsPage() {
                         </span>
                       </div>
                       <button
-                        onClick={() => handleRestoreAutoBackup(b.id)}
+                        onClick={() => setConfirmRestoreBackup(b)}
                         disabled={restoringId === b.id}
                         className="text-xs font-semibold text-primary hover:text-orange-300 transition-colors disabled:opacity-50"
                       >
@@ -2619,7 +2632,7 @@ export function SettingsPage() {
           </button>
         </section>
 
-        <p className="text-center text-xs text-slate-700 pb-2">VANTAGE v{__APP_VERSION__}</p>
+        <p className="text-center text-xs text-slate-800 pb-2">© VANTAGE</p>
 
       </div>
 
@@ -2654,6 +2667,17 @@ export function SettingsPage() {
           danger
           onConfirm={handleRestoreFromCloud}
           onCancel={() => setConfirmCloudRestore(false)}
+        />
+      )}
+
+      {confirmRestoreBackup && (
+        <ConfirmDialog
+          title="Restore Auto-Save"
+          message={`This will REPLACE all current data with the auto-save from ${new Date(confirmRestoreBackup.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}. Any data recorded since then will be lost. Export a backup first if needed.`}
+          confirmLabel="Restore & Replace"
+          danger
+          onConfirm={() => handleRestoreAutoBackup(confirmRestoreBackup)}
+          onCancel={() => setConfirmRestoreBackup(null)}
         />
       )}
 

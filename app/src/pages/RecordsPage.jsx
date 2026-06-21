@@ -13,6 +13,7 @@ import { Spinner } from '../components/ui/Spinner';
 import { EmptyState } from '../components/ui/EmptyState';
 import { toTitleArr, ordinal, titlePriority } from '../utils/historyUtils';
 import { ChampionshipBannersSection } from '../components/shared/ChampionshipBanner';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 
 const RECORD_STATS = [
   { key: 'k',   label: 'Kills',   fmt: fmtCount },
@@ -802,7 +803,7 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, onEditBaseline, teamI
           Edit
         </button>
         <button
-          onClick={() => { setSwiped(false); onDelete(row.id); }}
+          onClick={() => { setSwiped(false); onDelete(row); }}
           className="w-16 flex items-center justify-center bg-red-600 text-white text-xs font-bold"
         >
           Delete
@@ -1021,7 +1022,7 @@ function TourneyEntryCard({ entry, onEdit, onDelete }) {
       <div className="absolute inset-y-0 right-0 flex">
         <button onClick={() => { setSwiped(false); onEdit(entry); }}
           className="w-16 flex items-center justify-center bg-blue-600 text-white text-xs font-bold">Edit</button>
-        <button onClick={() => { setSwiped(false); onDelete(entry.id); }}
+        <button onClick={() => { setSwiped(false); onDelete(entry); }}
           className="w-16 flex items-center justify-center bg-red-600 text-white text-xs font-bold">Delete</button>
       </div>
       <div
@@ -1123,6 +1124,9 @@ export function RecordsPage() {
   const [editTourney,         setEditTourney]         = useState(null);
   const [editBaselinePlayerId, setEditBaselinePlayerId] = useState(null);
   const [refreshKey,          setRefreshKey]          = useState(0);
+  const [confirmDeleteRecord,  setConfirmDeleteRecord]  = useState(null);
+  const [confirmDeleteTourney, setConfirmDeleteTourney] = useState(null);
+  const [computeError,         setComputeError]         = useState(false);
 
   const orgs = useLiveQuery(
     () => db.organizations.toArray().then(o => o.sort((a, b) => a.name?.localeCompare(b.name))),
@@ -1202,12 +1206,25 @@ export function RecordsPage() {
   }, [orgs, orgId]);
 
   const genderTeams = useMemo(() => {
-    const varsity = (orgTeams ?? []).filter(t => t.level === 'varsity');
+    const org = (orgs ?? []).find(o => o.id === orgId) ?? null;
+    const isClub = org?.type === 'club';
+    let eligible;
+    if (isClub) {
+      if (org.records_scope === 'all_ages') {
+        eligible = orgTeams ?? [];
+      } else {
+        // top_only (default): 18U teams; fall back to all if none tagged
+        const top = (orgTeams ?? []).filter(t => t.age_group === '18U');
+        eligible = top.length > 0 ? top : (orgTeams ?? []);
+      }
+    } else {
+      eligible = (orgTeams ?? []).filter(t => t.level === 'varsity');
+    }
     return {
-      F: varsity.filter(t => t.gender === 'F'),
-      M: varsity.filter(t => t.gender === 'M'),
+      F: eligible.filter(t => t.gender === 'F'),
+      M: eligible.filter(t => t.gender === 'M'),
     };
-  }, [orgTeams]);
+  }, [orgTeams, orgs, orgId]);
 
   useEffect(() => {
     if (!orgTeams?.length) return;
@@ -1245,15 +1262,22 @@ export function RecordsPage() {
     let cancelled = false;
     setLoading(true);
     setBoards(null);
+    setComputeError(false);
     computeLeaderboards(tab, teamId, getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID))
       .then(result => { if (!cancelled) setBoards(result); })
-      .catch(err => { if (!cancelled) console.error(err); })
+      .catch(err => { console.error(err); if (!cancelled) setComputeError(true); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [tab, teamId, historicalCount, refreshKey]);
 
-  async function handleDelete(id) {
-    await db.historical_records.delete(id);
+  async function doDeleteRecord(row) {
+    await db.historical_records.delete(row.id);
+    setConfirmDeleteRecord(null);
+  }
+
+  async function doDeleteTourney(entry) {
+    await db.tourney_entries.delete(entry.id);
+    setConfirmDeleteTourney(null);
   }
 
   const visibleStats = tab === 'team_season' ? TEAM_SEASON_STATS
@@ -1328,7 +1352,7 @@ export function RecordsPage() {
         title={orgName ? `Records — ${orgName}` : 'Records'}
         action={teamId && (
           <button onClick={() => setShowAdd(true)} className="px-3 py-1 rounded-lg bg-primary text-white text-sm font-bold record-btn-pulse">
-            + Record
+            + Entry
           </button>
         )}
       />
@@ -1357,7 +1381,11 @@ export function RecordsPage() {
                 className={selectCls}
               >
                 <option value="">Select a team…</option>
-                {(genderTeams[gender] ?? []).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                {(genderTeams[gender] ?? []).map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}{t.age_group ? ` (${t.age_group})` : ''}
+                  </option>
+                ))}
               </select>
             )}
 
@@ -1399,16 +1427,18 @@ export function RecordsPage() {
                 </div>
 
                 {tab === 'tourney' ? (
-                  tourneyEntries?.length === 0 ? (
-                    <EmptyState icon="🏆" title="No tournaments yet" description="Tap + Add to log your first tournament" />
+                  tourneyEntries === undefined ? (
+                    <div className="flex justify-center py-10"><Spinner /></div>
+                  ) : tourneyEntries.length === 0 ? (
+                    <EmptyState icon="🏆" title="No tournaments yet" description="Tap + Record in the top right to log your first tournament" />
                   ) : (
                     <div className="space-y-2">
-                      {tourneyEntries?.map(entry => (
+                      {tourneyEntries.map(entry => (
                         <TourneyEntryCard
                           key={entry.id}
                           entry={entry}
                           onEdit={e => setEditTourney(e)}
-                          onDelete={async id => { await db.tourney_entries.delete(id); }}
+                          onDelete={setConfirmDeleteTourney}
                         />
                       ))}
                     </div>
@@ -1431,6 +1461,8 @@ export function RecordsPage() {
 
                     {loading ? (
                       <div className="flex justify-center py-10"><Spinner /></div>
+                    ) : computeError ? (
+                      <EmptyState icon="⚠️" title="Failed to load records" description="Something went wrong computing the leaderboard. Try switching tabs or reloading." />
                     ) : rows.length === 0 ? (
                       <EmptyState icon="📋" title="No records yet" description="Add historical records or complete matches to build the leaderboard" />
                     ) : (
@@ -1445,7 +1477,7 @@ export function RecordsPage() {
                             tab={tab}
                             fmt={statDef?.fmt ?? fmtCount}
                             onEdit={setEditRow}
-                            onDelete={handleDelete}
+                            onDelete={setConfirmDeleteRecord}
                             onEditBaseline={tab === 'career' ? row => setEditBaselinePlayerId(row.player_id) : undefined}
                             teamId={teamId}
                           />
@@ -1495,6 +1527,28 @@ export function RecordsPage() {
           playerId={editBaselinePlayerId}
           onClose={() => setEditBaselinePlayerId(null)}
           onSaved={() => setRefreshKey(k => k + 1)}
+        />
+      )}
+
+      {confirmDeleteRecord && (
+        <ConfirmDialog
+          title="Delete Record"
+          message={`Delete ${confirmDeleteRecord.name ? `${confirmDeleteRecord.name}'s ` : ''}${confirmDeleteRecord.val} record? This cannot be undone.`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={() => doDeleteRecord(confirmDeleteRecord)}
+          onCancel={() => setConfirmDeleteRecord(null)}
+        />
+      )}
+
+      {confirmDeleteTourney && (
+        <ConfirmDialog
+          title="Delete Tournament"
+          message={`Delete "${confirmDeleteTourney.name}" (${confirmDeleteTourney.year}) and all its match results? This cannot be undone.`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={() => doDeleteTourney(confirmDeleteTourney)}
+          onCancel={() => setConfirmDeleteTourney(null)}
         />
       )}
 

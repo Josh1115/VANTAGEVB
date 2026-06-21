@@ -15,6 +15,7 @@ import { Badge } from '../components/ui/Badge';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { LogoPickerModal } from '../components/team/LogoPickerModal';
 import { SeasonFormModal } from '../components/team/SeasonFormModal';
+import { Spinner } from '../components/ui/Spinner';
 
 
 const ORG_COLORS = [
@@ -48,9 +49,13 @@ function OrgFormModal({ onClose, org }) {
   const [conference,  setConference]  = useState(org?.conference ?? '');
   const [division,    setDivision]    = useState(org?.division ?? '');
   const [association, setAssociation] = useState(org?.association ?? '');
+  const [recordsScope, setRecordsScope] = useState(org?.records_scope ?? 'top_only');
   const [logoDataUrl, setLogoDataUrl] = useState(org?.logo_data_url ?? null);
   const [colors,      setColors]      = useState(Array.isArray(org?.colors) ? org.colors : []);
   const [showLogoPicker, setShowLogoPicker] = useState(false);
+  const [nameError,   setNameError]   = useState('');
+  const [colorLimit,  setColorLimit]  = useState(false);
+  const [saving,      setSaving]      = useState(false);
   const showToast = useUiStore(selectShowToast);
 
   useEffect(() => {
@@ -60,13 +65,18 @@ function OrgFormModal({ onClose, org }) {
   }, [onClose]);
 
   function toggleColor(id) {
-    setColors(prev =>
-      prev.includes(id) ? prev.filter(c => c !== id) : prev.length < 3 ? [...prev, id] : prev
-    );
+    setColors(prev => {
+      if (prev.includes(id)) { setColorLimit(false); return prev.filter(c => c !== id); }
+      if (prev.length >= 3)  { setColorLimit(true);  return prev; }
+      setColorLimit(false);
+      return [...prev, id];
+    });
   }
 
   const save = async () => {
-    if (!name.trim()) return;
+    if (!name.trim()) { setNameError('Name is required.'); return; }
+    setNameError('');
+    setSaving(true);
     try {
       const fields = {
         name: name.trim(),
@@ -74,7 +84,8 @@ function OrgFormModal({ onClose, org }) {
         state:       (type === 'high_school' || type === 'college') ? state.trim() || null : null,
         conference:  type === 'college' ? conference.trim() || null : null,
         division:    type === 'college' ? division || null : null,
-        association: type === 'club'    ? association || null : null,
+        association:   type === 'club' ? association || null : null,
+        records_scope: type === 'club' ? recordsScope : null,
         logo_data_url: logoDataUrl ?? null,
         colors,
       };
@@ -88,6 +99,8 @@ function OrgFormModal({ onClose, org }) {
       onClose();
     } catch (err) {
       showToast(`Save failed: ${err.message}`, 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -129,13 +142,16 @@ function OrgFormModal({ onClose, org }) {
                 : <span className="text-xl text-slate-500">🏫</span>
               }
             </div>
-            <input
-              className={inputCls + ' flex-1'}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Organization name"
-              autoFocus
-            />
+            <div className="flex-1">
+              <input
+                className={inputCls + (nameError ? ' border-red-500' : '')}
+                value={name}
+                onChange={(e) => { setName(e.target.value); setNameError(''); }}
+                placeholder="Organization name"
+                autoFocus
+              />
+              {nameError && <p className="text-xs text-red-400 mt-1">{nameError}</p>}
+            </div>
           </div>
 
           {/* type */}
@@ -191,24 +207,39 @@ function OrgFormModal({ onClose, org }) {
             </>
           )}
 
-          {/* club: association */}
+          {/* club: association + records scope */}
           {type === 'club' && (
-            <div>
-              <label className="block text-xs text-slate-400 mb-1.5">Association</label>
-              <div className="flex gap-2">
-                {CLUB_ASSOCIATIONS.map(a => (
-                  <PillBtn key={a} active={association === a} onClick={() => setAssociation(association === a ? '' : a)}>
-                    {a}
-                  </PillBtn>
-                ))}
+            <>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1.5">Association</label>
+                <div className="flex gap-2">
+                  {CLUB_ASSOCIATIONS.map(a => (
+                    <PillBtn key={a} active={association === a} onClick={() => setAssociation(association === a ? '' : a)}>
+                      {a}
+                    </PillBtn>
+                  ))}
+                </div>
               </div>
-            </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1.5">Records Page</label>
+                <div className="flex gap-1.5">
+                  <PillBtn active={recordsScope === 'top_only'} onClick={() => setRecordsScope('top_only')}>18U only</PillBtn>
+                  <PillBtn active={recordsScope === 'all_ages'} onClick={() => setRecordsScope('all_ages')}>All ages</PillBtn>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  {recordsScope === 'top_only'
+                    ? 'Records shows only your 18U teams'
+                    : 'Records shows every age group on its own board'}
+                </p>
+              </div>
+            </>
           )}
 
           {/* colors */}
           <div>
             <label className="block text-xs text-slate-400 mb-1.5">
               Colors <span className="text-slate-600">(up to 3, used on banners)</span>
+              {colorLimit && <span className="text-xs text-amber-400 ml-2">Max 3 colors</span>}
             </label>
             <div className="flex flex-wrap gap-1.5">
               {ORG_COLORS.map(c => {
@@ -245,8 +276,8 @@ function OrgFormModal({ onClose, org }) {
 
           {/* footer */}
           <div className="flex gap-2 justify-end pt-1">
-            <Button variant="secondary" onClick={onClose}>Cancel</Button>
-            <Button onClick={save}>Save</Button>
+            <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
+            <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
           </div>
         </div>
       </div>
@@ -300,10 +331,14 @@ function JerseyColorPicker({ label, value, onChange, colors }) {
   );
 }
 
-function TeamFormModal({ onClose, orgId, team }) {
+const CLUB_AGE_GROUPS = ['14U', '15U', '16U', '17U', '18U', 'Open'];
+
+function TeamFormModal({ onClose, orgId, team, orgType }) {
+  const isClub = orgType === 'club';
   const [name, setName] = useState(team?.name ?? '');
   const [abbreviation, setAbbreviation] = useState(team?.abbreviation ?? '');
   const [level, setLevel] = useState(team?.level ?? 'varsity');
+  const [ageGroup, setAgeGroup] = useState(team?.age_group ?? '18U');
   const [gender, setGender] = useState(team?.gender ?? 'F');
   const [state, setState] = useState(team?.state ?? '');
   const [classification, setClassification] = useState(team?.classification ?? '');
@@ -313,15 +348,20 @@ function TeamFormModal({ onClose, orgId, team }) {
   const [liberoJerseyColors, setLiberoJerseyColors] = useState(() => toArr(team?.libero_jersey_color));
   const toggleTeamColor   = (id) => setTeamJerseyColors(  (prev) => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const toggleLiberoColor = (id) => setLiberoJerseyColors((prev) => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const [nameError, setNameError] = useState('');
+  const [saving,    setSaving]    = useState(false);
   const showToast = useUiStore(selectShowToast);
 
   const save = async () => {
-    if (!name.trim()) return;
+    if (!name.trim()) { setNameError('Name is required.'); return; }
+    setNameError('');
+    setSaving(true);
     try {
       const fields = {
         name: name.trim(),
         abbreviation: abbreviation.trim().toUpperCase() || null,
-        level,
+        level: isClub ? 'varsity' : level,
+        age_group: isClub ? ageGroup : null,
         gender,
         state: state.trim() || null,
         classification: classification.trim().toUpperCase() || null,
@@ -340,6 +380,8 @@ function TeamFormModal({ onClose, orgId, team }) {
       }
     } catch (err) {
       showToast(`Save failed: ${err.message}`, 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -349,8 +391,8 @@ function TeamFormModal({ onClose, orgId, team }) {
       onClose={onClose}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={save}>Save</Button>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
         </>
       }
     >
@@ -359,12 +401,13 @@ function TeamFormModal({ onClose, orgId, team }) {
           <div>
             <label className="block text-sm text-slate-400 mb-1">Team Name</label>
             <input
-              className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
+              className={`w-full bg-bg border rounded-lg px-3 py-2 text-white ${nameError ? 'border-red-500' : 'border-slate-600'}`}
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => { setName(e.target.value); setNameError(''); }}
               placeholder="Varsity Girls"
               autoFocus
             />
+            {nameError && <p className="text-xs text-red-400 mt-1">{nameError}</p>}
           </div>
           <div>
             <label className="block text-sm text-slate-400 mb-1">Abbr <span className="text-slate-500">(3 letters)</span></label>
@@ -379,19 +422,34 @@ function TeamFormModal({ onClose, orgId, team }) {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Level</label>
-            <select
-              className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
-              value={level}
-              onChange={(e) => setLevel(e.target.value)}
-            >
-              <option value="varsity">Varsity</option>
-              <option value="jv">JV</option>
-              <option value="jv2">JV2</option>
-              <option value="soph">Sophomore</option>
-              <option value="frosh_soph">Frosh/Soph</option>
-              <option value="frosh">Freshman</option>
-            </select>
+            {isClub ? (
+              <>
+                <label className="block text-sm text-slate-400 mb-1">Age Group</label>
+                <select
+                  className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
+                  value={ageGroup}
+                  onChange={(e) => setAgeGroup(e.target.value)}
+                >
+                  {CLUB_AGE_GROUPS.map(ag => <option key={ag} value={ag}>{ag}</option>)}
+                </select>
+              </>
+            ) : (
+              <>
+                <label className="block text-sm text-slate-400 mb-1">Level</label>
+                <select
+                  className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
+                  value={level}
+                  onChange={(e) => setLevel(e.target.value)}
+                >
+                  <option value="varsity">Varsity</option>
+                  <option value="jv">JV</option>
+                  <option value="jv2">JV2</option>
+                  <option value="soph">Sophomore</option>
+                  <option value="frosh_soph">Frosh/Soph</option>
+                  <option value="frosh">Freshman</option>
+                </select>
+              </>
+            )}
           </div>
           <div>
             <label className="block text-sm text-slate-400 mb-1">Gender</label>
@@ -473,8 +531,52 @@ export function TeamsPage() {
 
   const handleDeleteOrg = async () => {
     try {
-      await db.teams.where('org_id').equals(deleteOrg.id).delete();
-      await db.organizations.delete(deleteOrg.id);
+      const orgTeams    = await db.teams.where('org_id').equals(deleteOrg.id).toArray();
+      const teamIds     = orgTeams.map(t => t.id);
+      const seasons     = teamIds.length ? await db.seasons.where('team_id').anyOf(teamIds).toArray() : [];
+      const seasonIds   = seasons.map(s => s.id);
+      const matches     = seasonIds.length ? await db.matches.where('season_id').anyOf(seasonIds).toArray() : [];
+      const matchIds    = matches.map(m => m.id);
+      const sets        = matchIds.length ? await db.sets.where('match_id').anyOf(matchIds).toArray() : [];
+      const setIds      = sets.map(s => s.id);
+      const accoTypes   = teamIds.length ? await db.accolade_types.where('team_id').anyOf(teamIds).toArray() : [];
+      const accoTypeIds = accoTypes.map(a => a.id);
+
+      await db.transaction('rw', db.tables, async () => {
+        if (setIds.length) {
+          await Promise.all([
+            db.contacts.where('set_id').anyOf(setIds).delete(),
+            db.rallies.where('set_id').anyOf(setIds).delete(),
+            db.lineups.where('set_id').anyOf(setIds).delete(),
+            db.substitutions.where('set_id').anyOf(setIds).delete(),
+          ]);
+          await db.sets.bulkDelete(setIds);
+        }
+        if (matchIds.length) {
+          await db.opp_tendencies.where('match_id').anyOf(matchIds).delete();
+          await db.timeouts.where('match_id').anyOf(matchIds).delete();
+          await db.matches.bulkDelete(matchIds);
+        }
+        if (seasonIds.length) await db.seasons.bulkDelete(seasonIds);
+        if (teamIds.length) {
+          if (accoTypeIds.length) {
+            await db.accolade_winners.where('type_id').anyOf(accoTypeIds).delete();
+            await db.accolade_types.bulkDelete(accoTypeIds);
+          }
+          await Promise.all([
+            db.players.where('team_id').anyOf(teamIds).delete(),
+            db.saved_lineups.where('team_id').anyOf(teamIds).delete(),
+            db.historical_records.where('team_id').anyOf(teamIds).delete(),
+            db.season_history.where('team_id').anyOf(teamIds).delete(),
+            db.tourney_entries.where('team_id').anyOf(teamIds).delete(),
+            db.player_commits.where('team_id').anyOf(teamIds).delete(),
+            db.practice_sessions.where('team_id').anyOf(teamIds).delete(),
+            db.accolade_winners.where('team_id').anyOf(teamIds).delete(),
+          ]);
+          await db.teams.bulkDelete(teamIds);
+        }
+        await db.organizations.delete(deleteOrg.id);
+      });
       setDeleteOrg(null);
     } catch (err) {
       showToast(`Delete failed: ${err.message}`, 'error');
@@ -538,7 +640,11 @@ export function TeamsPage() {
       />
 
       <div className="p-4 md:p-6 space-y-4">
-        {orgs?.length === 0 && (
+        {orgs === undefined && (
+          <div className="flex justify-center py-8"><Spinner /></div>
+        )}
+
+        {orgs !== undefined && orgs.length === 0 && (
           <EmptyState
             icon="🏫"
             title="No organizations yet"
@@ -547,7 +653,7 @@ export function TeamsPage() {
           />
         )}
 
-        {orgs?.map((org) => (
+        {(orgs ?? []).map((org) => (
           <OrgSection
             key={org.id}
             org={org}
@@ -561,10 +667,6 @@ export function TeamsPage() {
           />
         ))}
 
-        <p className="text-center text-sm rounded-xl px-4 py-2" style={{ color: '#fbbf24', border: '1px solid rgba(249,115,22,0.5)', background: 'rgba(249,115,22,0.1)' }}>
-          Experiencing technical difficulties?{' '}
-          <a href="mailto:vantagevb@gmail.com" className="underline font-bold">vantagevb@gmail.com</a>
-        </p>
       </div>
 
       {orgModal && (
@@ -574,6 +676,7 @@ export function TeamsPage() {
         <TeamFormModal
           orgId={teamModal.orgId}
           team={teamModal.team}
+          orgType={(orgs ?? []).find(o => o.id === teamModal.orgId)?.type ?? null}
           onClose={(newTeamId) => {
             setTeamModal(null);
             if (newTeamId) setPendingSeasonTeamId(newTeamId);
@@ -591,7 +694,7 @@ export function TeamsPage() {
       {deleteOrg && (
         <ConfirmDialog
           title="Delete Organization"
-          message={`Delete "${deleteOrg.name}" and all its teams? This cannot be undone.`}
+          message={`Delete "${deleteOrg.name}" and all its teams, players, seasons, matches, and stats? This cannot be undone.`}
           confirmLabel="Delete"
           danger
           onConfirm={handleDeleteOrg}
