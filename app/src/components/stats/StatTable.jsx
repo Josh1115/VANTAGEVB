@@ -45,7 +45,7 @@ export function StatTable({ columns, rows, totalsRow, onRowClick, onNameClick, s
         <StatGlossaryDrawer columns={columns} onClose={() => setGlossaryOpen(false)} />
       )}
     <div className="overflow-x-auto">
-      <table className="text-sm">
+      <table className="text-sm w-full">
         <thead>
           <tr className="border-b border-slate-700">
             {columns.map((col) => (
@@ -85,7 +85,7 @@ export function StatTable({ columns, rows, totalsRow, onRowClick, onNameClick, s
                   onClick={col.key === 'name' && onNameClick ? (e) => { e.stopPropagation(); onNameClick(row); } : undefined}
                   className={clsx(
                     'px-8 py-2 tabular-nums',
-                    col.key === 'name' ? 'text-left font-medium sticky left-0 z-10 bg-slate-900' : 'text-center text-slate-300',
+                    col.key === 'name' ? 'text-left font-medium sticky left-0 z-10 bg-slate-900' : clsx('text-center', !col.cellClass && 'text-slate-300'),
                     col.key === 'name' && onNameClick && 'cursor-pointer hover:text-primary transition-colors',
                     col.cellClass?.(row[col.key], row)
                   )}

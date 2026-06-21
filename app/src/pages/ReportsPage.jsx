@@ -21,7 +21,6 @@ import { HittingBarChart } from '../components/charts/HittingBarChart';
 import { PassDistributionChart } from '../components/charts/PassDistributionChart';
 import { RotationRadarChart } from '../components/charts/RotationRadarChart';
 import { SideoutPieChart } from '../components/charts/SideoutPieChart';
-import { CourtHeatMap } from '../components/charts/CourtHeatMap';
 import { PlayerTrendsChart } from '../components/charts/PlayerTrendsChart';
 import { TeamComparison } from '../components/stats/TeamComparison';
 import { SetDistByRotationPanel } from '../components/stats/panels/SetDistByRotationPanel';
@@ -32,7 +31,6 @@ const TABS = [
   { value: 'rotation', label: 'Rotation Analysis'  },
   { value: 'trends',   label: 'Trends'             },
   { value: 'insights', label: 'Insights'            },
-  { value: 'heatmap',  label: 'Heat Map'           },
   { value: 'oppo',     label: 'Opp Stats'          },
 ];
 
@@ -141,7 +139,7 @@ function MiniTable({ cols, rows }) {
               {cols.map((c) => (
                 <td
                   key={c.key}
-                  className={`px-2 py-1.5 tabular-nums text-slate-300 ${c.key === 'name' ? 'text-left' : 'text-right'}`}
+                  className={`px-2 py-1.5 tabular-nums ${c.key === 'name' ? 'text-left text-slate-300' : `text-right ${c.cellClass ? c.cellClass(row[c.key], row) : 'text-slate-300'}`}`}
                 >
                   {c.fmt ? c.fmt(row[c.key]) : (row[c.key] ?? '—')}
                 </td>
@@ -514,16 +512,25 @@ export function ReportsPage() {
       name: `R${n}`,
       ...r,
     }));
-    // Mark the single lowest SO% and lowest SP% rows for yellow highlighting
     const withSo = rows.filter(r => r.so_pct != null);
     if (withSo.length) {
       const minSo = Math.min(...withSo.map(r => r.so_pct));
-      rows.forEach(r => { r._minSo = r.so_pct === minSo; });
+      const maxSo = Math.max(...withSo.map(r => r.so_pct));
+      let soMaxDone = false;
+      rows.forEach(r => {
+        r._minSo = r.so_pct === minSo;
+        if (!soMaxDone && r.so_pct === maxSo) { r._maxSo = true; soMaxDone = true; }
+      });
     }
     const withBp = rows.filter(r => r.bp_pct != null);
     if (withBp.length) {
       const minBp = Math.min(...withBp.map(r => r.bp_pct));
-      rows.forEach(r => { r._minBp = r.bp_pct === minBp; });
+      const maxBp = Math.max(...withBp.map(r => r.bp_pct));
+      let bpMaxDone = false;
+      rows.forEach(r => {
+        r._minBp = r.bp_pct === minBp;
+        if (!bpMaxDone && r.bp_pct === maxBp) { r._maxBp = true; bpMaxDone = true; }
+      });
     }
     return rows;
   }, [stats]);
@@ -549,10 +556,23 @@ export function ReportsPage() {
       oos_hit_pct: d.oos.hit_pct,
       oos_win_pct: d.oos.win_pct,
     });
-    return [
+    const rows = [
       ...Object.entries(byRotation).map(([r, d]) => toRow(r, `R${r}`, d)),
       { ...toRow('total', 'Total', total), isTotal: true },
     ];
+    const dataRows = rows.filter(r => !r.isTotal);
+    for (const key of ['is_k_pct', 'is_hit_pct', 'is_win_pct', 'oos_k_pct', 'oos_hit_pct', 'oos_win_pct']) {
+      const vals = dataRows.map(r => r[key]).filter(v => v != null);
+      if (!vals.length) continue;
+      const min = Math.min(...vals);
+      const max = Math.max(...vals);
+      let maxDone = false;
+      dataRows.forEach(r => {
+        if (r[key] === min) r[`_min_${key}`] = true;
+        if (!maxDone && r[key] === max) { r[`_max_${key}`] = true; maxDone = true; }
+      });
+    }
+    return rows;
   }, [stats]);
 
   // Transition / free-ball rows for per-rotation MiniTable
@@ -576,6 +596,18 @@ export function ReportsPage() {
       rows.push(toRow(String(r), `R${r}`, free.byRotation[r], transition.byRotation[r]));
     }
     rows.push({ ...toRow('total', 'Total', free.total, transition.total), isTotal: true });
+    const dataRows = rows.filter(r => !r.isTotal);
+    for (const key of ['free_k_pct', 'free_hit_pct', 'free_win_pct', 'trans_k_pct', 'trans_hit_pct', 'trans_win_pct']) {
+      const vals = dataRows.map(r => r[key]).filter(v => v != null);
+      if (!vals.length) continue;
+      const min = Math.min(...vals);
+      const max = Math.max(...vals);
+      let maxDone = false;
+      dataRows.forEach(r => {
+        if (r[key] === min) r[`_min_${key}`] = true;
+        if (!maxDone && r[key] === max) { r[`_max_${key}`] = true; maxDone = true; }
+      });
+    }
     return rows;
   }, [stats]);
 
@@ -594,10 +626,23 @@ export function ReportsPage() {
       runs_7plus: d.runs_7plus,
       runs_9plus: d.runs_9plus,
     });
-    return [
+    const rows = [
       ...Object.entries(byRotation).map(([r, d]) => toRow(r, `R${r}`, d)),
       { ...toRow('total', 'Total', total), isTotal: true },
     ];
+    const dataRows = rows.filter(r => !r.isTotal);
+    for (const key of ['max_run', 'avg_run', 'total_runs', 'runs_3plus', 'runs_5plus', 'runs_7plus', 'runs_9plus']) {
+      const vals = dataRows.map(r => r[key]).filter(v => v != null);
+      if (!vals.length) continue;
+      const min = Math.min(...vals);
+      const max = Math.max(...vals);
+      let maxDone = false;
+      dataRows.forEach(r => {
+        if (r[key] === min) r[`_min_${key}`] = true;
+        if (!maxDone && r[key] === max) { r[`_max_${key}`] = true; maxDone = true; }
+      });
+    }
+    return rows;
   }, [stats]);
 
   const timeoutPatterns = useMemo(() => {
@@ -1683,11 +1728,6 @@ export function ReportsPage() {
                   <PlayerTrendsChart trends={stats.trends} playerNames={playerNames} />
                 )}
               </div>
-            )}
-
-            {/* ── Heat Map ─────────────────────────────────────────────── */}
-            {tab === 'heatmap' && (
-              <CourtHeatMap contacts={contacts} />
             )}
 
             {/* ── Opp Stats ────────────────────────────────────────────── */}

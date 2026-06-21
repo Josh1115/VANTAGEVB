@@ -40,6 +40,8 @@ export function SideoutPieChart({ so_pct, label = 'Sideout' }) {
         </Pie>
         <Tooltip
           contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8 }}
+          labelStyle={{ color: '#f1f5f9' }}
+          itemStyle={{ color: '#ffffff' }}
           formatter={(v) => [`${v}%`]}
         />
       </PieChart>
