@@ -44,6 +44,8 @@ export const STAT_GLOSSARY = {
   p2:           { abbr: 'P2',       full: 'Pass Rating 2',              def: 'In-system pass — setter has limited attack options.' },
   p3:           { abbr: 'P3',       full: 'Pass Rating 3 (Perfect)',    def: 'Perfect pass — setter has the full offense available.' },
   apr:          { abbr: 'APR',      full: 'Average Pass Rating',        def: '(0·P0 + 1·P1 + 2·P2 + 3·P3) ÷ REC. Scale: 0–3.\n\nRating scale:\n  3 — Perfect: setter has full offense\n  2 — In system: limited attack options\n  1 — Out of system: severely limits offense\n  0 — Ace against: ball was not playable\n\nAPR feeds into VER. Each pass is scored relative to the neutral value of 2.0:\n  P3 = +1 per pass · P2 = 0 (neutral) · P1 = −1 per pass · P0 = −2 per pass' },
+  f_apr:        { abbr: 'FLT APR', full: 'APR vs Float Serve',         def: 'Average pass rating on float (knuckleball) serves only. Null when no float receptions recorded.' },
+  t_apr:        { abbr: 'TOP APR', full: 'APR vs Topspin Serve',       def: 'Average pass rating on topspin (jump) serves only. Null when no topspin receptions recorded.' },
   pp_pct:       { abbr: '3OPT%',   full: 'Perfect Pass %',             def: 'P3 ÷ REC. Rate of passes rated "perfect".' },
 
   // ── Attacking ─────────────────────────────────────────────────────────────
@@ -78,7 +80,6 @@ export const STAT_GLOSSARY = {
   ae_blk_pct:   { abbr: 'BLK%',     full: 'Blocked Error %',            def: 'BLK ÷ AE.' },
   ae_bra:       { abbr: 'BRA',      full: 'Attack Errors — Brought Around', def: 'Attacks deflected off the block back onto the attacker\'s side for a point.' },
   ae_bra_pct:   { abbr: 'BRA%',     full: 'Brought-Around Error %',     def: 'BRA ÷ AE.' },
-  fbs_pct:      { abbr: 'FBS%',     full: 'Freeball Send %',            def: 'FBS ÷ TA. Rate of attack attempts that became freeball sends rather than true attacks.' },
 
   // ── VER ───────────────────────────────────────────────────────────────────
   ver:          { abbr: 'VER',      full: 'Volleyball Efficiency Rating', def: 'Position-adjusted composite efficiency rating per set.\n\nFormula:\nVER = Multiplier × (1 ÷ SP) × [\n  +4.00 × K\n  +4.00 × ACE\n  +5.00 × BS\n  +2.50 × BA\n  +1.00 × AST\n  +2.00 × (DIG + FREE)   ← freeball digs count equally\n  +(P1 + 2·P2 + 3·P3 − 2·REC)   ← APR component\n  −3.00 × AE\n  −3.00 × SE\n  −3.00 × BHE\n  −3.00 × DROP\n  −3.00 × L\n  −3.00 × NET\n]\n\nAPR Component: (P1 + 2·P2 + 3·P3 − 2·REC)\n  Scores each pass relative to a neutral APR of 2.0:\n  P3 = +1 per pass (perfect)\n  P2 =  0 per pass (neutral)\n  P1 = −1 per pass (out of system)\n  P0 = −2 per pass (ace against)\n  Zero when the player has no pass attempts.\n\nPosition Multipliers (normalize VER so all positions share one tier scale):\n  OH  1.00 (baseline)\n  OPP 1.00 (baseline)\n  RS  1.00 (baseline)\n  MB  1.05 (fewer block/attack opps per set)\n  S   0.90 (assists weighted lower than kills)\n  DS  2.00 (no offensive stats — must build VER from digs/passing only)\n  L   1.65 (no offensive stats — must build VER from digs/passing only)\n\nGrades (all positions — posMult already normalizes VER cross-position):\n  ELITE+  ≥ 28\n  ELITE   ≥ 22\n  GOOD    ≥ 15\n  AVG     ≥ 10\n  LOW     ≥  5\n  BENCH   ≥  0\n  NEG      < 0\n\nHigher is better. A VER of 0 means the player broke even.' },
@@ -106,11 +107,11 @@ export const STAT_GLOSSARY = {
 
   // ── Defense ───────────────────────────────────────────────────────────────
   dig:          { abbr: 'DIG',      full: 'Digs',                       def: 'Successful defensive contacts keeping the ball in play (not freeballs).' },
+  fbs:          { abbr: 'FBS',      full: 'Freeball Sent',              def: 'Balls sent over as a freeball instead of an attack — gives the opponent an easy offensive opportunity.' },
   fb_dig:       { abbr: 'FREE',     full: 'Freeball Digs',              def: 'Successful defensive contacts on an opponent freeball. Counts equally with DIG in VER (+2.00 per dig/free dig per set).' },
   de:           { abbr: 'DE',       full: 'Dig Errors',                 def: 'Defensive contacts resulting in a dead ball or opponent point.' },
   dips:         { abbr: 'DiPS',     full: 'Digs Per Set',               def: 'DIG ÷ SP. Does not include freeball digs.' },
   fbr:          { abbr: 'FBR',      full: 'Freeball Receives',          def: 'Controlled passes of an opponent freeball.' },
-  fbs:          { abbr: 'FBS',      full: 'Freeball Sends',             def: 'Balls sent over as a freeball after a dig.' },
   fbe:          { abbr: 'DROP',     full: 'Drop Error',                 def: 'An error where the ball hit the floor and the player was responsible. Penalized at −3.00 per set in VER.' },
   dg_k_pct:    { abbr: 'DG K%',   full: 'Dig-to-Kill %',              def: 'Rate at which a player\'s successful transition digs lead to a kill on the next attack. DG K ÷ DG (digs with a subsequent attack).' },
   dg_win_pct:  { abbr: 'DG Win%', full: 'Dig-to-Win %',               def: 'Win rate on rallies where the player recorded a transition dig.' },

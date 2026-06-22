@@ -197,7 +197,7 @@ export function LoginPage({ onSignup }) {
               >
                 ELEVATE TO YOUR VANTAGE
               </h2>
-              <img src="/icons/logo2.png" alt="Vantage logo" className="mx-auto mt-4" style={{ width: '40%' }} />
+              <img src="/icons/logo_vec2.png" alt="Vantage logo" className="mx-auto mt-4" style={{ width: '40%' }} />
 
               {/* ── Feature Card: Live Stat View ── */}
               <div className="w-full mt-6">
@@ -253,13 +253,16 @@ export function LoginPage({ onSignup }) {
                 <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
                   LIVE TEAM & PLAYER STATS IN HUD
                 </p>
-                <div className="flex flex-col gap-2">
-                  <img loading="lazy" src="/screenshots/Live Team Stats.png" alt="Live team stats HUD" className="w-full rounded-xl" />
-                  <img loading="lazy" src="/screenshots/Live Player Stats.png" alt="Live player stats HUD" className="w-full rounded-xl" />
-                </div>
-
+                <p className="text-sm text-slate-400 mb-3">
+                  Keep your finger on the pulse of every player and the team as a whole — without breaking your tracking rhythm. Stay in the play and get a sense of how the team and your players are performing!
+                </p>
+                <img loading="lazy" src="/screenshots/Live Team Stats.png" alt="Live team stats HUD" className="w-full rounded-xl" />
+                <p className="text-sm text-slate-400 mt-3 mb-3">
+                  The live team stats are neatly kept on the Run Bar so the user can always have a sense of how the entire line is performing.
+                </p>
+                <img loading="lazy" src="/screenshots/Live Player Stats.png" alt="Live player stats HUD" className="w-full rounded-xl" />
                 <p className="text-sm text-slate-400 mt-3">
-                  Keep your finger on the pulse of every player and the team as a whole — without breaking your tracking rhythm. The live HUD surfaces team totals and the active player's individual stats so you can make substitutions and in-game adjustments backed by real numbers, not gut feel.
+                  Additionally, Vantage Point provides all players' stats on the court so you can make substitutions and in-game adjustments backed by real numbers, not gut feel.
                 </p>
               </div>
 

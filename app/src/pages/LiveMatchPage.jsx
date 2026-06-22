@@ -165,6 +165,25 @@ export function LiveMatchPage() {
   }, []);
   useWakeLock(wakeLockEnabled);
 
+  // Reconnect broadcast if network comes back after going offline mid-match
+  useEffect(() => {
+    if (!ready) return;
+    const handleOnline = async () => {
+      const s = useMatchStore.getState();
+      if (s.broadcastEnabled) return;
+      const match = await db.matches.get(matchId).catch(() => null);
+      if (!match?.pv_token) return;
+      startBroadcast(match.pv_token);
+    };
+    const handleOffline = () => stopBroadcast();
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [ready, matchId, startBroadcast, stopBroadcast]);
+
   // Haptic feedback on score change
   const prevScoreRef = useRef({ our: ourScore, opp: oppScore });
   useEffect(() => {
@@ -189,7 +208,7 @@ export function LiveMatchPage() {
 
   useEffect(() => {
     // Lock to landscape; release on unmount
-    screen.orientation?.lock?.('landscape').catch((err) => { console.warn('[VBStat] orientation lock:', err?.message ?? err); });
+    screen.orientation?.lock?.('landscape').catch(() => {});
     return () => screen.orientation?.unlock?.();
   }, []);
 

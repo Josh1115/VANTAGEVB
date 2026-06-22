@@ -1174,7 +1174,7 @@ export function MatchSummaryPage() {
         ae_net_pct: ae > 0 ? ae_net / ae : null,
         ae_blk_pct: ae > 0 ? ae_blk / ae : null,
         ae_bra_pct: ae > 0 ? ae_bra / ae : null,
-        fbs_pct:    ta > 0 ? fbs    / ta : null,
+        fbs,
         hit_pct:   ta > 0 ? (k - ae) / ta : null,
         k_pct:     ta > 0 ? k / ta : null,
         kps:       sp > 0 ? k / sp : null,

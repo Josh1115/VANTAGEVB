@@ -19,6 +19,9 @@ function mkAccum() {
     t_sa: 0, t_ace: 0, t_se: 0,   // topspin
     // pass — result stored as '0' | '1' | '2' | '3'
     pa: 0, p0: 0, p1: 0, p2: 0, p3: 0,
+    // pass — by receive type
+    f_pa: 0, f_p0: 0, f_p1: 0, f_p2: 0, f_p3: 0,
+    t_pa: 0, t_p0: 0, t_p1: 0, t_p2: 0, t_p3: 0,
     // attack
     ta: 0, k: 0, ae: 0, ae_ob: 0, ae_net: 0, ae_blk: 0, ae_bra: 0,
     k_pure: 0, k_tool: 0, k_over: 0, k_tip: 0, k_bk: 0, k_touch: 0,
@@ -36,7 +39,7 @@ function mkAccum() {
 }
 
 // count > 1 is used by synthetic box-score contacts to represent aggregate totals
-function accumContact(p, { action, result, serve_type, error_type, kill_type, count = 1 }) {
+function accumContact(p, { action, result, serve_type, receive_type, error_type, kill_type, count = 1 }) {
   const n = count;
   if (action === 'serve') {
     p.sa += n;
@@ -62,6 +65,19 @@ function accumContact(p, { action, result, serve_type, error_type, kill_type, co
     else if (result === '1') p.p1 += n;
     else if (result === '2') p.p2 += n;
     else if (result === '3') p.p3 += n;
+    if (receive_type === 'float') {
+      p.f_pa += n;
+      if      (result === '0') p.f_p0 += n;
+      else if (result === '1') p.f_p1 += n;
+      else if (result === '2') p.f_p2 += n;
+      else if (result === '3') p.f_p3 += n;
+    } else if (receive_type === 'topspin') {
+      p.t_pa += n;
+      if      (result === '0') p.t_p0 += n;
+      else if (result === '1') p.t_p1 += n;
+      else if (result === '2') p.t_p2 += n;
+      else if (result === '3') p.t_p3 += n;
+    }
   } else if (action === 'attack') {
     p.ta += n;
     if (result === 'kill') {
@@ -128,7 +144,11 @@ function deriveStats(p, sp, posLabel = null) {
     // Passing
     pa: p.pa, p0: p.p0, p1: p.p1, p2: p.p2, p3: p.p3,
     apr:    div(p.p1 + p.p2 * 2 + p.p3 * 3, p.pa),
-    pp_pct: div(p.p3, p.pa),           // perfect-pass %
+    pp_pct: div(p.p3, p.pa),
+    f_pa: p.f_pa, f_p0: p.f_p0, f_p1: p.f_p1, f_p2: p.f_p2, f_p3: p.f_p3,
+    f_apr: div(p.f_p1 + p.f_p2 * 2 + p.f_p3 * 3, p.f_pa),
+    t_pa: p.t_pa, t_p0: p.t_p0, t_p1: p.t_p1, t_p2: p.t_p2, t_p3: p.t_p3,
+    t_apr: div(p.t_p1 + p.t_p2 * 2 + p.t_p3 * 3, p.t_pa),
 
     // Attacking
     ta: p.ta, k: p.k,
@@ -143,7 +163,6 @@ function deriveStats(p, sp, posLabel = null) {
     ae_net_pct: div(p.ae_net, p.ae),
     ae_blk_pct: div(p.ae_blk, p.ae),
     ae_bra_pct: div(p.ae_bra, p.ae),
-    fbs_pct:    div(p.fbs, p.ta),
     hit_pct: div(p.k - p.ae, p.ta),
     k_pct:   div(p.k,  p.ta),
     kps:     div(p.k,  sp),

@@ -886,10 +886,17 @@ export function HomePage() {
             onPointerUp={handleLogoPointerUp}
             onPointerLeave={handleLogoPointerUp}
           />
-          <span className="text-[17.5px] font-semibold tracking-[0.22em] text-slate-300 uppercase">
+          <span className="text-[17.5px] font-semibold tracking-[0.22em] text-slate-300 uppercase" style={{ transform: 'translateY(-8px)' }}>
             Immediate Impact Analytics
           </span>
         </h1>
+
+        <img
+          src="/icons/logo_vec2.png"
+          alt="Vantage logo"
+          className="absolute left-1/2 pointer-events-none"
+          style={{ height: '48px', width: 'auto', bottom: '-2px', transform: 'translateX(-50%)' }}
+        />
       </header>
 
       <div className="p-4 md:p-6 space-y-4">

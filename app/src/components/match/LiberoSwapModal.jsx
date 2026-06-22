@@ -1,10 +1,13 @@
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { useMatchStore } from '../../store/matchStore';
+import { useShallow } from 'zustand/react/shallow';
 
 export function LiberoSwapModal({ liberoPlayer, onClose, onPick }) {
-  const lineup   = useMatchStore((s) => s.lineup);
-  const liberoId = useMatchStore((s) => s.liberoId);
+  const { lineup, liberoId } = useMatchStore(useShallow((s) => ({
+    lineup:   s.lineup,
+    liberoId: s.liberoId,
+  })));
 
   // Back-row slots eligible for libero replacement (S5=index 4, S6=index 5, S1=index 0)
   const eligible = [4, 5, 0]

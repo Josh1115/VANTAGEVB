@@ -738,6 +738,16 @@ function IconTrash() {
   );
 }
 
+// V chevron logo rotated to point right — used as branded nav arrow
+function VantageArrow() {
+  return (
+    <svg width="17" height="20" viewBox="0 0 17 20" aria-hidden="true">
+      <polygon points="0,20 0,0 17,10" fill="#f97316" />
+      <polygon points="0,16.5 0,3.5 12,10" fill="#fef3ee" />
+    </svg>
+  );
+}
+
 const GENDER_ORDER = ['F', 'M', 'Mixed', null];
 const GENDER_LABELS = { F: 'Girls', M: 'Boys', Mixed: 'Mixed' };
 
@@ -751,7 +761,7 @@ function TeamRow({ team, onSelectTeam, onEditTeam, onDeleteTeam }) {
         <div className="font-semibold text-base">{team.name}</div>
         <div className="flex items-center gap-2.5">
           <Badge color="gray">VIEW</Badge>
-          <span className="text-slate-400">→</span>
+          <VantageArrow />
         </div>
       </button>
       <button onClick={() => onEditTeam(team)} className="px-4 py-4 text-slate-500 hover:text-slate-300 transition-colors" title="Edit team">

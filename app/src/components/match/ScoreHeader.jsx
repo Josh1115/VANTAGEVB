@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { useMatchStore } from '../../store/matchStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useMatchStats } from '../../hooks/useMatchStats';
 import { useWinProbability } from '../../hooks/useWinProbability';
 import { SIDE, FORMAT, NFHS } from '../../constants';
@@ -246,28 +247,36 @@ const NudgeBtn = memo(function NudgeBtn({ label, onTap }) {
 
 export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, opponentName, onTimeoutCalled, onAssignLibero, flipLayout = false, broadcastEnabled = false, hasFamilyScope = false }) {
   const flipped = flipLayout;
-  const ourScore      = useMatchStore((s) => s.ourScore);
-  const oppScore      = useMatchStore((s) => s.oppScore);
-  const ourSetsWon    = useMatchStore((s) => s.ourSetsWon);
-  const oppSetsWon    = useMatchStore((s) => s.oppSetsWon);
-  const setNumber     = useMatchStore((s) => s.setNumber);
-  const serveSide     = useMatchStore((s) => s.serveSide);
-  const ourTimeouts   = useMatchStore((s) => s.ourTimeouts);
-  const oppTimeouts   = useMatchStore((s) => s.oppTimeouts);
-  const useTimeout    = useMatchStore((s) => s.useTimeout);
-  const subsUsed      = useMatchStore((s) => s.subsUsed);
-  const maxSubsPerSet = useMatchStore((s) => s.maxSubsPerSet);
-  const adjustScore   = useMatchStore((s) => s.adjustScore);
-  const currentRun    = useMatchStore((s) => s.currentRun);
-  const lastFeedItem  = useMatchStore((s) => s.lastFeedItem);
-  const pointHistory  = useMatchStore((s) => s.pointHistory);
-  const format        = useMatchStore((s) => s.format);
-  const lastSetScore  = useMatchStore((s) => s.lastSetScore);
-  const rotationNum   = useMatchStore((s) => s.rotationNum);
+  const {
+    ourScore, oppScore, ourSetsWon, oppSetsWon, setNumber, serveSide,
+    ourTimeouts, oppTimeouts, useTimeout, subsUsed, maxSubsPerSet, adjustScore,
+    currentRun, lastFeedItem, pointHistory, format, lastSetScore, rotationNum,
+    committedRallies,
+  } = useMatchStore(useShallow((s) => ({
+    ourScore:         s.ourScore,
+    oppScore:         s.oppScore,
+    ourSetsWon:       s.ourSetsWon,
+    oppSetsWon:       s.oppSetsWon,
+    setNumber:        s.setNumber,
+    serveSide:        s.serveSide,
+    ourTimeouts:      s.ourTimeouts,
+    oppTimeouts:      s.oppTimeouts,
+    useTimeout:       s.useTimeout,
+    subsUsed:         s.subsUsed,
+    maxSubsPerSet:    s.maxSubsPerSet,
+    adjustScore:      s.adjustScore,
+    currentRun:       s.currentRun,
+    lastFeedItem:     s.lastFeedItem,
+    pointHistory:     s.pointHistory,
+    format:           s.format,
+    lastSetScore:     s.lastSetScore,
+    rotationNum:      s.rotationNum,
+    committedRallies: s.committedRallies,
+  })));
 
   const { teamStats, oppStats } = useMatchStats();
   const { matchWinProb } = useWinProbability();
-  const totalRallies = useMatchStore((s) => s.committedRallies.length);
+  const totalRallies = committedRallies.length;
   const showWinProb  = totalRallies >= 5;
 
   const [nudgeOpen,       setNudgeOpen]       = useState(null); // null | 'us' | 'them'

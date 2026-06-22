@@ -1,5 +1,8 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { db } from '../db/schema';
 import { COLLEGE_DIVISIONS, MATCH_STATUS, SCHOOL_YEAR_CLS } from '../constants';
 import { STORAGE_KEYS, getIntStorage, getStorageItem } from '../utils/storage';
@@ -51,6 +54,86 @@ function inferFinishFromMatches(matches) {
     result: (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0) ? 'W' : 'L',
   }));
   return inferFinishFromPlayoffRounds(rounds);
+}
+
+// ── Shared swipe-to-reveal hook ───────────────────────────────────────────────
+
+function useSwipeReveal(REVEAL = 130) {
+  const [offset, setOffset]     = useState(0);
+  const [isSnapping, setIsSnapping] = useState(false);
+  const touchStartX = useRef(null);
+  const hasSwiped   = useRef(false);
+
+  const handleTouchStart = useCallback((e) => {
+    touchStartX.current = e.touches[0].clientX;
+    hasSwiped.current   = false;
+    setIsSnapping(false);
+  }, []);
+  const handleTouchMove = useCallback((e) => {
+    if (touchStartX.current === null) return;
+    const dx = touchStartX.current - e.touches[0].clientX;
+    if (Math.abs(dx) > 5) hasSwiped.current = true;
+    if (dx < 0) { setOffset(0); return; }
+    setOffset(Math.min(dx, REVEAL + 16));
+  }, [REVEAL]);
+  const handleTouchEnd = useCallback(() => {
+    setIsSnapping(true);
+    setOffset(prev => prev > REVEAL * 0.45 ? REVEAL : 0);
+    touchStartX.current = null;
+  }, [REVEAL]);
+  const reset = useCallback(() => { setOffset(0); setIsSnapping(true); }, []);
+  const clickCapture = useCallback((e) => {
+    if (hasSwiped.current) { hasSwiped.current = false; e.stopPropagation(); }
+  }, []);
+
+  const slideStyle = {
+    transform:  `translateX(-${offset}px)`,
+    transition: isSnapping ? 'transform 280ms cubic-bezier(0.25, 1, 0.5, 1)' : 'none',
+    willChange: 'transform',
+  };
+
+  return { offset, slideStyle, handleTouchStart, handleTouchMove, handleTouchEnd, clickCapture, reset };
+}
+
+// ── Shared coach-records builder ──────────────────────────────────────────────
+
+function computeCoachRecords(sortedHistory, field, { hasActiveSeason, activeSeasonYear, activeMatches, liveHistoryEntry, activeSeason }) {
+  const map = {};
+  for (const h of sortedHistory) {
+    if (activeSeasonYear && String(h.year) === activeSeasonYear) continue;
+    const name = h[field]?.trim();
+    if (!name) continue;
+    if (!map[name]) map[name] = { wins: 0, losses: 0, minYear: Infinity, maxYear: 0, isPresent: false };
+    map[name].wins   += h.wins   ?? 0;
+    map[name].losses += h.losses ?? 0;
+    const yr = Number(h.year) || 0;
+    map[name].minYear = Math.min(map[name].minYear, yr);
+    map[name].maxYear = Math.max(map[name].maxYear, yr);
+  }
+  if (hasActiveSeason) {
+    const name = (liveHistoryEntry?.[field] ?? activeSeason?.[field])?.trim();
+    if (name) {
+      if (!map[name]) map[name] = { wins: 0, losses: 0, minYear: Infinity, maxYear: 0, isPresent: false };
+      const yr = Number(activeSeason?.year) || 0;
+      map[name].minYear = Math.min(map[name].minYear, yr);
+      map[name].maxYear = Math.max(map[name].maxYear, yr != null ? yr : 9999);
+      map[name].isPresent = true;
+      const completed = (activeMatches ?? []).filter(
+        m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition'
+      );
+      map[name].wins   += completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
+      map[name].losses += completed.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
+    }
+  }
+  return Object.entries(map)
+    .map(([name, { wins, losses, minYear, maxYear, isPresent }]) => {
+      const min = minYear === Infinity ? 0 : minYear;
+      const yearLabel = isPresent
+        ? (min && min !== maxYear ? `${min}–present` : 'present')
+        : (min && min !== maxYear ? `${min}–${maxYear}` : (min ? String(min) : null));
+      return { name, wins, losses, maxYear, yearLabel, total: wins + losses, winPct: wins + losses > 0 ? fmtWinPct(wins, wins + losses) : null };
+    })
+    .sort((a, b) => b.maxYear - a.maxYear);
 }
 
 // ── Add / Edit Modal ──────────────────────────────────────────────────────────
@@ -449,62 +532,16 @@ function CommitModal({ teamId, onClose, editId, initialData }) {
 
 function CommitCard({ entry, onEdit, onDelete }) {
   const divCls = DIV_COLORS[entry.division] ?? DIV_COLORS['Club'];
-  const [offset, setOffset]     = useState(0);
-  const [isSnapping, setIsSnapping] = useState(false);
-  const touchStartX = useRef(null);
-  const hasSwiped   = useRef(false);
   const REVEAL = 130;
-
-  const handleTouchStart = (e) => {
-    touchStartX.current = e.touches[0].clientX;
-    hasSwiped.current   = false;
-    setIsSnapping(false);
-  };
-  const handleTouchMove = (e) => {
-    if (touchStartX.current === null) return;
-    const dx = touchStartX.current - e.touches[0].clientX;
-    if (Math.abs(dx) > 5) hasSwiped.current = true;
-    if (dx < 0) { setOffset(0); return; }
-    setOffset(Math.min(dx, REVEAL + 16));
-  };
-  const handleTouchEnd = () => {
-    setIsSnapping(true);
-    setOffset(offset > REVEAL * 0.45 ? REVEAL : 0);
-    touchStartX.current = null;
-  };
+  const { slideStyle, handleTouchStart, handleTouchMove, handleTouchEnd, clickCapture, reset } = useSwipeReveal(REVEAL);
 
   return (
     <div className="relative overflow-hidden rounded-xl">
-      {/* Revealed actions */}
       <div className="absolute inset-y-0 right-0 flex" style={{ width: REVEAL }}>
-        <button
-          onClick={() => { setOffset(0); setIsSnapping(true); onEdit(entry); }}
-          className="flex-1 flex items-center justify-center bg-primary text-white text-xs font-bold"
-        >
-          Edit
-        </button>
-        <button
-          onClick={() => onDelete(entry)}
-          className="flex-1 flex items-center justify-center bg-red-600 rounded-r-xl text-white text-xs font-bold"
-        >
-          Delete
-        </button>
+        <button onClick={() => { reset(); onEdit(entry); }} className="flex-1 flex items-center justify-center bg-primary text-white text-xs font-bold">Edit</button>
+        <button onClick={() => onDelete(entry)} className="flex-1 flex items-center justify-center bg-red-600 rounded-r-xl text-white text-xs font-bold">Delete</button>
       </div>
-
-      {/* Sliding card */}
-      <div
-        style={{
-          transform:  `translateX(-${offset}px)`,
-          transition: isSnapping ? 'transform 280ms cubic-bezier(0.25, 1, 0.5, 1)' : 'none',
-          willChange: 'transform',
-        }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onClickCapture={(e) => {
-          if (hasSwiped.current) { hasSwiped.current = false; e.stopPropagation(); }
-        }}
-      >
+      <div style={slideStyle} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onClickCapture={clickCapture}>
         <div className="bg-slate-800 rounded-xl px-4 py-3 border border-slate-700/50">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
@@ -640,34 +677,21 @@ function AwardWinnerModal({ teamId, typeId, onClose, editId, initialData }) {
 }
 
 function WinnerCard({ entry, onEdit, onDelete }) {
-  const [offset, setOffset]     = useState(0);
-  const [isSnapping, setIsSnapping] = useState(false);
-  const touchStartX = useRef(null);
-  const hasSwiped   = useRef(false);
   const REVEAL = 130;
-
-  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; hasSwiped.current = false; setIsSnapping(false); };
-  const handleTouchMove  = (e) => {
-    if (touchStartX.current === null) return;
-    const dx = touchStartX.current - e.touches[0].clientX;
-    if (Math.abs(dx) > 5) hasSwiped.current = true;
-    if (dx < 0) { setOffset(0); return; }
-    setOffset(Math.min(dx, REVEAL + 16));
-  };
-  const handleTouchEnd = () => { setIsSnapping(true); setOffset(offset > REVEAL * 0.45 ? REVEAL : 0); touchStartX.current = null; };
+  const { slideStyle, handleTouchStart, handleTouchMove, handleTouchEnd, clickCapture, reset } = useSwipeReveal(REVEAL);
 
   return (
     <div className="relative overflow-hidden rounded-xl">
       <div className="absolute inset-y-0 right-0 flex" style={{ width: REVEAL }}>
-        <button onClick={() => { setOffset(0); setIsSnapping(true); onEdit(entry); }} className="flex-1 flex items-center justify-center bg-primary text-white text-xs font-bold">Edit</button>
+        <button onClick={() => { reset(); onEdit(entry); }} className="flex-1 flex items-center justify-center bg-primary text-white text-xs font-bold">Edit</button>
         <button onClick={() => onDelete(entry)} className="flex-1 flex items-center justify-center bg-red-600 rounded-r-xl text-white text-xs font-bold">Delete</button>
       </div>
       <div
-        style={{ transform: `translateX(-${offset}px)`, transition: isSnapping ? 'transform 280ms cubic-bezier(0.25, 1, 0.5, 1)' : 'none', willChange: 'transform' }}
+        style={slideStyle}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onClickCapture={e => { if (hasSwiped.current) { hasSwiped.current = false; e.stopPropagation(); } }}
+        onClickCapture={clickCapture}
       >
         <div className="bg-slate-800 rounded-xl px-4 py-3 border border-slate-700/50">
           <div className="flex items-center gap-2 flex-wrap">
@@ -713,67 +737,53 @@ function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit, onE
   return (
     <div className="rounded-xl overflow-hidden border border-primary/50 shadow-[0_0_16px_-4px_rgba(249,115,22,0.2)]">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-primary/10">
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="text-base font-black text-white">{year ?? '—'}</span>
-          {historyEntry?.classification && (
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{historyEntry.classification}</span>
-          )}
-          {total > 0 && (
-            <span className="text-sm font-bold text-slate-200 tabular-nums">
-              {wins}–{losses}
-              {winPct && <span className="text-xs text-slate-400 font-semibold ml-1.5">{winPct}</span>}
-            </span>
-          )}
-          {activeSeason?.status !== 'ended' ? (
-            <span className="text-[10px] font-black uppercase tracking-widest text-primary border border-primary/40 px-2 py-0.5 rounded-full">
-              CURRENT
-            </span>
-          ) : (
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 border border-slate-600 px-2 py-0.5 rounded-full">
-              DONE
-            </span>
-          )}
-          {activeSeason?.status !== 'ended' && onEndSeason && (
-            <button
-              onClick={onEndSeason}
-              className="text-[10px] font-semibold text-slate-500 hover:text-red-400 border border-slate-600 hover:border-red-700/60 px-2 py-0.5 rounded-full transition-colors"
-            >
-              End Season
-            </button>
-          )}
-          {isWinRecord && (
-            <span className="text-[9px] font-black uppercase tracking-wide text-amber-400 border border-amber-500/50 px-1.5 py-0.5 rounded-full">
-              Most Wins
-            </span>
-          )}
-          {isStateRankRecord && (
-            <span className="text-[9px] font-black uppercase tracking-wide text-sky-400 border border-sky-500/50 px-1.5 py-0.5 rounded-full">
-              Best State Rank
-            </span>
-          )}
-          {isNationalRankRecord && (
-            <span className="text-[9px] font-black uppercase tracking-wide text-violet-400 border border-violet-500/50 px-1.5 py-0.5 rounded-full">
-              Best USA Rank
-            </span>
-          )}
-          {isWinsAddedRecord && (
-            <span className="text-[9px] font-black uppercase tracking-wide text-emerald-400 border border-emerald-500/50 px-1.5 py-0.5 rounded-full">
-              Most Wins Added
-            </span>
-          )}
-          {isMostGamesRecord && (
-            <span className="text-[9px] font-black uppercase tracking-wide text-rose-400 border border-rose-500/50 px-1.5 py-0.5 rounded-full">
-              Most Games Played
-            </span>
-          )}
+      <div className="px-4 py-3 bg-primary/10">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="text-base font-black text-white">{year ?? '—'}</span>
+            {historyEntry?.classification && (
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{historyEntry.classification}</span>
+            )}
+            {total > 0 && (
+              <span className="text-sm font-bold text-slate-200 tabular-nums">
+                {wins}–{losses}
+                {winPct && <span className="text-xs text-slate-400 font-semibold ml-1.5">{winPct}</span>}
+              </span>
+            )}
+            {activeSeason?.status !== 'ended' ? (
+              <span className="text-[10px] font-black uppercase tracking-widest text-primary border border-primary/40 px-2 py-0.5 rounded-full">
+                CURRENT
+              </span>
+            ) : (
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 border border-slate-600 px-2 py-0.5 rounded-full">
+                DONE
+              </span>
+            )}
+            {activeSeason?.status !== 'ended' && onEndSeason && (
+              <button
+                onClick={onEndSeason}
+                className="text-[10px] font-semibold text-slate-500 hover:text-red-400 border border-slate-600 hover:border-red-700/60 px-2 py-0.5 rounded-full transition-colors"
+              >
+                End Season
+              </button>
+            )}
+          </div>
+          <button
+            onClick={onEdit}
+            className="text-xs text-primary font-semibold px-2 py-1 rounded-lg hover:bg-slate-700/50 transition-colors shrink-0"
+          >
+            {historyEntry ? 'Edit' : '+ Details'}
+          </button>
         </div>
-        <button
-          onClick={onEdit}
-          className="text-xs text-primary font-semibold px-2 py-1 rounded-lg hover:bg-slate-700/50 transition-colors shrink-0"
-        >
-          {historyEntry ? 'Edit' : '+ Details'}
-        </button>
+        {(isWinRecord || isStateRankRecord || isNationalRankRecord || isWinsAddedRecord || isMostGamesRecord) && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {isWinRecord        && <span className="text-[9px] font-black uppercase tracking-wide text-amber-400 border border-amber-500/50 px-1.5 py-0.5 rounded-full">Most Wins</span>}
+            {isStateRankRecord  && <span className="text-[9px] font-black uppercase tracking-wide text-sky-400 border border-sky-500/50 px-1.5 py-0.5 rounded-full">Best State Rank</span>}
+            {isNationalRankRecord && <span className="text-[9px] font-black uppercase tracking-wide text-violet-400 border border-violet-500/50 px-1.5 py-0.5 rounded-full">Best USA Rank</span>}
+            {isWinsAddedRecord  && <span className="text-[9px] font-black uppercase tracking-wide text-emerald-400 border border-emerald-500/50 px-1.5 py-0.5 rounded-full">Most Wins Added</span>}
+            {isMostGamesRecord  && <span className="text-[9px] font-black uppercase tracking-wide text-rose-400 border border-rose-500/50 px-1.5 py-0.5 rounded-full">Most Games Played</span>}
+          </div>
+        )}
       </div>
 
       <div className="bg-slate-800 px-4 py-3 space-y-2.5">
@@ -914,58 +924,34 @@ function SeasonCard({ entry, onEdit, onDelete, isWinRecord, isStateRankRecord, i
       titleArr.length > 0 ? 'border border-primary/40' : 'border border-slate-700/50'
     }`}>
       {/* Header */}
-      <div className={`flex items-center justify-between px-4 py-3 ${isWinRecord ? 'bg-amber-900/15' : 'bg-slate-700/40'}`}>
-        <div className="flex items-center gap-3">
-          <span className="text-base font-black text-white">{entry.year}</span>
-          {entry.classification && (
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{entry.classification}</span>
-          )}
-          {hasRecord && (
-            <span className="text-sm font-bold text-slate-200 tabular-nums">
-              {wins ?? '—'}–{losses ?? '—'}
-              {winPct && <span className="text-xs text-slate-400 font-semibold ml-1.5">{winPct}</span>}
-            </span>
-          )}
-          {isWinRecord && (
-            <span className="text-[9px] font-black uppercase tracking-wide text-amber-400 border border-amber-500/50 px-1.5 py-0.5 rounded-full">
-              Most Wins
-            </span>
-          )}
-          {isStateRankRecord && (
-            <span className="text-[9px] font-black uppercase tracking-wide text-sky-400 border border-sky-500/50 px-1.5 py-0.5 rounded-full">
-              Best State Rank
-            </span>
-          )}
-          {isNationalRankRecord && (
-            <span className="text-[9px] font-black uppercase tracking-wide text-violet-400 border border-violet-500/50 px-1.5 py-0.5 rounded-full">
-              Best USA Rank
-            </span>
-          )}
-          {isWinsAddedRecord && (
-            <span className="text-[9px] font-black uppercase tracking-wide text-emerald-400 border border-emerald-500/50 px-1.5 py-0.5 rounded-full">
-              Most Wins Added
-            </span>
-          )}
-          {isMostGamesRecord && (
-            <span className="text-[9px] font-black uppercase tracking-wide text-rose-400 border border-rose-500/50 px-1.5 py-0.5 rounded-full">
-              Most Games Played
-            </span>
-          )}
+      <div className={`px-4 py-3 ${isWinRecord ? 'bg-amber-900/15' : 'bg-slate-700/40'}`}>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="text-base font-black text-white">{entry.year}</span>
+            {entry.classification && (
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{entry.classification}</span>
+            )}
+            {hasRecord && (
+              <span className="text-sm font-bold text-slate-200 tabular-nums">
+                {wins ?? '—'}–{losses ?? '—'}
+                {winPct && <span className="text-xs text-slate-400 font-semibold ml-1.5">{winPct}</span>}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={() => onEdit(entry)} className="text-xs text-primary font-semibold px-2 py-1 rounded-lg hover:bg-slate-600/50 transition-colors">Edit</button>
+            <button onClick={() => onDelete(entry)} className="text-xs text-red-400 font-semibold px-2 py-1 rounded-lg hover:bg-slate-600/50 transition-colors">Delete</button>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => onEdit(entry)}
-            className="text-xs text-primary font-semibold px-2 py-1 rounded-lg hover:bg-slate-600/50 transition-colors"
-          >
-            Edit
-          </button>
-          <button
-            onClick={() => onDelete(entry)}
-            className="text-xs text-red-400 font-semibold px-2 py-1 rounded-lg hover:bg-slate-600/50 transition-colors"
-          >
-            Delete
-          </button>
-        </div>
+        {(isWinRecord || isStateRankRecord || isNationalRankRecord || isWinsAddedRecord || isMostGamesRecord) && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {isWinRecord         && <span className="text-[9px] font-black uppercase tracking-wide text-amber-400 border border-amber-500/50 px-1.5 py-0.5 rounded-full">Most Wins</span>}
+            {isStateRankRecord   && <span className="text-[9px] font-black uppercase tracking-wide text-sky-400 border border-sky-500/50 px-1.5 py-0.5 rounded-full">Best State Rank</span>}
+            {isNationalRankRecord && <span className="text-[9px] font-black uppercase tracking-wide text-violet-400 border border-violet-500/50 px-1.5 py-0.5 rounded-full">Best USA Rank</span>}
+            {isWinsAddedRecord   && <span className="text-[9px] font-black uppercase tracking-wide text-emerald-400 border border-emerald-500/50 px-1.5 py-0.5 rounded-full">Most Wins Added</span>}
+            {isMostGamesRecord   && <span className="text-[9px] font-black uppercase tracking-wide text-rose-400 border border-rose-500/50 px-1.5 py-0.5 rounded-full">Most Games Played</span>}
+          </div>
+        )}
       </div>
 
       <div className="px-4 py-3 space-y-2.5">
@@ -1407,91 +1393,33 @@ export function HistoryPage() {
     return () => { cancelled = true; };
   }, [programRecord.wins, programRecord.losses]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const coachRecords = useMemo(() => {
-    const map = {};
-    for (const h of sortedHistory) {
-      if (activeSeasonYear && String(h.year) === activeSeasonYear) continue;
-      const name = h.head_coach?.trim();
-      if (!name) continue;
-      if (!map[name]) map[name] = { wins: 0, losses: 0, minYear: Infinity, maxYear: 0, isPresent: false };
-      map[name].wins    += h.wins   ?? 0;
-      map[name].losses  += h.losses ?? 0;
-      const yr = Number(h.year) || 0;
-      map[name].minYear  = Math.min(map[name].minYear, yr);
-      map[name].maxYear  = Math.max(map[name].maxYear, yr);
-    }
-    if (hasActiveSeason) {
-      const name = (liveHistoryEntry?.head_coach ?? activeSeason?.head_coach)?.trim();
-      if (name) {
-        if (!map[name]) map[name] = { wins: 0, losses: 0, minYear: Infinity, maxYear: 0, isPresent: false };
-        const yr = Number(activeSeason?.year) || 0;
-        map[name].minYear  = Math.min(map[name].minYear, yr);
-        map[name].maxYear  = Math.max(map[name].maxYear, yr != null ? yr : 9999);
-        map[name].isPresent = true;
-        const completed = (activeMatches ?? []).filter(
-          m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition'
-        );
-        map[name].wins   += completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
-        map[name].losses += completed.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
-      }
-    }
-    return Object.entries(map)
-      .map(([name, { wins, losses, minYear, maxYear, isPresent }]) => {
-        const min = minYear === Infinity ? 0 : minYear;
-        const yearLabel = isPresent
-          ? (min && min !== maxYear ? `${min}–present` : 'present')
-          : (min && min !== maxYear ? `${min}–${maxYear}` : (min ? String(min) : null));
-        return {
-          name, wins, losses, maxYear, yearLabel,
-          total:  wins + losses,
-          winPct: wins + losses > 0 ? fmtWinPct(wins, wins + losses) : null,
-        };
-      })
-      .sort((a, b) => b.maxYear - a.maxYear);
-  }, [sortedHistory, activeMatches, hasActiveSeason, activeSeasonYear, liveHistoryEntry, activeSeason]);
+  const coachCtx = { hasActiveSeason, activeSeasonYear, activeMatches, liveHistoryEntry, activeSeason };
+  const coachRecords     = useMemo(() => computeCoachRecords(sortedHistory, 'head_coach', coachCtx), [sortedHistory, activeMatches, hasActiveSeason, activeSeasonYear, liveHistoryEntry, activeSeason]); // eslint-disable-line react-hooks/exhaustive-deps
+  const asstCoachRecords = useMemo(() => computeCoachRecords(sortedHistory, 'asst_coach', coachCtx), [sortedHistory, activeMatches, hasActiveSeason, activeSeasonYear, liveHistoryEntry, activeSeason]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const asstCoachRecords = useMemo(() => {
-    const map = {};
-    for (const h of sortedHistory) {
-      if (activeSeasonYear && String(h.year) === activeSeasonYear) continue;
-      const name = h.asst_coach?.trim();
-      if (!name) continue;
-      if (!map[name]) map[name] = { wins: 0, losses: 0, minYear: Infinity, maxYear: 0, isPresent: false };
-      map[name].wins    += h.wins   ?? 0;
-      map[name].losses  += h.losses ?? 0;
-      const yr = Number(h.year) || 0;
-      map[name].minYear  = Math.min(map[name].minYear, yr);
-      map[name].maxYear  = Math.max(map[name].maxYear, yr);
+  // ── Season search (item 11) ───────────────────────────────────────────────
+  const [seasonSearch, setSeasonSearch] = useState('');
+  const filteredHistory = useMemo(() => {
+    const q = seasonSearch.trim().toLowerCase();
+    if (!q) return sortedHistory;
+    return sortedHistory.filter(h => String(h.year).toLowerCase().includes(q) || (h.head_coach ?? '').toLowerCase().includes(q));
+  }, [sortedHistory, seasonSearch]);
+
+  // ── Sparkline data (item 10) ──────────────────────────────────────────────
+  const sparklineData = useMemo(() => {
+    const rows = [...sortedHistory].reverse().map(h => {
+      const live = liveRecordsByYear?.[String(h.year)];
+      const wins = live?.wins ?? h.wins ?? 0;
+      return { year: String(h.year), wins };
+    });
+    if (hasActiveSeason && activeSeason?.year != null && liveCardWins >= 0) {
+      const idx = rows.findIndex(r => r.year === String(activeSeason.year));
+      const entry = { year: String(activeSeason.year), wins: liveCardWins, isLive: true };
+      if (idx !== -1) rows[idx] = entry;
+      else rows.push(entry);
     }
-    if (hasActiveSeason) {
-      const name = (liveHistoryEntry?.asst_coach ?? activeSeason?.asst_coach)?.trim();
-      if (name) {
-        if (!map[name]) map[name] = { wins: 0, losses: 0, minYear: Infinity, maxYear: 0, isPresent: false };
-        const yr = Number(activeSeason?.year) || 0;
-        map[name].minYear  = Math.min(map[name].minYear, yr);
-        map[name].maxYear  = Math.max(map[name].maxYear, yr != null ? yr : 9999);
-        map[name].isPresent = true;
-        const completed = (activeMatches ?? []).filter(
-          m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition'
-        );
-        map[name].wins   += completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
-        map[name].losses += completed.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
-      }
-    }
-    return Object.entries(map)
-      .map(([name, { wins, losses, minYear, maxYear, isPresent }]) => {
-        const min = minYear === Infinity ? 0 : minYear;
-        const yearLabel = isPresent
-          ? (min && min !== maxYear ? `${min}–present` : 'present')
-          : (min && min !== maxYear ? `${min}–${maxYear}` : (min ? String(min) : null));
-        return {
-          name, wins, losses, maxYear, yearLabel,
-          total:  wins + losses,
-          winPct: wins + losses > 0 ? fmtWinPct(wins, wins + losses) : null,
-        };
-      })
-      .sort((a, b) => b.maxYear - a.maxYear);
-  }, [sortedHistory, activeMatches, hasActiveSeason, activeSeasonYear, liveHistoryEntry, activeSeason]);
+    return rows;
+  }, [sortedHistory, liveRecordsByYear, hasActiveSeason, activeSeason, liveCardWins]);
 
   const currentTeam = useMemo(
     () => (orgTeams ?? []).find(t => t.id === teamId) ?? null,
@@ -1541,6 +1469,66 @@ export function HistoryPage() {
   }, [history, tourneyEntries, currentOrg, currentTeam]);
   const teamPrimaryColor   = orgColors[0] ?? currentTeam?.team_jersey_color?.[0] ?? null;
   const teamSecondaryColor = orgColors[1] ?? currentTeam?.team_jersey_color?.[1] ?? null;
+
+  // ── PDF export (item 14) ──────────────────────────────────────────────────
+  function exportHistoryPDF() {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+    const name = orgName || 'Program';
+    const genderLabel = currentTeam?.gender === 'F' ? 'Girls' : currentTeam?.gender === 'M' ? 'Boys' : '';
+
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${name} ${genderLabel} Volleyball — Program History`.trim(), 14, 18);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(120);
+    const span = sparklineData.length >= 2
+      ? `${sparklineData[0].year} – ${sparklineData[sparklineData.length - 1].year}`
+      : sparklineData[0]?.year ?? '';
+    const seasonCount = (sortedHistory.length + (showLiveCard ? 1 : 0));
+    if (programRecord.total > 0) {
+      doc.text(`${programRecord.wins}–${programRecord.losses} all-time (${programRecord.winPct}) · ${seasonCount} seasons${span ? ` · ${span}` : ''}`, 14, 26);
+    }
+    doc.setTextColor(0);
+
+    // Season log table
+    const seasonRows = (showLiveCard ? [{ year: activeSeason.year, wins: liveCardWins, losses: liveCardGames - liveCardWins, head_coach: liveHistoryEntry?.head_coach ?? activeSeason?.head_coach ?? '', title: liveHistoryEntry?.title ?? null, state_rank: liveHistoryEntry?.state_rank ?? null, playoff_rounds: liveHistoryEntry?.playoff_rounds ?? [], state_finish: liveHistoryEntry?.state_finish ?? '' }, ...sortedHistory] : sortedHistory)
+      .map(h => {
+        const live = liveRecordsByYear?.[String(h.year)];
+        const w = live?.wins ?? h.wins ?? '';
+        const l = live?.losses ?? h.losses ?? '';
+        const titles = toTitleArr(h.title).join(', ');
+        const finish = h.state_finish || (h.playoff_rounds?.length ? h.playoff_rounds[h.playoff_rounds.length - 1].round : '');
+        return [String(h.year), w !== '' && l !== '' ? `${w}–${l}` : '—', h.head_coach ?? '', titles, finish, h.state_rank != null ? `#${h.state_rank}` : ''];
+      });
+
+    autoTable(doc, {
+      startY: 32,
+      head: [['Year', 'Record', 'Head Coach', 'Titles', 'Playoff Finish', 'State Rank']],
+      body: seasonRows,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [249, 115, 22], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 16 }, 5: { cellWidth: 18 } },
+    });
+
+    // Coach records
+    if (coachRecords.length > 0) {
+      const y = doc.lastAutoTable.finalY + 8;
+      doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+      doc.text('Head Coach Records', 14, y);
+      autoTable(doc, {
+        startY: y + 4,
+        head: [['Coach', 'Record', 'Win%', 'Years']],
+        body: coachRecords.map(c => [c.name, `${c.wins}–${c.losses}`, c.winPct ?? '—', c.yearLabel ?? '']),
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [249, 115, 22], textColor: 255, fontStyle: 'bold' },
+      });
+    }
+
+    doc.save(`${name.replace(/\s+/g, '_')}_History.pdf`);
+  }
 
   return (
     <div className="pb-24">
@@ -1604,7 +1592,12 @@ export function HistoryPage() {
                     style={{ marginBottom: commitsOpen ? '0.75rem' : '0' }}
                   >
                     <div className="text-left">
-                      <h3 className="text-sm font-bold text-white">College Commits</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-white">College Commits</h3>
+                        {sortedCommits.length > 0 && (
+                          <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-slate-700 text-slate-400">{sortedCommits.length}</span>
+                        )}
+                      </div>
                       <p className="text-[11px] text-slate-500 mt-0.5">Player commitments &amp; signings</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -1614,27 +1607,23 @@ export function HistoryPage() {
                       >
                         + Add
                       </div>
-                      <svg
-                        width="16" height="16" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                        className={`text-slate-500 transition-transform duration-200 ${commitsOpen ? 'rotate-90' : 'rotate-0'}`}
-                      >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`text-slate-500 transition-transform duration-200 ${commitsOpen ? 'rotate-90' : 'rotate-0'}`}>
                         <path d="M9 18l6-6-6-6" />
                       </svg>
                     </div>
                   </button>
                   {commitsOpen && commits !== undefined && (
                     sortedCommits.length === 0 ? (
-                      <p className="text-xs text-slate-500 italic">No commits recorded yet.</p>
+                      <button
+                        onClick={() => setShowAddCommit(true)}
+                        className="w-full py-4 rounded-xl border border-dashed border-slate-700 text-sm text-slate-500 hover:text-slate-300 hover:border-slate-500 transition-colors"
+                      >
+                        + Add First Commit
+                      </button>
                     ) : (
                       <div className="space-y-2">
                         {sortedCommits.map(c => (
-                          <CommitCard
-                            key={c.id}
-                            entry={c}
-                            onEdit={setEditCommit}
-                            onDelete={setConfirmDeleteCommit}
-                          />
+                          <CommitCard key={c.id} entry={c} onEdit={setEditCommit} onDelete={setConfirmDeleteCommit} />
                         ))}
                       </div>
                     )
@@ -1649,7 +1638,12 @@ export function HistoryPage() {
                     style={{ marginBottom: awardsOpen ? '0.75rem' : '0' }}
                   >
                     <div className="text-left">
-                      <h3 className="text-sm font-bold text-white">Individual Awards</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-white">Individual Awards</h3>
+                        {sortedAwardTypes.length > 0 && (
+                          <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-slate-700 text-slate-400">{sortedAwardTypes.length}</span>
+                        )}
+                      </div>
                       <p className="text-[11px] text-slate-500 mt-0.5">All-conference, all-state &amp; team honors</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -1659,11 +1653,7 @@ export function HistoryPage() {
                       >
                         + Award
                       </div>
-                      <svg
-                        width="16" height="16" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                        className={`text-slate-500 transition-transform duration-200 ${awardsOpen ? 'rotate-90' : 'rotate-0'}`}
-                      >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`text-slate-500 transition-transform duration-200 ${awardsOpen ? 'rotate-90' : 'rotate-0'}`}>
                         <path d="M9 18l6-6-6-6" />
                       </svg>
                     </div>
@@ -1674,8 +1664,8 @@ export function HistoryPage() {
                       <p className="text-xs text-slate-500 italic">No awards created yet.</p>
                     ) : (
                       <>
-                        {/* Award type pill row */}
-                        <div className="flex flex-wrap gap-2">
+                        {/* Award type pill row — overflow scroll so edit/delete don't clip */}
+                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                           {sortedAwardTypes.map(type => {
                             const isActive = activeAwardId === type.id;
                             return (
@@ -1692,16 +1682,8 @@ export function HistoryPage() {
                                 </button>
                                 {isActive && (
                                   <>
-                                    <button
-                                      onClick={() => setEditAward(type)}
-                                      className="px-2 py-1.5 bg-primary/80 text-white text-xs font-bold hover:bg-primary transition-colors"
-                                      title="Rename"
-                                    >✎</button>
-                                    <button
-                                      onClick={() => setConfirmDeleteAwardType(type)}
-                                      className="px-2 py-1.5 bg-red-700/80 text-white text-xs font-bold rounded-r-full hover:bg-red-600 transition-colors"
-                                      title="Delete award"
-                                    >×</button>
+                                    <button onClick={() => setEditAward(type)} className="px-2 py-1.5 bg-primary/80 text-white text-xs font-bold hover:bg-primary transition-colors" title="Rename">✎</button>
+                                    <button onClick={() => setConfirmDeleteAwardType(type)} className="px-2 py-1.5 bg-red-700/80 text-white text-xs font-bold rounded-r-full hover:bg-red-600 transition-colors" title="Delete award">×</button>
                                   </>
                                 )}
                               </div>
@@ -1712,10 +1694,7 @@ export function HistoryPage() {
                         {/* Winner list for active award */}
                         {activeAwardId != null && (
                           <div className="mt-2 space-y-2">
-                            <button
-                              onClick={() => setShowAddWinner(true)}
-                              className="w-full py-1.5 rounded-lg border border-dashed border-slate-600 text-xs text-slate-400 hover:text-white hover:border-slate-400 transition-colors"
-                            >
+                            <button onClick={() => setShowAddWinner(true)} className="w-full py-1.5 rounded-lg border border-dashed border-slate-600 text-xs text-slate-400 hover:text-white hover:border-slate-400 transition-colors">
                               + Winner
                             </button>
                             {awardWinners === undefined ? null : sortedAwardWinners.length === 0 ? (
@@ -1733,12 +1712,7 @@ export function HistoryPage() {
                                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{g.year}</p>
                                   <div className="space-y-2">
                                     {g.winners.map(w => (
-                                      <WinnerCard
-                                        key={w.id}
-                                        entry={w}
-                                        onEdit={setEditWinner}
-                                        onDelete={setConfirmDeleteWinner}
-                                      />
+                                      <WinnerCard key={w.id} entry={w} onEdit={setEditWinner} onDelete={setConfirmDeleteWinner} />
                                     ))}
                                   </div>
                                 </div>
@@ -1757,24 +1731,35 @@ export function HistoryPage() {
                   className="w-full flex items-center justify-between bg-black rounded-xl px-4 py-3 border border-slate-800 hover:border-slate-700 transition-colors"
                 >
                   <div className="text-left">
-                    <h3 className="text-sm font-bold text-white">Program History</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-white">Program History</h3>
+                      {(sortedHistory.length + (showLiveCard ? 1 : 0)) > 0 && (
+                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-slate-700 text-slate-400">
+                          {sortedHistory.length + (showLiveCard ? 1 : 0)} seasons
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[11px] text-slate-500 mt-0.5">All-time record, coaching staff &amp; season log</p>
                   </div>
-                  <svg
-                    width="16" height="16" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                    className={`text-slate-500 transition-transform duration-200 shrink-0 ${programHistoryOpen ? 'rotate-90' : 'rotate-0'}`}
-                  >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`text-slate-500 transition-transform duration-200 shrink-0 ${programHistoryOpen ? 'rotate-90' : 'rotate-0'}`}>
                     <path d="M9 18l6-6-6-6" />
                   </svg>
                 </button>
 
                 {programHistoryOpen && (
                   <>
-                    {/* Program Overall Record */}
+                    {/* Program Overall Record + sparkline */}
                     {programRecord.total > 0 && (
                       <div className="bg-surface rounded-xl px-4 py-3">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Program Overall Record</p>
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Program Overall Record</p>
+                          <button
+                            onClick={exportHistoryPDF}
+                            className="text-[10px] font-bold text-primary border border-primary/30 px-2 py-0.5 rounded-full hover:bg-primary/10 transition-colors"
+                          >
+                            Export PDF
+                          </button>
+                        </div>
                         <div className="grid grid-cols-3 divide-x divide-slate-700/60">
                           <div className="text-center pr-3">
                             <div className="text-4xl font-black text-emerald-400 tabular-nums leading-none">{displayProgramRecord.wins}</div>
@@ -1785,12 +1770,37 @@ export function HistoryPage() {
                             <div className="text-[10px] font-bold uppercase tracking-widest text-red-800 mt-1">Losses</div>
                           </div>
                           <div className="text-center pl-3">
-                            <div className="text-4xl font-black text-primary tabular-nums leading-none">
-                              {programRecord.winPct ?? '—'}
-                            </div>
+                            <div className="text-4xl font-black text-primary tabular-nums leading-none">{programRecord.winPct ?? '—'}</div>
                             <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">Win%</div>
                           </div>
                         </div>
+                        {/* Across X seasons span (item 13) */}
+                        {sparklineData.length >= 2 && (
+                          <p className="text-[10px] text-slate-600 text-center mt-2">
+                            Across {sparklineData.length} seasons ({sparklineData[0].year}–{sparklineData[sparklineData.length - 1].year})
+                          </p>
+                        )}
+                        {/* Win trend sparkline (item 10) */}
+                        {sparklineData.length >= 2 && (
+                          <div className="mt-4">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-2">Wins Per Season</p>
+                            <ResponsiveContainer width="100%" height={72}>
+                              <BarChart data={sparklineData} barCategoryGap="20%">
+                                <XAxis dataKey="year" tick={{ fontSize: 8, fill: '#64748b' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                                <Tooltip
+                                  cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                                  contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }}
+                                  formatter={(v) => [v, 'Wins']}
+                                />
+                                <Bar dataKey="wins" radius={[3, 3, 0, 0]}>
+                                  {sparklineData.map((entry, i) => (
+                                    <Cell key={i} fill={entry.isLive ? '#f97316' : '#f9731666'} />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -1813,18 +1823,14 @@ export function HistoryPage() {
                                       <span className="text-slate-600 mx-0.5">–</span>
                                       <span className="text-red-400">{losses}</span>
                                     </span>
-                                    {winPct && (
-                                      <span className="text-xs font-bold text-primary tabular-nums w-14 text-right">{winPct}</span>
-                                    )}
+                                    {winPct && <span className="text-xs font-bold text-primary tabular-nums w-14 text-right">{winPct}</span>}
                                   </div>
                                 </div>
                               ))}
                             </div>
                           </div>
                         )}
-                        {coachRecords.length > 0 && asstCoachRecords.length > 0 && (
-                          <div className="border-t border-slate-700/60" />
-                        )}
+                        {coachRecords.length > 0 && asstCoachRecords.length > 0 && <div className="border-t border-slate-700/60" />}
                         {asstCoachRecords.length > 0 && (
                           <div>
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Assistant Coach Records</p>
@@ -1841,9 +1847,7 @@ export function HistoryPage() {
                                       <span className="text-slate-600 mx-0.5">–</span>
                                       <span className="text-red-400">{losses}</span>
                                     </span>
-                                    {winPct && (
-                                      <span className="text-xs font-bold text-primary tabular-nums w-14 text-right">{winPct}</span>
-                                    )}
+                                    {winPct && <span className="text-xs font-bold text-primary tabular-nums w-14 text-right">{winPct}</span>}
                                   </div>
                                 </div>
                               ))}
@@ -1855,6 +1859,17 @@ export function HistoryPage() {
 
                     {/* Season History */}
                     <div className="space-y-3">
+                      {/* Season search (item 11) — only show when there are enough seasons */}
+                      {(sortedHistory.length + (showLiveCard ? 1 : 0)) >= 5 && (
+                        <input
+                          type="search"
+                          value={seasonSearch}
+                          onChange={e => setSeasonSearch(e.target.value)}
+                          placeholder="Search by year or coach…"
+                          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary"
+                        />
+                      )}
+
                       {showLiveCard && (
                         <LiveSeasonCard
                           year={activeSeason.year}
@@ -1877,8 +1892,10 @@ export function HistoryPage() {
                           title="No seasons recorded"
                           description="Tap + Season to start building your program's history"
                         />
+                      ) : filteredHistory.length === 0 && seasonSearch ? (
+                        <p className="text-sm text-slate-500 text-center py-4">No seasons match "{seasonSearch}"</p>
                       ) : sortedHistory.length === 0 && showLiveCard ? null : (
-                        sortedHistory.map(entry => (
+                        filteredHistory.map(entry => (
                           <SeasonCard
                             key={entry.id}
                             entry={entry}

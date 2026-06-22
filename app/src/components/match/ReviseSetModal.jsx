@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMatchStore } from '../../store/matchStore';
+import { useShallow } from 'zustand/react/shallow';
 
 export function ReviseSetModal({ set, matchId, onClose, onBoxScore }) {
   const navigate   = useNavigate();
-  const reviseSet  = useMatchStore((s) => s.reviseSet);
-  const deleteSet  = useMatchStore((s) => s.deleteSet);
+  const { reviseSet, deleteSet } = useMatchStore(useShallow((s) => ({
+    reviseSet: s.reviseSet,
+    deleteSet: s.deleteSet,
+  })));
   const [clearing,  setClearing]  = useState(false);
   const [deleting,  setDeleting]  = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);

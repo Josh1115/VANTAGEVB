@@ -446,7 +446,7 @@ export const useMatchStore = create((set, get) => ({
         serve_side:        serveSide,
         point_winner:      side,
         our_rotation:      rotationNum,
-        server_player_id:  serveSide === SIDE.US ? lineup[0]?.playerId ?? null : null,
+        server_player_id:  serveSide === SIDE.US ? finalLineup[0]?.playerId ?? null : null,
       }],
     });
 
@@ -466,7 +466,7 @@ export const useMatchStore = create((set, get) => ({
         serve_side:        serveSide,
         point_winner:      side,
         our_rotation:      rotationNum,
-        server_player_id:  serveSide === SIDE.US ? lineup[0]?.playerId ?? null : null,
+        server_player_id:  serveSide === SIDE.US ? finalLineup[0]?.playerId ?? null : null,
         timestamp:         Date.now(),
       });
 
@@ -479,7 +479,6 @@ export const useMatchStore = create((set, get) => ({
     } catch (err) {
       // Rally write failed — score stays as-is. Undo for this point won't work
       // but the live score is correct, which is what matters during a match.
-      console.error('[VBStat] rallies.add failed (score kept):', err);
     }
   },
 
@@ -693,6 +692,10 @@ export const useMatchStore = create((set, get) => ({
 
   recordContact: async (contactData) => {
     const s = get();
+    if (!s.matchId || !s.currentSetId) {
+      useUiStore.getState().showToast('Cannot record stat: match not initialized.', 'error');
+      return null;
+    }
     const { _causedPoint, ...contactFields } = contactData;
     const contactFull = {
       match_id:     s.matchId,
@@ -769,7 +772,6 @@ export const useMatchStore = create((set, get) => ({
     try {
       assistId = await db.contacts.add(assistContact);
     } catch (err) {
-      console.error('[VBStat] recordAssistForKill failed:', err);
       return;
     }
     set((cur) => ({
@@ -819,7 +821,6 @@ export const useMatchStore = create((set, get) => ({
       }));
       setFeed(set, 'Opp Block');
     } catch (err) {
-      console.error('[VBStat] recordOppBlock failed:', err);
     }
   },
 
@@ -879,7 +880,6 @@ export const useMatchStore = create((set, get) => ({
 
             await get().addPoint(SIDE.US);
           } catch (err) {
-            console.error('[VBStat] tapHblk write failed:', err);
             useUiStore.getState().showToast('Block record failed. Try again.', 'error');
             set({ pendingHblk: null });
           }
@@ -933,7 +933,6 @@ export const useMatchStore = create((set, get) => ({
         timestamp:         Date.now(),
       });
     } catch (err) {
-      console.error('[VBStat] substitutePlayer DB write failed:', err);
       useUiStore.getState().showToast('Sub failed. Check device storage.', 'error');
       return false;
     }
@@ -1012,8 +1011,8 @@ export const useMatchStore = create((set, get) => ({
             ? { ...sl, playerId: liberoPlayer.id, playerName: liberoPlayer.name, jersey: liberoPlayer.jersey_number, positionLabel: 'L' }
             : sl
         ),
-        liberoName:                  liberoPlayer.name,
-        liberoJersey:                liberoPlayer.jersey_number,
+        liberoName:                  liberoPlayer.name ?? '',
+        liberoJersey:                liberoPlayer.jersey_number ?? '',
         liberoOnCourt:               true,
         liberoReplacedPlayerId:      target.playerId,
         liberoReplacedName:          target.playerName,
@@ -1031,7 +1030,6 @@ export const useMatchStore = create((set, get) => ({
         timestamp:    Date.now(),
       });
     } catch (err) {
-      console.error('[VBStat] swapLibero DB write failed:', err);
       useUiStore.getState().showToast('Libero swap failed. Check device storage.', 'error');
       set({
         lineup:                      prevLineup,
@@ -1082,7 +1080,6 @@ export const useMatchStore = create((set, get) => ({
         actionHistory: [{ type: 'opp_contact', contactId: id, causedPoint: SIDE.THEM }, ...cur.actionHistory],
       }));
     } catch (err) {
-      console.error('[VBStat] recordHomeRotError contact write failed:', err);
       useUiStore.getState().showToast('Rotation error not recorded. Try again.', 'error');
     }
   },
@@ -1112,7 +1109,6 @@ export const useMatchStore = create((set, get) => ({
         actionHistory: [{ type: 'opp_contact', contactId: id, causedPoint: pointSide }, ...cur.actionHistory],
       }));
     } catch (err) {
-      console.error('[VBStat] addOppPoint contact write failed:', err);
     }
   },
 
@@ -1136,7 +1132,6 @@ export const useMatchStore = create((set, get) => ({
         side,
       });
     } catch (err) {
-      console.error('[VBStat] timeouts.add failed:', err);
     }
     pushAction(get, set, { type: 'timeout', side, timeoutId });
   },
@@ -1191,7 +1186,6 @@ export const useMatchStore = create((set, get) => ({
       });
       get().broadcastUpdate();
     } catch (err) {
-      console.error('[VBStat] endSet failed:', err);
       useUiStore.getState().showToast('Failed to end set. Please try again.', 'error');
       throw err;
     }
@@ -1298,7 +1292,6 @@ export const useMatchStore = create((set, get) => ({
 
       set({ ourSetsWon: newSetsUs, oppSetsWon: newSetsThem });
     } catch (err) {
-      console.error('[VBStat] endMatch failed:', err);
       useUiStore.getState().showToast('Failed to end match. Please try again.', 'error');
       throw err;
     }

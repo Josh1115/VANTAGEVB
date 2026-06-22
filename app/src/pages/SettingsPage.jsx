@@ -15,6 +15,7 @@ import { useUiStore } from '../store/uiStore';
 import { FORMAT, ACCENT_COLORS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlan, PLAN_TEAMS, PLAN_PRICES, PLAN_LABELS, SEASON_MATCH_LIMIT } from '../hooks/usePlan';
+import { previewSound } from '../utils/sound';
 import {
   getStorageItem, setStorageItem,
   getBoolStorage, setBoolStorage,
@@ -1102,17 +1103,33 @@ function clearSectionStates() {
   Object.keys(localStorage).filter(k => k.startsWith(SECTION_KEY_PREFIX)).forEach(k => localStorage.removeItem(k));
 }
 
-function CollapsibleSection({ id, title, subtitle, children, defaultOpen = true }) {
+function VantageChevron({ open }) {
+  return (
+    <svg
+      width="20" height="16"
+      viewBox="0 0 20 16"
+      aria-hidden="true"
+      className={`transition-transform duration-200 shrink-0 ${open ? 'rotate-180' : ''}`}
+    >
+      <polygon points="0,0 20,0 10,16" fill="#f97316" />
+      <polygon points="3.5,0 16.5,0 10,11" fill="#fef3ee" />
+    </svg>
+  );
+}
+
+function CollapsibleSection({ id, title, subtitle, children, defaultOpen = true, isCustomized = false }) {
   const storageKey = id ? `${SECTION_KEY_PREFIX}${id}` : null;
   const [open, setOpen] = useState(() => {
     if (!storageKey) return defaultOpen;
-    const stored = localStorage.getItem(storageKey);
-    return stored === null ? defaultOpen : stored === 'true';
+    try {
+      const stored = localStorage.getItem(storageKey);
+      return stored === null ? defaultOpen : stored === 'true';
+    } catch { return defaultOpen; }
   });
 
   function toggle() {
     const next = !open;
-    if (storageKey) localStorage.setItem(storageKey, String(next));
+    try { if (storageKey) localStorage.setItem(storageKey, String(next)); } catch { /* storage full */ }
     setOpen(next);
   }
 
@@ -1123,16 +1140,75 @@ function CollapsibleSection({ id, title, subtitle, children, defaultOpen = true 
         className="w-full flex items-center justify-between px-4 py-3 border-b border-slate-700 text-left"
       >
         <div>
-          <h2
-            className="text-[18.4px] font-black uppercase leading-none section-twinkle"
-            style={{ color: '#ffffff', letterSpacing: '0.15em' }}
-          >{title}</h2>
+          <div className="flex items-center gap-2">
+            <h2
+              className="text-[18.4px] font-black uppercase leading-none section-twinkle"
+              style={{ color: '#ffffff', letterSpacing: '0.15em' }}
+            >{title}</h2>
+            {isCustomized && (
+              <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" title="Customized" />
+            )}
+          </div>
           {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
         </div>
-        <span className={`text-slate-400 text-xs transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▼</span>
+        <VantageChevron open={open} />
       </button>
       {open && children}
     </section>
+  );
+}
+
+function ToggleRow({ label, description, checked, onChange, children }) {
+  return (
+    <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+      <div className="flex-1 min-w-0 pr-3">
+        <div className="text-sm font-medium">{label}</div>
+        <div className="text-xs text-slate-400 mt-0.5">{description}</div>
+        {children}
+      </div>
+      <button
+        onClick={() => onChange(!checked)}
+        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${checked ? 'bg-primary' : 'bg-slate-600'}`}
+        aria-checked={checked}
+        role="switch"
+        aria-label={label}
+      >
+        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : ''}`} />
+      </button>
+    </div>
+  );
+}
+
+const GUIDE_LINK_CLS = 'w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors text-left';
+const VANTAGE_LINK_CLS = 'w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-blue-500/40 hover:border-blue-400 hover:bg-blue-500/5 transition-colors text-left';
+
+function GuideLink({ to, icon, label, desc, isVantage }) {
+  return (
+    <Link to={to} className={isVantage ? VANTAGE_LINK_CLS : GUIDE_LINK_CLS}>
+      <span className="flex items-center gap-2.5 min-w-0">
+        <span className="text-base shrink-0">{icon}</span>
+        <span className="min-w-0">
+          <span className="text-sm font-medium text-slate-200 block leading-tight">{label}</span>
+          {desc && <span className="text-[10px] text-slate-500">{desc}</span>}
+        </span>
+        {!isVantage && <span className="text-[9px] font-bold text-primary border border-primary/50 rounded px-1 py-px shrink-0">GUIDE</span>}
+      </span>
+      <span className="text-slate-500 text-sm shrink-0 ml-2">›</span>
+    </Link>
+  );
+}
+
+function GuideGroup({ title, groupDesc, items, isVantage }) {
+  return (
+    <div>
+      <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-1.5 px-1">{title}</p>
+      {groupDesc && <p className="text-[11px] text-slate-500 mb-2 px-1">{groupDesc}</p>}
+      <div className="space-y-1">
+        {items.map(({ to, icon, label, desc }) => (
+          <GuideLink key={to} to={to} icon={icon} label={label} desc={desc} isVantage={isVantage} />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -1374,7 +1450,7 @@ export function SettingsPage() {
     setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, null);
     setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, null);
     clearSectionStates();
-    showToast('All data cleared', 'info');
+    showToast('Match data cleared', 'info');
     setConfirmClear(false);
     window.location.reload();
   }
@@ -1461,6 +1537,7 @@ export function SettingsPage() {
         <section className="bg-surface rounded-xl p-5">
           <div className="text-center mb-4">
             <h2 className="text-2xl font-black tracking-[0.25em] uppercase text-[#f97316]">VANTAGE</h2>
+            <img src="/icons/logo_vec2.png" alt="Vantage logo" className="mx-auto my-2" style={{ width: '20%' }} />
             <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-400 mt-1">Immediate Impact Analytics</p>
             <p className="text-[10px] text-slate-600 mt-1 font-mono">v{__APP_VERSION__}</p>
           </div>
@@ -1470,6 +1547,23 @@ export function SettingsPage() {
           </p>
           <div className="border-t border-slate-700 mt-4 pt-3">
             <p className="text-[11px] text-slate-500 text-center tracking-wide">New accounts include a full-featured 5-match trial. Upgrade anytime.</p>
+          </div>
+
+          <div className="border-t border-slate-700 mt-4 pt-4">
+            <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-slate-500 mb-2">What's New in v{__APP_VERSION__}</p>
+            <ul className="space-y-1.5">
+              {[
+                'Season sparklines & PDF export in History',
+                'Season search and count badges',
+                'Sound effect preview in Settings',
+                'Storage usage bar & auto-save badges',
+              ].map(note => (
+                <li key={note} className="flex items-start gap-1.5 text-xs text-slate-400">
+                  <span className="text-primary mt-px shrink-0">▸</span>
+                  {note}
+                </li>
+              ))}
+            </ul>
           </div>
 
           <div className="flex items-baseline gap-2 mt-4 flex-wrap">
@@ -1488,6 +1582,18 @@ export function SettingsPage() {
               } catch { return null; }
             })()}
           </div>
+
+          <button
+            onClick={handleExport}
+            className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-700/60 hover:bg-slate-700 active:scale-95 border border-slate-600/50 text-slate-300 hover:text-white font-semibold text-sm transition-all duration-150"
+          >
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Export Backup
+          </button>
         </section>
 
         {/* Plans */}
@@ -1734,14 +1840,25 @@ export function SettingsPage() {
 
         {/* Storage info */}
         {storage && !showStorageWarning && (
-          <div className="text-xs text-slate-500 px-1">
-            Storage: {fmtMB(storage.usage)} MB used of {fmtMB(storage.quota)} MB
-            {' '}({(usagePct * 100).toFixed(1)}%)
+          <div className="px-1 space-y-1">
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span>Storage</span>
+              <span>{fmtMB(storage.usage)} MB / {fmtMB(storage.quota)} MB ({(usagePct * 100).toFixed(1)}%)</span>
+            </div>
+            <div className="h-1 rounded-full bg-slate-700 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${Math.min(100, usagePct * 100).toFixed(1)}%`,
+                  background: usagePct >= 0.8 ? '#ef4444' : usagePct >= 0.5 ? '#f59e0b' : '#22c55e',
+                }}
+              />
+            </div>
           </div>
         )}
 
         {/* Help & Guides */}
-        <CollapsibleSection id="help-guides" title="Help & Guides">
+        <CollapsibleSection id="help-guides" title="Help & Guides" isCustomized={!!helpSearch}>
           <div className="p-4">
 
             <p className="text-center text-sm rounded-xl px-4 py-2 mb-4" style={{ color: '#fbbf24', border: '1px solid rgba(249,115,22,0.5)', background: 'rgba(249,115,22,0.1)' }}>
@@ -1782,7 +1899,13 @@ export function SettingsPage() {
                 { to: '/help/vantage-attack',       icon: '⚡', label: 'Attack Analytics'                 },
               ];
               const matchedGuides = allGuides.filter(g => g.label.toLowerCase().includes(q));
-              const matchedFaqs   = FAQ_TOPICS.filter(t => t.label.toLowerCase().includes(q));
+              const matchedFaqs = FAQ_TOPICS.filter(t =>
+                t.label.toLowerCase().includes(q) ||
+                t.content?.some(c =>
+                  (c.heading ?? '').toLowerCase().includes(q) ||
+                  (c.body ?? '').toLowerCase().includes(q)
+                )
+              );
               const hasResults = matchedGuides.length > 0 || matchedFaqs.length > 0;
               return (
                 <div className="space-y-1">
@@ -1820,144 +1943,44 @@ export function SettingsPage() {
             })() : (
             <div className="space-y-4">
 
-              {/* Getting Started */}
-              <div>
-                <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-1.5 px-1">Getting Started</p>
-                <div className="space-y-1">
-                  {[
-                    { to: '/help/first-match',   icon: '🆕', label: 'Your First Match'                 },
-                    { to: '/help/default-team',  icon: '🏠', label: 'Setting Up Default Team & Season' },
-                    { to: '/help/roster',        icon: '👥', label: 'Managing Your Roster'             },
-                  ].map(({ to, icon, label }) => (
-                    <Link key={to} to={to}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors text-left"
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <span className="text-base">{icon}</span>
-                        <span className="text-sm font-medium text-slate-200">{label}</span>
-                        <span className="text-[9px] font-bold text-primary border border-primary/50 rounded px-1 py-px">GUIDE</span>
-                      </span>
-                      <span className="text-slate-500 text-sm">›</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              <GuideGroup title="Getting Started" items={[
+                { to: '/help/first-match',  icon: '🆕', label: 'Your First Match'                 },
+                { to: '/help/default-team', icon: '🏠', label: 'Setting Up Default Team & Season' },
+                { to: '/help/roster',       icon: '👥', label: 'Managing Your Roster'             },
+              ]} />
 
-              {/* Recording a Match */}
-              <div>
-                <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-1.5 px-1">Recording a Match</p>
-                <div className="space-y-1">
-                  {[
-                    { to: '/help/live-match',        icon: '📲', label: 'Live Match Screen Guide'       },
-                    { to: '/help/serve-receive',     icon: '📐', label: 'Serve-Receive Formation Setup' },
-                    { to: '/help/substitutions',     icon: '🔄', label: 'Substitutions & Lineup Changes'},
-                  ].map(({ to, icon, label }) => (
-                    <Link key={to} to={to}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors text-left"
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <span className="text-base">{icon}</span>
-                        <span className="text-sm font-medium text-slate-200">{label}</span>
-                        <span className="text-[9px] font-bold text-primary border border-primary/50 rounded px-1 py-px">GUIDE</span>
-                      </span>
-                      <span className="text-slate-500 text-sm">›</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              <GuideGroup title="Recording a Match" items={[
+                { to: '/help/live-match',    icon: '📲', label: 'Live Match Screen Guide'        },
+                { to: '/help/serve-receive', icon: '📐', label: 'Serve-Receive Formation Setup'  },
+                { to: '/help/substitutions', icon: '🔄', label: 'Substitutions & Lineup Changes' },
+              ]} />
 
-              {/* After the Match */}
-              <div>
-                <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-1.5 px-1">After the Match</p>
-                <div className="space-y-1">
-                  {[
-                    { to: '/help/match-summary', icon: '📋', label: 'Match Summary Walkthrough' },
-                    { to: '/help/exporting',     icon: '📤', label: 'Exporting & Sharing Stats' },
-                  ].map(({ to, icon, label }) => (
-                    <Link key={to} to={to}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors text-left"
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <span className="text-base">{icon}</span>
-                        <span className="text-sm font-medium text-slate-200">{label}</span>
-                        <span className="text-[9px] font-bold text-primary border border-primary/50 rounded px-1 py-px">GUIDE</span>
-                      </span>
-                      <span className="text-slate-500 text-sm">›</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              <GuideGroup title="After the Match" items={[
+                { to: '/help/match-summary', icon: '📋', label: 'Match Summary Walkthrough' },
+                { to: '/help/exporting',     icon: '📤', label: 'Exporting & Sharing Stats' },
+              ]} />
 
-              {/* Analysis & Reports */}
-              <div>
-                <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-1.5 px-1">Analysis &amp; Reports</p>
-                <div className="space-y-1">
-                  {[
-                    { to: '/help/reports',       icon: '📈', label: 'Reading the Reports Page' },
-                    { to: '/help/player-report', icon: '📊', label: 'Reading Player Reports'   },
-                    { to: '/help/pre-match-prep',icon: '🎯', label: 'Pre-Match Prep Workflow'  },
-                  ].map(({ to, icon, label }) => (
-                    <Link key={to} to={to}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors text-left"
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <span className="text-base">{icon}</span>
-                        <span className="text-sm font-medium text-slate-200">{label}</span>
-                        <span className="text-[9px] font-bold text-primary border border-primary/50 rounded px-1 py-px">GUIDE</span>
-                      </span>
-                      <span className="text-slate-500 text-sm">›</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              <GuideGroup title="Analysis & Reports" items={[
+                { to: '/help/reports',        icon: '📈', label: 'Reading the Reports Page' },
+                { to: '/help/player-report',  icon: '📊', label: 'Reading Player Reports'   },
+                { to: '/help/pre-match-prep', icon: '🎯', label: 'Pre-Match Prep Workflow'  },
+              ]} />
 
-              {/* Season Management */}
-              <div>
-                <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-1.5 px-1">Season Management</p>
-                <div className="space-y-1">
-                  {[
-                    { to: '/help/season-history', icon: '🏆', label: 'Season History & Playoff Entry' },
-                    { to: '/help/end-season',     icon: '🏁', label: 'How to End a Season'             },
-                  ].map(({ to, icon, label }) => (
-                    <Link key={to} to={to}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors text-left"
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <span className="text-base">{icon}</span>
-                        <span className="text-sm font-medium text-slate-200">{label}</span>
-                        <span className="text-[9px] font-bold text-primary border border-primary/50 rounded px-1 py-px">GUIDE</span>
-                      </span>
-                      <span className="text-slate-500 text-sm">›</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              <GuideGroup title="Season Management" items={[
+                { to: '/help/season-history', icon: '🏆', label: 'Season History & Playoff Entry' },
+                { to: '/help/end-season',     icon: '🏁', label: 'How to End a Season'            },
+              ]} />
 
-              {/* Find Your Vantage */}
-              <div>
-                <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-1.5 px-1">Find Your Vantage</p>
-                <p className="text-[11px] text-slate-500 mb-2 px-1">Deep-dive guides on using your data to make better coaching decisions.</p>
-                <div className="space-y-1">
-                  {[
-                    { to: '/help/vantage-win-factors', icon: '🏆', label: 'Reading Your Win Factors',  desc: 'Which stats predict your wins' },
-                    { to: '/help/vantage-rotations',   icon: '🔄', label: 'Rotation Intelligence',     desc: 'Find & fix your weak rotations' },
-                    { to: '/help/vantage-attack',      icon: '⚡', label: 'Attack Analytics',           desc: 'Hit%, IS/OOS, pass-to-kill chain' },
-                  ].map(({ to, icon, label, desc }) => (
-                    <Link key={to} to={to}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-bg border border-blue-500/40 hover:border-blue-400 hover:bg-blue-500/5 transition-colors text-left"
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <span className="text-base">{icon}</span>
-                        <span>
-                          <span className="text-sm font-medium text-slate-200 block leading-tight">{label}</span>
-                          <span className="text-[10px] text-slate-500">{desc}</span>
-                        </span>
-                      </span>
-                      <span className="text-slate-500 text-sm shrink-0 ml-2">›</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              <GuideGroup
+                title="Find Your Vantage"
+                groupDesc="Deep-dive guides on using your data to make better coaching decisions."
+                isVantage
+                items={[
+                  { to: '/help/vantage-win-factors', icon: '🏆', label: 'Reading Your Win Factors', desc: 'Which stats predict your wins'    },
+                  { to: '/help/vantage-rotations',   icon: '🔄', label: 'Rotation Intelligence',    desc: 'Find & fix your weak rotations'   },
+                  { to: '/help/vantage-attack',      icon: '⚡', label: 'Attack Analytics',          desc: 'Hit%, IS/OOS, pass-to-kill chain' },
+                ]}
+              />
 
               {/* FAQ modals */}
               <div>
@@ -1985,7 +2008,7 @@ export function SettingsPage() {
         </CollapsibleSection>
 
         {/* Personalization */}
-        <CollapsibleSection id="personalization" title="Personalization">
+        <CollapsibleSection id="personalization" title="Personalization" isCustomized={!!(programName || coachName || playoffOrg || winMessage || scoreDetail !== 'sets' || matchViewDefault !== 'recent' || sidelineMode || accent !== 'orange' || defaultTeamId)}>
           <div className="p-4 space-y-5">
 
             {/* Program name */}
@@ -2204,56 +2227,21 @@ export function SettingsPage() {
         </CollapsibleSection>
 
         {/* Live Match */}
-        <CollapsibleSection id="live-match" title="Live Match" subtitle="Applied during active stat recording">
+        <CollapsibleSection id="live-match" title="Live Match" subtitle="Applied during active stat recording" isCustomized={!!(wakeLock || hapticOn || soundsOn || flipLayout || !assumeSetterRot1 || playerNameFormat !== 'initial_last' || rosterSort !== 'jersey')}>
           <div className="p-4 divide-y divide-slate-700/60 space-y-0">
 
-            {/* Keep Screen Awake */}
-            <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-              <div>
-                <div className="text-sm font-medium">Keep Screen Awake</div>
-                <div className="text-xs text-slate-400 mt-0.5">Prevent the screen from sleeping during a match</div>
-              </div>
-              <button
-                onClick={() => saveWakeLock(!wakeLock)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${wakeLock ? 'bg-primary' : 'bg-slate-600'}`}
-                aria-checked={wakeLock}
-                role="switch"
-              >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${wakeLock ? 'translate-x-5' : ''}`} />
-              </button>
-            </div>
+            <ToggleRow label="Keep Screen Awake" description="Prevent the screen from sleeping during a match" checked={wakeLock} onChange={saveWakeLock} />
 
-            {/* Haptic Feedback */}
-            <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-              <div>
-                <div className="text-sm font-medium">Haptic Feedback</div>
-                <div className="text-xs text-slate-400 mt-0.5">Brief vibration on each contact tap</div>
-              </div>
-              <button
-                onClick={() => saveHaptic(!hapticOn)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${hapticOn ? 'bg-primary' : 'bg-slate-600'}`}
-                aria-checked={hapticOn}
-                role="switch"
-              >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${hapticOn ? 'translate-x-5' : ''}`} />
-              </button>
-            </div>
+            <ToggleRow label="Haptic Feedback" description="Brief vibration on each contact tap" checked={hapticOn} onChange={saveHaptic} />
 
-            {/* Sound Effects */}
-            <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-              <div>
-                <div className="text-sm font-medium">Sound Effects</div>
-                <div className="text-xs text-slate-400 mt-0.5">Audio cues for aces, kills, and blocks</div>
-              </div>
+            <ToggleRow label="Sound Effects" description="Audio cues for aces, kills, and blocks" checked={soundsOn} onChange={saveSounds}>
               <button
-                onClick={() => saveSounds(!soundsOn)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${soundsOn ? 'bg-primary' : 'bg-slate-600'}`}
-                aria-checked={soundsOn}
-                role="switch"
+                onClick={(e) => { e.stopPropagation(); previewSound(); }}
+                className="mt-1 text-[10px] font-semibold text-primary hover:text-orange-300 transition-colors"
               >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${soundsOn ? 'translate-x-5' : ''}`} />
+                ▶ Preview
               </button>
-            </div>
+            </ToggleRow>
 
             {/* Player name format */}
             <div className="py-3 first:pt-0 last:pb-0">
@@ -2301,43 +2289,15 @@ export function SettingsPage() {
               </div>
             </div>
 
-            {/* Flip team layout */}
-            <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-              <div>
-                <div className="text-sm font-medium">Flip Team Layout</div>
-                <div className="text-xs text-slate-400 mt-0.5">Show your team on the right side of the scoreboard</div>
-              </div>
-              <button
-                onClick={() => saveFlipLayout(!flipLayout)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${flipLayout ? 'bg-primary' : 'bg-slate-600'}`}
-                aria-checked={flipLayout}
-                role="switch"
-              >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${flipLayout ? 'translate-x-5' : ''}`} />
-              </button>
-            </div>
+            <ToggleRow label="Flip Team Layout" description="Show your team on the right side of the scoreboard" checked={flipLayout} onChange={saveFlipLayout} />
 
-            {/* Assume Setter Rotation 1 */}
-            <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-              <div>
-                <div className="text-sm font-medium">Assume Setter is Rotation 1</div>
-                <div className="text-xs text-slate-400 mt-0.5">Auto-fill the starting rotation so the setter is always considered ROT 1 during match setup</div>
-              </div>
-              <button
-                onClick={() => saveAssumeSetterRot1(!assumeSetterRot1)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${assumeSetterRot1 ? 'bg-primary' : 'bg-slate-600'}`}
-                aria-checked={assumeSetterRot1}
-                role="switch"
-              >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${assumeSetterRot1 ? 'translate-x-5' : ''}`} />
-              </button>
-            </div>
+            <ToggleRow label="Assume Setter is Rotation 1" description="Auto-fill the starting rotation so the setter is always considered ROT 1 during match setup" checked={assumeSetterRot1} onChange={saveAssumeSetterRot1} />
 
           </div>
         </CollapsibleSection>
 
         {/* Match Rules */}
-        <CollapsibleSection id="match-rules" title="Match Rules" subtitle="Applied to all future matches">
+        <CollapsibleSection id="match-rules" title="Match Rules" subtitle="Applied to all future matches" isCustomized={defaultFormat !== FORMAT.BEST_OF_3 || lastSetScore !== 15 || maxSubs !== DEFAULT_MAX_SUBS}>
           <div className="p-4 space-y-4">
             <div>
               <label className="block text-sm text-slate-400 mb-2">Best of Sets</label>
@@ -2402,7 +2362,7 @@ export function SettingsPage() {
         </CollapsibleSection>
 
         {/* Data Management */}
-        <CollapsibleSection id="data-management" title="Data Management">
+        <CollapsibleSection id="data-management" title="Data Management" isCustomized={!!maxPrepsId}>
           <div className="p-4 space-y-3">
             <div>
               <label className="block text-sm font-medium mb-1">MaxPreps Team ID</label>
@@ -2458,25 +2418,28 @@ export function SettingsPage() {
               <div>
                 <p className="text-sm font-medium mb-1.5">Auto-Saves</p>
                 <div className="flex flex-col gap-1.5">
-                  {autoBackups.map((b) => (
-                    <div key={b.id} className="flex items-center justify-between bg-bg rounded-lg px-3 py-2 border border-slate-700">
-                      <div>
-                        <span className="text-xs font-semibold text-slate-300">
-                          {b.label === 'match_end' ? 'Match End' : 'App Open'}
-                        </span>
-                        <span className="text-[10px] text-slate-500 ml-2">
-                          {new Date(b.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                        </span>
+                  {autoBackups.map((b) => {
+                    const isMatchEnd = b.label === 'match_end';
+                    let dateStr = '';
+                    try { dateStr = new Date(b.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { dateStr = '—'; }
+                    return (
+                      <div key={b.id} className="flex items-center justify-between bg-bg rounded-lg px-3 py-2 border border-slate-700">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 ${isMatchEnd ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-700 text-slate-400'}`}>
+                            {isMatchEnd ? 'MATCH END' : 'APP OPEN'}
+                          </span>
+                          <span className="text-[10px] text-slate-500 truncate">{dateStr}</span>
+                        </div>
+                        <button
+                          onClick={() => setConfirmRestoreBackup(b)}
+                          disabled={restoringId === b.id}
+                          className="text-xs font-semibold text-primary hover:text-orange-300 transition-colors disabled:opacity-50 shrink-0 ml-2"
+                        >
+                          {restoringId === b.id ? 'Restoring…' : 'Restore'}
+                        </button>
                       </div>
-                      <button
-                        onClick={() => setConfirmRestoreBackup(b)}
-                        disabled={restoringId === b.id}
-                        className="text-xs font-semibold text-primary hover:text-orange-300 transition-colors disabled:opacity-50"
-                      >
-                        {restoringId === b.id ? 'Restoring…' : 'Restore'}
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -2580,7 +2543,7 @@ export function SettingsPage() {
               </svg>
               Change Password
             </span>
-            <span className={`text-slate-500 text-xs transition-transform duration-200 ${showChangePw ? 'rotate-180' : ''}`}>▼</span>
+            <VantageChevron open={showChangePw} />
           </button>
 
           {showChangePw && (
@@ -2626,7 +2589,7 @@ export function SettingsPage() {
           {/* Delete Account */}
           <button
             onClick={() => setConfirmDeleteAccount(true)}
-            className="w-full text-center text-xs text-slate-600 hover:text-red-500 transition-colors pt-1"
+            className="w-full text-center text-xs text-slate-500 hover:text-red-400 transition-colors pt-1"
           >
             Delete account
           </button>
@@ -2662,7 +2625,7 @@ export function SettingsPage() {
       {confirmCloudRestore && (
         <ConfirmDialog
           title="Restore from Cloud"
-          message="This will REPLACE all local data with your cloud backup. Any changes made since your last cloud save will be lost. Export a local backup first if you want to preserve current data."
+          message={`This will REPLACE all local data with your cloud backup${lastCloudSave ? ` from ${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(lastCloudSave))}` : ''}. Any changes made since your last cloud save will be lost. Export a local backup first if you want to preserve current data.`}
           confirmLabel="Restore & Replace"
           danger
           onConfirm={handleRestoreFromCloud}

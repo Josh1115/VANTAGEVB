@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { ResetRotationModal } from './ResetRotationModal';
 import { useMatchStore } from '../../store/matchStore';
+import { useShallow } from 'zustand/react/shallow';
 import { db } from '../../db/schema';
 import { SIDE } from '../../constants';
 
@@ -22,19 +23,25 @@ const JERSEY_COLORS = [
 ];
 
 export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName, opponentName }) {
-  const matchId              = useMatchStore((s) => s.matchId);
-  const currentSetId         = useMatchStore((s) => s.currentSetId);
-  const ourScore             = useMatchStore((s) => s.ourScore);
-  const oppScore             = useMatchStore((s) => s.oppScore);
-  const fudgeScore           = useMatchStore((s) => s.fudgeScore);
-  const endSet               = useMatchStore((s) => s.endSet);
-  const endMatch             = useMatchStore((s) => s.endMatch);
-  const resetCurrentSet      = useMatchStore((s) => s.resetCurrentSet);
-  const resetToRotation      = useMatchStore((s) => s.resetToRotation);
-  const teamJerseyColor      = useMatchStore((s) => s.teamJerseyColor);
-  const liberoJerseyColor    = useMatchStore((s) => s.liberoJerseyColor);
-  const setTeamJerseyColor   = useMatchStore((s) => s.setTeamJerseyColor);
-  const setLiberoJerseyColor = useMatchStore((s) => s.setLiberoJerseyColor);
+  const {
+    matchId, currentSetId, ourScore, oppScore, fudgeScore,
+    endSet, endMatch, resetCurrentSet, resetToRotation,
+    teamJerseyColor, liberoJerseyColor, setTeamJerseyColor, setLiberoJerseyColor,
+  } = useMatchStore(useShallow((s) => ({
+    matchId:              s.matchId,
+    currentSetId:         s.currentSetId,
+    ourScore:             s.ourScore,
+    oppScore:             s.oppScore,
+    fudgeScore:           s.fudgeScore,
+    endSet:               s.endSet,
+    endMatch:             s.endMatch,
+    resetCurrentSet:      s.resetCurrentSet,
+    resetToRotation:      s.resetToRotation,
+    teamJerseyColor:      s.teamJerseyColor,
+    liberoJerseyColor:    s.liberoJerseyColor,
+    setTeamJerseyColor:   s.setTeamJerseyColor,
+    setLiberoJerseyColor: s.setLiberoJerseyColor,
+  })));
   const navigate             = useNavigate();
 
   const [confirmReset,        setConfirmReset]        = useState(false);

@@ -2,6 +2,7 @@ import { memo, useRef, useState } from 'react';
 import { HoldProgressRing } from '../ui/HoldProgressRing';
 import { useNavigate } from 'react-router-dom';
 import { useMatchStore } from '../../store/matchStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useUiStore } from '../../store/uiStore';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 
@@ -29,18 +30,22 @@ function useHoldButton(onFire) {
 export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStatsOpen, onSummaryOpen, liberoPlayer, onLiberoIn, onRotErrOpen, alertCount = 0 }) {
   const navigate          = useNavigate();
   const [homeConfirm, setHomeConfirm] = useState(false);
-  const rotateForward  = useMatchStore((s) => s.rotateForward);
-  const rotateBackward = useMatchStore((s) => s.rotateBackward);
-  const undoLast       = useMatchStore((s) => s.undoLast);
-  const subsUsed       = useMatchStore((s) => s.subsUsed);
-  const maxSubsPerSet  = useMatchStore((s) => s.maxSubsPerSet);
-  const actionHistory  = useMatchStore((s) => s.actionHistory);
-  const showToast      = useUiStore((s) => s.showToast);
-
-  const lastFeedItem   = useMatchStore((s) => s.lastFeedItem);
-  const liberoOnCourt  = useMatchStore((s) => s.liberoOnCourt);
-  const swapLibero     = useMatchStore((s) => s.swapLibero);
-  const lineup         = useMatchStore((s) => s.lineup);
+  const {
+    rotateForward, rotateBackward, undoLast, subsUsed, maxSubsPerSet,
+    actionHistory, lastFeedItem, liberoOnCourt, swapLibero, lineup,
+  } = useMatchStore(useShallow((s) => ({
+    rotateForward:  s.rotateForward,
+    rotateBackward: s.rotateBackward,
+    undoLast:       s.undoLast,
+    subsUsed:       s.subsUsed,
+    maxSubsPerSet:  s.maxSubsPerSet,
+    actionHistory:  s.actionHistory,
+    lastFeedItem:   s.lastFeedItem,
+    liberoOnCourt:  s.liberoOnCourt,
+    swapLibero:     s.swapLibero,
+    lineup:         s.lineup,
+  })));
+  const showToast = useUiStore((s) => s.showToast);
 
   const backHold = useHoldButton(rotateBackward);
   const fwdHold  = useHoldButton(rotateForward);
@@ -181,15 +186,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         onPointerDown={(e) => { e.preventDefault(); setHomeConfirm(true); }}
         className={`${btnBase} bg-slate-800 text-slate-400 hover:bg-slate-700`}
       >
-        <svg className="w-[2.4vmin] h-[2.4vmin]" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#f97316' }}>
-          <rect x="1.5" y="4" width="21" height="16" rx="1.5" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="1.5" />
-          <rect x="1.5" y="4" width="21" height="4" rx="1.5" fill="currentColor" fillOpacity="0.35" />
-          <line x1="12" y1="8" x2="12" y2="20" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-          <rect x="4"    y="11" width="3.5" height="5" rx="0.5" fill="currentColor" fillOpacity="0.7" />
-          <rect x="8"    y="11" width="2"   height="5" rx="0.5" fill="currentColor" fillOpacity="0.7" />
-          <rect x="13.5" y="11" width="2"   height="5" rx="0.5" fill="currentColor" fillOpacity="0.7" />
-          <rect x="16.5" y="11" width="3.5" height="5" rx="0.5" fill="currentColor" fillOpacity="0.7" />
-        </svg>
+        <img src="/icons/logo_vec2.png" alt="Home" className="w-[4.6vmin] h-[4.6vmin] object-contain" aria-hidden="true" />
       </button>
 
       {/* Menu */}
@@ -197,16 +194,10 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         onPointerDown={(e) => { e.preventDefault(); onMenuOpen(); }}
         className={`${btnBase} bg-slate-800 text-slate-400 hover:bg-slate-700`}
       >
-        <svg className="w-[2.4vmin] h-[2.4vmin]" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#f97316' }}>
-          <path
-            fillRule="evenodd"
-            fill="currentColor"
-            fillOpacity="0.25"
-            stroke="currentColor"
-            strokeWidth="1.1"
-            strokeLinejoin="round"
-            d="M10.0,4.8 L10.8,2.6 L13.2,2.6 L14.0,4.8 L15.7,5.5 L17.9,4.5 L19.5,6.2 L18.5,8.3 L19.2,10.0 L21.4,10.8 L21.4,13.2 L19.2,14.0 L18.5,15.7 L19.5,17.9 L17.9,19.5 L15.7,18.5 L14.0,19.2 L13.2,21.4 L10.8,21.4 L10.0,19.2 L8.3,18.5 L6.2,19.5 L4.5,17.9 L5.5,15.7 L4.8,14.0 L2.6,13.2 L2.6,10.8 L4.8,10.0 L5.5,8.3 L4.5,6.2 L6.2,4.5 L8.3,5.5 Z M12,8.5 A3.5,3.5 0 1 1 12,15.5 A3.5,3.5 0 1 1 12,8.5 Z"
-          />
+        <svg className="w-[2.4vmin] h-[2.4vmin]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <line x1="3" y1="6"  x2="21" y2="6"  stroke="#f97316" strokeWidth="2.2" strokeLinecap="round" />
+          <line x1="3" y1="12" x2="21" y2="12" stroke="#f97316" strokeWidth="2.2" strokeLinecap="round" />
+          <line x1="3" y1="18" x2="21" y2="18" stroke="#f97316" strokeWidth="2.2" strokeLinecap="round" />
         </svg>
       </button>
     </div>

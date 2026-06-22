@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { useMatchStore } from '../../store/matchStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useHistoricalPQ } from '../../hooks/useWinProbability';
 import {
   computePlayerStats, computeTeamStats, computeRotationStats,
@@ -79,19 +80,24 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
   const [secondsLeft,    setSecondsLeft]    = useState(60);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
 
-  const lineup            = useMatchStore((s) => s.lineup);
-  const setNumber         = useMatchStore((s) => s.setNumber);
-  const committedContacts = useMatchStore((s) => s.committedContacts);
-  const committedRallies  = useMatchStore((s) => s.committedRallies);
-  const currentSetId      = useMatchStore((s) => s.currentSetId);
-  const ourScore          = useMatchStore((s) => s.ourScore);
-  const oppScore          = useMatchStore((s) => s.oppScore);
-  const rotationNum       = useMatchStore((s) => s.rotationNum);
-  const serveSide         = useMatchStore((s) => s.serveSide);
-  const ourSetsWon        = useMatchStore((s) => s.ourSetsWon);
-  const oppSetsWon        = useMatchStore((s) => s.oppSetsWon);
-  const format            = useMatchStore((s) => s.format);
-  const matchId           = useMatchStore((s) => s.matchId);
+  const {
+    lineup, setNumber, committedContacts, committedRallies, currentSetId,
+    ourScore, oppScore, rotationNum, serveSide, ourSetsWon, oppSetsWon, format, matchId,
+  } = useMatchStore(useShallow((s) => ({
+    lineup:            s.lineup,
+    setNumber:         s.setNumber,
+    committedContacts: s.committedContacts,
+    committedRallies:  s.committedRallies,
+    currentSetId:      s.currentSetId,
+    ourScore:          s.ourScore,
+    oppScore:          s.oppScore,
+    rotationNum:       s.rotationNum,
+    serveSide:         s.serveSide,
+    ourSetsWon:        s.ourSetsWon,
+    oppSetsWon:        s.oppSetsWon,
+    format:            s.format,
+    matchId:           s.matchId,
+  })));
 
   const historicalPQ = useHistoricalPQ(matchId);
 
@@ -303,7 +309,7 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
 
   // Auto-close when timer hits 0
   useEffect(() => {
-    if (secondsLeft <= 0) onClose();
+    if (secondsLeft <= 0) onClose?.();
   }, [secondsLeft, onClose]);
 
   const playerRows = lineup

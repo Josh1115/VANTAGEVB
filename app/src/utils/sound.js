@@ -21,3 +21,7 @@ export function playSound(type) {
   const word = SPEECH_MAP[type];
   if (word) speakRobot(word);
 }
+
+export function previewSound() {
+  speakRobot('ACE');
+}
