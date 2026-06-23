@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/layout/PageHeader';
 import { supabase } from '../utils/supabase';
@@ -37,9 +37,35 @@ export function UpgradePage() {
   const didSucceed  = searchParams.get('success') === '1';
   const didCancel   = searchParams.get('canceled') === '1';
 
+  // Fix 5: Poll until the webhook has landed and the plan matches, instead of
+  // refreshing once immediately (webhook delivery can lag the redirect by 5-30s)
   useEffect(() => {
-    if (didSucceed && successPlan) refreshProfile();
-  }, [didSucceed, successPlan, refreshProfile]);
+    if (!didSucceed || !successPlan) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 10;
+
+    async function checkPlan() {
+      if (cancelled) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('plan')
+        .eq('id', session.user.id)
+        .single();
+      if (data?.plan === successPlan || attempts >= MAX_ATTEMPTS) {
+        if (!cancelled) refreshProfile();
+      } else {
+        attempts++;
+        setTimeout(checkPlan, 2000);
+      }
+    }
+
+    checkPlan();
+    return () => { cancelled = true; };
+  }, [didSucceed, successPlan]);
 
   async function handleUpgrade(planKey) {
     setError('');

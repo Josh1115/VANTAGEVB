@@ -1,11 +1,6 @@
 import Stripe from 'npm:stripe@14';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
 // Map Stripe Price IDs back to plan names
 const PRICE_TO_PLAN: Record<string, string> = {
   'price_1Tgv6hEZO853IB28UMuYmThg': '1_team',
@@ -16,10 +11,6 @@ const PRICE_TO_PLAN: Record<string, string> = {
 };
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
   const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
     apiVersion: '2024-04-10',
   });
@@ -44,14 +35,40 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
 
+  // Fix 8: Idempotency — skip events we've already processed
+  const { error: insertError } = await supabase
+    .from('processed_stripe_events')
+    .insert({ event_id: event.id });
+
+  if (insertError?.code === '23505') {
+    console.log(`Event ${event.id} already processed, skipping`);
+    return new Response(JSON.stringify({ received: true, skipped: true }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        const userId = session.metadata?.supabase_user_id;
-        const plan   = session.metadata?.plan;
 
-        if (!userId || !plan) break;
+        // Fix 2: Only grant a plan when payment is confirmed
+        if (session.payment_status !== 'paid') {
+          console.log(`checkout.session.completed: payment_status=${session.payment_status}, skipping`);
+          break;
+        }
+
+        const userId = session.metadata?.supabase_user_id;
+        if (!userId) break;
+
+        // Fix 1: Derive plan from the actual purchased price ID, not metadata
+        const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 1 });
+        const priceId = lineItems.data[0]?.price?.id;
+        const plan = PRICE_TO_PLAN[priceId ?? ''];
+        if (!plan) {
+          console.error(`checkout.session.completed: unknown price ${priceId}, refusing to grant plan`);
+          break;
+        }
 
         // Plans expire 1 year from purchase date
         const planExpiresAt = new Date();
@@ -71,19 +88,30 @@ Deno.serve(async (req) => {
         break;
       }
 
-      case 'charge.refunded': {
-        const charge = event.data.object as Stripe.Charge;
-        const customerId = charge.customer as string;
+      case 'charge.refunded':
+      case 'charge.dispute.created': {
+        // Fix 3: Revoke plan on both manual refunds and bank chargebacks
+        let customerId: string | null = null;
+
+        if (event.type === 'charge.refunded') {
+          const charge = event.data.object as Stripe.Charge;
+          customerId = charge.customer as string;
+        } else {
+          const dispute = event.data.object as Stripe.Dispute;
+          const chargeId = typeof dispute.charge === 'string' ? dispute.charge : dispute.charge.id;
+          const charge = await stripe.charges.retrieve(chargeId);
+          customerId = charge.customer as string;
+        }
+
         if (!customerId) break;
 
-        // Look up user by Stripe customer ID and revoke their plan
         const { data: profiles } = await supabase
           .from('profiles')
           .select('id')
           .eq('stripe_customer_id', customerId);
 
         if (!profiles?.length) {
-          console.warn(`charge.refunded: no profile found for customer ${customerId}`);
+          console.warn(`${event.type}: no profile found for customer ${customerId}`);
           break;
         }
 
@@ -96,7 +124,7 @@ Deno.serve(async (req) => {
           })
           .eq('stripe_customer_id', customerId);
 
-        console.log(`Revoked plan for customer ${customerId} (${profiles.length} profile(s))`);
+        console.log(`Revoked plan for customer ${customerId} (${profiles.length} profile(s)) — reason: ${event.type}`);
         break;
       }
 
@@ -109,6 +137,6 @@ Deno.serve(async (req) => {
   }
 
   return new Response(JSON.stringify({ received: true }), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
   });
 });

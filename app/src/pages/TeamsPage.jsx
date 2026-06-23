@@ -351,12 +351,22 @@ function TeamFormModal({ onClose, orgId, team, orgType }) {
   const [nameError, setNameError] = useState('');
   const [saving,    setSaving]    = useState(false);
   const showToast = useUiStore(selectShowToast);
+  const { teamsAllowed, isMaster } = usePlan();
 
   const save = async () => {
     if (!name.trim()) { setNameError('Name is required.'); return; }
     setNameError('');
     setSaving(true);
     try {
+      // Fix 4: Re-check team limit at save time, not just at button-press time
+      if (!team && !isMaster) {
+        const currentCount = await db.teams.count();
+        if (currentCount >= teamsAllowed) {
+          showToast('Team limit reached — upgrade your plan to add more teams', 'error');
+          setSaving(false);
+          return;
+        }
+      }
       const fields = {
         name: name.trim(),
         abbreviation: abbreviation.trim().toUpperCase() || null,
