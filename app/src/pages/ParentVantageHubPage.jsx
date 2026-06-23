@@ -73,7 +73,7 @@ function HubContent() {
       setLastPublished(now);
       showToast('Stats published to FamilyScope', 'success');
     } catch (err) {
-      console.error('[PV] publish failed:', err);
+      void err;
       showToast('Publish failed — check your connection', 'error');
     } finally {
       setPublishing(false);

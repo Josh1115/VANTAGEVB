@@ -380,7 +380,7 @@ export function LiveMatchPage() {
         }
       }
       } catch (err) {
-        console.error('LiveMatchPage init failed:', err);
+        void err;
         setInitError(true);
       }
     }

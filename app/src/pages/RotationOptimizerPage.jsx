@@ -219,7 +219,7 @@ export function RotationOptimizerPage() {
                   <>
                     <span className="text-xs font-bold text-primary">#{player.jersey_number}</span>
                     <span className="text-xs text-white font-semibold leading-tight text-center">
-                      {player.name.split(' ').slice(-1)[0]}
+                      {(player.name ?? '').split(' ').slice(-1)[0]}
                     </span>
                     <span className="text-[10px] text-slate-500">{player.position}</span>
                     {keyStat && (

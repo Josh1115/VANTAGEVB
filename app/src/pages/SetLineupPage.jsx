@@ -65,7 +65,7 @@ export function SetLineupPage() {
 
       await loadSetData(currentSet);
       } catch (err) {
-        console.error('[VBStat] SetLineupPage load failed:', err);
+        void err;
         setError('Failed to load lineup data. Please go back and try again.');
       }
     }

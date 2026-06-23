@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { VantageLogo } from '../ui/VantageLogo';
 import { NetDivider } from '../ui/NetDivider';
-import { supabase } from '../../utils/supabase';
+import { supabase, trackPageView } from '../../utils/supabase';
 import { router } from '../../router';
 
 function friendlyAuthError(msg) {
@@ -31,6 +31,7 @@ export function LoginPage({ onSignup }) {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
     document.title = 'Vantage: Immediate Impact Analytics';
+    trackPageView('login');
   }, []);
 
   useEffect(() => {

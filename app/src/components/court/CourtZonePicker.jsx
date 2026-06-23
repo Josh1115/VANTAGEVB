@@ -16,7 +16,7 @@ export function CourtZonePicker({ value, onChange, serveOrder, players }) {
     const zone = serveOrderToZone(i, value);
     const pid  = serveOrder[i];
     const p    = pid ? (players ?? []).find((pl) => String(pl.id) === String(pid)) : null;
-    zoneInfo[zone] = { roman: r, playerName: p ? `#${p.jersey_number} ${p.name.split(' ').pop()}` : null };
+    zoneInfo[zone] = { roman: r, playerName: p ? `#${p.jersey_number} ${(p.name ?? '').split(' ').pop()}` : null };
   });
 
   return (

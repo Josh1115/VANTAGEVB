@@ -12,6 +12,7 @@ import { serveOrderToZone } from '../components/court/CourtZonePicker';
 import { LineupForm } from '../components/match/LineupForm';
 import { usePlan } from '../hooks/usePlan';
 import { PvShareSheet } from '../components/parentvantage/PvShareSheet';
+import { supabase } from '../utils/supabase';
 
 
 export function MatchSetupPage() {
@@ -205,6 +206,21 @@ export function MatchSetupPage() {
     }
     setSaving(true);
     try {
+      if (!isMaster) {
+        try {
+          const { data, error } = await supabase.rpc('consume_match_slot');
+          if (!error && data?.allowed === false) {
+            setError(
+              data.reason === 'inactive'
+                ? 'Your plan is inactive. Upgrade to record matches.'
+                : `Trial limit reached (${data.used}/${data.limit} matches). Upgrade to continue.`
+            );
+            setSaving(false);
+            return;
+          }
+        } catch { /* offline — local check below will catch it */ }
+      }
+
       const oppRecord = await resolveOpponent(opponent);
 
       const ourSetsWon = parsedSets.filter((s) => s.ourScore > s.oppScore).length;
@@ -313,6 +329,23 @@ export function MatchSetupPage() {
         });
         effectiveMatchId = scheduledMatchId;
       } else {
+        if (!isMaster) {
+          try {
+            const { data, error } = await supabase.rpc('consume_match_slot');
+            if (!error && data?.allowed === false) {
+              const e = new Error(
+                data.reason === 'inactive'
+                  ? 'Your plan is inactive. Upgrade to record matches.'
+                  : `Trial limit reached (${data.used}/${data.limit} matches). Upgrade to continue.`
+              );
+              e.code = 'MATCH_LIMIT';
+              throw e;
+            }
+          } catch (rpcErr) {
+            if (rpcErr.code === 'MATCH_LIMIT') throw rpcErr;
+            // offline — local check inside the transaction below will catch it
+          }
+        }
         effectiveMatchId = await db.transaction('rw', [db.matches, db.seasons], async () => {
           const [liveCount, season] = await Promise.all([
             db.matches.where('season_id').equals(Number(seasonId)).count(),
@@ -379,7 +412,7 @@ export function MatchSetupPage() {
       setPvShareMatch(savedMatch);
       setPvNav(`/matches/${effectiveMatchId}/live`);
     } catch (err) {
-      if (err.code === 'MATCH_LIMIT') { setError('This season has reached its match limit.'); return; }
+      if (err.code === 'MATCH_LIMIT') { setError(err.message || 'This season has reached its match limit.'); return; }
       showToast('Failed to create match. Try again.', 'error');
       setError('Failed to create match. Try again.');
     } finally {

@@ -34,3 +34,9 @@ export function subscribePvChannel(token, onMessage) {
 export function broadcastPvUpdate(channel, payload) {
   channel.send({ type: 'broadcast', event: 'match_update', payload }).catch(() => {});
 }
+
+// ── Page view tracking ────────────────────────────────────────────────────────
+
+export function trackPageView(page) {
+  supabase.from('page_views').insert({ page }).then(() => {}).catch(() => {});
+}

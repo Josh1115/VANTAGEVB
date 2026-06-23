@@ -12,7 +12,7 @@ const TOOLS = [
     to:          '/tools/serve-receive',
     icon:        '🏐',
     label:       'Serve Receive',
-    description: 'Track pass ratings & APR during drills',
+    description: 'Track pass ratings and averages in serve-receive drills',
   },
   {
     to:          '/tools/serve-tracker',

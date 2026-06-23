@@ -672,7 +672,7 @@ export function TeamDetailPage() {
                               <div key={p.id} className="flex items-center gap-2 py-1">
                                 <span className="text-[10px] text-slate-600 w-3 tabular-nums">{i + 1}</span>
                                 <span className="text-xs text-slate-400 font-mono w-8">#{p.jersey}</span>
-                                <span className="text-sm font-semibold flex-1 truncate">{p.name.split(' ').length > 1 ? `${p.name[0]}. ${p.name.split(' ').pop()}` : p.name}</span>
+                                <span className="text-sm font-semibold flex-1 truncate">{p.name ? (p.name.split(' ').length > 1 ? `${p.name[0]}. ${p.name.split(' ').pop()}` : p.name) : ''}</span>
                                 <span className="text-xs text-slate-500 tabular-nums">{p.passes.length} reps</span>
                                 <span className="text-sm font-black font-mono text-primary tabular-nums w-10 text-right">{p.apr.toFixed(2)}</span>
                               </div>

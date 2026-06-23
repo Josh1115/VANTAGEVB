@@ -371,7 +371,7 @@ function GameView({ players: initPlayers, teamId, opponent, initialState }) {
               i === activeIdx ? 'bg-primary text-white' : 'bg-surface text-slate-300 hover:bg-slate-700'
             }`}
           >
-            #{p.jersey} {p.name.split(' ').pop()}
+            #{p.jersey} {(p.name ?? '').split(' ').pop()}
           </button>
         ))}
       </div>
@@ -418,7 +418,7 @@ function GameView({ players: initPlayers, teamId, opponent, initialState }) {
       {/* Active player stats */}
       <div className="bg-surface rounded-xl px-4 py-3">
         <div className="text-xs text-slate-400 font-semibold mb-2.5">
-          #{active.jersey} {active.name.split(' ').pop()}
+          #{active.jersey} {(active.name ?? '').split(' ').pop()}
         </div>
         <div className="grid grid-cols-4 gap-2">
           <StatChip label="Kills"  value={active.kills}        color="text-emerald-400" />

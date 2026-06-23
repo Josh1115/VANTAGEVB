@@ -14,7 +14,7 @@ import { db } from '../db/schema';
 import { useUiStore } from '../store/uiStore';
 import { FORMAT, ACCENT_COLORS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
-import { usePlan, PLAN_TEAMS, PLAN_PRICES, PLAN_LABELS, SEASON_MATCH_LIMIT } from '../hooks/usePlan';
+import { usePlan, PLAN_TEAMS, PLAN_PRICES, PLAN_LABELS, SEASON_MATCH_LIMIT, TRIAL_MATCH_LIMIT } from '../hooks/usePlan';
 import { previewSound } from '../utils/sound';
 import {
   getStorageItem, setStorageItem,
@@ -1430,8 +1430,32 @@ export function SettingsPage() {
 
   async function handleImportConfirm() {
     if (!pendingFile) return;
-    setImporting(true);
     setConfirmImport(false);
+
+    // Check backup contents against plan limits before applying
+    if (!isMaster) {
+      try {
+        const text = await pendingFile.text();
+        const data = JSON.parse(text);
+        const backupTeamCount  = Array.isArray(data.teams)   ? data.teams.length   : 0;
+        const backupMatchCount = Array.isArray(data.matches) ? data.matches.length : 0;
+        if (teamsAllowed < 99 && backupTeamCount > teamsAllowed) {
+          showToast(`Backup has ${backupTeamCount} teams but your plan allows ${teamsAllowed}. Upgrade before importing.`, 'error');
+          setPendingFile(null);
+          return;
+        }
+        const effectiveMatchLimit = plan === 'trial' ? TRIAL_MATCH_LIMIT : SEASON_MATCH_LIMIT;
+        if (backupMatchCount > effectiveMatchLimit) {
+          showToast(`Backup has ${backupMatchCount} matches but your plan allows ${effectiveMatchLimit} per season. Upgrade before importing.`, 'error');
+          setPendingFile(null);
+          return;
+        }
+      } catch {
+        // If we can't parse the file here, importBackup will catch it properly below
+      }
+    }
+
+    setImporting(true);
     try {
       await importBackup(pendingFile);
       showToast('Backup imported successfully', 'success');

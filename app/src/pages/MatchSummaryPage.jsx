@@ -978,7 +978,7 @@ export function MatchSummaryPage() {
     Promise.all([computeMatchStats(id), getRalliesForMatch(id)])
       .then(([s, rallies]) => { setStats(s); setContacts(s.contacts); setRawRallies(rallies); })
       .catch((err) => {
-        console.error('computeMatchStats failed', err);
+        void err;
         setStatsError(err?.message ?? 'Failed to load stats');
       })
       .finally(() => setLoading(false));

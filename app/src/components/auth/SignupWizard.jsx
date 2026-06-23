@@ -229,11 +229,14 @@ function StepSchool({ data, onChange, onNext, error }) {
 
 // ── Step 4: Coach (final step — triggers account creation) ───────────────────
 function StepCoach({ value, onChange, onSubmit, submitting, error }) {
-  const [ageAck, setAgeAck] = useState(false);
+  const [ageAck,    setAgeAck]    = useState(false);
+  const [nameError, setNameError] = useState('');
   const inp = 'w-full rounded-2xl border-2 border-slate-600 bg-slate-800/40 px-5 py-4 text-lg text-white placeholder-slate-500 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all';
 
   function handleSubmit() {
+    if (!value.trim()) { setNameError('Please enter your name.'); return; }
     if (!ageAck) return;
+    setNameError('');
     onSubmit();
   }
 
@@ -248,10 +251,11 @@ function StepCoach({ value, onChange, onSubmit, submitting, error }) {
         autoFocus
         placeholder="Head coach name"
         value={value}
-        onChange={e => onChange(e.target.value)}
+        onChange={e => { onChange(e.target.value); setNameError(''); }}
         onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-        className={inp}
+        className={`${inp} ${nameError ? 'border-red-500' : ''}`}
       />
+      {nameError && <p className="text-sm text-red-400 text-center -mt-2">{nameError}</p>}
 
       {/* Trial callout */}
       <div className="rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-center space-y-0.5">
@@ -295,6 +299,47 @@ function StepCoach({ value, onChange, onSubmit, submitting, error }) {
       >
         {submitting ? 'Creating account…' : 'Start Free Trial'}
       </button>
+    </div>
+  );
+}
+
+// ── Check-your-email screen ───────────────────────────────────────────────────
+function ConfirmEmailScreen({ email, onBack }) {
+  const [resent,    setResent]    = useState(false);
+  const [resending, setResending] = useState(false);
+
+  async function handleResend() {
+    setResending(true);
+    await supabase.auth.resend({ type: 'signup', email });
+    setResending(false);
+    setResent(true);
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-8 animate-fade-in"
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      <div className="w-full max-w-sm text-center space-y-6">
+        <div className="text-6xl">📬</div>
+        <h2 className="text-2xl font-black text-white">Check your email</h2>
+        <p className="text-slate-400 text-sm leading-relaxed">
+          We sent a confirmation link to{' '}
+          <span className="text-white font-semibold">{email}</span>.
+          Click it to activate your account, then come back to log in.
+        </p>
+        <button
+          onClick={onBack}
+          className="w-full rounded-2xl bg-primary py-4 text-base font-black text-white tracking-wide active:scale-[0.97] transition-transform"
+        >
+          Back to Log In
+        </button>
+        <button
+          onClick={handleResend}
+          disabled={resending || resent}
+          className="w-full text-sm text-slate-500 hover:text-slate-300 transition-colors disabled:opacity-50"
+        >
+          {resent ? 'Email resent ✓' : resending ? 'Resending…' : "Didn't get it? Resend email"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -348,7 +393,7 @@ export function SignupWizard({ onComplete, onBack }) {
         // Stamp the profile with trial plan (DB trigger may have already created the row)
         await supabase
           .from('profiles')
-          .upsert({ id: data.session.user.id, plan: 'trial' }, { onConflict: 'id' });
+          .upsert({ id: data.session.user.id }, { onConflict: 'id', ignoreDuplicates: true });
         onComplete();
       } else {
         setStep(5); // email confirmation required — show check-your-email screen
@@ -361,26 +406,7 @@ export function SignupWizard({ onComplete, onBack }) {
   }
 
   if (step === 5) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-8 animate-fade-in"
-        style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-        <div className="w-full max-w-sm text-center space-y-6">
-          <div className="text-6xl">📬</div>
-          <h2 className="text-2xl font-black text-white">Check your email</h2>
-          <p className="text-slate-400 text-sm leading-relaxed">
-            We sent a confirmation link to{' '}
-            <span className="text-white font-semibold">{email}</span>.
-            Click it to activate your account, then come back to log in.
-          </p>
-          <button
-            onClick={onBack}
-            className="w-full rounded-2xl bg-primary py-4 text-base font-black text-white tracking-wide active:scale-[0.97] transition-transform"
-          >
-            Back to Log In
-          </button>
-        </div>
-      </div>
-    );
+    return <ConfirmEmailScreen email={email} onBack={onBack} />;
   }
 
   return (

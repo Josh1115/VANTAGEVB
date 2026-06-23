@@ -69,6 +69,10 @@ export function fmtPlayerName(name, nickname, format) {
   }
 }
 
+// Set scores — "25-20 · 25-18 · 23-25"
+export const fmtSetScores = (sets) =>
+  sets.map((s) => `${s.our_score ?? 0}-${s.opp_score ?? 0}`).join(' · ');
+
 // Pass average rating (null when no passes)
 export function calcAPR(passes) {
   if (!passes.length) return null;

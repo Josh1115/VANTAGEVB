@@ -383,7 +383,7 @@ function IndividualSessionView({ players: initPlayers, teamId }) {
   }
 
   async function handleSave() {
-    const label = players.map((p) => `#${p.jersey} ${p.name.split(' ').pop()}`).join(', ');
+    const label = players.map((p) => `#${p.jersey} ${(p.name ?? '').split(' ').pop()}`).join(', ');
     await db.practice_sessions.add({
       tool_type: 'serve_tracker',
       team_id: teamId ?? null,
@@ -414,7 +414,7 @@ function IndividualSessionView({ players: initPlayers, teamId }) {
               i === activeIdx ? 'bg-primary text-white' : 'bg-surface text-slate-300 hover:bg-slate-700'
             }`}
           >
-            #{p.jersey} {p.name.split(' ').pop()}
+            #{p.jersey} {(p.name ?? '').split(' ').pop()}
           </button>
         ))}
       </div>

@@ -1263,7 +1263,7 @@ export function RecordsPage() {
     setComputeError(false);
     computeLeaderboards(tab, teamId, getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID))
       .then(result => { if (!cancelled) setBoards(result); })
-      .catch(err => { console.error(err); if (!cancelled) setComputeError(true); })
+      .catch(() => { if (!cancelled) setComputeError(true); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [tab, teamId, historicalCount, refreshKey]);

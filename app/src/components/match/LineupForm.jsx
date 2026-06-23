@@ -122,8 +122,8 @@ export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions,
 
   const rosterSort = getStorageItem(STORAGE_KEYS.ROSTER_SORT, 'jersey');
   const sortedPlayers = [...(players ?? [])].sort((a, b) => {
-    if (rosterSort === 'first') return a.name.split(' ')[0].localeCompare(b.name.split(' ')[0]);
-    if (rosterSort === 'last')  return a.name.split(' ').pop().localeCompare(b.name.split(' ').pop());
+    if (rosterSort === 'first') return (a.name ?? '').split(' ')[0].localeCompare((b.name ?? '').split(' ')[0]);
+    if (rosterSort === 'last')  return (a.name ?? '').split(' ').pop().localeCompare((b.name ?? '').split(' ').pop());
     return (a.jersey_number ?? 0) - (b.jersey_number ?? 0);
   });
 

@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { MATCH_STATUS } from '../constants';
-import { fmtDate, fmtHitting, fmtPct } from '../stats/formatters';
+import { fmtDate, fmtHitting, fmtPct, fmtSetScores } from '../stats/formatters';
 import { computePlayerStats, computeTeamStats } from '../stats/engine';
 import { deleteMatch } from '../stats/queries';
 import { Button } from '../components/ui/Button';
@@ -55,11 +55,6 @@ const BALL_TYPES = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function fmtSetScores(sets) {
-  return sets.map((s) => `${s.our_score ?? 0}-${s.opp_score ?? 0}`).join(' · ');
-}
-
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
