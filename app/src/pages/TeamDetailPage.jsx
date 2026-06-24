@@ -400,7 +400,7 @@ export function TeamDetailPage() {
               </button>
             </div>
             <div className="flex gap-2">
-              {has('paid') && <Button size="sm" variant="ghost" onClick={() => navigate(`/teams/${teamId}/optimizer`)}>Optimizer</Button>}
+              <Button size="sm" variant="ghost" onClick={() => navigate(`/teams/${teamId}/optimizer`)}>Optimizer</Button>
               <Button size="sm" onClick={() => setShowLineupModal(true)}>+ Lineup</Button>
             </div>
           </div>

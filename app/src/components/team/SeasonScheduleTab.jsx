@@ -631,7 +631,7 @@ export function SeasonScheduleTab({ seasonId }) {
                             className="text-xs font-semibold px-2.5 py-1 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
                             title="Share on FamilyScope"
                           >
-                            FS
+                            FamScope
                           </button>
                         )}
                         <button
@@ -698,7 +698,7 @@ export function SeasonScheduleTab({ seasonId }) {
                           className="text-xs font-bold px-2 py-1 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
                           title="Share on FamilyScope"
                         >
-                          PV
+                          FamScope
                         </button>
                       )}
                       {match.status === MATCH_STATUS.COMPLETE && (
