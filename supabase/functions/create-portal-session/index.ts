@@ -45,11 +45,12 @@ Deno.serve(async (req) => {
       apiVersion: '2024-04-10',
     });
 
-    const origin = req.headers.get('origin') ?? 'https://vbstat.app';
+    const rawOrigin = req.headers.get('origin') ?? '';
+    const safeOrigin = ALLOWED_ORIGINS.includes(rawOrigin) ? rawOrigin : ALLOWED_ORIGINS[0];
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: profile.stripe_customer_id,
-      return_url: `${origin}/settings`,
+      return_url: `${safeOrigin}/settings`,
     });
 
     return new Response(JSON.stringify({ url: portalSession.url }), {

@@ -14,7 +14,7 @@ import { db } from '../db/schema';
 import { useUiStore } from '../store/uiStore';
 import { FORMAT, ACCENT_COLORS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
-import { usePlan, PLAN_TEAMS, PLAN_PRICES, PLAN_LABELS, SEASON_MATCH_LIMIT, TRIAL_MATCH_LIMIT } from '../hooks/usePlan';
+import { usePlan, PLAN_TEAMS, PLAN_PRICES, PLAN_LABELS, TRIAL_MATCH_LIMIT } from '../hooks/usePlan';
 import { previewSound } from '../utils/sound';
 import {
   getStorageItem, setStorageItem,
@@ -1432,32 +1432,9 @@ export function SettingsPage() {
     if (!pendingFile) return;
     setConfirmImport(false);
 
-    // Check backup contents against plan limits before applying
-    if (!isMaster) {
-      try {
-        const text = await pendingFile.text();
-        const data = JSON.parse(text);
-        const backupTeamCount  = Array.isArray(data.teams)   ? data.teams.length   : 0;
-        const backupMatchCount = Array.isArray(data.matches) ? data.matches.length : 0;
-        if (teamsAllowed < 99 && backupTeamCount > teamsAllowed) {
-          showToast(`Backup has ${backupTeamCount} teams but your plan allows ${teamsAllowed}. Upgrade before importing.`, 'error');
-          setPendingFile(null);
-          return;
-        }
-        const effectiveMatchLimit = plan === 'trial' ? TRIAL_MATCH_LIMIT : SEASON_MATCH_LIMIT;
-        if (backupMatchCount > effectiveMatchLimit) {
-          showToast(`Backup has ${backupMatchCount} matches but your plan allows ${effectiveMatchLimit} per season. Upgrade before importing.`, 'error');
-          setPendingFile(null);
-          return;
-        }
-      } catch {
-        // If we can't parse the file here, importBackup will catch it properly below
-      }
-    }
-
     setImporting(true);
     try {
-      await importBackup(pendingFile);
+      await importBackup(pendingFile, { teamsAllowed, matchLimit });
       showToast('Backup imported successfully', 'success');
       window.location.reload();
     } catch (e) {
@@ -1712,21 +1689,22 @@ export function SettingsPage() {
                     ) : teams.map((team) => {
                       const info = teamMatchCounts?.[team.id];
                       const used = info?.matchCount ?? 0;
-                      const remaining = isMaster ? null : Math.max(0, SEASON_MATCH_LIMIT - used);
-                      const pct = isMaster ? 0 : Math.min(100, (used / SEASON_MATCH_LIMIT) * 100);
+                      const isTrialPlan = plan === 'trial';
+                      const remaining = isTrialPlan ? Math.max(0, TRIAL_MATCH_LIMIT - used) : null;
+                      const pct = isTrialPlan ? Math.min(100, (used / TRIAL_MATCH_LIMIT) * 100) : 0;
                       return (
                         <div key={team.id} className="space-y-1">
                           <div className="flex items-center justify-between">
                             <span className="text-xs text-slate-300 font-medium truncate max-w-[55%]">{team.name}{info?.seasonYear ? ` · ${info.seasonYear}` : ''}</span>
                             <span className="text-xs font-bold text-white">
-                              {isMaster ? (
+                              {!isTrialPlan ? (
                                 <span className="text-emerald-400">Unlimited</span>
                               ) : (
-                                <>{used} / {SEASON_MATCH_LIMIT} · <span className={remaining === 0 ? 'text-red-400' : 'text-emerald-400'}>{remaining} left</span></>
+                                <>{used} / {TRIAL_MATCH_LIMIT} · <span className={remaining === 0 ? 'text-red-400' : 'text-emerald-400'}>{remaining} left</span></>
                               )}
                             </span>
                           </div>
-                          {!isMaster && (
+                          {isTrialPlan && (
                             <div className="h-1 rounded-full bg-slate-700 overflow-hidden">
                               <div
                                 className="h-full rounded-full transition-all"
@@ -1764,7 +1742,7 @@ export function SettingsPage() {
                     <div className="flex items-center gap-2">
                       {plan === key && !isMaster && <span className="text-primary text-xs font-black">✓</span>}
                       <span className={`text-sm font-semibold ${plan === key && !isMaster ? 'text-primary' : 'text-slate-300'}`}>{label}</span>
-                      <span className="text-xs text-slate-500">· {PLAN_TEAMS[key] === 99 ? '5+' : PLAN_TEAMS[key]} team{PLAN_TEAMS[key] !== 1 ? 's' : ''} · {SEASON_MATCH_LIMIT} matches/season</span>
+                      <span className="text-xs text-slate-500">· {PLAN_TEAMS[key] === 99 ? '5+' : PLAN_TEAMS[key]} team{PLAN_TEAMS[key] !== 1 ? 's' : ''} · unlimited matches/season</span>
                     </div>
                     <span className={`text-sm font-bold ${plan === key && !isMaster ? 'text-primary' : 'text-slate-300'}`}>{PLAN_PRICES[key]}<span className="text-xs font-normal text-slate-500">/yr</span></span>
                   </div>

@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { usePlan } from '../hooks/usePlan';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { useTeam, usePlayers, useSeasons } from '../hooks/useTeamData';
@@ -90,6 +91,7 @@ export function TeamDetailPage() {
   const { teamId } = useParams();
   const navigate = useNavigate();
   const id = Number(teamId);
+  const { has } = usePlan();
   const team    = useTeam(id);
   const players = usePlayers(id);
   const seasons = useSeasons(id);
@@ -398,7 +400,7 @@ export function TeamDetailPage() {
               </button>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" variant="ghost" onClick={() => navigate(`/teams/${teamId}/optimizer`)}>Optimizer</Button>
+              {has('paid') && <Button size="sm" variant="ghost" onClick={() => navigate(`/teams/${teamId}/optimizer`)}>Optimizer</Button>}
               <Button size="sm" onClick={() => setShowLineupModal(true)}>+ Lineup</Button>
             </div>
           </div>

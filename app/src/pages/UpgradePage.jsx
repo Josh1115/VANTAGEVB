@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/layout/PageHeader';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { PLAN_PRICES, PLAN_LABELS, SEASON_MATCH_LIMIT } from '../hooks/usePlan';
+import { PLAN_PRICES, PLAN_LABELS } from '../hooks/usePlan';
 
 const PLANS = [
   { key: '1_team',      teams: 1,  highlight: false },
@@ -22,7 +22,7 @@ const ALL_FEATURES = [
   'Practice tools (serve tracker, serve receive, practice games)',
   'FamilyScope live sharing',
   'PDF, CSV & MaxPreps export',
-  `${SEASON_MATCH_LIMIT} matches per team per season`,
+  'Unlimited matches per team per season',
 ];
 
 export function UpgradePage() {

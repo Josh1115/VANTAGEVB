@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { fetchPvStats, subscribePvChannel } from '../utils/supabase';
+import { fetchPvStats, subscribePvChanges } from '../utils/supabase';
 import { LiveScoreBoard } from '../components/parentvantage/LiveScoreBoard';
 import { LiveFeed } from '../components/parentvantage/LiveFeed';
 import { PlayerStatCard } from '../components/parentvantage/PlayerStatCard';
@@ -129,11 +129,13 @@ export function FamilyScopeViewPage() {
 
   useEffect(() => {
     if (!token) return;
-    const channel = subscribePvChannel(token, (payload) => {
-      setLiveData(payload);
+    const channel = subscribePvChanges(token, (row) => {
+      const live = row.live_score;
+      if (!live) return;
+      setLiveData(live);
       resetLiveTimer();
-      if (payload.lastFeedItem) {
-        setFeedEvents(prev => [...prev, payload.lastFeedItem].slice(-40));
+      if (live.lastFeedItem) {
+        setFeedEvents(prev => [...prev, live.lastFeedItem].slice(-40));
       }
     });
     return () => { channel.unsubscribe(); clearTimeout(liveTimerRef.current); };

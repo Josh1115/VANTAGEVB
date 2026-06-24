@@ -1,8 +1,9 @@
 import { usePlan } from '../../hooks/usePlan';
 import { UpgradePrompt } from './UpgradePrompt';
 
-export function PlanGate({ feature, children }) {
+// requires: 'active'|'core' (any non-inactive plan), 'paid' (purchased), 'master'
+export function PlanGate({ feature, requires = 'active', children }) {
   const { has } = usePlan();
-  if (has()) return children;
+  if (has(requires)) return children;
   return <UpgradePrompt feature={feature} />;
 }

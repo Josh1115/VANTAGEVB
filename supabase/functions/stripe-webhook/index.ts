@@ -35,18 +35,6 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
 
-  // Fix 8: Idempotency — skip events we've already processed
-  const { error: insertError } = await supabase
-    .from('processed_stripe_events')
-    .insert({ event_id: event.id });
-
-  if (insertError?.code === '23505') {
-    console.log(`Event ${event.id} already processed, skipping`);
-    return new Response(JSON.stringify({ received: true, skipped: true }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
@@ -134,6 +122,16 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error('Error processing webhook:', err);
     return new Response('Internal error', { status: 500 });
+  }
+
+  // Record event as processed AFTER successful handling so Stripe retries work on transient failures.
+  // Duplicate key (23505) means a concurrent delivery raced us — both outcomes are fine since all
+  // handlers are idempotent (profile updates are last-write-wins).
+  const { error: insertError } = await supabase
+    .from('processed_stripe_events')
+    .insert({ event_id: event.id });
+  if (insertError && insertError.code !== '23505') {
+    console.warn(`Failed to record idempotency key for ${event.id}:`, insertError.message);
   }
 
   return new Response(JSON.stringify({ received: true }), {

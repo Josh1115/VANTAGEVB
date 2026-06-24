@@ -26,6 +26,9 @@ router.post('/signup', async (req, res) => {
   const existing = db.prepare('SELECT id FROM accounts WHERE email = ?').get(email.toLowerCase().trim());
   if (existing) return res.status(409).json({ error: 'An account with that email already exists.' });
 
+  const VALID_PLANS = ['free', 'trial'];
+  const safePlan = VALID_PLANS.includes(plan) ? plan : 'free';
+
   const pin_hash = await bcrypt.hash(String(pin), 10);
   const result = db.prepare(`
     INSERT INTO accounts (email, pin_hash, plan, coach_name, school_name, school_type, school_state, created_at)
@@ -33,7 +36,7 @@ router.post('/signup', async (req, res) => {
   `).run(
     email.toLowerCase().trim(),
     pin_hash,
-    plan || 'free',
+    safePlan,
     coach_name || null,
     school_name || null,
     school_type || null,

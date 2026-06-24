@@ -29,8 +29,19 @@ export const PLAN_LABELS = {
   '5plus_teams': '5+ Teams',
 };
 
-export const SEASON_MATCH_LIMIT = 50;
-export const TRIAL_MATCH_LIMIT  = 5;
+export const TRIAL_MATCH_LIMIT = 5;
+
+// Numeric tier: 0=inactive, 1=trial, 2=paid, 3=master
+export const PLAN_TIER = {
+  inactive:      0,
+  trial:         1,
+  '1_team':      2,
+  '2_teams':     2,
+  '3_teams':     2,
+  '4_teams':     2,
+  '5plus_teams': 2,
+  master:        3,
+};
 
 export function usePlan() {
   const { profile } = useAuth();
@@ -41,12 +52,20 @@ export function usePlan() {
   const isMaster = plan === 'master';
   const isActive = plan !== 'inactive';
   const teamsAllowed = PLAN_TEAMS[plan] ?? 0;
+  const tier = PLAN_TIER[plan] ?? 0;
 
-  function has() {
-    return isActive;
+  // Accepts a numeric tier (1/2/3) or a string alias:
+  //   'active' | 'core' → 1 (any non-inactive plan, including trial)
+  //   'paid'            → 2 (purchased plan)
+  //   'master'          → 3
+  const TIER_ALIAS = { active: 1, core: 1, paid: 2, master: 3 };
+  function has(required = 1) {
+    const t = typeof required === 'string' ? (TIER_ALIAS[required] ?? 1) : required;
+    return tier >= t;
   }
 
-  const matchLimit = isMaster ? Infinity : plan === 'trial' ? TRIAL_MATCH_LIMIT : SEASON_MATCH_LIMIT;
+  // Paid plans have no match cap — trial is limited to 5
+  const matchLimit = plan === 'trial' ? TRIAL_MATCH_LIMIT : Infinity;
 
-  return { plan, isActive, isMaster, teamsAllowed, matchLimit, has, expiresAt: isExpired ? null : expiresAt };
+  return { plan, isActive, isMaster, teamsAllowed, matchLimit, tier, has, expiresAt: isExpired ? null : expiresAt };
 }

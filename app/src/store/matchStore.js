@@ -270,7 +270,7 @@ const INITIAL_STATE = {
   _hblkInFlight:          false, // guard against concurrent HBLK double-taps
 
   broadcastEnabled:       false,
-  _pvChannel:             null,
+  _pvToken:               null,
 };
 
 export const useMatchStore = create((set, get) => ({
@@ -282,32 +282,22 @@ export const useMatchStore = create((set, get) => ({
     set({ matchId, currentSetId: setId, teamId, format, lastSetScore: lastSetScore ?? 15, maxSubsPerSet });
   },
   resetMatch: () => {
-    const { _pvChannel } = get();
-    if (_pvChannel) {
-      _pvChannel.unsubscribe();
-    }
     set(INITIAL_STATE);
   },
 
-  startBroadcast: async (token) => {
-    const prev = get()._pvChannel;
-    if (prev) prev.unsubscribe();
-    const { subscribePvChannel } = await import('../utils/supabase');
-    const channel = subscribePvChannel(token, () => {});
-    set({ broadcastEnabled: true, _pvChannel: channel });
+  startBroadcast: (token) => {
+    set({ broadcastEnabled: true, _pvToken: token });
   },
 
   stopBroadcast: () => {
-    const { _pvChannel } = get();
-    if (_pvChannel) _pvChannel.unsubscribe();
-    set({ broadcastEnabled: false, _pvChannel: null });
+    set({ broadcastEnabled: false, _pvToken: null });
   },
 
   broadcastUpdate: async () => {
     const s = get();
-    if (!s.broadcastEnabled || !s._pvChannel) return;
-    const { broadcastPvUpdate } = await import('../utils/supabase');
-    broadcastPvUpdate(s._pvChannel, {
+    if (!s.broadcastEnabled || !s._pvToken) return;
+    const { updatePvLiveScore } = await import('../utils/supabase');
+    updatePvLiveScore(s._pvToken, {
       ourScore:    s.ourScore,
       oppScore:    s.oppScore,
       ourSetsWon:  s.ourSetsWon,
@@ -324,7 +314,7 @@ export const useMatchStore = create((set, get) => ({
         posLabel:  sl.positionLabel,
       })),
       ts: Date.now(),
-    });
+    }).catch(() => {});
   },
   setLineup:          (lineup, rotationNum) => set({ lineup, ...(rotationNum !== undefined ? { rotationNum } : {}) }),
   setPlayerNicknames: (map)    => set({ playerNicknames: map }),

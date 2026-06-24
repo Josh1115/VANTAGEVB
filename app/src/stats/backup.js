@@ -135,7 +135,7 @@ export async function restoreAutoBackup(backupId) {
 
 // ── Import ────────────────────────────────────────────────────────────────────
 
-export async function importBackup(file) {
+export async function importBackup(file, { teamsAllowed = Infinity, matchLimit = Infinity } = {}) {
   const text = await file.text();
   let data;
   try {
@@ -153,6 +153,15 @@ export async function importBackup(file) {
   const missingTables = REQUIRED_TABLES.filter((t) => !Array.isArray(data[t]));
   if (missingTables.length > 0) {
     throw new Error(`Invalid backup: missing required tables: ${missingTables.join(', ')}`);
+  }
+
+  const backupTeamCount  = Array.isArray(data.teams)   ? data.teams.length   : 0;
+  const backupMatchCount = Array.isArray(data.matches)  ? data.matches.length : 0;
+  if (teamsAllowed < 99 && backupTeamCount > teamsAllowed) {
+    throw new Error(`Backup has ${backupTeamCount} teams but your plan allows ${teamsAllowed}. Upgrade before importing.`);
+  }
+  if (isFinite(matchLimit) && backupMatchCount > matchLimit) {
+    throw new Error(`Backup has ${backupMatchCount} matches but your plan allows ${matchLimit} per season. Upgrade before importing.`);
   }
 
   await applyBackupData(data);

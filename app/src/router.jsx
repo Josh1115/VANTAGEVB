@@ -79,7 +79,7 @@ export const router = createBrowserRouter([
       { path: 'orgs/:orgId/all-time-roster', element: <S><AllTimeRosterPage /></S> },
       { path: 'teams/:teamId',               element: <S><TeamDetailPage /></S> },
       { path: 'teams/:teamId/players/:playerId', element: <S><PlayerStatsPage /></S> },
-      { path: 'teams/:teamId/optimizer',        element: <S><RotationOptimizerPage /></S> },
+      { path: 'teams/:teamId/optimizer',        element: <PlanGate feature="Rotation optimizer" requires="paid"><S><RotationOptimizerPage /></S></PlanGate> },
       { path: 'opponents',                      element: <PlanGate feature="Opponent scouting"><S><OpponentListPage /></S></PlanGate> },
       { path: 'opponents/:oppId',               element: <PlanGate feature="Opponent scouting"><S><OpponentDetailPage /></S></PlanGate> },
       { path: 'seasons',                     element: <S><SeasonsPage /></S> },

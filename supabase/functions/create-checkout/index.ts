@@ -67,15 +67,16 @@ Deno.serve(async (req) => {
         .eq('id', user.id);
     }
 
-    const origin = req.headers.get('origin') ?? 'https://vbstat.app';
+    const rawOrigin = req.headers.get('origin') ?? '';
+    const safeOrigin = ALLOWED_ORIGINS.includes(rawOrigin) ? rawOrigin : ALLOWED_ORIGINS[0];
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'payment',
-      success_url: `${origin}/upgrade?success=1&plan=${plan}`,
-      cancel_url:  `${origin}/upgrade?canceled=1`,
+      success_url: `${safeOrigin}/upgrade?success=1&plan=${plan}`,
+      cancel_url:  `${safeOrigin}/upgrade?canceled=1`,
       metadata: { supabase_user_id: user.id, plan },
     });
 

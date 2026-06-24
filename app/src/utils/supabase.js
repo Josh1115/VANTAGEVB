@@ -24,15 +24,27 @@ export async function fetchPvStats(token) {
   return data;
 }
 
-export function subscribePvChannel(token, onMessage) {
-  const channel = supabase.channel(`pv-${token}`, { config: { broadcast: { self: false } } });
-  channel.on('broadcast', { event: 'match_update' }, ({ payload }) => onMessage(payload));
-  channel.subscribe();
-  return channel;
+// Writes lightweight live score state to the DB after each point.
+// Authenticated coach only — RLS rejects anon/wrong-owner writes.
+export async function updatePvLiveScore(token, liveState) {
+  await supabase
+    .from('pv_stats')
+    .update({ live_score: liveState, updated_at: new Date().toISOString() })
+    .eq('token', token);
 }
 
-export function broadcastPvUpdate(channel, payload) {
-  channel.send({ type: 'broadcast', event: 'match_update', payload }).catch(() => {});
+// Subscribe to Postgres Changes on pv_stats for a specific token.
+// Only fires on real DB writes (authenticated coach), so fake events are impossible.
+export function subscribePvChanges(token, onUpdate) {
+  const channel = supabase
+    .channel(`pv-changes-${token}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'pv_stats', filter: `token=eq.${token}` },
+      (change) => onUpdate(change.new),
+    )
+    .subscribe();
+  return channel;
 }
 
 // ── Page view tracking ────────────────────────────────────────────────────────
