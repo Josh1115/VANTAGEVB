@@ -110,7 +110,16 @@ export function FamilyScopeViewPage() {
   const [feedEvents, setFeedEvents]   = useState([]);
   const [isLive, setIsLive]           = useState(false);
   const [activeTab, setActiveTab]     = useState('boxscore'); // 'boxscore' | 'feed'
+  const [isOnline, setIsOnline]       = useState(navigator.onLine);
   const liveTimerRef                  = useRef(null);
+
+  useEffect(() => {
+    const up   = () => setIsOnline(true);
+    const down = () => setIsOnline(false);
+    window.addEventListener('online', up);
+    window.addEventListener('offline', down);
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down); };
+  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -163,9 +172,9 @@ export function FamilyScopeViewPage() {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-6 text-center gap-4">
         <div className="text-5xl">🏐</div>
-        <h1 className="text-xl font-black text-white">Link Not Found</h1>
+        <h1 className="text-xl font-black text-white">Match Not Available</h1>
         <p className="text-sm text-slate-400 max-w-xs">
-          This link may have expired or is invalid. Ask your coach for the updated link.
+          This share link has expired or the match has ended. Ask your coach for a new link when the next match starts.
         </p>
       </div>
     );
@@ -173,6 +182,12 @@ export function FamilyScopeViewPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
+
+      {!isOnline && (
+        <div className="bg-slate-800 border-b border-slate-700 px-4 py-2 text-xs text-slate-400 text-center">
+          You&rsquo;re offline — live updates paused
+        </div>
+      )}
 
       {/* Sticky header */}
       <div className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/60">

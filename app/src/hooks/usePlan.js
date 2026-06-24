@@ -64,8 +64,12 @@ export function usePlan() {
     return tier >= t;
   }
 
-  // Paid plans have no match cap — trial is limited to 5
   const matchLimit = plan === 'trial' ? TRIAL_MATCH_LIMIT : Infinity;
 
-  return { plan, isActive, isMaster, teamsAllowed, matchLimit, tier, has, expiresAt: isExpired ? null : expiresAt };
+  // Days until expiry — positive integer if expiring in future, null otherwise
+  const daysUntilExpiry = (!isExpired && expiresAt)
+    ? Math.ceil((expiresAt - new Date()) / (1000 * 60 * 60 * 24))
+    : null;
+
+  return { plan, isActive, isMaster, teamsAllowed, matchLimit, tier, has, expiresAt: isExpired ? null : expiresAt, daysUntilExpiry };
 }

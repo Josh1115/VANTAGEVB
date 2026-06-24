@@ -1,10 +1,11 @@
 import { Component, useEffect, useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { NavBar } from './NavBar';
 import { UpdatePrompt } from './UpdatePrompt';
 import { useUiStore, selectToast } from '../../store/uiStore';
 import { autoSaveBackup } from '../../stats/backup';
 import { useInstallPrompt } from '../../hooks/useInstallPrompt';
+import { usePlan } from '../../hooks/usePlan';
 
 const IOS_BANNER_KEY     = 'vbstat_ios_install_dismissed';
 const ANDROID_BANNER_KEY = 'vbstat_android_install_dismissed';
@@ -144,6 +145,21 @@ class ErrorBoundary extends Component {
 // Hide NavBar on live match screen (full-screen immersive)
 const HIDE_NAV = ['/live', '/set-lineup'];
 
+function ExpiryBanner() {
+  const { daysUntilExpiry } = usePlan();
+  const navigate = useNavigate();
+  if (!daysUntilExpiry || daysUntilExpiry > 7) return null;
+  const msg = daysUntilExpiry <= 1 ? 'Your plan expires today' : `Your plan expires in ${daysUntilExpiry} days`;
+  return (
+    <div className="bg-amber-900/60 border-b border-amber-700 px-4 py-2 flex items-center justify-between gap-2 text-xs">
+      <span className="text-amber-300 font-semibold">{msg}</span>
+      <button onClick={() => navigate('/upgrade')} className="text-amber-200 font-black underline shrink-0">
+        Renew
+      </button>
+    </div>
+  );
+}
+
 export function Layout() {
   const { pathname } = useLocation();
   const toast = useUiStore(selectToast);
@@ -158,6 +174,7 @@ export function Layout() {
   return (
     <div className="min-h-screen bg-bg text-white" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <UpdatePrompt />
+      {!hideNav && <ExpiryBanner />}
       <main className={hideNav ? '' : 'pb-20'}>
         <div className={hideNav ? '' : 'max-w-2xl md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto'}>
           <ErrorBoundary key={pathname}>

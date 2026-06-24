@@ -96,10 +96,11 @@ export function UpgradePage() {
   }
 
   const currentLabel = PLAN_LABELS[currentPlan];
+  const isRenewing = currentPlan === 'inactive' && !!profile?.stripe_customer_id;
 
   return (
     <div className="pb-safe-bottom">
-      <PageHeader title="Get VBSTAT" />
+      <PageHeader title={isRenewing ? 'Renew VBSTAT' : 'Get VBSTAT'} />
 
       <div className="p-4 max-w-lg mx-auto flex flex-col gap-5">
 
@@ -193,7 +194,7 @@ export function UpgradePage() {
                         : 'bg-slate-700 text-white hover:bg-slate-600'
                     }`}
                   >
-                    {loading ? 'Redirecting…' : `Subscribe — ${PLAN_PRICES[plan.key]}`}
+                    {loading ? 'Redirecting…' : `${isRenewing ? 'Renew' : 'Subscribe'} — ${PLAN_PRICES[plan.key]}`}
                   </button>
                 )}
               </div>
