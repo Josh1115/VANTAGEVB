@@ -116,7 +116,7 @@ export function LoginPage({ onSignup }) {
           {/* Buttons */}
           <div
             className="w-full flex flex-col gap-4 mt-6"
-            style={{ opacity: phase >= 5 ? 1 : 0, transition: 'opacity 0.8s ease' }}
+            style={{ opacity: phase >= 2 ? 1 : 0, transition: 'opacity 0.8s ease' }}
           >
           {!showForm ? (
             <>
@@ -635,7 +635,7 @@ export function LoginPage({ onSignup }) {
                 SIGN UP FREE
               </button>
               <button
-                onClick={() => setShowForm(true)}
+                onClick={() => { window.scrollTo(0, 0); setShowForm(true); }}
                 className="w-full rounded-2xl border border-slate-700 bg-slate-800/40 py-3 text-sm font-bold text-slate-400 tracking-wide active:scale-[0.97] transition-transform mb-12"
               >
                 Already have an account? Log in

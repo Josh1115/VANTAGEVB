@@ -127,7 +127,7 @@ export function FamilyScopeViewPage() {
       if (!data) { setNotFound(true); setLoading(false); return; }
       setSnapshot(data.payload);
       setLoading(false);
-    });
+    }).catch(() => { setNotFound(true); setLoading(false); });
   }, [token]);
 
   const resetLiveTimer = useCallback(() => {
@@ -137,7 +137,7 @@ export function FamilyScopeViewPage() {
   }, []);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !isOnline) return;
     const channel = subscribePvChanges(token, (row) => {
       const live = row.live_score;
       if (!live) return;
@@ -148,7 +148,7 @@ export function FamilyScopeViewPage() {
       }
     });
     return () => { channel.unsubscribe(); clearTimeout(liveTimerRef.current); };
-  }, [token, resetLiveTimer]);
+  }, [token, resetLiveTimer, isOnline]);
 
   const players = snapshot?.players ?? [];
   const selectedPlayer = players.find(p => p.id === selectedPlayerId) ?? null;

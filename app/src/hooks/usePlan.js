@@ -46,8 +46,9 @@ export const PLAN_TIER = {
 export function usePlan() {
   const { profile } = useAuth();
   const rawPlan = profile?.plan ?? 'inactive';
+  const now = new Date();
   const expiresAt = profile?.plan_expires_at ? new Date(profile.plan_expires_at) : null;
-  const isExpired = expiresAt ? expiresAt < new Date() : false;
+  const isExpired = expiresAt ? expiresAt < now : false;
   const plan = (rawPlan !== 'inactive' && rawPlan !== 'master' && isExpired) ? 'inactive' : rawPlan;
   const isMaster = plan === 'master';
   const isActive = plan !== 'inactive';
@@ -68,7 +69,7 @@ export function usePlan() {
 
   // Days until expiry — positive integer if expiring in future, null otherwise
   const daysUntilExpiry = (!isExpired && expiresAt)
-    ? Math.ceil((expiresAt - new Date()) / (1000 * 60 * 60 * 24))
+    ? Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24))
     : null;
 
   return { plan, isActive, isMaster, teamsAllowed, matchLimit, tier, has, expiresAt: isExpired ? null : expiresAt, daysUntilExpiry };

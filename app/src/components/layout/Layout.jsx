@@ -148,7 +148,7 @@ const HIDE_NAV = ['/live', '/set-lineup'];
 function ExpiryBanner() {
   const { daysUntilExpiry } = usePlan();
   const navigate = useNavigate();
-  if (!daysUntilExpiry || daysUntilExpiry > 7) return null;
+  if (daysUntilExpiry == null || daysUntilExpiry > 14) return null;
   const msg = daysUntilExpiry <= 1 ? 'Your plan expires today' : `Your plan expires in ${daysUntilExpiry} days`;
   return (
     <div className="bg-amber-900/60 border-b border-amber-700 px-4 py-2 flex items-center justify-between gap-2 text-xs">

@@ -1284,7 +1284,7 @@ export function SettingsPage() {
   const showToast    = useUiStore((s) => s.showToast);
   const fileInputRef = useRef(null);
   const { session, profile, refreshProfile } = useAuth();
-  const { plan, isActive, isMaster, teamsAllowed, expiresAt } = usePlan();
+  const { plan, isActive, isMaster, teamsAllowed, matchLimit, expiresAt, daysUntilExpiry } = usePlan();
   const navigate     = useNavigate();
   const [maxSubs, saveMaxSubs]           = useMaxSubs();
   const [defaultFormat, saveDefaultFormat] = useDefaultFormat();
@@ -1636,29 +1636,41 @@ export function SettingsPage() {
                     </div>
                   </div>
                 </div>
-                {expiresAt && (() => {
-                  const daysLeft = Math.ceil((expiresAt - new Date()) / (1000 * 60 * 60 * 24));
-                  if (daysLeft > 30) return null;
-                  return (
-                    <div className="flex items-center justify-between gap-3 bg-amber-900/30 border border-amber-600/40 rounded-xl px-3 py-2.5">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-amber-400 shrink-0">⚠</span>
-                        <p className="text-xs text-amber-300 font-semibold">
-                          {daysLeft <= 0 ? 'Your plan has expired' : `Expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => navigate('/upgrade')}
-                        className="text-xs font-bold text-primary hover:text-orange-300 transition-colors shrink-0"
-                      >
-                        Renew →
-                      </button>
+                {daysUntilExpiry != null && daysUntilExpiry <= 30 && (
+                  <div className="flex items-center justify-between gap-3 bg-amber-900/30 border border-amber-600/40 rounded-xl px-3 py-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-amber-400 shrink-0">⚠</span>
+                      <p className="text-xs text-amber-300 font-semibold">
+                        {`Expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}`}
+                      </p>
                     </div>
-                  );
-                })()}
+                    <button
+                      onClick={() => navigate('/upgrade')}
+                      className="text-xs font-bold text-primary hover:text-orange-300 transition-colors shrink-0"
+                    >
+                      Renew →
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
-              <p className="text-sm text-slate-400">No active subscription. Subscribe to unlock all features.</p>
+              <>
+                <p className="text-sm text-slate-400">No active subscription. Subscribe to unlock all features.</p>
+                {!!profile?.plan_expires_at && (
+                  <div className="flex items-center justify-between gap-3 bg-amber-900/30 border border-amber-600/40 rounded-xl px-3 py-2.5 mt-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-amber-400 shrink-0">⚠</span>
+                      <p className="text-xs text-amber-300 font-semibold">Your plan has expired</p>
+                    </div>
+                    <button
+                      onClick={() => navigate('/upgrade')}
+                      className="text-xs font-bold text-primary hover:text-orange-300 transition-colors shrink-0"
+                    >
+                      Renew →
+                    </button>
+                  </div>
+                )}
+              </>
             )}
             {/* Credit usage */}
             {(() => {

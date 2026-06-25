@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/layout/PageHeader';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { PLAN_PRICES, PLAN_LABELS } from '../hooks/usePlan';
+import { PLAN_PRICES, PLAN_LABELS, usePlan } from '../hooks/usePlan';
 
 const PLANS = [
   { key: '1_team',      teams: 1,  highlight: false },
@@ -32,6 +32,7 @@ export function UpgradePage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
+  const { plan: normalizedPlan } = usePlan();
   const currentPlan = profile?.plan ?? 'inactive';
   const successPlan = searchParams.get('plan');
   const didSucceed  = searchParams.get('success') === '1';
@@ -96,7 +97,7 @@ export function UpgradePage() {
   }
 
   const currentLabel = PLAN_LABELS[currentPlan];
-  const isRenewing = currentPlan === 'inactive' && !!profile?.stripe_customer_id;
+  const isRenewing = normalizedPlan === 'inactive' && !!profile?.stripe_customer_id;
 
   return (
     <div className="pb-safe-bottom">
