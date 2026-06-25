@@ -7,8 +7,9 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   // undefined = still loading, null = no session, object = active session
-  const [session, setSession] = useState(undefined);
-  const [profile, setProfile] = useState(null);
+  const [session,      setSession]      = useState(undefined);
+  const [profile,      setProfile]      = useState(null);
+  const [recoveryMode, setRecoveryMode] = useState(false);
 
   async function fetchProfile(userId) {
     const { data } = await supabase
@@ -33,12 +34,19 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session ?? null);
-      if (session) fetchProfile(session.user.id);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setSession(session ?? null);
+        if (session) fetchProfile(session.user.id);
+      })
+      .catch(() => setSession(null));
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setSession(session ?? null);
+        setRecoveryMode(true);
+        return;
+      }
       setSession(session ?? null);
       if (session) {
         fetchProfile(session.user.id);
@@ -64,6 +72,8 @@ export function AuthProvider({ children }) {
       session,
       profile,
       loading: session === undefined,
+      recoveryMode,
+      clearRecoveryMode: () => setRecoveryMode(false),
       signOut,
       refreshProfile,
     }}>

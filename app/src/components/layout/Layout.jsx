@@ -29,7 +29,7 @@ function IosInstallBanner() {
       <div className="bg-slate-800 border border-slate-600 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-xl">
         <div className="text-2xl shrink-0">📲</div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white leading-snug">Install VBSTAT</p>
+          <p className="text-sm font-semibold text-white leading-snug">Install VANTAGE</p>
           <p className="text-xs text-slate-400 leading-snug mt-0.5">
             Tap <span className="inline-block text-primary font-bold">⬆ Share</span> then <span className="font-semibold text-slate-300">"Add to Home Screen"</span> for the full app experience.
           </p>

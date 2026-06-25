@@ -5,10 +5,11 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { TermsGate } from './components/auth/TermsGate';
 import { LoginPage } from './components/auth/LoginPage';
 import { SignupWizard } from './components/auth/SignupWizard';
+import { ResetPasswordPage } from './components/auth/ResetPasswordPage';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 function AppShell() {
-  const { session, loading } = useAuth();
+  const { session, loading, recoveryMode, clearRecoveryMode } = useAuth();
   const [view, setView] = useState('login'); // 'login' | 'signup'
   const wasLoggedOut = useRef(false);
 
@@ -33,6 +34,10 @@ function AppShell() {
         <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
       </div>
     );
+  }
+
+  if (recoveryMode) {
+    return <ResetPasswordPage onDone={clearRecoveryMode} />;
   }
 
   if (!session) {
