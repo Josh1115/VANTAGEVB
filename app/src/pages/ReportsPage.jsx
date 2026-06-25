@@ -660,7 +660,7 @@ export function ReportsPage() {
 
   return (
     <div>
-      <PageHeader title="Reports" />
+      <PageHeader title="Stats" />
 
       {/* Filters */}
       <div className="px-4 pt-4 pb-2 flex gap-3 flex-wrap">
