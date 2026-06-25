@@ -1206,25 +1206,27 @@ export function HistoryPage() {
   );
 
   async function doDeleteEntry(id) {
-    await db.season_history.delete(id);
+    try { await db.season_history.delete(id); } catch {}
     setConfirmDeleteEntry(null);
   }
 
   async function doDeleteCommit(id) {
-    await db.player_commits.delete(id);
+    try { await db.player_commits.delete(id); } catch {}
     setConfirmDeleteCommit(null);
   }
 
   async function doDeleteAwardType(id) {
-    await db.transaction('rw', [db.accolade_winners, db.accolade_types], async () => {
-      await db.accolade_winners.where('type_id').equals(id).delete();
-      await db.accolade_types.delete(id);
-    });
+    try {
+      await db.transaction('rw', [db.accolade_winners, db.accolade_types], async () => {
+        await db.accolade_winners.where('type_id').equals(id).delete();
+        await db.accolade_types.delete(id);
+      });
+    } catch {}
     setConfirmDeleteAwardType(null);
   }
 
   async function doDeleteWinner(id) {
-    await db.accolade_winners.delete(id);
+    try { await db.accolade_winners.delete(id); } catch {}
     setConfirmDeleteWinner(null);
   }
 
@@ -2018,10 +2020,14 @@ export function HistoryPage() {
           confirmLabel="End Season"
           danger
           onConfirm={async () => {
-            await db.seasons.update(activeSeason.id, { status: 'ended' });
-            await applyInferredSeasonFinish(activeSeason.id, activeSeason.team_id, activeSeason.year);
-            setConfirmEndSeason(false);
-            setShowPostSeason(true);
+            try {
+              await db.seasons.update(activeSeason.id, { status: 'ended' });
+              await applyInferredSeasonFinish(activeSeason.id, activeSeason.team_id, activeSeason.year);
+              setConfirmEndSeason(false);
+              setShowPostSeason(true);
+            } catch {
+              setConfirmEndSeason(false);
+            }
           }}
           onCancel={() => setConfirmEndSeason(false)}
         />

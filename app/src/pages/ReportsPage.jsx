@@ -445,11 +445,12 @@ export function ReportsPage() {
   // Debounced 150ms so rapid filter taps don't fire multiple expensive scans.
   useEffect(() => {
     if (!selectedSeasonId) return;
+    setLoading(true);
     clearTimeout(statsDebounceRef.current);
     statsDebounceRef.current = setTimeout(() => {
-      setLoading(true);
       computeSeasonStats(Number(selectedSeasonId), activeFilters)
         .then((s) => { setStats(s); setContacts(s?.contacts ?? []); })
+        .catch(() => setStats(null))
         .finally(() => setLoading(false));
     }, 150);
     return () => clearTimeout(statsDebounceRef.current);

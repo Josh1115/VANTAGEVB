@@ -19,8 +19,14 @@ const OPTIONAL_TABLES = [
 
 const ALL_TABLES = [...REQUIRED_TABLES, ...OPTIONAL_TABLES];
 
-// localStorage keys to include in the backup. LAST_SET_SCORE is transient runtime state — excluded.
-const SETTINGS_KEYS = Object.values(STORAGE_KEYS).filter((k) => k !== STORAGE_KEYS.LAST_SET_SCORE);
+// localStorage keys included in the backup. LAST_SET_SCORE is transient; account credentials are
+// never exported so a shared backup file can't be used to hijack another coach's account.
+const BLOCKED_SETTINGS_KEYS = new Set([
+  STORAGE_KEYS.LAST_SET_SCORE,
+  STORAGE_KEYS.ACCOUNT_TOKEN,
+  STORAGE_KEYS.ACCOUNT_EMAIL,
+]);
+const SETTINGS_KEYS = Object.values(STORAGE_KEYS).filter((k) => !BLOCKED_SETTINGS_KEYS.has(k));
 
 // ── Migration ──────────────────────────────────────────────────────────────────
 // Add cases here as BACKUP_VERSION increases.
@@ -68,7 +74,7 @@ async function applyBackupData(data) {
 
   if (data.settings && typeof data.settings === 'object') {
     for (const [key, value] of Object.entries(data.settings)) {
-      if (typeof value === 'string') localStorage.setItem(key, value);
+      if (typeof value === 'string' && !BLOCKED_SETTINGS_KEYS.has(key)) localStorage.setItem(key, value);
     }
   }
 }
@@ -103,7 +109,7 @@ export async function autoSaveBackup(label = 'auto') {
   saveToCloud(supabase).catch(() => {});
 }
 
-export async function restoreAutoBackup(backupId) {
+export async function restoreAutoBackup(backupId, { teamsAllowed = Infinity, matchLimit = Infinity } = {}) {
   const backup = await db.auto_backups.get(backupId);
   if (!backup) throw new Error('Auto-backup not found.');
   let data = migrateBackup({ ...backup.data });
@@ -111,6 +117,15 @@ export async function restoreAutoBackup(backupId) {
   const missingTables = REQUIRED_TABLES.filter((t) => !Array.isArray(data[t]));
   if (missingTables.length > 0) {
     throw new Error(`Backup is missing required tables: ${missingTables.join(', ')}`);
+  }
+
+  const backupTeamCount  = Array.isArray(data.teams)   ? data.teams.length   : 0;
+  const backupMatchCount = Array.isArray(data.matches)  ? data.matches.length : 0;
+  if (teamsAllowed < 99 && backupTeamCount > teamsAllowed) {
+    throw new Error(`Backup has ${backupTeamCount} teams but your plan allows ${teamsAllowed}. Upgrade before restoring.`);
+  }
+  if (isFinite(matchLimit) && backupMatchCount > matchLimit) {
+    throw new Error(`Backup has ${backupMatchCount} matches but your plan allows ${matchLimit}. Upgrade before restoring.`);
   }
 
   const tablesForTx = db.tables.filter((t) => t.name !== 'auto_backups');
@@ -128,7 +143,7 @@ export async function restoreAutoBackup(backupId) {
 
   if (data.settings && typeof data.settings === 'object') {
     for (const [key, value] of Object.entries(data.settings)) {
-      if (typeof value === 'string') localStorage.setItem(key, value);
+      if (typeof value === 'string' && !BLOCKED_SETTINGS_KEYS.has(key)) localStorage.setItem(key, value);
     }
   }
 }
@@ -136,6 +151,9 @@ export async function restoreAutoBackup(backupId) {
 // ── Import ────────────────────────────────────────────────────────────────────
 
 export async function importBackup(file, { teamsAllowed = Infinity, matchLimit = Infinity } = {}) {
+  if (file.size > 50 * 1024 * 1024) {
+    throw new Error('Backup file is too large (max 50 MB). Export a fresh backup and try again.');
+  }
   const text = await file.text();
   let data;
   try {
@@ -182,7 +200,7 @@ export async function saveToCloud(supabase) {
   if (error) throw error;
 }
 
-export async function restoreFromCloud(supabase) {
+export async function restoreFromCloud(supabase, { teamsAllowed = Infinity, matchLimit = Infinity } = {}) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not signed in');
   const { data, error } = await supabase
@@ -196,6 +214,16 @@ export async function restoreFromCloud(supabase) {
   if (missingTables.length > 0) {
     throw new Error(`Cloud backup is missing required tables: ${missingTables.join(', ')}`);
   }
+
+  const backupTeamCount  = Array.isArray(payload.teams)   ? payload.teams.length   : 0;
+  const backupMatchCount = Array.isArray(payload.matches)  ? payload.matches.length : 0;
+  if (teamsAllowed < 99 && backupTeamCount > teamsAllowed) {
+    throw new Error(`Cloud backup has ${backupTeamCount} teams but your plan allows ${teamsAllowed}. Upgrade before restoring.`);
+  }
+  if (isFinite(matchLimit) && backupMatchCount > matchLimit) {
+    throw new Error(`Cloud backup has ${backupMatchCount} matches but your plan allows ${matchLimit}. Upgrade before restoring.`);
+  }
+
   await applyBackupData(payload);
 }
 

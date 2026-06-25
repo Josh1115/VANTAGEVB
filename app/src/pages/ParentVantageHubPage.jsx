@@ -257,7 +257,7 @@ function HubContent() {
 
 export function FamilyScopeHubPage() {
   return (
-    <PlanGate requires="core" feature="FamilyScope HUB">
+    <PlanGate requires="paid" feature="FamilyScope HUB">
       <HubContent />
     </PlanGate>
   );

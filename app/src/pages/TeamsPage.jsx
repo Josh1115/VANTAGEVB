@@ -589,6 +589,7 @@ export function TeamsPage() {
       });
       setDeleteOrg(null);
     } catch (err) {
+      setDeleteOrg(null);
       showToast(`Delete failed: ${err.message}`, 'error');
     }
   };
@@ -638,6 +639,7 @@ export function TeamsPage() {
       });
       setDeleteTeam(null);
     } catch (err) {
+      setDeleteTeam(null);
       showToast(`Delete failed: ${err.message}`, 'error');
     }
   };

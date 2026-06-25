@@ -128,7 +128,7 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
       </div>
 
       {glossaryOpen && (
-        <Drawer title="Insights Glossary" onClose={() => setGlossaryOpen(false)}>
+        <Drawer centered title="Insights Glossary" onClose={() => setGlossaryOpen(false)}>
           <ul className="space-y-4">
             {INSIGHTS_GLOSSARY.map((e) => (
               <li key={e.abbr} className="flex gap-3 items-start">

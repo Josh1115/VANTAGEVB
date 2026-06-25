@@ -466,7 +466,7 @@ export function HomePage() {
     if (!team || !season) return null;
     const historyEntry = await db.season_history
       .where('team_id').equals(defaultTeamId)
-      .filter(h => h.year === (season.name ?? String(season.year)))
+      .filter(h => String(h.year) === (season.name ?? String(season.year)))
       .first();
     const wins   = matches.filter(isWin).length;
     const losses = matches.length - wins;

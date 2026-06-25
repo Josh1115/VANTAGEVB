@@ -1396,7 +1396,7 @@ export function SettingsPage() {
     setCloudRestoring(true);
     setConfirmCloudRestore(false);
     try {
-      await restoreFromCloud(supabase);
+      await restoreFromCloud(supabase, { matchLimit, teamsAllowed });
       showToast('Restored from cloud', 'success');
       window.location.reload();
     } catch (e) {
@@ -1418,7 +1418,7 @@ export function SettingsPage() {
     setRestoringId(backup.id);
     setConfirmRestoreBackup(null);
     try {
-      await restoreAutoBackup(backup.id);
+      await restoreAutoBackup(backup.id, { matchLimit, teamsAllowed });
       showToast('Backup restored', 'success');
       window.location.reload();
     } catch (e) {
@@ -1445,15 +1445,20 @@ export function SettingsPage() {
   }
 
   async function handleClearAll() {
-    await db.transaction('rw', db.tables, async () => {
-      for (const table of db.tables) await table.clear();
-    });
-    setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, null);
-    setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, null);
-    clearSectionStates();
-    showToast('Match data cleared', 'info');
-    setConfirmClear(false);
-    window.location.reload();
+    try {
+      await db.transaction('rw', db.tables, async () => {
+        for (const table of db.tables) await table.clear();
+      });
+      setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, null);
+      setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, null);
+      clearSectionStates();
+      showToast('Match data cleared', 'info');
+      window.location.reload();
+    } catch {
+      showToast('Failed to clear data. Please try again.', 'error');
+    } finally {
+      setConfirmClear(false);
+    }
   }
 
   async function handleRedeemPromo() {
@@ -1487,7 +1492,8 @@ export function SettingsPage() {
   async function handleManageBilling() {
     setPortalLoading(true);
     try {
-      const { data: { session: s } } = await supabase.auth.getSession();
+      const { data } = await supabase.auth.getSession();
+      const s = data?.session;
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-portal-session`,
         {
@@ -2639,7 +2645,7 @@ export function SettingsPage() {
       {confirmCloudRestore && (
         <ConfirmDialog
           title="Restore from Cloud"
-          message={`This will REPLACE all local data with your cloud backup${lastCloudSave ? ` from ${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(lastCloudSave))}` : ''}. Any changes made since your last cloud save will be lost. Export a local backup first if you want to preserve current data.`}
+          message={`This will REPLACE all local data with your cloud backup${lastCloudSave && !isNaN(new Date(lastCloudSave)) ? ` from ${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(lastCloudSave))}` : ''}. Any changes made since your last cloud save will be lost. Export a local backup first if you want to preserve current data.`}
           confirmLabel="Restore & Replace"
           danger
           onConfirm={handleRestoreFromCloud}

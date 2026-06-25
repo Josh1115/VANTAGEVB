@@ -189,8 +189,8 @@ export function TeamDetailPage() {
     },
     [selectedSeasonId, id]
   );
-  // null = current season (query skipped it), undefined = still loading, array = past season
-  const isCurrentSeason = historicalRoster === null || historicalRoster === undefined;
+  // null = current season (query skipped it), undefined = still loading, array = past season loaded
+  const isCurrentSeason = historicalRoster === null;
 
   const sortedSeasons = useMemo(
     () => [...(seasons ?? [])].sort((a, b) => b.year - a.year),
@@ -706,7 +706,7 @@ export function TeamDetailPage() {
                                 </span>
                               </div>
                               <div className="text-xs text-slate-400 mt-1">
-                                {toolType === 'practice_game' && (() => {
+                                {toolType === 'practice_game' && s.data && (() => {
                                   const { sets, players } = s.data;
                                   const setStr = sets.map((st) => `${st.us}-${st.opp}`).join('  ');
                                   const totalKills  = players?.reduce((a, p) => a + (p.kills  ?? 0), 0) ?? 0;

@@ -80,12 +80,15 @@ export function MatchSetupPage() {
 
   const seasonMatchCount = useLiveQuery(async () => {
     if (!selectedSeason?.id) return undefined;
+    if (isFinite(matchLimit)) {
+      return db.matches.count(); // trial: enforce against total across all seasons
+    }
     const [liveCount, season] = await Promise.all([
       db.matches.where('season_id').equals(selectedSeason.id).count(),
       db.seasons.get(selectedSeason.id),
     ]);
     return Math.max(liveCount, season?.peak_match_count ?? 0);
-  }, [selectedSeason?.id]);
+  }, [selectedSeason?.id, matchLimit]);
 
   const selectedTeam = useLiveQuery(
     () => selectedSeason?.team_id ? db.teams.get(selectedSeason.team_id) : Promise.resolve(null),
@@ -227,13 +230,16 @@ export function MatchSetupPage() {
       const oppSetsWon = parsedSets.filter((s) => s.oppScore > s.ourScore).length;
 
       const matchId = await db.transaction('rw', [db.matches, db.seasons], async () => {
-        const [liveCount, season] = await Promise.all([
+        const [liveCount, season, totalCount] = await Promise.all([
           db.matches.where('season_id').equals(Number(seasonId)).count(),
           db.seasons.get(Number(seasonId)),
+          isFinite(matchLimit) ? db.matches.count() : Promise.resolve(0),
         ]);
-        const effective = Math.max(liveCount, season?.peak_match_count ?? 0);
+        const effective = isFinite(matchLimit)
+          ? totalCount
+          : Math.max(liveCount, season?.peak_match_count ?? 0);
         if (!isMaster && effective >= matchLimit) {
-          const e = new Error('Season match limit reached.');
+          const e = new Error('Match limit reached.');
           e.code = 'MATCH_LIMIT';
           throw e;
         }
@@ -347,13 +353,16 @@ export function MatchSetupPage() {
           }
         }
         effectiveMatchId = await db.transaction('rw', [db.matches, db.seasons], async () => {
-          const [liveCount, season] = await Promise.all([
+          const [liveCount, season, totalCount] = await Promise.all([
             db.matches.where('season_id').equals(Number(seasonId)).count(),
             db.seasons.get(Number(seasonId)),
+            isFinite(matchLimit) ? db.matches.count() : Promise.resolve(0),
           ]);
-          const effective = Math.max(liveCount, season?.peak_match_count ?? 0);
+          const effective = isFinite(matchLimit)
+            ? totalCount
+            : Math.max(liveCount, season?.peak_match_count ?? 0);
           if (!isMaster && effective >= matchLimit) {
-            const e = new Error('Season match limit reached.');
+            const e = new Error('Match limit reached.');
             e.code = 'MATCH_LIMIT';
             throw e;
           }
@@ -430,14 +439,15 @@ export function MatchSetupPage() {
         {!isMaster && selectedSeason && seasonMatchCount !== undefined && seasonMatchCount >= matchLimit && (
           <div className="rounded-xl border border-red-700/50 bg-red-900/20 px-4 py-3">
             <p className="text-sm text-red-300">
-              This season has reached the <span className="font-black">{matchLimit}-match</span> limit.
+              Your trial has reached the <span className="font-black">{matchLimit}-match</span> limit.{' '}
+              <a href="/upgrade" className="underline font-semibold">Upgrade to continue.</a>
             </p>
           </div>
         )}
         {!isMaster && selectedSeason && seasonMatchCount !== undefined && seasonMatchCount >= matchLimit * 0.9 && seasonMatchCount < matchLimit && (
           <div className="rounded-xl border border-amber-700/50 bg-amber-900/20 px-4 py-3">
             <p className="text-sm text-amber-300">
-              Match <span className="font-black">{seasonMatchCount + 1} of {matchLimit}</span> this season.
+              Trial match <span className="font-black">{seasonMatchCount + 1} of {matchLimit}</span>.
             </p>
           </div>
         )}

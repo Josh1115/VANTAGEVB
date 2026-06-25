@@ -1269,12 +1269,16 @@ export function RecordsPage() {
   }, [tab, teamId, historicalCount, refreshKey]);
 
   async function doDeleteRecord(row) {
-    await db.historical_records.delete(row.id);
+    try {
+      await db.historical_records.delete(row.id);
+    } catch {}
     setConfirmDeleteRecord(null);
   }
 
   async function doDeleteTourney(entry) {
-    await db.tourney_entries.delete(entry.id);
+    try {
+      await db.tourney_entries.delete(entry.id);
+    } catch {}
     setConfirmDeleteTourney(null);
   }
 
@@ -1468,9 +1472,9 @@ export function RecordsPage() {
                         <p className="text-xs font-black uppercase tracking-widest text-slate-500 mb-3">
                           Top {rows.length} — {statDef?.label} · {tabDef?.label}
                         </p>
-                        {rows.map(row => (
+                        {rows.map((row, idx) => (
                           <LeaderboardRow
-                            key={row.id ?? `live-${row.player_id ?? 'team'}-${row.year ?? ''}-${row.opp ?? ''}-${row.date ?? ''}`}
+                            key={row.id ?? `live-${row.player_id ?? 'team'}-${row.year ?? ''}-${row.opp ?? ''}-${row.date ?? ''}-${idx}`}
                             row={row}
                             tab={tab}
                             fmt={statDef?.fmt ?? fmtCount}
