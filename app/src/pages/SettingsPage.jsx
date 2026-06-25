@@ -6,7 +6,7 @@ import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { Modal } from '../components/ui/Modal';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
-import { exportBackup, importBackup, restoreAutoBackup, saveToCloud, restoreFromCloud, getCloudBackupMeta } from '../stats/backup';
+import { exportBackup, importBackup, restoreAutoBackup, saveToCloud, restoreFromCloud } from '../stats/backup';
 import { supabase } from '../utils/supabase';
 import { MergeBackupModal } from '../components/settings/MergeBackupModal';
 import { TERMS_STORAGE_KEY } from '../components/auth/TermsGate';
@@ -1361,8 +1361,21 @@ export function SettingsPage() {
   const showStorageWarning = usagePct > 0.8;
 
   useEffect(() => {
-    if (!session) return;
-    getCloudBackupMeta(supabase).then(setLastCloudSave).catch(() => {});
+    // Use the access token already in React state to avoid any supabase-js
+    // getSession() / __loadSession() calls, which can fire SIGNED_OUT on iOS Safari
+    // if the stored session is in an unexpected state.
+    if (!session?.access_token) return;
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/backups?select=created_at&user_id=eq.${encodeURIComponent(session.user.id)}`;
+    fetch(url, {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        Accept: 'application/json',
+      },
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(rows => setLastCloudSave(Array.isArray(rows) && rows.length > 0 ? rows[0].created_at : null))
+      .catch(() => {});
   }, [session]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
