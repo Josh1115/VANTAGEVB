@@ -303,7 +303,7 @@ export function RotationOptimizerPage() {
               <span className="font-bold text-white">
                 {CELL_LABELS[pickerCell]}{CELL_LABELS[pickerCell] === 'S1' ? ' ★ Server' : ''} — Assign Player
               </span>
-              <button onClick={() => setPickerCell(null)} className="text-slate-400 text-xl leading-none">✕</button>
+              <button onClick={() => setPickerCell(null)} aria-label="Close" className="text-slate-400 text-xl leading-none">✕</button>
             </div>
             <div className="overflow-y-auto">
               <button

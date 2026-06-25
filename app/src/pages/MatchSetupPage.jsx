@@ -854,6 +854,11 @@ export function MatchSetupPage() {
             )}
 
             {/* Lineup builder */}
+            {selectedSeason && (players ?? []).length === 0 && (
+              <p className="text-sm text-slate-500 text-center py-4">
+                No players on this roster yet — add players to the team before setting a lineup.
+              </p>
+            )}
             {selectedSeason && (players ?? []).length > 0 && (
               <LineupForm
                 lineup={lineup}

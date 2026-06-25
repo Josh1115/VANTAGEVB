@@ -127,7 +127,7 @@ function OrgFormModal({ onClose, org }) {
           {/* header */}
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold">{org ? 'Edit Organization' : 'New Organization'}</h2>
-            <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+            <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
           </div>
 
           {/* logo + name */}

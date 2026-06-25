@@ -227,7 +227,7 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
           <h2 className="text-base font-bold text-slate-100">
             {liveMode ? 'Current Season Details' : editId ? 'Edit Season' : 'Add Season'}
           </h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
         </div>
 
         <div className="space-y-3">
@@ -487,7 +487,7 @@ function CommitModal({ teamId, onClose, editId, initialData }) {
       >
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-slate-100">{editId ? 'Edit Commit' : 'Add Commit'}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
         </div>
 
         <div className="space-y-3">
@@ -588,7 +588,7 @@ function AwardTypeModal({ teamId, onClose, editId, initialData }) {
       <div className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-slate-100">{editId ? 'Rename Award' : 'New Award'}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
         </div>
         <div>
           <label className={lbl}>Award Name *</label>
@@ -644,7 +644,7 @@ function AwardWinnerModal({ teamId, typeId, onClose, editId, initialData }) {
       <div className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-slate-100">{editId ? 'Edit Winner' : 'Add Winner'}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
         </div>
         <div className="space-y-3">
           <div>

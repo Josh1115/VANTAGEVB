@@ -41,7 +41,7 @@ export function SeasonDetailPage() {
 
     const matches = rawMatches.map((m) => ({
       ...m,
-      opponent_name: m.opponent_name ?? oppMap[m.opponent_id] ?? 'Unknown',
+      opponent_name: m.opponent_name ?? oppMap[m.opponent_id] ?? 'Opponent',
     }));
 
     const players = await db.players.where('team_id').equals(season.team_id).toArray();
@@ -127,6 +127,7 @@ export function SeasonDetailPage() {
   const [schedOppSeed,      setSchedOppSeed]      = useState('');
   const [schedTime,         setSchedTime]         = useState('');
   const [schedSaving,    setSchedSaving]    = useState(false);
+  const [schedError,     setSchedError]     = useState('');
 
   // Auto-sync completed playoff matches into season_history.playoff_rounds.
   // Idempotent: matches already present (by round+opponent) are skipped.
@@ -191,7 +192,11 @@ export function SeasonDetailPage() {
     })();
   }, [data]);
 
-  if (!data) return null;
+  if (!data) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
   const { season, team, matches, playerNames, playerJerseys } = data;
 
   const classification = season.classification ?? null;
@@ -292,7 +297,11 @@ export function SeasonDetailPage() {
       }
       resetSchedForm();
     } catch (e) {
-      if (e.code !== 'MATCH_LIMIT') throw e;
+      if (e.code === 'MATCH_LIMIT') {
+        setSchedError(`Match limit reached for this season. Upgrade your plan to add more.`);
+      } else {
+        throw e;
+      }
     } finally {
       setSchedSaving(false);
     }
@@ -1058,10 +1067,13 @@ export function SeasonDetailPage() {
               <Button
                 className="flex-1"
                 disabled={!schedOpp.trim() || schedSaving}
-                onClick={handleScheduleGame}
+                onClick={() => { setSchedError(''); handleScheduleGame(); }}
               >
                 {schedSaving ? 'Saving…' : 'Save Game'}
               </Button>
+            {schedError && (
+              <p className="text-sm text-red-400 text-center -mt-1">{schedError}</p>
+            )}
             </div>
           </div>
           </div>

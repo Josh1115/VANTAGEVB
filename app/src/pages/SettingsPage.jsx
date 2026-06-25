@@ -2398,7 +2398,7 @@ export function SettingsPage() {
             {!isActive ? (
               <div className="rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-3 space-y-1">
                 <p className="text-sm font-semibold text-slate-300">Import Backup (JSON)</p>
-                <p className="text-xs text-slate-500">Import and merge require an active subscription. <button onClick={() => navigate('/upgrade')} className="text-primary hover:text-orange-300 transition-colors font-semibold">Subscribe →</button></p>
+                <p className="text-xs text-slate-500">Cloud merge requires an active subscription. <button onClick={() => navigate('/upgrade')} className="text-primary hover:text-orange-300 transition-colors font-semibold">Subscribe →</button></p>
               </div>
             ) : (
               <>
