@@ -428,12 +428,26 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
     return val;
   }
 
+  const PRE_VBSTAT_KEY = { k: 'pre_vbstat_k', ace: 'pre_vbstat_ace', blk: 'pre_vbstat_blk', ast: 'pre_vbstat_ast', dig: 'pre_vbstat_dig', sp: 'pre_vbstat_sp' };
+
+  async function resolveActivePlayer() {
+    if (tab !== 'career' || recordId || !teamId) return null;
+    const preKey = PRE_VBSTAT_KEY[statKey];
+    if (!preKey) return null;
+    const name = form.player_name.toLowerCase().trim();
+    const players = await db.players.where('team_id').equals(teamId).toArray();
+    return players.find(p => p.name?.toLowerCase().trim() === name) ?? null;
+  }
+
   async function handleSave() {
     const val = validate();
     if (val === null) return;
     setSaving(true);
     try {
-      if (recordId) {
+      const activePlayer = await resolveActivePlayer();
+      if (activePlayer) {
+        await db.players.update(activePlayer.id, { [PRE_VBSTAT_KEY[statKey]]: val });
+      } else if (recordId) {
         await db.historical_records.update(recordId, buildFields(val));
       } else {
         await db.historical_records.add(buildFields(val));
@@ -451,10 +465,18 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
     if (val === null) return;
     setSaving(true);
     try {
-      await db.historical_records.add(buildFields(val));
-      setForm(EMPTY_FORM);
-      setError('');
-      setTimeout(() => firstInputRef.current?.focus(), 0);
+      const activePlayer = await resolveActivePlayer();
+      if (activePlayer) {
+        await db.players.update(activePlayer.id, { [PRE_VBSTAT_KEY[statKey]]: val });
+        setForm(EMPTY_FORM);
+        setError('');
+        setTimeout(() => firstInputRef.current?.focus(), 0);
+      } else {
+        await db.historical_records.add(buildFields(val));
+        setForm(EMPTY_FORM);
+        setError('');
+        setTimeout(() => firstInputRef.current?.focus(), 0);
+      }
     } catch {
       setError('Failed to save. Please try again.');
     } finally {
