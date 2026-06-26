@@ -447,12 +447,14 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
       const activePlayer = await resolveActivePlayer();
       if (activePlayer) {
         await db.players.update(activePlayer.id, { [PRE_VBSTAT_KEY[statKey]]: val });
+        onClose(true);
       } else if (recordId) {
         await db.historical_records.update(recordId, buildFields(val));
+        onClose();
       } else {
         await db.historical_records.add(buildFields(val));
+        onClose();
       }
-      onClose();
     } catch {
       setError('Failed to save. Please try again.');
     } finally {
@@ -1533,7 +1535,7 @@ export function RecordsPage() {
       </div>
 
       {showAdd && teamId && tab !== 'tourney' && (
-        <AddRecordModal teamId={teamId} tab={tab} statKey={statKey} onClose={() => setShowAdd(false)} />
+        <AddRecordModal teamId={teamId} tab={tab} statKey={statKey} onClose={(needsRefresh) => { setShowAdd(false); if (needsRefresh) setRefreshKey(k => k + 1); }} />
       )}
       {showAdd && teamId && tab === 'tourney' && (
         <TourneyEntryModal teamId={teamId} onClose={() => setShowAdd(false)} />
