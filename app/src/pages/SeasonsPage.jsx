@@ -10,7 +10,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { useUiStore, selectShowToast } from '../store/uiStore';
 
 const JERSEY_HEX = Object.fromEntries(JERSEY_COLORS.map(c => [c.id, c.bg]));
-const DEFAULT_ACCENT = '#f97316'; // app orange
+const DEFAULT_ACCENT = '#e8530b'; // app orange
 
 const GENDER_ORDER  = ['F', 'M'];
 const GENDER_LABELS = { F: 'Girls', M: 'Boys' };

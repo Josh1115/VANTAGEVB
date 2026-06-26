@@ -52,26 +52,26 @@ const TREND_OPTS = {
       { key: 'ace',     label: 'ACE',  color: '#22c55e' },
       { key: 'se',      label: 'SE',   color: '#ef4444' },
       { key: 'sa',      label: 'SA',   color: '#94a3b8' },
-      { key: 'ace_pct', label: 'ACE%', color: '#f97316', fmt: fmtPct },
+      { key: 'ace_pct', label: 'ACE%', color: '#e8530b', fmt: fmtPct },
       { key: 'si_pct',  label: 'S%',   color: '#38bdf8', fmt: fmtPct },
     ],
     float: [
       { key: 'f_ace',     label: 'ACE',  color: '#22c55e' },
       { key: 'f_se',      label: 'SE',   color: '#ef4444' },
       { key: 'f_sa',      label: 'SA',   color: '#94a3b8' },
-      { key: 'f_ace_pct', label: 'ACE%', color: '#f97316', fmt: fmtPct },
+      { key: 'f_ace_pct', label: 'ACE%', color: '#e8530b', fmt: fmtPct },
       { key: 'f_si_pct',  label: 'S%',   color: '#38bdf8', fmt: fmtPct },
     ],
     top: [
       { key: 't_ace',     label: 'ACE',  color: '#22c55e' },
       { key: 't_se',      label: 'SE',   color: '#ef4444' },
       { key: 't_sa',      label: 'SA',   color: '#94a3b8' },
-      { key: 't_ace_pct', label: 'ACE%', color: '#f97316', fmt: fmtPct },
+      { key: 't_ace_pct', label: 'ACE%', color: '#e8530b', fmt: fmtPct },
       { key: 't_si_pct',  label: 'S%',   color: '#38bdf8', fmt: fmtPct },
     ],
   },
   passing: [
-    { key: 'apr',    label: 'APR',   color: '#f97316', fmt: v => Number(v).toFixed(2) },
+    { key: 'apr',    label: 'APR',   color: '#e8530b', fmt: v => Number(v).toFixed(2) },
     { key: 'pp_pct', label: '3OPT%', color: '#22c55e', fmt: fmtPct },
     { key: 'pa',     label: 'PA',    color: '#94a3b8' },
     { key: 'p3',     label: 'P3',    color: '#22c55e' },
@@ -81,7 +81,7 @@ const TREND_OPTS = {
     { key: 'k',       label: 'K',    color: '#22c55e' },
     { key: 'ae',      label: 'AE',   color: '#ef4444' },
     { key: 'ta',      label: 'ATT',  color: '#94a3b8' },
-    { key: 'hit_pct', label: 'HIT%', color: '#f97316', fmt: fmtHitting },
+    { key: 'hit_pct', label: 'HIT%', color: '#e8530b', fmt: fmtHitting },
   ],
   blocking: [
     { key: 'blks', label: 'BLK',  color: '#a78bfa' },
@@ -97,7 +97,7 @@ const TREND_OPTS = {
     { key: 'de',  label: 'DE',  color: '#ef4444' },
   ],
   ver: [
-    { key: 'ver',     label: 'VER',  color: '#f97316', fmt: fmtVER },
+    { key: 'ver',     label: 'VER',  color: '#e8530b', fmt: fmtVER },
     { key: 'wpa',     label: 'WPA',  color: '#3b82f6', fmt: fmtVER },
     { key: 'wpa_pos', label: 'WPA+', color: '#22c55e', fmt: fmtVER },
     { key: 'wpa_neg', label: 'WPA−', color: '#ef4444', fmt: fmtVER },
@@ -366,7 +366,7 @@ function PlayerReportCard({ row, allRows = [], teamPoints = 0, oppPoints = 0 }) 
               <PolarGrid stroke="#334155" />
               <PolarAngleAxis dataKey="dim" tick={{ fill: '#94a3b8', fontSize: 11 }} />
               <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
-              <Radar dataKey="score" stroke="#f97316" fill="#f97316" fillOpacity={0.25} dot={{ r: 3, fill: '#f97316' }} />
+              <Radar dataKey="score" stroke="#e8530b" fill="#e8530b" fillOpacity={0.25} dot={{ r: 3, fill: '#e8530b' }} />
               <Tooltip
                 contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }}
                 formatter={(v) => [`${v}/100`]}

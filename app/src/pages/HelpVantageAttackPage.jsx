@@ -4,7 +4,7 @@ import { SURFACE2 as BG, SURFACE, PRIMARY, TXT, TXT4, TXT5, GREEN, AMBER, RED, H
 function DiagHittingScale() {
   const zones = [
     { label: 'Negative', range: 'below .000', color: RED,   desc: 'Errors > Kills' },
-    { label: 'Struggling', range: '.000–.149', color: '#f97316', desc: 'Breaking even' },
+    { label: 'Struggling', range: '.000–.149', color: '#e8530b', desc: 'Breaking even' },
     { label: 'Average', range: '.150–.249',  color: AMBER,  desc: 'Competitive' },
     { label: 'Good',    range: '.250–.349',  color: '#86efac', desc: 'Strong offense' },
     { label: 'Elite',   range: '.350+',      color: GREEN,  desc: 'Dominant' },

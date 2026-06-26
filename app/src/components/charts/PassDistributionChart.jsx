@@ -4,7 +4,7 @@ import {
 } from 'recharts';
 
 // Color per rating: 0 = red, 1 = amber, 2 = yellow-green, 3 = emerald
-const RATING_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e'];
+const RATING_COLORS = ['#ef4444', '#e8530b', '#eab308', '#22c55e'];
 const RATING_LABELS = ['0', '1', '2', '3'];
 
 function buildData(totals) {

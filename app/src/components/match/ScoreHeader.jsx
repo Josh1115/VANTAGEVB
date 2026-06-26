@@ -35,7 +35,7 @@ function EmberCanvas({ runCount }) {
           vy:   -(0.8 + Math.random() * 1.4),
           life: 1,
           r:    0.9 + Math.random() * 1.4,
-          hue:  Math.random() > 0.4 ? '#f97316' : '#f59e0b',
+          hue:  Math.random() > 0.4 ? '#e8530b' : '#f59e0b',
         });
       }
       for (let i = particles.length - 1; i >= 0; i--) {
@@ -106,7 +106,7 @@ function RunStrip({ teamStats: t, oppStats: o, currentRun, teamName, opponentNam
     ['ERRS', n(o.errs)],
   ] : [];
   const runPulseStyle = currentRun.count >= 3 ? {
-    '--run-glow': currentRun.side === 'us' ? 'rgba(249,115,22,0.45)' : 'rgba(239,68,68,0.45)',
+    '--run-glow': currentRun.side === 'us' ? 'rgba(232,83,11,0.45)' : 'rgba(239,68,68,0.45)',
     animationName: 'run-intensity-pulse',
     animationDuration: currentRun.count >= 7 ? '0.45s' : currentRun.count >= 5 ? '0.9s' : '2s',
     animationTimingFunction: 'ease-in-out',
@@ -180,10 +180,10 @@ function ScoreSparkline({ pointHistory }) {
   const cy = (d) => H / 2 - (d / maxAbs) * (H / 2 - m);
   const segColor = (d1, d2) => {
     const mid = (d1 + d2) / 2;
-    return mid > 0 ? '#f97316' : mid < 0 ? '#ef4444' : '#64748b';
+    return mid > 0 ? '#e8530b' : mid < 0 ? '#ef4444' : '#64748b';
   };
   const lastDiff = diffs[diffs.length - 1];
-  const dotColor = lastDiff > 0 ? '#f97316' : lastDiff < 0 ? '#ef4444' : '#64748b';
+  const dotColor = lastDiff > 0 ? '#e8530b' : lastDiff < 0 ? '#ef4444' : '#64748b';
   return (
     <svg width={W} height={H} style={{ display: 'block', overflow: 'visible' }}>
       <line x1={m} y1={H / 2} x2={W - m} y2={H / 2} stroke="#334155" strokeWidth={0.5} strokeDasharray="1.5,1.5" />
@@ -369,7 +369,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
       {/* ── Main header row ── */}
       <div
         className="relative flex items-center text-white overflow-hidden px-2 gap-1"
-        style={{ height: 'calc(10vmin + env(safe-area-inset-top))', paddingTop: 'env(safe-area-inset-top)', background: '#08090b', borderBottom: '1px solid rgba(249,115,22,0.2)' }}
+        style={{ height: 'calc(10vmin + env(safe-area-inset-top))', paddingTop: 'env(safe-area-inset-top)', background: '#08090b', borderBottom: '1px solid rgba(232,83,11,0.2)' }}
       >
 
         {/* ── Far left: sets won (standalone) + FamScope badge above timeout circles + sub counter ── */}
@@ -445,7 +445,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
         {/* ── Center: gym scoreboard two-panel layout ── */}
         <div
           className={`absolute left-1/2 -translate-x-1/2 flex items-stretch rounded overflow-hidden${tense ? ' score-tension' : ''}`}
-          style={{ boxShadow: '0 0 0 1px rgba(249,115,22,0.14), 0 4px 28px rgba(0,0,0,0.9)' }}
+          style={{ boxShadow: '0 0 0 1px rgba(232,83,11,0.14), 0 4px 28px rgba(0,0,0,0.9)' }}
         >
           {tiedFlashKey > 0 && (
             <div key={tiedFlashKey} className="equalize-flash absolute inset-0 bg-white pointer-events-none z-10" />
@@ -464,7 +464,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
             onPointerUp={() => onScoreUp(flipped ? 'them' : 'us')}
             onPointerLeave={() => onScoreUp(flipped ? 'them' : 'us')}
             className={`flex flex-col items-center justify-center px-[3vmin] cursor-pointer select-none transition-opacity ${(flipped ? themHolding : usHolding) ? 'opacity-40' : ''}`}
-            style={{ background: 'linear-gradient(180deg, rgba(249,115,22,0.10) 0%, rgba(249,115,22,0.03) 100%)', borderRight: '1px solid rgba(249,115,22,0.2)' }}
+            style={{ background: 'linear-gradient(180deg, rgba(232,83,11,0.10) 0%, rgba(232,83,11,0.03) 100%)', borderRight: '1px solid rgba(232,83,11,0.2)' }}
             title="Hold 3s to adjust score"
           >
             <span className="text-[2vmin] font-bold uppercase tracking-widest text-white leading-none mb-[0.4vmin]">

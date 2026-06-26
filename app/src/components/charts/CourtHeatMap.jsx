@@ -96,7 +96,7 @@ export function CourtHeatMap({ contacts = [] }) {
                     y={y}
                     width={COL_W}
                     height={ROW_H}
-                    fill={`rgba(249,115,22,${opacity})`}
+                    fill={`rgba(232,83,11,${opacity})`}
                     stroke="#1e293b"
                     strokeWidth={1}
                   />
@@ -127,10 +127,10 @@ export function CourtHeatMap({ contacts = [] }) {
           )}
 
           {/* Net line */}
-          <line x1={0} y1={COURT_H} x2={W} y2={COURT_H} stroke="#f97316" strokeWidth={2} strokeDasharray="6 3" opacity={0.6} />
+          <line x1={0} y1={COURT_H} x2={W} y2={COURT_H} stroke="#e8530b" strokeWidth={2} strokeDasharray="6 3" opacity={0.6} />
 
           {/* Net label */}
-          <text x={W - 6} y={COURT_H + 11} textAnchor="end" fill="#f97316" fontSize={9} opacity={0.7}>NET</text>
+          <text x={W - 6} y={COURT_H + 11} textAnchor="end" fill="#e8530b" fontSize={9} opacity={0.7}>NET</text>
         </svg>
       </div>
 

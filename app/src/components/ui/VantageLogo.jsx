@@ -5,11 +5,13 @@ const FONT_PX = 66;
 const BASELINE = FONT_PX + 4; // SVG y coordinate of text baseline
 
 // Animation timing (ms)
-const PER_LETTER = 2322;  // trace one letter
-const UL_DUR    = 480;    // draw underline
+const PER_LETTER = 1742;  // total trace duration per letter
+const STEP       = 800;   // ms between each letter's start — overlap eliminates dead time between letters
+const UL_DUR    = 360;    // draw underline
 const HOLD      = 650;    // hold complete state
 const FADE      = 380;    // fade out
-const CYCLE = LETTERS.length * PER_LETTER + UL_DUR + HOLD + FADE + 240; // 5600ms
+const TRACE_END = (LETTERS.length - 1) * STEP + PER_LETTER; // when last letter finishes
+const CYCLE = TRACE_END + UL_DUR + HOLD + FADE + 240;
 
 const CYCLE_S = (CYCLE / 1000).toFixed(4);
 
@@ -28,15 +30,15 @@ const FONT_OBJ = {
 // totalWidth is the measured SVG text width — used for the underline dash.
 function buildCSS(totalWidth) {
   const p   = (ms) => `${((ms / CYCLE) * 100).toFixed(4)}%`;
-  const fsMs = LETTERS.length * PER_LETTER + UL_DUR + HOLD;
+  const fsMs = TRACE_END + UL_DUR + HOLD;
   const feMs = fsMs + FADE;
-  const ulS  = LETTERS.length * PER_LETTER;
+  const ulS  = TRACE_END;
   const ulE  = ulS + UL_DUR;
   const ld   = LETTER_DASH;
   const tw   = totalWidth.toFixed(2);
 
   const lKFs = LETTERS.map((_, i) => {
-    const s = i * PER_LETTER, e = (i + 1) * PER_LETTER;
+    const s = i * STEP, e = s + PER_LETTER;
     return (
       `@keyframes vt-l${i}{` +
       `0%,${p(s)}{stroke-dashoffset:${ld};opacity:0}` +
@@ -122,7 +124,7 @@ export function VantageLogo({ animated = true, onClick, onPointerDown, onPointer
       </text>
 
       {/* Static orange fill — always visible */}
-      <text x={2} y={BASELINE} fill="#f97316" style={FONT_OBJ}>
+      <text x={2} y={BASELINE} fill="#e8530b" style={FONT_OBJ}>
         VANTAGE
       </text>
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-const COLORS     = ['#f97316', '#fb923c', '#fbbf24', '#4ade80', '#60a5fa', '#3b82f6', '#c084fc', '#f43f5e', '#ffffff', '#e2e8f0'];
+const COLORS     = ['#e8530b', '#fb923c', '#fbbf24', '#4ade80', '#60a5fa', '#3b82f6', '#c084fc', '#f43f5e', '#ffffff', '#e2e8f0'];
 const SPAWN_RATE = 8;
 const FADE_MS    = 350;
 
@@ -86,7 +86,7 @@ export function Confetti({ matchWin = false, teamName = '', winMessage = '', onD
       {matchWin && (
         <p className="relative text-center font-black uppercase tracking-widest leading-tight
           text-white animate-win-flash whitespace-pre-line
-          drop-shadow-[0_0_24px_rgba(249,115,22,0.9)]"
+          drop-shadow-[0_0_24px_rgba(232,83,11,0.9)]"
           style={{ fontSize: 'clamp(2rem, 8vmin, 5rem)' }}
         >
           {winMessage.trim() || `${teamName || 'HOME'}\nWIN MATCH`}

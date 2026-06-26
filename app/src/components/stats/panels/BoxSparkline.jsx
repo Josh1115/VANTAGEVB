@@ -15,7 +15,7 @@ export function BoxSparkline({ pointHistory }) {
   const cy = (d) => H / 2 - (d / maxAbs) * (H / 2 - m);
   const polyPts = diffs.map((d, i) => `${cx(i).toFixed(1)},${cy(d).toFixed(1)}`).join(' ');
   const lastDiff = diffs[diffs.length - 1];
-  const color = lastDiff > 0 ? '#f97316' : lastDiff < 0 ? '#ef4444' : '#64748b';
+  const color = lastDiff > 0 ? '#e8530b' : lastDiff < 0 ? '#ef4444' : '#64748b';
   const lastX = cx(diffs.length - 1);
   const lastY = cy(lastDiff);
   const labelText = lastDiff > 0 ? `+${lastDiff}` : String(lastDiff);

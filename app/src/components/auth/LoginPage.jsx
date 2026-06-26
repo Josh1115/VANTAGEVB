@@ -129,7 +129,7 @@ export function LoginPage({ onSignup }) {
               <button
                 onClick={onSignup}
                 className="w-full rounded-2xl border-2 border-slate-600 bg-slate-800/40 py-3 text-[18.4px] leading-none font-black tracking-wide active:scale-[0.97] transition-transform"
-                style={{ color: '#f97316', WebkitTextStroke: '1.5px rgba(255,255,255,0.6)', paintOrder: 'stroke fill' }}
+                style={{ color: '#e8530b', WebkitTextStroke: '1.5px rgba(255,255,255,0.6)', paintOrder: 'stroke fill' }}
               >
                 SIGN UP
               </button>
@@ -157,7 +157,7 @@ export function LoginPage({ onSignup }) {
                         <p className="text-sm font-bold text-white">Trial</p>
                         <p className="text-xs text-slate-400">1 team · 5 matches</p>
                       </div>
-                      <span className="text-sm font-black" style={{ color: '#f97316' }}>FREE</span>
+                      <span className="text-sm font-black" style={{ color: '#e8530b' }}>FREE</span>
                     </div>
                     {[
                       { label: '1 Team',   price: '$79.99',  desc: '1 team · 50 matches/season' },
@@ -172,7 +172,7 @@ export function LoginPage({ onSignup }) {
                           <p className="text-xs text-slate-400">{desc}</p>
                         </div>
                         <div className="text-right shrink-0 ml-3">
-                          <p className="text-sm font-black" style={{ color: '#f97316' }}>{price}</p>
+                          <p className="text-sm font-black" style={{ color: '#e8530b' }}>{price}</p>
                           <p className="text-[10px] text-slate-500">/year</p>
                         </div>
                       </div>
@@ -185,7 +185,7 @@ export function LoginPage({ onSignup }) {
                 <a href="mailto:vantagevb@gmail.com" className="underline text-slate-400 hover:text-slate-300 transition-colors">vantagevb@gmail.com</a>
               </p>
 
-              <p className="text-center text-sm rounded-xl px-4 py-2" style={{ color: '#fbbf24', border: '1px solid rgba(249,115,22,0.5)', background: 'rgba(249,115,22,0.1)' }}>
+              <p className="text-center text-sm rounded-xl px-4 py-2" style={{ color: '#fbbf24', border: '1px solid rgba(232,83,11,0.5)', background: 'rgba(232,83,11,0.1)' }}>
                 Experiencing technical difficulties?{' '}
                 <a href="mailto:vantagevb@gmail.com" className="underline font-bold">vantagevb@gmail.com</a>
               </p>
@@ -351,10 +351,10 @@ export function LoginPage({ onSignup }) {
 
                   {/* Label strip */}
                   <rect x="0" y="0" width="440" height="12" fill="#1e293b" />
-                  <rect x="0" y="0" width="3" height="12" fill="#f97316" />
+                  <rect x="0" y="0" width="3" height="12" fill="#e8530b" />
                   <text x="10" y="9" fill="#64748b" fontSize="6" fontWeight="700" letterSpacing="0.8">VANTAGE POINT · LIVE TIMEOUT SCREEN</text>
-                  <rect x="378" y="2" width="54" height="8" rx="2" fill="#f9731620" />
-                  <text x="405" y="8.5" fill="#f97316" fontSize="5.5" fontWeight="800" textAnchor="middle">LANDSCAPE</text>
+                  <rect x="378" y="2" width="54" height="8" rx="2" fill="#e8530b20" />
+                  <text x="405" y="8.5" fill="#e8530b" fontSize="5.5" fontWeight="800" textAnchor="middle">LANDSCAPE</text>
 
                   {/* Panel divider */}
                   <rect x="286" y="12" width="1.5" height="242" fill="#334155" />
@@ -366,7 +366,7 @@ export function LoginPage({ onSignup }) {
                   <text x="8" y="25" fill="#f1f5f9" fontSize="8.5" fontWeight="900">TIMEOUT · SET 2</text>
                   <rect x="148" y="15" width="42" height="14" rx="3" fill="#334155" />
                   <text x="169" y="25" fill="#cbd5e1" fontSize="5.5" fontWeight="700" textAnchor="middle">✏ Whiteboard</text>
-                  <rect x="194" y="15" width="34" height="14" rx="3" fill="#f97316" />
+                  <rect x="194" y="15" width="34" height="14" rx="3" fill="#e8530b" />
                   <text x="211" y="25" fill="#fff" fontSize="6" fontWeight="800" textAnchor="middle">SET 2</text>
                   <rect x="231" y="15" width="34" height="14" rx="3" fill="#1e293b" stroke="#475569" strokeWidth="0.5" />
                   <text x="248" y="25" fill="#64748b" fontSize="6" fontWeight="700" textAnchor="middle">MATCH</text>
@@ -396,8 +396,8 @@ export function LoginPage({ onSignup }) {
                     return [...acc, { ...t, x, rx: x + w, w }];
                   }, []).map(t => (
                     <g key={t.label}>
-                      <text x={t.x} y="66" fill={t.active ? '#f97316' : '#334155'} fontSize="6" fontWeight={t.active ? '800' : '600'}>{t.label}</text>
-                      {t.active && <rect x={t.x} y="68" width={t.w} height="1.5" fill="#f97316" rx="0.5" />}
+                      <text x={t.x} y="66" fill={t.active ? '#e8530b' : '#334155'} fontSize="6" fontWeight={t.active ? '800' : '600'}>{t.label}</text>
+                      {t.active && <rect x={t.x} y="68" width={t.w} height="1.5" fill="#e8530b" rx="0.5" />}
                     </g>
                   ))}
 
@@ -446,7 +446,7 @@ export function LoginPage({ onSignup }) {
                   <text x="6" y="174" fill="#334155" fontSize="5" fontWeight="700">OPP SCORED AGAINST US</text>
                   <rect x="6" y="177" width="274" height="7" rx="2" fill="#1e293b" />
                   <rect x="6"   y="177" width="82" height="7" rx="2" fill="#ef4444" opacity="0.5" />
-                  <rect x="88"  y="177" width="46" height="7" fill="#f97316" opacity="0.5" />
+                  <rect x="88"  y="177" width="46" height="7" fill="#e8530b" opacity="0.5" />
                   <rect x="134" y="177" width="28" height="7" rx="2" fill="#64748b" opacity="0.4" />
                   <text x="47"  y="184" fill="#fca5a5" fontSize="5" textAnchor="middle">OPP K 7</text>
                   <text x="111" y="184" fill="#fb923c" fontSize="5" textAnchor="middle">OUR SE 4</text>
@@ -465,11 +465,11 @@ export function LoginPage({ onSignup }) {
                     const oppC = oppD.map((v, i) => `${sx(i)},${sy(v)}`).join(' ');
                     return (
                       <>
-                        <polyline points={usC}  fill="none" stroke="#f97316" strokeWidth="1.5" strokeLinejoin="round" opacity="0.9" />
+                        <polyline points={usC}  fill="none" stroke="#e8530b" strokeWidth="1.5" strokeLinejoin="round" opacity="0.9" />
                         <polyline points={oppC} fill="none" stroke="#475569" strokeWidth="1.2" strokeLinejoin="round" opacity="0.8" />
-                        <circle cx={sx(N-1)} cy={sy(14)} r="3"   fill="#f97316" />
+                        <circle cx={sx(N-1)} cy={sy(14)} r="3"   fill="#e8530b" />
                         <circle cx={sx(N-1)} cy={sy(11)} r="2.5" fill="#475569" />
-                        <text x={sx(N-1) + 4} cy={sy(14)} y={sy(14) + 2}  fill="#f97316" fontSize="5.5" fontWeight="900">14</text>
+                        <text x={sx(N-1) + 4} cy={sy(14)} y={sy(14) + 2}  fill="#e8530b" fontSize="5.5" fontWeight="900">14</text>
                         <text x={sx(N-1) + 4} cy={sy(11)} y={sy(11) + 2}  fill="#94a3b8" fontSize="5.5">11</text>
                       </>
                     );
@@ -559,7 +559,7 @@ export function LoginPage({ onSignup }) {
                   <text x="364" y="223" fill="#f1f5f9" fontSize="14" fontWeight="900" textAnchor="middle">38</text>
 
                   {/* Resume button */}
-                  <rect x="308" y="242" width="112" height="10" rx="2.5" fill="#f97316" />
+                  <rect x="308" y="242" width="112" height="10" rx="2.5" fill="#e8530b" />
                   <text x="364" y="250" fill="#fff" fontSize="6.5" fontWeight="900" textAnchor="middle" letterSpacing="1">RESUME</text>
                 </svg>
 

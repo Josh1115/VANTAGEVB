@@ -20,7 +20,7 @@ import { Spinner } from '../components/ui/Spinner';
 
 const ORG_COLORS = [
   { id: 'red',    label: 'Red',    bg: '#dc2626', border: '#ef4444' },
-  { id: 'orange', label: 'Orange', bg: '#ea580c', border: '#f97316' },
+  { id: 'orange', label: 'Orange', bg: '#ea580c', border: '#e8530b' },
   { id: 'yellow', label: 'Yellow', bg: '#ca8a04', border: '#eab308' },
   { id: 'blue',   label: 'Blue',   bg: '#1d4ed8', border: '#3b82f6' },
   { id: 'purple', label: 'Purple', bg: '#7c3aed', border: '#a855f7' },
@@ -754,7 +754,7 @@ function IconTrash() {
 function VantageArrow() {
   return (
     <svg width="17" height="20" viewBox="0 0 17 20" aria-hidden="true">
-      <polygon points="0,20 0,0 17,10" fill="#f97316" />
+      <polygon points="0,20 0,0 17,10" fill="#e8530b" />
       <polygon points="0,16.5 0,3.5 12,10" fill="#fef3ee" />
     </svg>
   );

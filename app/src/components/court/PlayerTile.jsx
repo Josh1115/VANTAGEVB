@@ -288,7 +288,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   // Position color for left-border on badge strip
   const POS_BORDER = {
     S:   'rgba(59,130,246,0.75)',
-    OH:  'rgba(249,115,22,0.75)',
+    OH:  'rgba(232,83,11,0.75)',
     MB:  'rgba(34,197,94,0.75)',
     OPP: 'rgba(168,85,247,0.75)',
     L:   'rgba(52,211,153,0.75)',

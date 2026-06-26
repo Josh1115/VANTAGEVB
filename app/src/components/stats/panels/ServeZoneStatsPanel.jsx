@@ -73,7 +73,7 @@ export function ServeZoneStatsPanel({ contacts }) {
               })
             )}
             {/* Net at bottom */}
-            <line x1={0} y1={SZ_H - 2} x2={SZ_W} y2={SZ_H - 2} stroke="#f97316" strokeWidth={2} strokeDasharray="6 3" opacity={0.7} />
+            <line x1={0} y1={SZ_H - 2} x2={SZ_W} y2={SZ_H - 2} stroke="#e8530b" strokeWidth={2} strokeDasharray="6 3" opacity={0.7} />
           </svg>
           <span className="text-[9px] font-bold uppercase tracking-widest text-orange-400">NET</span>
         </div>

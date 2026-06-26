@@ -81,7 +81,7 @@ export function PlayerStatCard({ player, matchHistory }) {
               />
               <Bar dataKey="kPct" radius={[3, 3, 0, 0]}>
                 {chartData.map((_, i) => (
-                  <Cell key={i} fill={i === chartData.length - 1 ? '#f97316' : '#334155'} />
+                  <Cell key={i} fill={i === chartData.length - 1 ? '#e8530b' : '#334155'} />
                 ))}
               </Bar>
             </BarChart>

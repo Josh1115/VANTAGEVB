@@ -10,7 +10,7 @@ function DiagEndSeasonLocations() {
       <rect x="8" y="24" width="304" height="50" rx="8" fill={SURFACE2} stroke={BORDER} strokeWidth="1" />
       <text x="18" y="40" fill={TXT5} fontSize="7" fontWeight="700" letterSpacing="1">HISTORY PAGE — CURRENT SEASON CARD</text>
       <text x="18" y="54" fill={TXT} fontSize="9" fontWeight="800">2025</text>
-      <rect x="44" y="45" width="38" height="13" rx="4" fill="rgba(249,115,22,0.15)" stroke="rgba(249,115,22,0.4)" strokeWidth="1" />
+      <rect x="44" y="45" width="38" height="13" rx="4" fill="rgba(232,83,11,0.15)" stroke="rgba(232,83,11,0.4)" strokeWidth="1" />
       <text x="63" y="55" fill={PRIMARY} fontSize="7" fontWeight="900" textAnchor="middle">CURRENT</text>
       <rect x="192" y="44" width="108" height="16" rx="4" fill="rgba(239,68,68,0.12)" stroke="rgba(239,68,68,0.35)" strokeWidth="1" />
       <text x="246" y="55" fill={RED} fontSize="7.5" fontWeight="700" textAnchor="middle">End Season</text>
@@ -186,7 +186,7 @@ function DiagHistoryForm() {
 
       {/* Finish (auto-filled highlight) */}
       <text x="16" y="162" fill={TXT4} fontSize="7" fontWeight="700">Finish</text>
-      <rect x="8" y="166" width="304" height="22" rx="6" fill={SURFACE2} stroke="rgba(249,115,22,0.5)" strokeWidth="1.5" />
+      <rect x="8" y="166" width="304" height="22" rx="6" fill={SURFACE2} stroke="rgba(232,83,11,0.5)" strokeWidth="1.5" />
       <text x="18" y="181" fill={PRIMARY} fontSize="9" fontWeight="600">Regional Final</text>
       <text x="262" y="181" fill={TXT5} fontSize="7">auto-filled</text>
     </svg>

@@ -683,7 +683,7 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
                                   formatter={(val, name) => [val, name === 'us' ? (teamName || 'Us') : (opponentName || 'Opp')]}
                                   labelFormatter={() => ''}
                                 />
-                                <Line type="monotone" dataKey="us"  stroke="#f97316" strokeWidth={2} dot={false} name="us" />
+                                <Line type="monotone" dataKey="us"  stroke="#e8530b" strokeWidth={2} dot={false} name="us" />
                                 <Line type="monotone" dataKey="opp" stroke="#94a3b8" strokeWidth={2} dot={false} name="opp" />
                               </LineChart>
                             </ResponsiveContainer>

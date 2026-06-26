@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { computeSetTrends } from '../../stats/engine';
 
 const TREND_METRICS = [
-  { key: 'K%',   color: '#f97316', label: 'Kill %'     },
+  { key: 'K%',   color: '#e8530b', label: 'Kill %'     },
   { key: 'HIT%', color: '#60a5fa', label: 'Hitting %'  },
   { key: 'APR',  color: '#4ade80', label: 'Pass Rating' },
   { key: 'ACE%', color: '#c084fc', label: 'Ace %'      },
@@ -43,7 +43,7 @@ export function SetTrendsChart({ contacts, sets }) {
             labelStyle={{ color: '#cbd5e1' }}
             itemStyle={{ color: curr?.color }}
           />
-          <Bar key={metric} dataKey={metric} radius={[4, 4, 0, 0]} fill={curr?.color ?? '#f97316'}
+          <Bar key={metric} dataKey={metric} radius={[4, 4, 0, 0]} fill={curr?.color ?? '#e8530b'}
             animationBegin={0} animationDuration={500} animationEasing="ease-out"
           />
         </BarChart>

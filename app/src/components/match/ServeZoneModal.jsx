@@ -61,7 +61,7 @@ export function ServeZoneModal({ pendingContact, reticles, onConfirm, onDismiss,
                       <rect
                         x={x} y={y}
                         width={W / 3} height={H / 2}
-                        fill={`rgba(249,115,22,${heatAlpha.toFixed(2)})`}
+                        fill={`rgba(232,83,11,${heatAlpha.toFixed(2)})`}
                       />
                     )}
                     <rect
@@ -94,11 +94,11 @@ export function ServeZoneModal({ pendingContact, reticles, onConfirm, onDismiss,
           })()}
 
           {/* Net line at bottom with NET label inside the SVG */}
-          <line x1={0} y1={H - 2} x2={W} y2={H - 2} stroke="#f97316" strokeWidth={3} />
+          <line x1={0} y1={H - 2} x2={W} y2={H - 2} stroke="#e8530b" strokeWidth={3} />
           <text
             x={W / 2} y={H - 14}
             textAnchor="middle" dominantBaseline="middle"
-            fill="#f97316" fontSize={18} fontWeight="bold" letterSpacing={4}
+            fill="#e8530b" fontSize={18} fontWeight="bold" letterSpacing={4}
             opacity={0.75}
           >NET</text>
 

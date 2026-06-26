@@ -735,7 +735,7 @@ function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit, onE
   const hasPlayoffs = historyEntry?.playoff_seed || historyEntry?.state_finish || historyEntry?.playoff_result || (historyEntry?.playoff_rounds?.length > 0);
 
   return (
-    <div className="rounded-xl overflow-hidden border border-primary/50 shadow-[0_0_16px_-4px_rgba(249,115,22,0.2)]">
+    <div className="rounded-xl overflow-hidden border border-primary/50 shadow-[0_0_16px_-4px_rgba(232,83,11,0.2)]">
       {/* Header */}
       <div className="px-4 py-3 bg-primary/10">
         <div className="flex items-center justify-between gap-2">
@@ -1605,7 +1605,7 @@ export function HistoryPage() {
                     <div className="flex items-center gap-2 shrink-0">
                       <div
                         onClick={e => { e.stopPropagation(); setShowAddCommit(true); }}
-                        className="text-xs font-bold px-2.5 py-1.5 rounded-lg text-black bg-[#f97316] hover:brightness-110 transition-all"
+                        className="text-xs font-bold px-2.5 py-1.5 rounded-lg text-black bg-[#e8530b] hover:brightness-110 transition-all"
                       >
                         + Add
                       </div>
@@ -1651,7 +1651,7 @@ export function HistoryPage() {
                     <div className="flex items-center gap-2 shrink-0">
                       <div
                         onClick={e => { e.stopPropagation(); setShowAddAward(true); }}
-                        className="text-xs font-bold px-2.5 py-1.5 rounded-lg text-black bg-[#f97316] hover:brightness-110 transition-all"
+                        className="text-xs font-bold px-2.5 py-1.5 rounded-lg text-black bg-[#e8530b] hover:brightness-110 transition-all"
                       >
                         + Award
                       </div>
@@ -1796,7 +1796,7 @@ export function HistoryPage() {
                                 />
                                 <Bar dataKey="wins" radius={[3, 3, 0, 0]}>
                                   {sparklineData.map((entry, i) => (
-                                    <Cell key={i} fill={entry.isLive ? '#f97316' : '#f9731666'} />
+                                    <Cell key={i} fill={entry.isLive ? '#e8530b' : '#e8530b66'} />
                                   ))}
                                 </Bar>
                               </BarChart>

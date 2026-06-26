@@ -5,7 +5,7 @@ export const BANNER_COLORS = {
   white:  { bg: '#e2e8f0', trim: '#334155', text: '#1e293b', bright: '#f8fafc' },
   gray:   { bg: '#374151', trim: '#fbbf24', text: '#fbbf24', bright: '#94a3b8' },
   red:    { bg: '#7f1d1d', trim: '#fca5a5', text: '#fef2f2', bright: '#ef4444' },
-  orange: { bg: '#7c2d12', trim: '#fdba74', text: '#fff7ed', bright: '#f97316' },
+  orange: { bg: '#7c2d12', trim: '#fdba74', text: '#fff7ed', bright: '#e8530b' },
   yellow: { bg: '#713f12', trim: '#fde047', text: '#fefce8', bright: '#eab308' },
   green:  { bg: '#14532d', trim: '#86efac', text: '#f0fdf4', bright: '#22c55e' },
   blue:   { bg: '#1e3a8a', trim: '#93c5fd', text: '#eff6ff', bright: '#3b82f6' },

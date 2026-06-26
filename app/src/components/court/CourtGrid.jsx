@@ -171,7 +171,7 @@ function KillBurst({ x, y }) {
 }
 
 // K-button firework — orange/gold dot particles radiate from the K button area
-const FIREWORK_COLORS = ['#f97316', '#fb923c', '#fbbf24', '#ef4444', '#fde047', '#f59e0b', '#fdba74', '#fca5a5'];
+const FIREWORK_COLORS = ['#e8530b', '#fb923c', '#fbbf24', '#ef4444', '#fde047', '#f59e0b', '#fdba74', '#fca5a5'];
 function KillFirework({ x, y }) {
   const count = 12;
   return (
@@ -621,8 +621,8 @@ export const CourtGrid = memo(function CourtGrid({ aceZoneHints = {} }) {
             style={{
               top: 'calc(50% - 2px)',
               height: '4px',
-              background: 'linear-gradient(to right, transparent 0%, #f97316 15%, #fff8 50%, #f97316 85%, transparent 100%)',
-              boxShadow: '0 0 10px 3px rgba(249,115,22,0.55)',
+              background: 'linear-gradient(to right, transparent 0%, #e8530b 15%, #fff8 50%, #e8530b 85%, transparent 100%)',
+              boxShadow: '0 0 10px 3px rgba(232,83,11,0.55)',
             }}
           />
         )}
@@ -639,19 +639,19 @@ export const CourtGrid = memo(function CourtGrid({ aceZoneHints = {} }) {
           >
             {/* Center horizontal — net boundary */}
             <line x1="0%" y1="50%" x2="100%" y2="50%"
-              stroke="#f97316" strokeWidth="2.5" opacity="0.65"
+              stroke="#e8530b" strokeWidth="2.5" opacity="0.65"
               className="court-line-h"
               style={{ animationDelay: '80ms' }}
             />
             {/* Left vertical divider */}
             <line x1="33.33%" y1="0%" x2="33.33%" y2="100%"
-              stroke="#f97316" strokeWidth="1" opacity="0.35"
+              stroke="#e8530b" strokeWidth="1" opacity="0.35"
               className="court-line-v"
               style={{ animationDelay: '260ms' }}
             />
             {/* Right vertical divider */}
             <line x1="66.66%" y1="0%" x2="66.66%" y2="100%"
-              stroke="#f97316" strokeWidth="1" opacity="0.35"
+              stroke="#e8530b" strokeWidth="1" opacity="0.35"
               className="court-line-v"
               style={{ animationDelay: '380ms' }}
             />

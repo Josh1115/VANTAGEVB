@@ -25,7 +25,7 @@ export function RotationRadarChart({ rotationStats }) {
             tick={{ fill: '#64748b', fontSize: 9 }}
             tickFormatter={(v) => `${v}%`}
           />
-          <Radar name="SO%" dataKey="SO%" stroke="#f97316" fill="#f97316" fillOpacity={0.25} animationBegin={0} animationDuration={600} animationEasing="ease-out" />
+          <Radar name="SO%" dataKey="SO%" stroke="#e8530b" fill="#e8530b" fillOpacity={0.25} animationBegin={0} animationDuration={600} animationEasing="ease-out" />
           <Radar name="SP%" dataKey="SP%" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.15} animationBegin={100} animationDuration={600} animationEasing="ease-out" />
           <Tooltip
             contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8 }}
@@ -35,7 +35,7 @@ export function RotationRadarChart({ rotationStats }) {
       </ResponsiveContainer>
       <div className="flex gap-6 mt-1 mb-2">
         <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#f97316] inline-block" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#e8530b] inline-block" />
           <span className="text-xs text-slate-400">SO%</span>
         </div>
         <div className="flex items-center gap-1.5">

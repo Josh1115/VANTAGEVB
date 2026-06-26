@@ -66,7 +66,7 @@ function ServeZoneGrid({ zones }) {
                 <div
                   key={z}
                   className="rounded-lg p-2 text-center relative overflow-hidden"
-                  style={{ background: `rgba(249,115,22,${0.05 + intensity * 0.35})`, border: '1px solid rgba(249,115,22,0.2)' }}
+                  style={{ background: `rgba(232,83,11,${0.05 + intensity * 0.35})`, border: '1px solid rgba(232,83,11,0.2)' }}
                 >
                   <div className="text-[10px] text-slate-400 font-bold">Z{z}</div>
                   <div className="text-base font-black text-white">{s.sa}</div>
@@ -173,8 +173,8 @@ function WinProbChart({ rawRallies, sets, format, historicalPQ }) {
             labelFormatter={() => ''}
           />
           <Line
-            type="monotone" dataKey="pct" stroke="#f97316" strokeWidth={2} dot={false}
-            activeDot={{ r: 3, fill: '#f97316' }}
+            type="monotone" dataKey="pct" stroke="#e8530b" strokeWidth={2} dot={false}
+            activeDot={{ r: 3, fill: '#e8530b' }}
           />
         </LineChart>
       </ResponsiveContainer>
@@ -319,7 +319,7 @@ function SetScoreChart({ setData, setLabel, teamName, opponentName }) {
             formatter={(val, name) => [val, name === 'us' ? (teamName || 'Us') : (opponentName || 'Opp')]}
             labelFormatter={() => ''}
           />
-          <Line type="monotone" dataKey="us"  stroke="#f97316" strokeWidth={2} dot={false} name="us" />
+          <Line type="monotone" dataKey="us"  stroke="#e8530b" strokeWidth={2} dot={false} name="us" />
           <Line type="monotone" dataKey="opp" stroke="#94a3b8" strokeWidth={2} dot={false} name="opp" />
         </LineChart>
       </ResponsiveContainer>
@@ -506,7 +506,7 @@ const ShareCard = ({ cardRef, match, sets, stats, teamColors, seasonRecord, play
                 <div style={{ fontSize: 14, width: 20, textAlign: 'center' }}>{icon}</div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', width: 52, letterSpacing: '0.04em' }}>{label}</div>
                 <div style={{ flex: 1, fontSize: 14, fontWeight: 800, color: 'white' }}>{name}</div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: primary === '#e2e8f0' ? '#f97316' : primary, fontVariantNumeric: 'tabular-nums', filter: 'brightness(1.4)' }}>{val}</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: primary === '#e2e8f0' ? '#e8530b' : primary, fontVariantNumeric: 'tabular-nums', filter: 'brightness(1.4)' }}>{val}</div>
               </div>
             ))}
           </div>
@@ -527,7 +527,7 @@ const ShareCard = ({ cardRef, match, sets, stats, teamColors, seasonRecord, play
         ].map(({ label, val }) => (
           <div key={label} style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '10px 4px', border: '1px solid rgba(255,255,255,0.08)' }}>
             <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', marginBottom: 5, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: primary === '#e2e8f0' ? '#f97316' : primary, filter: 'brightness(1.4)' }}>{val}</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: primary === '#e2e8f0' ? '#e8530b' : primary, filter: 'brightness(1.4)' }}>{val}</div>
           </div>
         ))}
       </div>

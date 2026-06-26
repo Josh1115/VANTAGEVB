@@ -19,7 +19,7 @@ const STAT_OPTIONS = [
 
 // 14 perceptually distinct colors for dark backgrounds
 const COLORS = [
-  '#f97316', '#3b82f6', '#22c55e', '#ef4444', '#a855f7',
+  '#e8530b', '#3b82f6', '#22c55e', '#ef4444', '#a855f7',
   '#06b6d4', '#ec4899', '#eab308', '#14b8a6', '#f43f5e',
   '#8b5cf6', '#84cc16', '#0ea5e9', '#fb923c',
 ];

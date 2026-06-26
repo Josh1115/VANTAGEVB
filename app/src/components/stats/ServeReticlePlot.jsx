@@ -90,9 +90,9 @@ export function PlayerServePlacementCard({ player, contacts, playerJerseys }) {
               )}
 
               {/* Net */}
-              <line x1={0} y1={RH - 2} x2={RW} y2={RH - 2} stroke="#f97316" strokeWidth={3} />
+              <line x1={0} y1={RH - 2} x2={RW} y2={RH - 2} stroke="#e8530b" strokeWidth={3} />
               <text x={RW / 2} y={RH - 14} textAnchor="middle" dominantBaseline="middle"
-                fill="#f97316" fontSize={18} fontWeight="bold" letterSpacing={4} opacity={0.75}
+                fill="#e8530b" fontSize={18} fontWeight="bold" letterSpacing={4} opacity={0.75}
               >NET</text>
 
               {/* Reticles */}
@@ -175,9 +175,9 @@ export function ServeReticlePlot({ contacts, serveType }) {
           )}
 
           {/* Net line */}
-          <line x1={0} y1={RH - 2} x2={RW} y2={RH - 2} stroke="#f97316" strokeWidth={3} />
+          <line x1={0} y1={RH - 2} x2={RW} y2={RH - 2} stroke="#e8530b" strokeWidth={3} />
           <text x={RW / 2} y={RH - 14} textAnchor="middle" dominantBaseline="middle"
-            fill="#f97316" fontSize={18} fontWeight="bold" letterSpacing={4} opacity={0.75}
+            fill="#e8530b" fontSize={18} fontWeight="bold" letterSpacing={4} opacity={0.75}
           >NET</text>
 
           {/* Reticles */}

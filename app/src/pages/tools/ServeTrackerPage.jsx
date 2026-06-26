@@ -15,7 +15,7 @@ const DRAFT_KEY = 'vbstat_draft_serve_tracker';
 function heatStyle(count, max) {
   if (!count || !max) return {};
   const t = count / max;
-  return { backgroundColor: `rgba(249,115,22,${(0.15 + t * 0.55).toFixed(2)})` };
+  return { backgroundColor: `rgba(232,83,11,${(0.15 + t * 0.55).toFixed(2)})` };
 }
 
 function calcStats(serves) {

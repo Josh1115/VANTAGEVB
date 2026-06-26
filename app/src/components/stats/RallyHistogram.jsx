@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { computeRallyHistogram } from '../../stats/engine';
 
-const BAR_COLORS = ['#f97316', '#fb923c', '#fbbf24', '#4ade80', '#60a5fa'];
+const BAR_COLORS = ['#e8530b', '#fb923c', '#fbbf24', '#4ade80', '#60a5fa'];
 
 export function RallyHistogram({ contacts }) {
   const data = useMemo(() => computeRallyHistogram(contacts), [contacts]);

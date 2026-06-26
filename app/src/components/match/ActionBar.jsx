@@ -195,9 +195,9 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         className={`${btnBase} bg-slate-800 text-slate-400 hover:bg-slate-700`}
       >
         <svg className="w-[2.4vmin] h-[2.4vmin]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <line x1="3" y1="6"  x2="21" y2="6"  stroke="#f97316" strokeWidth="2.2" strokeLinecap="round" />
-          <line x1="3" y1="12" x2="21" y2="12" stroke="#f97316" strokeWidth="2.2" strokeLinecap="round" />
-          <line x1="3" y1="18" x2="21" y2="18" stroke="#f97316" strokeWidth="2.2" strokeLinecap="round" />
+          <line x1="3" y1="6"  x2="21" y2="6"  stroke="#e8530b" strokeWidth="2.2" strokeLinecap="round" />
+          <line x1="3" y1="12" x2="21" y2="12" stroke="#e8530b" strokeWidth="2.2" strokeLinecap="round" />
+          <line x1="3" y1="18" x2="21" y2="18" stroke="#e8530b" strokeWidth="2.2" strokeLinecap="round" />
         </svg>
       </button>
     </div>

@@ -24,8 +24,8 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Accent color — set by JS in main.jsx on startup; overridden by user pick */
-  --color-primary: #f97316;
-  --color-primary-rgb: 249 115 22;
+  --color-primary: #e8530b;
+  --color-primary-rgb: 232 83 11;
 }
 
 @layer base {
@@ -103,23 +103,23 @@
 
 @keyframes scoreboard-flicker {
   /* stable for first 4s (0–66.5% of 6s cycle) */
-  0%,  66.5% { opacity: 1;    text-shadow: 0 0 8px #f97316, 0 0 20px #f9731680, 0 0 40px #f9731640; }
+  0%,  66.5% { opacity: 1;    text-shadow: 0 0 8px #e8530b, 0 0 20px #e8530b80, 0 0 40px #e8530b40; }
   /* 2s flutter window (66.7–100%) */
   66.7%      { opacity: 0.15; text-shadow: none; }
-  68.4%      { opacity: 1;    text-shadow: 0 0 8px #f97316, 0 0 20px #f9731680, 0 0 40px #f9731640; }
+  68.4%      { opacity: 1;    text-shadow: 0 0 8px #e8530b, 0 0 20px #e8530b80, 0 0 40px #e8530b40; }
   71.7%      { opacity: 0.4;  text-shadow: none; }
-  74.2%      { opacity: 1;    text-shadow: 0 0 8px #f97316, 0 0 20px #f9731680, 0 0 40px #f9731640; }
+  74.2%      { opacity: 1;    text-shadow: 0 0 8px #e8530b, 0 0 20px #e8530b80, 0 0 40px #e8530b40; }
   76.7%      { opacity: 0.1;  text-shadow: none; }
-  78.4%      { opacity: 1;    text-shadow: 0 0 8px #f97316, 0 0 20px #f9731680, 0 0 40px #f9731640; }
+  78.4%      { opacity: 1;    text-shadow: 0 0 8px #e8530b, 0 0 20px #e8530b80, 0 0 40px #e8530b40; }
   80.8%      { opacity: 0.6;  text-shadow: none; }
-  82.5%      { opacity: 1;    text-shadow: 0 0 8px #f97316, 0 0 20px #f9731680, 0 0 40px #f9731640; }
+  82.5%      { opacity: 1;    text-shadow: 0 0 8px #e8530b, 0 0 20px #e8530b80, 0 0 40px #e8530b40; }
   85%        { opacity: 0.2;  text-shadow: none; }
-  86.7%      { opacity: 1;    text-shadow: 0 0 8px #f97316, 0 0 20px #f9731680, 0 0 40px #f9731640; }
+  86.7%      { opacity: 1;    text-shadow: 0 0 8px #e8530b, 0 0 20px #e8530b80, 0 0 40px #e8530b40; }
   90%        { opacity: 0.5;  text-shadow: none; }
-  92.5%      { opacity: 1;    text-shadow: 0 0 8px #f97316, 0 0 20px #f9731680, 0 0 40px #f9731640; }
+  92.5%      { opacity: 1;    text-shadow: 0 0 8px #e8530b, 0 0 20px #e8530b80, 0 0 40px #e8530b40; }
   95.1%      { opacity: 0.15; text-shadow: none; }
-  97.5%      { opacity: 1;    text-shadow: 0 0 8px #f97316, 0 0 20px #f9731680, 0 0 40px #f9731640; }
-  100%       { opacity: 1;    text-shadow: 0 0 8px #f97316, 0 0 20px #f9731680, 0 0 40px #f9731640; }
+  97.5%      { opacity: 1;    text-shadow: 0 0 8px #e8530b, 0 0 20px #e8530b80, 0 0 40px #e8530b40; }
+  100%       { opacity: 1;    text-shadow: 0 0 8px #e8530b, 0 0 20px #e8530b80, 0 0 40px #e8530b40; }
 }
 
 .scoreboard-flicker {
@@ -181,13 +181,13 @@
 
 /* ── Item 5: Run strip flame glow ── */
 @keyframes flame-pulse {
-  0%, 100% { text-shadow: 0 0 8px #f97316, 0 0 16px rgba(249,115,22,0.4); }
+  0%, 100% { text-shadow: 0 0 8px #e8530b, 0 0 16px rgba(232,83,11,0.4); }
   33%       { text-shadow: 0 0 12px #f59e0b, 0 0 24px rgba(245,158,11,0.4); }
   66%       { text-shadow: 0 0 10px #ef4444, 0 0 20px rgba(239,68,68,0.4); }
 }
 
 @keyframes flame-pulse-intense {
-  0%, 100% { text-shadow: 0 0 12px #f97316, 0 0 28px #f97316, 0 0 40px rgba(249,115,22,0.3); }
+  0%, 100% { text-shadow: 0 0 12px #e8530b, 0 0 28px #e8530b, 0 0 40px rgba(232,83,11,0.3); }
   33%       { text-shadow: 0 0 16px #f59e0b, 0 0 36px #f59e0b, 0 0 52px rgba(245,158,11,0.3); }
   66%       { text-shadow: 0 0 14px #ef4444, 0 0 32px #ef4444, 0 0 44px rgba(239,68,68,0.3); }
 }
@@ -201,12 +201,12 @@
 }
 
 @keyframes section-twinkle {
-  0%, 100% { text-shadow: 0 0 6px rgba(249,115,22,0.55), 0 0 14px rgba(249,115,22,0.2); }
-  18%       { text-shadow: 0 0 12px #f97316, 0 0 24px rgba(249,115,22,0.55), 0 0 38px rgba(249,115,22,0.2); }
-  36%       { text-shadow: 0 0 3px rgba(249,115,22,0.25); }
-  54%       { text-shadow: 0 0 16px #f97316, 0 0 30px rgba(249,115,22,0.6), 0 0 46px rgba(249,115,22,0.25); }
-  72%       { text-shadow: 0 0 5px rgba(249,115,22,0.35), 0 0 10px rgba(249,115,22,0.15); }
-  88%       { text-shadow: 0 0 10px #f97316, 0 0 20px rgba(249,115,22,0.45); }
+  0%, 100% { text-shadow: 0 0 6px rgba(232,83,11,0.55), 0 0 14px rgba(232,83,11,0.2); }
+  18%       { text-shadow: 0 0 12px #e8530b, 0 0 24px rgba(232,83,11,0.55), 0 0 38px rgba(232,83,11,0.2); }
+  36%       { text-shadow: 0 0 3px rgba(232,83,11,0.25); }
+  54%       { text-shadow: 0 0 16px #e8530b, 0 0 30px rgba(232,83,11,0.6), 0 0 46px rgba(232,83,11,0.25); }
+  72%       { text-shadow: 0 0 5px rgba(232,83,11,0.35), 0 0 10px rgba(232,83,11,0.15); }
+  88%       { text-shadow: 0 0 10px #e8530b, 0 0 20px rgba(232,83,11,0.45); }
 }
 
 .section-twinkle {
@@ -388,7 +388,7 @@
   width: 3px;
   height: 5px;
   border-radius: 1px;
-  background: var(--c, #f97316);
+  background: var(--c, #e8530b);
   top: 0;
   left: calc(50% + var(--offset, 0px));
   transform-origin: center;
@@ -499,14 +499,14 @@
 /* ── Run intensity background pulse ── */
 @keyframes run-intensity-pulse {
   0%, 100% { box-shadow: inset 0 0 0px  0px transparent; }
-  50%       { box-shadow: inset 0 0 28px 4px var(--run-glow, rgba(249,115,22,0.4)); }
+  50%       { box-shadow: inset 0 0 28px 4px var(--run-glow, rgba(232,83,11,0.4)); }
 }
 
 /* ── Rotation tile sweep ── */
 @keyframes tile-rotate-flash {
-  0%   { box-shadow: inset 0 0 0 0 rgba(249,115,22,0.0); }
-  40%  { box-shadow: inset 0 0 0 2px rgba(249,115,22,0.8); }
-  100% { box-shadow: inset 0 0 0 0 rgba(249,115,22,0.0); }
+  0%   { box-shadow: inset 0 0 0 0 rgba(232,83,11,0.0); }
+  40%  { box-shadow: inset 0 0 0 2px rgba(232,83,11,0.8); }
+  100% { box-shadow: inset 0 0 0 0 rgba(232,83,11,0.0); }
 }
 .tile-rotating {
   animation: tile-rotate-flash 300ms ease-out both;
@@ -514,11 +514,11 @@
 
 /* ── Substitution flash (double pulse) ── */
 @keyframes tile-sub-flash {
-  0%   { box-shadow: inset 0 0 0 0 rgba(249,115,22,0.0); }
-  15%  { box-shadow: inset 0 0 0 4px rgba(249,115,22,1.0); }
-  40%  { box-shadow: inset 0 0 0 4px rgba(249,115,22,0.3); }
-  60%  { box-shadow: inset 0 0 0 4px rgba(249,115,22,0.9); }
-  100% { box-shadow: inset 0 0 0 0 rgba(249,115,22,0.0); }
+  0%   { box-shadow: inset 0 0 0 0 rgba(232,83,11,0.0); }
+  15%  { box-shadow: inset 0 0 0 4px rgba(232,83,11,1.0); }
+  40%  { box-shadow: inset 0 0 0 4px rgba(232,83,11,0.3); }
+  60%  { box-shadow: inset 0 0 0 4px rgba(232,83,11,0.9); }
+  100% { box-shadow: inset 0 0 0 0 rgba(232,83,11,0.0); }
 }
 .tile-sub-flash {
   animation: tile-sub-flash 1000ms ease-out both;
@@ -668,7 +668,7 @@
   100% { box-shadow: inset 0 0 0 0   transparent,       0 0 0   transparent; }
 }
 .pass-ring-0 { --ring-color: #ef4444; animation: pass-ring-flash 500ms ease-out forwards; }
-.pass-ring-1 { --ring-color: #f97316; animation: pass-ring-flash 500ms ease-out forwards; }
+.pass-ring-1 { --ring-color: #e8530b; animation: pass-ring-flash 500ms ease-out forwards; }
 .pass-ring-2 { --ring-color: #eab308; animation: pass-ring-flash 500ms ease-out forwards; }
 .pass-ring-3 { --ring-color: #22c55e; animation: pass-ring-flash 500ms ease-out forwards; }
 
@@ -678,8 +678,8 @@
   50%       { text-shadow: 0 0 12px #fbbf24, 0 0 28px rgba(251,191,36,0.5); }
 }
 @keyframes matchpoint-breathe {
-  0%, 100% { text-shadow: 0 0 8px #f97316, 0 0 18px rgba(249,115,22,0.4); }
-  50%       { text-shadow: 0 0 18px #f97316, 0 0 36px rgba(249,115,22,0.7), 0 0 52px rgba(249,115,22,0.3); }
+  0%, 100% { text-shadow: 0 0 8px #e8530b, 0 0 18px rgba(232,83,11,0.4); }
+  50%       { text-shadow: 0 0 18px #e8530b, 0 0 36px rgba(232,83,11,0.7), 0 0 52px rgba(232,83,11,0.3); }
 }
 .setpoint-glow   { animation: setpoint-breathe  1.4s ease-in-out infinite; color: #fbbf24 !important; }
 .matchpoint-glow { animation: matchpoint-breathe 0.85s ease-in-out infinite; color: #fb923c !important; }
@@ -726,8 +726,8 @@
 /* ── #8 Jersey number pop on contact record ── */
 @keyframes jersey-pop {
   0%   { transform: scale(1);    text-shadow: none; }
-  35%  { transform: scale(1.45); text-shadow: 0 0 8px #f97316, 0 0 18px rgba(249,115,22,0.5); }
-  70%  { transform: scale(0.94); text-shadow: 0 0 4px #f97316; }
+  35%  { transform: scale(1.45); text-shadow: 0 0 8px #e8530b, 0 0 18px rgba(232,83,11,0.5); }
+  70%  { transform: scale(0.94); text-shadow: 0 0 4px #e8530b; }
   100% { transform: scale(1);    text-shadow: none; }
 }
 .jersey-pop {
@@ -842,24 +842,24 @@
 
 /* ── #3 Rotation directional nudge (replaces tile-rotating border flash) ── */
 @keyframes tile-rotate-right {
-  0%   { box-shadow: inset 0 0 0 0 rgba(249,115,22,0);   transform: translateX(0);  }
-  30%  { box-shadow: inset 0 0 0 2px rgba(249,115,22,0.8); transform: translateX(7px); }
-  100% { box-shadow: inset 0 0 0 0 rgba(249,115,22,0);   transform: translateX(0);  }
+  0%   { box-shadow: inset 0 0 0 0 rgba(232,83,11,0);   transform: translateX(0);  }
+  30%  { box-shadow: inset 0 0 0 2px rgba(232,83,11,0.8); transform: translateX(7px); }
+  100% { box-shadow: inset 0 0 0 0 rgba(232,83,11,0);   transform: translateX(0);  }
 }
 @keyframes tile-rotate-left {
-  0%   { box-shadow: inset 0 0 0 0 rgba(249,115,22,0);   transform: translateX(0);   }
-  30%  { box-shadow: inset 0 0 0 2px rgba(249,115,22,0.8); transform: translateX(-7px); }
-  100% { box-shadow: inset 0 0 0 0 rgba(249,115,22,0);   transform: translateX(0);   }
+  0%   { box-shadow: inset 0 0 0 0 rgba(232,83,11,0);   transform: translateX(0);   }
+  30%  { box-shadow: inset 0 0 0 2px rgba(232,83,11,0.8); transform: translateX(-7px); }
+  100% { box-shadow: inset 0 0 0 0 rgba(232,83,11,0);   transform: translateX(0);   }
 }
 @keyframes tile-rotate-up {
-  0%   { box-shadow: inset 0 0 0 0 rgba(249,115,22,0);   transform: translateY(0);   }
-  30%  { box-shadow: inset 0 0 0 2px rgba(249,115,22,0.8); transform: translateY(-7px); }
-  100% { box-shadow: inset 0 0 0 0 rgba(249,115,22,0);   transform: translateY(0);   }
+  0%   { box-shadow: inset 0 0 0 0 rgba(232,83,11,0);   transform: translateY(0);   }
+  30%  { box-shadow: inset 0 0 0 2px rgba(232,83,11,0.8); transform: translateY(-7px); }
+  100% { box-shadow: inset 0 0 0 0 rgba(232,83,11,0);   transform: translateY(0);   }
 }
 @keyframes tile-rotate-down {
-  0%   { box-shadow: inset 0 0 0 0 rgba(249,115,22,0);   transform: translateY(0);  }
-  30%  { box-shadow: inset 0 0 0 2px rgba(249,115,22,0.8); transform: translateY(7px); }
-  100% { box-shadow: inset 0 0 0 0 rgba(249,115,22,0);   transform: translateY(0);  }
+  0%   { box-shadow: inset 0 0 0 0 rgba(232,83,11,0);   transform: translateY(0);  }
+  30%  { box-shadow: inset 0 0 0 2px rgba(232,83,11,0.8); transform: translateY(7px); }
+  100% { box-shadow: inset 0 0 0 0 rgba(232,83,11,0);   transform: translateY(0);  }
 }
 .tile-rotate-right { animation: tile-rotate-right 200ms ease-out both; }
 .tile-rotate-left  { animation: tile-rotate-left  200ms ease-out both; }
@@ -1137,8 +1137,8 @@
 
 /* ── + Record button glow pulse ── */
 @keyframes record-btn-pulse {
-  0%, 100% { box-shadow: 0 0 6px 1px rgba(249,115,22,0.3); }
-  50%       { box-shadow: 0 0 20px 6px rgba(249,115,22,0.7); }
+  0%, 100% { box-shadow: 0 0 6px 1px rgba(232,83,11,0.3); }
+  50%       { box-shadow: 0 0 20px 6px rgba(232,83,11,0.7); }
 }
 .record-btn-pulse {
   animation: record-btn-pulse 1.8s ease-in-out infinite;
@@ -1154,16 +1154,16 @@
 }
 
 @keyframes active-record-glow {
-  0%, 100% { box-shadow: 0 0 4px 1px rgba(249,115,22,0.5), 0 0 10px 2px rgba(249,115,22,0.25); }
-  50%       { box-shadow: 0 0 10px 3px rgba(249,115,22,0.85), 0 0 22px 6px rgba(249,115,22,0.4); }
+  0%, 100% { box-shadow: 0 0 4px 1px rgba(232,83,11,0.5), 0 0 10px 2px rgba(232,83,11,0.25); }
+  50%       { box-shadow: 0 0 10px 3px rgba(232,83,11,0.85), 0 0 22px 6px rgba(232,83,11,0.4); }
 }
 .animate-active-record-glow {
   animation: active-record-glow 2s ease-in-out infinite;
 }
 
 @keyframes season-btn-pulse {
-  0%, 100% { box-shadow: 0 0 4px 2px rgba(249,115,22,0.35), 0 0 10px 3px rgba(249,115,22,0.15); }
-  50%       { box-shadow: 0 0 10px 4px rgba(249,115,22,0.7),  0 0 22px 8px rgba(249,115,22,0.3); }
+  0%, 100% { box-shadow: 0 0 4px 2px rgba(232,83,11,0.35), 0 0 10px 3px rgba(232,83,11,0.15); }
+  50%       { box-shadow: 0 0 10px 4px rgba(232,83,11,0.7),  0 0 22px 8px rgba(232,83,11,0.3); }
 }
 .season-btn-pulse {
   animation: season-btn-pulse 2s ease-in-out infinite;

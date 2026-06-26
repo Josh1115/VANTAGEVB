@@ -36,7 +36,7 @@ const HELP_ILLUSTRATIONS = {
         <circle cx="24" cy="18" r="5" fill="none" stroke="#64748b" strokeWidth="1.5"/>
         <text x="42" y="24" fill="white" fontSize="16" fontWeight="900" fontFamily="monospace">12</text>
         <text x="200" y="13" fill="#94a3b8" fontSize="8" textAnchor="middle" fontWeight="700">SET 2</text>
-        <circle cx="200" cy="27" r="5" fill="#f97316"/>
+        <circle cx="200" cy="27" r="5" fill="#e8530b"/>
         <text x="345" y="24" fill="white" fontSize="16" fontWeight="900" fontFamily="monospace">10</text>
         <circle cx="374" cy="18" r="5" fill="none" stroke="#64748b" strokeWidth="1.5"/>
         <circle cx="387" cy="18" r="5" fill="none" stroke="#64748b" strokeWidth="1.5"/>
@@ -63,11 +63,11 @@ const HELP_ILLUSTRATIONS = {
         <text x="200" y="120" fill="#64748b" fontSize="8" textAnchor="middle">S6</text>
         <text x="200" y="134" fill="white" fontSize="9" textAnchor="middle" fontWeight="bold">#4 Kate</text>
         {/* S1 server — highlighted */}
-        <rect x="268" y="97" width="132" height="57" fill="#f97316" fillOpacity="0.08"/>
-        <rect x="268" y="97" width="132" height="57" fill="none" stroke="#f97316" strokeWidth="1.5"/>
-        <text x="333" y="115" fill="#f97316" fontSize="8" textAnchor="middle" fontWeight="bold">S1 ★ SERVER</text>
+        <rect x="268" y="97" width="132" height="57" fill="#e8530b" fillOpacity="0.08"/>
+        <rect x="268" y="97" width="132" height="57" fill="none" stroke="#e8530b" strokeWidth="1.5"/>
+        <text x="333" y="115" fill="#e8530b" fontSize="8" textAnchor="middle" fontWeight="bold">S1 ★ SERVER</text>
         <text x="333" y="129" fill="white" fontSize="9" textAnchor="middle" fontWeight="bold">#1 Lexi</text>
-        <text x="333" y="144" fill="#f97316" fontSize="7" textAnchor="middle">tap to record stats</text>
+        <text x="333" y="144" fill="#e8530b" fontSize="7" textAnchor="middle">tap to record stats</text>
         {/* Action bar */}
         <rect x="0" y="156" width="400" height="34" fill="#1e293b"/>
         <text x="40"  y="177" fill="#94a3b8" fontSize="8" textAnchor="middle">↺ ROT</text>
@@ -82,7 +82,7 @@ const HELP_ILLUSTRATIONS = {
   'pass-ratings': function PassRatings() {
     const btns = [
       { num: '0', label: 'Aced',    sub: 'no pass',         stroke: '#ef4444', fill: 'rgba(239,68,68,0.12)',  text: '#ef4444' },
-      { num: '1', label: 'Poor',    sub: 'setter limited',  stroke: '#f97316', fill: 'rgba(249,115,22,0.12)', text: '#f97316' },
+      { num: '1', label: 'Poor',    sub: 'setter limited',  stroke: '#e8530b', fill: 'rgba(232,83,11,0.12)', text: '#e8530b' },
       { num: '2', label: 'Good',    sub: '2–3 options',     stroke: '#eab308', fill: 'rgba(234,179,8,0.12)',  text: '#eab308' },
       { num: '3', label: 'Perfect', sub: 'all options open',stroke: '#22c55e', fill: 'rgba(34,197,94,0.12)',  text: '#22c55e' },
     ];
@@ -167,10 +167,10 @@ const HELP_ILLUSTRATIONS = {
         {btns.map(({ label, sub, hi }, i) => (
           <g key={label} transform={`translate(${6 + i * 62},0)`}>
             <rect x="0" y="22" width="56" height="40" rx="8"
-              fill={hi ? 'rgba(249,115,22,0.18)' : '#1e293b'}
-              stroke={hi ? '#f97316' : '#334155'}
+              fill={hi ? 'rgba(232,83,11,0.18)' : '#1e293b'}
+              stroke={hi ? '#e8530b' : '#334155'}
               strokeWidth={hi ? 1.5 : 1}/>
-            <text x="28" y="46" fill={hi ? '#f97316' : 'white'} fontSize={label === '≡' ? '14' : '9'}
+            <text x="28" y="46" fill={hi ? '#e8530b' : 'white'} fontSize={label === '≡' ? '14' : '9'}
               textAnchor="middle" fontWeight="bold">{label}</text>
             <text x="28" y="76" fill="#64748b" fontSize="7" textAnchor="middle">{sub}</text>
           </g>
@@ -206,10 +206,10 @@ const HELP_ILLUSTRATIONS = {
           return (
             <g key={label}>
               <rect x={cx} y="22" width={w} height="20" rx="10"
-                fill={active ? 'rgba(249,115,22,0.22)' : '#1e293b'}
-                stroke={active ? '#f97316' : '#334155'}
+                fill={active ? 'rgba(232,83,11,0.22)' : '#1e293b'}
+                stroke={active ? '#e8530b' : '#334155'}
                 strokeWidth={active ? 1.5 : 1}/>
-              <text x={cx + w/2} y="36" fill={active ? '#f97316' : '#94a3b8'}
+              <text x={cx + w/2} y="36" fill={active ? '#e8530b' : '#94a3b8'}
                 fontSize="8" textAnchor="middle" fontWeight={active ? 'bold' : 'normal'}>{label}</text>
             </g>
           );
@@ -222,10 +222,10 @@ const HELP_ILLUSTRATIONS = {
           return (
             <g key={label}>
               <rect x={cx} y="64" width={w} height="20" rx="10"
-                fill={active ? 'rgba(249,115,22,0.22)' : '#1e293b'}
-                stroke={active ? '#f97316' : '#334155'}
+                fill={active ? 'rgba(232,83,11,0.22)' : '#1e293b'}
+                stroke={active ? '#e8530b' : '#334155'}
                 strokeWidth={active ? 1.5 : 1}/>
-              <text x={cx + w/2} y="78" fill={active ? '#f97316' : '#94a3b8'}
+              <text x={cx + w/2} y="78" fill={active ? '#e8530b' : '#94a3b8'}
                 fontSize="8" textAnchor="middle" fontWeight={active ? 'bold' : 'normal'}>{label}</text>
             </g>
           );
@@ -257,14 +257,14 @@ const HELP_ILLUSTRATIONS = {
         {cells.map(({ x, y, label, sub, hi }) => (
           <g key={label}>
             <rect x={x} y={y} width="105" height="62" rx="6"
-              fill={hi ? 'rgba(249,115,22,0.12)' : '#1e293b'}
-              stroke={hi ? '#f97316' : '#334155'}
+              fill={hi ? 'rgba(232,83,11,0.12)' : '#1e293b'}
+              stroke={hi ? '#e8530b' : '#334155'}
               strokeWidth={hi ? 1.5 : 1}/>
-            <text x={x + 52} y={y + 27} fill={hi ? '#f97316' : 'white'}
+            <text x={x + 52} y={y + 27} fill={hi ? '#e8530b' : 'white'}
               fontSize="15" fontWeight="900" textAnchor="middle">{label}</text>
-            <text x={x + 52} y={y + 42} fill={hi ? '#f97316' : '#64748b'}
+            <text x={x + 52} y={y + 42} fill={hi ? '#e8530b' : '#64748b'}
               fontSize="7" textAnchor="middle">{sub}</text>
-            {hi && <text x={x + 52} y={y + 55} fill="#f97316" fontSize="7" textAnchor="middle" fontWeight="bold">★ 1st Server</text>}
+            {hi && <text x={x + 52} y={y + 55} fill="#e8530b" fontSize="7" textAnchor="middle" fontWeight="bold">★ 1st Server</text>}
           </g>
         ))}
         {/* Rotation arrow (clockwise curved) */}
@@ -285,17 +285,17 @@ const HELP_ILLUSTRATIONS = {
       <svg viewBox="0 0 320 170" className="w-full" aria-hidden="true">
         <rect width="320" height="170" fill="#0f172a" rx="8"/>
         <text x="10" y="18" fill="#94a3b8" fontSize="8" fontWeight="700" letterSpacing="1">SAVED LINEUPS</text>
-        <text x="298" y="18" fill="#f97316" fontSize="8" textAnchor="end" fontWeight="bold">+ New</text>
+        <text x="298" y="18" fill="#e8530b" fontSize="8" textAnchor="end" fontWeight="bold">+ New</text>
         {lineups.map(({ name, players, active }, i) => (
           <g key={name}>
             <rect x="10" y={28 + i * 46} width="300" height="38" rx="8"
-              fill={active ? 'rgba(249,115,22,0.12)' : '#1e293b'}
-              stroke={active ? '#f97316' : '#334155'}
+              fill={active ? 'rgba(232,83,11,0.12)' : '#1e293b'}
+              stroke={active ? '#e8530b' : '#334155'}
               strokeWidth={active ? 1.5 : 1}/>
             <text x="22" y={28 + i * 46 + 16} fill={active ? 'white' : '#cbd5e1'}
               fontSize="10" fontWeight={active ? 'bold' : 'normal'}>{name}</text>
             {active && (
-              <text x="284" y={28 + i * 46 + 16} fill="#f97316" fontSize="8" textAnchor="end" fontWeight="bold">← tap to load</text>
+              <text x="284" y={28 + i * 46 + 16} fill="#e8530b" fontSize="8" textAnchor="end" fontWeight="bold">← tap to load</text>
             )}
             <text x="22" y={28 + i * 46 + 30} fill="#475569" fontSize="7">{players}</text>
           </g>
@@ -311,20 +311,20 @@ const HELP_ILLUSTRATIONS = {
       { name: '#3 Sara',  apr: '1.8', reps: 9,  tap: '2'   },
       { name: '#15 Jess', apr: '2.7', reps: 15, tap: null  },
     ];
-    const btnColors = ['#ef4444','#f97316','#eab308','#22c55e'];
-    const btnBg     = ['rgba(239,68,68,0.14)','rgba(249,115,22,0.14)','rgba(234,179,8,0.14)','rgba(34,197,94,0.14)'];
+    const btnColors = ['#ef4444','#e8530b','#eab308','#22c55e'];
+    const btnBg     = ['rgba(239,68,68,0.14)','rgba(232,83,11,0.14)','rgba(234,179,8,0.14)','rgba(34,197,94,0.14)'];
     return (
       <svg viewBox="0 0 320 180" className="w-full" aria-hidden="true">
         <rect width="320" height="180" fill="#0f172a" rx="8"/>
         {/* Session APR header */}
         <rect width="320" height="28" fill="#1e293b" rx="8"/>
-        <text x="160" y="18" fill="white" fontSize="10" textAnchor="middle" fontWeight="bold">Session APR: <tspan fill="#f97316">2.26</tspan> · 36 reps</text>
+        <text x="160" y="18" fill="white" fontSize="10" textAnchor="middle" fontWeight="bold">Session APR: <tspan fill="#e8530b">2.26</tspan> · 36 reps</text>
         {/* Player cards */}
         {players.map(({ name, apr, reps, tap }, pi) => (
           <g key={name} transform={`translate(${6 + pi * 104},0)`}>
             <rect x="0" y="34" width="96" height="138" rx="8" fill="#1e293b" stroke="#334155" strokeWidth="1"/>
             <text x="48" y="50" fill="white" fontSize="8" textAnchor="middle" fontWeight="bold">{name}</text>
-            <text x="48" y="62" fill="#f97316" fontSize="8" textAnchor="middle">APR <tspan fontWeight="bold">{apr}</tspan></text>
+            <text x="48" y="62" fill="#e8530b" fontSize="8" textAnchor="middle">APR <tspan fontWeight="bold">{apr}</tspan></text>
             <text x="48" y="73" fill="#64748b" fontSize="7" textAnchor="middle">{reps} reps</text>
             {/* Rating buttons 0-3 */}
             {['0','1','2','3'].map((n, bi) => {
@@ -350,7 +350,7 @@ const HELP_ILLUSTRATIONS = {
     // Distribution bar: 0=8%, 1=22%, 2=38%, 3=32%
     const dist = [
       { pct: 8,  color: '#ef4444', label: '0' },
-      { pct: 22, color: '#f97316', label: '1' },
+      { pct: 22, color: '#e8530b', label: '1' },
       { pct: 38, color: '#eab308', label: '2' },
       { pct: 32, color: '#22c55e', label: '3' },
     ];
@@ -366,7 +366,7 @@ const HELP_ILLUSTRATIONS = {
         <rect x="10" y="10" width="300" height="34" fill="#1e293b" rx="8"/>
         <text x="80"  y="32" fill="white" fontSize="14" textAnchor="middle" fontWeight="900">126</text>
         <text x="80"  y="42" fill="#64748b" fontSize="7" textAnchor="middle">TOTAL REPS</text>
-        <text x="160" y="32" fill="#f97316" fontSize="14" textAnchor="middle" fontWeight="900">2.34</text>
+        <text x="160" y="32" fill="#e8530b" fontSize="14" textAnchor="middle" fontWeight="900">2.34</text>
         <text x="160" y="42" fill="#64748b" fontSize="7" textAnchor="middle">TEAM APR</text>
         <text x="248" y="28" fill="white" fontSize="10" textAnchor="middle" fontWeight="bold">6</text>
         <text x="248" y="42" fill="#64748b" fontSize="7" textAnchor="middle">SESSIONS</text>
@@ -393,7 +393,7 @@ const HELP_ILLUSTRATIONS = {
             <rect x="10" y={102 + i * 28} width="300" height="22" rx="6" fill="#1e293b" stroke="#334155" strokeWidth="1"/>
             <text x="22" y={102 + i * 28 + 15} fill="#64748b" fontSize="9" fontWeight="900">{rank}</text>
             <text x="36" y={102 + i * 28 + 15} fill="white" fontSize="9" fontWeight="bold">{name}</text>
-            <text x="250" y={102 + i * 28 + 15} fill="#f97316" fontSize="9" fontWeight="900" textAnchor="end">{apr} APR</text>
+            <text x="250" y={102 + i * 28 + 15} fill="#e8530b" fontSize="9" fontWeight="900" textAnchor="end">{apr} APR</text>
             <text x="300" y={102 + i * 28 + 15} fill="#475569" fontSize="7" textAnchor="end">{reps} reps</text>
           </g>
         ))}
@@ -1111,7 +1111,7 @@ function VantageChevron({ open }) {
       aria-hidden="true"
       className={`transition-transform duration-200 shrink-0 ${open ? 'rotate-180' : ''}`}
     >
-      <polygon points="0,0 20,0 10,16" fill="#f97316" />
+      <polygon points="0,0 20,0 10,16" fill="#e8530b" />
       <polygon points="3.5,0 16.5,0 10,11" fill="#fef3ee" />
     </svg>
   );
@@ -1556,7 +1556,7 @@ export function SettingsPage() {
         {/* About */}
         <section className="bg-surface rounded-xl p-5">
           <div className="text-center mb-4">
-            <h2 className="text-2xl font-black tracking-[0.25em] uppercase text-[#f97316]">VANTAGE</h2>
+            <h2 className="text-2xl font-black tracking-[0.25em] uppercase text-[#e8530b]">VANTAGE</h2>
             <img src="/icons/logo_vec2.png" alt="Vantage logo" className="mx-auto my-2" style={{ width: '20%' }} />
             <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-400 mt-1">Immediate Impact Analytics</p>
             <p className="text-[10px] text-slate-600 mt-1 font-mono">v{__APP_VERSION__}</p>
@@ -1894,7 +1894,7 @@ export function SettingsPage() {
         <CollapsibleSection id="help-guides" title="Help & Guides" isCustomized={!!helpSearch}>
           <div className="p-4">
 
-            <p className="text-center text-sm rounded-xl px-4 py-2 mb-4" style={{ color: '#fbbf24', border: '1px solid rgba(249,115,22,0.5)', background: 'rgba(249,115,22,0.1)' }}>
+            <p className="text-center text-sm rounded-xl px-4 py-2 mb-4" style={{ color: '#fbbf24', border: '1px solid rgba(232,83,11,0.5)', background: 'rgba(232,83,11,0.1)' }}>
               Experiencing technical difficulties?{' '}
               <a href="mailto:vantagevb@gmail.com" className="underline font-bold">vantagevb@gmail.com</a>
             </p>

@@ -779,7 +779,7 @@ export function MatchSetupPage() {
             { id: 'white',  label: 'White',  bg: '#f8fafc', border: '#94a3b8' },
             { id: 'gray',   label: 'Gray',   bg: '#94a3b8', border: '#64748b' },
             { id: 'red',    label: 'Red',    bg: '#dc2626', border: '#ef4444' },
-            { id: 'orange', label: 'Orange', bg: '#ea580c', border: '#f97316' },
+            { id: 'orange', label: 'Orange', bg: '#ea580c', border: '#e8530b' },
             { id: 'yellow', label: 'Yellow', bg: '#ca8a04', border: '#eab308' },
             { id: 'green',  label: 'Green',  bg: '#16a34a', border: '#22c55e' },
             { id: 'blue',   label: 'Blue',   bg: '#1d4ed8', border: '#3b82f6' },

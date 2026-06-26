@@ -128,7 +128,7 @@ export const POSITION_MULTIPLIERS = {
 
 // App accent colors — shared between main.jsx (CSS variable bootstrap) and SettingsPage
 export const ACCENT_COLORS = [
-  { id: 'orange', label: 'Orange', hex: '#f97316', rgb: '249 115 22' },
+  { id: 'orange', label: 'Orange', hex: '#e8530b', rgb: '232 83 11' },
   { id: 'blue',   label: 'Blue',   hex: '#3b82f6', rgb: '59 130 246' },
   { id: 'green',  label: 'Green',  hex: '#22c55e', rgb: '34 197 94'  },
   { id: 'red',    label: 'Red',    hex: '#ef4444', rgb: '239 68 68'  },
@@ -189,7 +189,7 @@ export const JERSEY_COLORS = [
   { id: 'white',  label: 'White',  bg: '#f8fafc', border: '#94a3b8' },
   { id: 'gray',   label: 'Gray',   bg: '#94a3b8', border: '#64748b' },
   { id: 'red',    label: 'Red',    bg: '#dc2626', border: '#ef4444' },
-  { id: 'orange', label: 'Orange', bg: '#ea580c', border: '#f97316' },
+  { id: 'orange', label: 'Orange', bg: '#ea580c', border: '#e8530b' },
   { id: 'yellow', label: 'Yellow', bg: '#ca8a04', border: '#eab308' },
   { id: 'green',  label: 'Green',  bg: '#16a34a', border: '#22c55e' },
   { id: 'blue',   label: 'Blue',   bg: '#1d4ed8', border: '#3b82f6' },

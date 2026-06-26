@@ -53,7 +53,7 @@ function buildMatchStats(match, contacts, setsCount) {
 // ── chart config ──────────────────────────────────────────────────────────────
 
 const CHARTS = [
-  { key: 'k',       label: 'Kills',       decimals: 0, isCount: true,  color: '#f97316' },
+  { key: 'k',       label: 'Kills',       decimals: 0, isCount: true,  color: '#e8530b' },
   { key: 'ace',     label: 'Aces',        decimals: 0, isCount: true,  color: '#22d3ee' },
   { key: 'blk',     label: 'Blocks',      decimals: 0, isCount: true,  color: '#a78bfa' },
   { key: 'dig',     label: 'Digs',        decimals: 0, isCount: true,  color: '#4ade80' },

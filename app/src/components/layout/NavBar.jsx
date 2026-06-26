@@ -14,7 +14,7 @@ const SCORE_DIGITS = [
 
 function HomeScoreboardIcon({ active }) {
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#f97316' }}>
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#e8530b' }}>
       {/* Board body */}
       <rect x="1.5" y="4" width="21" height="16" rx="1.5"
         fill="currentColor" fillOpacity="0.15"
@@ -58,7 +58,7 @@ function TeamsIcon({ active }) {
   const rightNum = JERSEY_NUMBERS[(idx + 3) % JERSEY_NUMBERS.length];
 
   return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#f97316' }}>
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#e8530b' }}>
       {/* Left person — head */}
       <circle cx="7.5" cy="6.5" r="3.3"
         fill="currentColor" fillOpacity="0.2"
@@ -138,7 +138,7 @@ const CONFETTI_PIECES = [
 function ConfettiTrophy({ active }) {
   return (
     <span className="relative inline-flex items-center justify-center" style={{ width: '28px', height: '28px' }}>
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#f97316' }}>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#e8530b' }}>
         {/* Cup body */}
         <path d="M 5 2.5 H 19 L 17 11 Q 12 13.5 7 11 Z"
           fill="currentColor" fillOpacity="0.2"
@@ -184,7 +184,7 @@ const SCRIBBLE_LINES = [
 
 function HistoryBookIcon({ active }) {
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#f97316' }}>
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#e8530b' }}>
       {/* Left page */}
       <path d="M2 18 L2 6 Q7 3.5 12 6 L12 18 Q7 20.5 2 18 Z"
         fill="currentColor" fillOpacity="0.2"
@@ -225,7 +225,7 @@ const PLAY_ELEMENTS = [
 
 function ClipboardIcon({ active }) {
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#f97316' }}>
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#e8530b' }}>
       {/* Clipboard body */}
       <rect x="4" y="4" width="16" height="18" rx="1.5"
         fill="currentColor" fillOpacity="0.15"
@@ -268,7 +268,7 @@ const CHART_BARS = [
 
 function ReportsChartIcon({ active }) {
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#f97316' }}>
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#e8530b' }}>
       {/* Baseline */}
       <line x1="2" y1="20" x2="22" y2="20" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       {/* Y-axis */}
@@ -303,7 +303,7 @@ const GEAR_SPARKS = [
 
 function SettingsGearIcon({ active }) {
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#f97316' }}>
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#e8530b' }}>
       <path
         fillRule="evenodd"
         fill="currentColor"

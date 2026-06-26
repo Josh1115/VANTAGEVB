@@ -22,7 +22,7 @@ export class ErrorBoundary extends Component {
         <div className="text-5xl">🏐</div>
         <h1
           className="text-2xl font-black tracking-[0.25em] uppercase"
-          style={{ color: '#f97316', textShadow: '0 0 8px #f97316, 0 0 20px rgba(249,115,22,0.4)' }}
+          style={{ color: '#e8530b', textShadow: '0 0 8px #e8530b, 0 0 20px rgba(232,83,11,0.4)' }}
         >
           VANTAGE
         </h1>
@@ -33,7 +33,7 @@ export class ErrorBoundary extends Component {
         <button
           onClick={() => window.location.reload()}
           className="px-6 py-2.5 rounded-lg font-semibold text-sm text-black"
-          style={{ background: '#f97316' }}
+          style={{ background: '#e8530b' }}
         >
           Reload App
         </button>
