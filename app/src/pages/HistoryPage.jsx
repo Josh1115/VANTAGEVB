@@ -1534,17 +1534,27 @@ export function HistoryPage() {
 
   return (
     <div className="pb-24">
-      <PageHeader
-        title={orgName ? `History — ${orgName}` : 'History'}
-        action={teamId && (
-          <button
-            onClick={() => setShowAdd(true)}
-            className="px-3 py-1 rounded-lg bg-primary text-white text-sm font-bold"
-          >
-            + Season
-          </button>
-        )}
-      />
+      <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 pb-3 pt-safe flex flex-col items-center gap-0.5">
+        <div className="w-full flex items-center justify-end">
+          {teamId && (
+            <button
+              onClick={() => setShowAdd(true)}
+              className="px-3 py-1 rounded-lg bg-primary text-white text-sm font-bold"
+            >
+              + Season
+            </button>
+          )}
+        </div>
+        <img
+          src="/logo.png"
+          alt="VANTAGE"
+          className="h-auto mx-auto"
+          style={{ width: 'min(52vw, 260px)', transform: 'translateX(-3%)' }}
+        />
+        <span className="text-lg font-bold text-white tracking-wide">
+          {orgName ? `History — ${orgName}` : 'History'}
+        </span>
+      </header>
 
       <div className="p-4 space-y-4">
         {orgs && orgs.length > 1 && (

@@ -76,33 +76,22 @@ export function LoginPage({ onSignup }) {
       className="min-h-screen bg-slate-950 flex flex-col items-center px-8 animate-fade-in"
       style={{ paddingTop: 'max(env(safe-area-inset-top), 3.5rem)' }}
     >
+      {/* Brandmark — outside max-w-sm so it can span full width */}
+      <div
+        className="w-full mb-6"
+        style={{ opacity: phase >= 1 ? 1 : 0, transition: 'opacity 1.3s ease' }}
+      >
+        <img
+          src="/logo.png"
+          alt="VANTAGE"
+          className="h-auto mx-auto"
+          style={{ width: 'min(92vw, 720px)', transform: 'translateX(-3%)' }}
+        />
+      </div>
+
       <div className="flex flex-col items-center w-full max-w-sm flex-1">
 
-        {/* Brandmark */}
         <div className="flex flex-col items-center gap-5 w-full">
-          {/* Mobile: fill container width to avoid viewport clipping */}
-          <div
-            className="md:hidden w-full"
-            style={{ opacity: phase >= 1 ? 1 : 0, transition: 'opacity 1.3s ease' }}
-          >
-            <VantageLogo
-              animated={phase >= 2}
-              svgStyle={{ width: '100%', height: 'auto' }}
-            />
-          </div>
-          {/* Desktop: scale 2x — wide enough that overflow doesn't clip */}
-          <div
-            className="hidden md:block"
-            style={{
-              opacity: phase >= 1 ? 1 : 0,
-              transition: 'opacity 1.3s ease',
-              transform: 'scale(2)',
-              transformOrigin: 'top center',
-              marginBottom: '5.5rem',
-            }}
-          >
-            <VantageLogo animated={phase >= 2} />
-          </div>
           <p className="text-2xl font-semibold tracking-[0.25em] text-slate-400 flex flex-col items-center gap-1 md:flex-row md:gap-3">
             {['IMMEDIATE', 'IMPACT', 'ANALYTICS'].map((word, i) => (
               <span

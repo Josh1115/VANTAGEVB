@@ -646,10 +646,18 @@ export function TeamsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Teams"
-        action={<Button size="sm" onClick={() => setOrgModal({})}>+ Org</Button>}
-      />
+      <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 pb-3 pt-safe flex flex-col items-center gap-0.5">
+        <div className="w-full flex items-center justify-end">
+          <Button size="sm" onClick={() => setOrgModal({})}>+ Org</Button>
+        </div>
+        <img
+          src="/logo.png"
+          alt="VANTAGE"
+          className="h-auto mx-auto"
+          style={{ width: 'min(52vw, 260px)', transform: 'translateX(-3%)' }}
+        />
+        <span className="text-lg font-bold text-white tracking-wide">Teams</span>
+      </header>
 
       <div className="p-4 md:p-6 space-y-4">
         {orgs === undefined && (

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
 import { createPortal } from 'react-dom';
-import { VantageLogo } from '../components/ui/VantageLogo';
 import { STORAGE_KEYS, getStorageItem, setStorageItem, getIntStorage, getPlayoffLabel, getBoolStorage, setBoolStorage } from '../utils/storage';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -874,8 +873,12 @@ export function HomePage() {
           </div>
         ))}
 
-        <h1 className="tracking-wide flex flex-col items-center gap-0.5">
-          <VantageLogo
+        <h1 className="tracking-wide flex flex-col items-center gap-0.5" style={{ transform: 'translateY(25%)' }}>
+          <img
+            src="/logo.png"
+            alt="VANTAGE"
+            className="h-auto mx-auto"
+            style={{ width: 'min(62vw, 482px)', transform: 'translateX(-3%)' }}
             onClick={handleLogoClick}
             onPointerDown={handleLogoPointerDown}
             onPointerUp={handleLogoPointerUp}
@@ -886,12 +889,6 @@ export function HomePage() {
           </span>
         </h1>
 
-        <img
-          src="/icons/logo_vec2.png"
-          alt="Vantage logo"
-          className="absolute left-1/2 pointer-events-none"
-          style={{ height: '48px', width: 'auto', bottom: '-2px', transform: 'translateX(-50%)' }}
-        />
       </header>
 
       <div className="p-4 md:p-6 space-y-4">

@@ -1556,8 +1556,12 @@ export function SettingsPage() {
         {/* About */}
         <section className="bg-surface rounded-xl p-5">
           <div className="text-center mb-4">
-            <h2 className="text-2xl font-black tracking-[0.25em] uppercase text-[#e8530b]">VANTAGE</h2>
-            <img src="/icons/logo_vec2.png" alt="Vantage logo" className="mx-auto my-2" style={{ width: '20%' }} />
+            <img
+              src="/logo.png"
+              alt="VANTAGE"
+              className="h-auto mx-auto"
+              style={{ width: 'min(72vw, 340px)', transform: 'translateX(-3%)' }}
+            />
             <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-400 mt-1">Immediate Impact Analytics</p>
             <p className="text-[10px] text-slate-600 mt-1 font-mono">v{__APP_VERSION__}</p>
           </div>

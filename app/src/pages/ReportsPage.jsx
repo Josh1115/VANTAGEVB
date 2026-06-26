@@ -661,7 +661,15 @@ export function ReportsPage() {
 
   return (
     <div>
-      <PageHeader title="Stats" />
+      <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 pb-3 pt-safe flex flex-col items-center gap-0.5">
+        <img
+          src="/logo.png"
+          alt="VANTAGE"
+          className="h-auto mx-auto"
+          style={{ width: 'min(52vw, 260px)', transform: 'translateX(-3%)' }}
+        />
+        <span className="text-lg font-bold text-white tracking-wide">Stats</span>
+      </header>
 
       {/* Filters */}
       <div className="px-4 pt-4 pb-2 flex gap-3 flex-wrap">
