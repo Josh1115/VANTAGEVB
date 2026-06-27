@@ -1626,7 +1626,7 @@ export function SettingsPage() {
             <h2
               className="text-[18.4px] font-black uppercase leading-none section-twinkle"
               style={{ color: '#ffffff', letterSpacing: '0.15em' }}
-            >Subscription</h2>
+            >Pricing</h2>
             {!isMaster && (
               <button
                 onClick={() => navigate('/upgrade')}
