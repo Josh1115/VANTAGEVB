@@ -1362,9 +1362,6 @@ export function HomePage() {
             {/* Antenna dots at net top & bottom */}
             <circle cx="180" cy="6"   r="3" fill="white" />
             <circle cx="180" cy="194" r="3" fill="white" />
-            {/* Service zone center dashes */}
-            <line x1="6"   y1="100" x2="120" y2="100" stroke="white" strokeWidth="0.8" strokeDasharray="10 6" />
-            <line x1="240" y1="100" x2="354" y2="100" stroke="white" strokeWidth="0.8" strokeDasharray="10 6" />
           </svg>
 
           <div className="flex items-center justify-between mb-2">
