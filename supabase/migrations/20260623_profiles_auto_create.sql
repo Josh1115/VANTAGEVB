@@ -6,14 +6,15 @@
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, coach_name, school_name, school_type, school_state)
+  INSERT INTO public.profiles (id, email, coach_name, school_name, school_type, school_state, plan)
   VALUES (
     NEW.id,
     NEW.email,
     NEW.raw_user_meta_data->>'coach_name',
     NEW.raw_user_meta_data->>'school_name',
     NEW.raw_user_meta_data->>'school_type',
-    NEW.raw_user_meta_data->>'school_state'
+    NEW.raw_user_meta_data->>'school_state',
+    'trial'
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;

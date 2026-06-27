@@ -515,10 +515,11 @@ export function HomePage() {
   }, [defaultSeasonId]);
 
   const setupState = useLiveQuery(async () => {
-    const [allTeams, allSeasons, playerCount] = await Promise.all([
+    const [allTeams, allSeasons, playerCount, matchCount] = await Promise.all([
       db.teams.toArray(),
       db.seasons.toArray(),
       db.players.count(),
+      db.matches.count(),
     ]);
     // Auto-set defaults when exactly one team/season exists and no default is saved yet
     if (allTeams.length === 1 && !getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID)) {
@@ -528,10 +529,12 @@ export function HomePage() {
       setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, allSeasons[0].id);
     }
     return {
-      hasTeam: allTeams.length > 0,
-      hasSeason: allSeasons.length > 0,
-      hasPlayers: playerCount > 0,
-      firstTeamId: allTeams[0]?.id ?? null,
+      hasTeam:     allTeams.length > 0,
+      hasSeason:   allSeasons.length > 0,
+      hasPlayers:  playerCount > 0,
+      hasSchedule: matchCount > 0,
+      firstTeamId:   allTeams[0]?.id ?? null,
+      firstSeasonId: allSeasons[0]?.id ?? null,
     };
   }, []);
 
@@ -1406,19 +1409,18 @@ export function HomePage() {
           )}
 
           {recentMatches !== undefined && displayMatches.length === 0 && (() => {
-            const { hasTeam, hasSeason, hasPlayers, firstTeamId } = setupState ?? {};
-            const allDone = hasTeam && hasSeason && hasPlayers;
-            const teamRoute = firstTeamId ? `/teams/${firstTeamId}` : '/teams';
-
-            if (!allDone) {
-              const steps = [
-                { label: 'Create a team',  done: !!hasTeam,    action: () => navigate('/teams'),      hint: 'School, club, or program name' },
-                { label: 'Create a season', done: !!hasSeason, action: () => navigate(teamRoute),     hint: 'Year, name, and schedule' },
-                { label: 'Add players',    done: !!hasPlayers,  action: () => navigate(teamRoute),    hint: 'Roster & jersey numbers' },
-                { label: 'Start a match',  done: false,         action: () => navigate('/matches/new'), hint: 'Record your first stats' },
-              ];
-              const nextIdx = steps.findIndex(s => !s.done);
-              return (
+            const { hasTeam, hasSeason, hasPlayers, hasSchedule, firstTeamId, firstSeasonId } = setupState ?? {};
+            const teamRoute   = firstTeamId   ? `/teams/${firstTeamId}`     : '/teams';
+            const seasonRoute = firstSeasonId ? `/seasons/${firstSeasonId}` : teamRoute;
+            const steps = [
+              { label: 'Create a Team',     done: !!hasTeam,     action: () => navigate('/teams'),           hint: 'School, club, or program name'   },
+              { label: 'Add a Roster',      done: !!hasPlayers,  action: () => navigate(teamRoute),          hint: 'Add players and jersey numbers'   },
+              { label: 'Create a Season',   done: !!hasSeason,   action: () => navigate(teamRoute),          hint: 'Year and season name'             },
+              { label: 'Add Your Schedule', done: !!hasSchedule, action: () => navigate(seasonRoute),        hint: 'Add opponents and match dates'    },
+              { label: 'Start a Match',     done: false,         action: () => navigate('/matches/new'),     hint: 'Record your first live stats'     },
+            ];
+            const nextIdx = steps.findIndex(s => !s.done);
+            return (
                 <div className="bg-surface rounded-xl p-4 space-y-1">
                   <p className="text-xs font-black uppercase tracking-widest text-slate-500 mb-3">Getting started</p>
 
@@ -1449,44 +1451,33 @@ export function HomePage() {
                     return (
                       <button
                         key={step.label}
-                        onClick={!isPast ? step.action : undefined}
-                        disabled={isPast}
+                        onClick={step.action}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors
-                          ${isPast ? 'opacity-40 cursor-default' : isNext ? 'bg-primary/10 hover:bg-primary/20 active:scale-[0.98]' : 'hover:bg-slate-700/50 active:scale-[0.98]'}`}
+                          ${isPast ? 'opacity-50' : isNext ? 'bg-primary/10 hover:bg-primary/20 active:scale-[0.98]' : 'hover:bg-slate-700/50 active:scale-[0.98]'}`}
                       >
                         <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-black
                           ${isPast ? 'bg-emerald-600 text-white' : isNext ? 'bg-primary text-white' : 'bg-slate-700 text-slate-400'}`}>
-                          {isPast ? '✓' : i + 1}
+                          {i + 1}
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className={`text-sm font-bold ${isPast ? 'line-through text-slate-500' : isNext ? 'text-white' : 'text-slate-400'}`}>
                             {step.label}
                           </p>
                           {!isPast && <p className="text-xs text-slate-500">{step.hint}</p>}
                         </div>
-                        {!isPast && <span className={`ml-auto text-lg ${isNext ? 'text-primary' : 'text-slate-600'}`}>›</span>}
+                        {isPast ? (
+                          <div className="w-5 h-5 rounded border-2 border-emerald-600 bg-emerald-600 flex items-center justify-center shrink-0">
+                            <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
+                              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </div>
+                        ) : (
+                          <div className={`w-5 h-5 rounded border-2 shrink-0 ${isNext ? 'border-primary' : 'border-slate-600'}`} />
+                        )}
                       </button>
                     );
                   })}
                 </div>
-              );
-            }
-
-            return (
-              <EmptyState
-                icon="🏐"
-                iconClassName="animate-ball-bounce"
-                title="No matches yet"
-                description={
-                  <span>
-                    Tap{' '}
-                    <button onClick={() => navigate('/matches/new')} className="text-primary underline underline-offset-2">
-                      New Match
-                    </button>
-                    {' '}to start tracking stats
-                  </span>
-                }
-              />
             );
           })()}
 
