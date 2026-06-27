@@ -3,6 +3,7 @@ import Dexie from 'dexie';
 import { supabase } from '../utils/supabase';
 import { saveToCloud, restoreFromCloud } from '../stats/backup';
 import { db } from '../db/schema';
+import { getStorageItem, setStorageItem, STORAGE_KEYS } from '../utils/storage';
 
 const AuthContext = createContext(null);
 
@@ -84,6 +85,14 @@ export function AuthProvider({ children }) {
       .eq('id', userId)
       .single();
     setProfile(data ?? null);
+
+    // Seed localStorage from profile on first login — only if the key is empty
+    if (data) {
+      if (!getStorageItem(STORAGE_KEYS.COACH_NAME) && data.coach_name)
+        setStorageItem(STORAGE_KEYS.COACH_NAME, data.coach_name);
+      if (!getStorageItem(STORAGE_KEYS.PROGRAM_NAME) && data.school_name)
+        setStorageItem(STORAGE_KEYS.PROGRAM_NAME, data.school_name);
+    }
   }
 
   async function autoSync() {
