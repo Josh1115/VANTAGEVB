@@ -328,12 +328,12 @@ function SettingsGearIcon({ active }) {
 }
 
 const TABS = [
-  { to: '/',         label: 'Dashboard', svg: HomeScoreboardIcon, end: true,  idleAnim: 'animate-home-pulse'      },
-  { to: '/teams',    label: 'Teams',   svg: TeamsIcon, end: false, idleAnim: ''                        },
-  { to: '/records',  label: 'Records', svg: ConfettiTrophy, end: false, idleAnim: 'animate-trophy-twinkle', requires: 'core' },
-  { to: '/history',  label: 'History', svg: HistoryBookIcon,   end: false, idleAnim: 'animate-book-open',  requires: 'core' },
-  { to: '/reports',  label: 'Stats', svg: ReportsChartIcon, end: false, idleAnim: 'animate-icon-bounce', requires: 'core' },
-  { to: '/settings', label: 'Settings', svg: SettingsGearIcon, end: false, idleAnim: 'animate-gear-spin' },
+  { to: '/',         label: 'Dashboard', svg: HomeScoreboardIcon, end: true,  idleAnim: 'animate-trophy-twinkle'  },
+  { to: '/teams',    label: 'Teams',     svg: TeamsIcon,          end: false, idleAnim: 'animate-trophy-twinkle'  },
+  { to: '/records',  label: 'Records',   svg: ConfettiTrophy,     end: false, idleAnim: 'animate-trophy-twinkle', requires: 'core' },
+  { to: '/history',  label: 'History',   svg: HistoryBookIcon,    end: false, idleAnim: 'animate-trophy-twinkle', requires: 'core' },
+  { to: '/reports',  label: 'Stats',     svg: ReportsChartIcon,   end: false, idleAnim: 'animate-trophy-twinkle', requires: 'core' },
+  { to: '/settings', label: 'Settings',  svg: SettingsGearIcon,   end: false, idleAnim: 'animate-trophy-twinkle' },
 ];
 
 const tabClass = (isActive, locked) =>
@@ -390,7 +390,7 @@ export const NavBar = memo(function NavBar() {
                   <span className="relative flex items-center justify-center w-7 h-7">
                     <span
                       key={String(isActive)}
-                      className={`flex items-center justify-center w-7 h-7 ${!locked && isActive ? (tab.idleAnim ?? 'animate-icon-bounce') : ''}`}
+                      className={`flex items-center justify-center w-7 h-7 ${!locked && isActive ? (tab.idleAnim ?? 'animate-trophy-twinkle') : ''}`}
                     >
                       <SvgIcon active={!locked && isActive} />
                     </span>

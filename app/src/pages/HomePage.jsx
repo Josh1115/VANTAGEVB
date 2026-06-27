@@ -515,12 +515,24 @@ export function HomePage() {
   }, [defaultSeasonId]);
 
   const setupState = useLiveQuery(async () => {
-    const [teamCount, seasonCount, playerCount] = await Promise.all([
-      db.teams.count(),
-      db.seasons.count(),
+    const [allTeams, allSeasons, playerCount] = await Promise.all([
+      db.teams.toArray(),
+      db.seasons.toArray(),
       db.players.count(),
     ]);
-    return { hasTeam: teamCount > 0, hasSeason: seasonCount > 0, hasPlayers: playerCount > 0 };
+    // Auto-set defaults when exactly one team/season exists and no default is saved yet
+    if (allTeams.length === 1 && !getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID)) {
+      setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, allTeams[0].id);
+    }
+    if (allSeasons.length === 1 && !getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID)) {
+      setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, allSeasons[0].id);
+    }
+    return {
+      hasTeam: allTeams.length > 0,
+      hasSeason: allSeasons.length > 0,
+      hasPlayers: playerCount > 0,
+      firstTeamId: allTeams[0]?.id ?? null,
+    };
   }, []);
 
   const seasonLeaders = useLiveQuery(async () => {
@@ -1397,15 +1409,16 @@ export function HomePage() {
           )}
 
           {recentMatches !== undefined && displayMatches.length === 0 && (() => {
-            const { hasTeam, hasSeason, hasPlayers } = setupState ?? {};
-            const allDone = hasTeam && hasPlayers && hasSeason;
+            const { hasTeam, hasSeason, hasPlayers, firstTeamId } = setupState ?? {};
+            const allDone = hasTeam && hasSeason && hasPlayers;
+            const teamRoute = firstTeamId ? `/teams/${firstTeamId}` : '/teams';
 
             if (!allDone) {
               const steps = [
-                { label: 'Create a team', done: !!hasTeam,    action: () => navigate('/teams'),         hint: 'School, club, or program' },
-                { label: 'Add players',   done: !!hasPlayers, action: () => navigate('/teams'),         hint: 'Roster & jersey numbers' },
-                { label: 'Add a season',  done: !!hasSeason,  action: () => navigate('/seasons'),       hint: 'Year, name, and schedule' },
-                { label: 'Start a match', done: false,        action: () => navigate('/matches/new'),   hint: 'Record your first stats' },
+                { label: 'Create a team',  done: !!hasTeam,    action: () => navigate('/teams'),      hint: 'School, club, or program name' },
+                { label: 'Create a season', done: !!hasSeason, action: () => navigate(teamRoute),     hint: 'Year, name, and schedule' },
+                { label: 'Add players',    done: !!hasPlayers,  action: () => navigate(teamRoute),    hint: 'Roster & jersey numbers' },
+                { label: 'Start a match',  done: false,         action: () => navigate('/matches/new'), hint: 'Record your first stats' },
               ];
               const nextIdx = steps.findIndex(s => !s.done);
               return (
