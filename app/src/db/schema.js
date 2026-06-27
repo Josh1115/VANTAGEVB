@@ -1,6 +1,15 @@
 import Dexie from 'dexie';
 
-export const db = new Dexie('VBAPPv2');
+function getDbName() {
+  try {
+    const uid = localStorage.getItem('vbstat_user_id');
+    return uid ? `VBAPPv2_${uid}` : 'VBAPPv2';
+  } catch {
+    return 'VBAPPv2';
+  }
+}
+
+export const db = new Dexie(getDbName());
 
 // v21: add share_token to teams for FamilyScope HUB sharing.
 db.version(21).stores({
