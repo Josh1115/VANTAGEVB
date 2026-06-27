@@ -2,7 +2,6 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App.jsx';
-import { seedDevData, patchSeedPositions } from './db/seeds.js';
 import { STORAGE_KEYS, getBoolStorage, getStorageItem } from './utils/storage.js';
 import { ACCENT_COLORS } from './constants/index.js';
 
@@ -27,11 +26,6 @@ if (getBoolStorage(STORAGE_KEYS.SIDELINE_MODE)) {
 window.addEventListener('unhandledrejection', (e) => {
   console.error('[VANTAGE] Unhandled promise rejection:', e.reason);
 });
-
-// Seed dev data if DB is empty, then patch any missing positions
-if (import.meta.env.DEV) {
-  seedDevData().then(() => patchSeedPositions()).catch(console.error);
-}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

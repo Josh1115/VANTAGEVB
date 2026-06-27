@@ -90,8 +90,8 @@ export function getIntStorage(key, defaultValue = NaN) {
   }
 }
 
-// Returns the full playoff label, e.g. "IHSA Playoffs" or "NCAA Playoffs".
+// Returns the playoff label: "Postseason" if no org is set, otherwise "<org> Playoffs".
 export function getPlayoffLabel() {
-  const org = getStorageItem(STORAGE_KEYS.PLAYOFF_ORG, 'IHSA').trim();
-  return org ? `${org} Playoffs` : 'IHSA Playoffs';
+  const org = getStorageItem(STORAGE_KEYS.PLAYOFF_ORG, '').trim();
+  return org ? `${org} Playoffs` : 'Postseason';
 }
