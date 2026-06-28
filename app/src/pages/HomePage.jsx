@@ -1369,7 +1369,7 @@ export function HomePage() {
 
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold text-white uppercase tracking-wide flex items-center gap-1.5">
-              {matchView === 'schedule' ? 'Schedule' : 'Closest'} Matches
+              Schedule
               {matchView === 'closest' && displayMatches.length > 0 && (
                 <button
                   onClick={() => setClosestSortAsc(v => { const next = !v; setStorageItem(STORAGE_KEYS.CLOSEST_SORT_ASC, String(next)); return next; })}
@@ -1429,13 +1429,7 @@ export function HomePage() {
                       <span className="text-xl shrink-0">📖</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-white">New to Vantage?</p>
-                        <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">Read the First Match Guide — setup to live stats in 5 minutes.</p>
-                        <button
-                          onClick={() => navigate('/help/first-match')}
-                          className="mt-2 text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors"
-                        >
-                          Read the guide →
-                        </button>
+                        <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">Follow the steps below to get started!</p>
                       </div>
                       <button
                         onClick={() => { setBoolStorage(STORAGE_KEYS.HELP_GUIDE_SEEN, true); setGuideVisible(false); }}
