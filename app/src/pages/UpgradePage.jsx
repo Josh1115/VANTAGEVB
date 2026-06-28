@@ -191,7 +191,7 @@ export function UpgradePage() {
                         : 'bg-slate-700 text-white hover:bg-slate-600'
                     }`}
                   >
-                    {loading ? 'Redirecting…' : `${isRenewing ? 'Renew' : 'Subscribe'} — ${PLAN_PRICES[plan.key]}`}
+                    {loading ? 'Redirecting…' : `${isRenewing ? 'Renew' : 'Purchase'} — ${PLAN_PRICES[plan.key]}`}
                   </button>
                 )}
               </div>
