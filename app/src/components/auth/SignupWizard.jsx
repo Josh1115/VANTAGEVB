@@ -390,10 +390,6 @@ export function SignupWizard({ onComplete, onBack }) {
       });
       if (error) throw error;
       if (data.session) {
-        // Stamp the profile with trial plan (DB trigger may have already created the row)
-        await supabase
-          .from('profiles')
-          .upsert({ id: data.session.user.id }, { onConflict: 'id', ignoreDuplicates: true });
         onComplete();
       } else {
         setStep(5); // email confirmation required — show check-your-email screen

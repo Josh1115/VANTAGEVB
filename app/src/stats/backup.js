@@ -225,6 +225,14 @@ export async function restoreFromCloud(supabase, { teamsAllowed = Infinity, matc
   }
 
   await applyBackupData(payload);
+
+  // Sync the server-side match counter so trial limits reflect restored data
+  if (backupMatchCount > 0) {
+    await supabase
+      .from('profiles')
+      .update({ matches_created: backupMatchCount })
+      .eq('id', user.id);
+  }
 }
 
 export async function getCloudBackupMeta(supabase, session) {
