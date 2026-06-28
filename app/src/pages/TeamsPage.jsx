@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
@@ -116,10 +117,10 @@ function OrgFormModal({ onClose, org }) {
     </button>
   );
 
-  return (
+  return createPortal(
     <>
       <div
-        className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
+        className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       >
         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-md space-y-3 max-h-[92dvh] overflow-y-auto">
@@ -288,7 +289,8 @@ function OrgFormModal({ onClose, org }) {
           onClose={() => setShowLogoPicker(false)}
         />
       )}
-    </>
+    </>,
+    document.body
   );
 }
 
