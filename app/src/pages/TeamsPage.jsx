@@ -122,7 +122,7 @@ function OrgFormModal({ onClose, org }) {
         className="fixed inset-0 z-50 overflow-hidden bg-black/60 flex items-center justify-center p-4"
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       >
-        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 w-full max-w-md space-y-2.5 max-h-[92dvh] overflow-y-auto">
+        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-md space-y-3 max-h-[92dvh] overflow-y-auto">
 
           {/* header */}
           <div className="flex items-center justify-between">
@@ -133,13 +133,13 @@ function OrgFormModal({ onClose, org }) {
           {/* logo + name */}
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer"
+              className="w-11 h-11 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer"
               style={logoDataUrl ? { backgroundImage: 'repeating-conic-gradient(#334155 0% 25%, #1e293b 0% 50%)', backgroundSize: '8px 8px' } : {}}
               onClick={() => setShowLogoPicker(true)}
             >
               {logoDataUrl
                 ? <img src={logoDataUrl} alt="logo" className="max-w-full max-h-full object-contain" />
-                : <span className="text-lg text-slate-500">🏫</span>
+                : <span className="text-xl text-slate-500">🏫</span>
               }
             </div>
             <div className="flex-1">
@@ -156,7 +156,7 @@ function OrgFormModal({ onClose, org }) {
 
           {/* type */}
           <div>
-            <label className="block text-xs text-slate-400 mb-1">Type</label>
+            <label className="block text-xs text-slate-400 mb-1.5">Type</label>
             <div className="flex gap-1.5 bg-slate-800 rounded-xl p-1">
               {ORG_TYPES.map(t => (
                 <PillBtn key={t.value} active={type === t.value} onClick={() => setType(t.value)}>
@@ -188,7 +188,7 @@ function OrgFormModal({ onClose, org }) {
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Division</label>
+                <label className="block text-xs text-slate-400 mb-1.5">Division</label>
                 <div className="flex gap-1.5 flex-wrap">
                   {COLLEGE_DIVISIONS.map(d => (
                     <button
@@ -211,7 +211,7 @@ function OrgFormModal({ onClose, org }) {
           {type === 'club' && (
             <>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Association</label>
+                <label className="block text-xs text-slate-400 mb-1.5">Association</label>
                 <div className="flex gap-2">
                   {CLUB_ASSOCIATIONS.map(a => (
                     <PillBtn key={a} active={association === a} onClick={() => setAssociation(association === a ? '' : a)}>
@@ -221,12 +221,12 @@ function OrgFormModal({ onClose, org }) {
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Records Page</label>
+                <label className="block text-xs text-slate-400 mb-1.5">Records Page</label>
                 <div className="flex gap-1.5">
                   <PillBtn active={recordsScope === 'top_only'} onClick={() => setRecordsScope('top_only')}>18U only</PillBtn>
                   <PillBtn active={recordsScope === 'all_ages'} onClick={() => setRecordsScope('all_ages')}>All ages</PillBtn>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-0.5">
+                <p className="text-[11px] text-slate-500 mt-1">
                   {recordsScope === 'top_only'
                     ? 'Records shows only your 18U teams'
                     : 'Records shows every age group on its own board'}
@@ -237,11 +237,11 @@ function OrgFormModal({ onClose, org }) {
 
           {/* colors */}
           <div>
-            <label className="block text-xs text-slate-400 mb-1">
+            <label className="block text-xs text-slate-400 mb-1.5">
               Colors <span className="text-slate-600">(up to 3, used on banners)</span>
               {colorLimit && <span className="text-xs text-amber-400 ml-2">Max 3 colors</span>}
             </label>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1.5">
               {ORG_COLORS.map(c => {
                 const selected = colors.includes(c.id);
                 const order    = colors.indexOf(c.id);
@@ -250,16 +250,16 @@ function OrgFormModal({ onClose, org }) {
                     key={c.id}
                     type="button"
                     onClick={() => toggleColor(c.id)}
-                    className="flex flex-col items-center gap-0.5 p-1 rounded-lg border transition-colors relative"
+                    className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg border transition-colors relative"
                     style={{
                       borderColor: selected ? 'var(--color-primary)' : c.border,
                       boxShadow:   selected ? '0 0 0 2px var(--color-primary)' : 'none',
                     }}
                   >
-                    <span className="w-4 h-4 rounded-full block" style={{ background: c.bg, border: `1px solid ${c.border}` }} />
-                    <span className="text-[9px] text-slate-400 leading-none">{c.label}</span>
+                    <span className="w-5 h-5 rounded-full block" style={{ background: c.bg, border: `1px solid ${c.border}` }} />
+                    <span className="text-[10px] text-slate-400 leading-none">{c.label}</span>
                     {selected && (
-                      <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary text-white text-[7px] font-black flex items-center justify-center leading-none">
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-primary text-white text-[8px] font-black flex items-center justify-center leading-none">
                         {order + 1}
                       </span>
                     )}
@@ -275,7 +275,7 @@ function OrgFormModal({ onClose, org }) {
           </div>
 
           {/* footer */}
-          <div className="flex gap-2 justify-end pt-0.5">
+          <div className="flex gap-2 justify-end pt-1">
             <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
             <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
           </div>
