@@ -22,7 +22,7 @@ const ALL_FEATURES = [
   'Practice tools (serve tracker, serve receive, practice games)',
   'FamilyScope live sharing',
   'PDF, CSV & MaxPreps export',
-  'Unlimited matches per team per season',
+  'Up to 50 matches per team per season',
 ];
 
 export function UpgradePage() {
@@ -170,10 +170,11 @@ export function UpgradePage() {
               <div className="px-4 py-3 flex items-center justify-between gap-4">
                 <div>
                   <div className="text-base font-black text-white">{teamsLabel}</div>
-                  <div className="text-xs text-slate-400 mt-0.5">per season</div>
+                  <div className="text-xs text-slate-400 mt-0.5">Unlimited seasons · 50 matches/season</div>
                 </div>
                 <div className="text-right shrink-0">
                   <div className="text-xl font-black text-white">{PLAN_PRICES[plan.key]}</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">per season</div>
                 </div>
               </div>
               <div className="px-4 pb-4">
