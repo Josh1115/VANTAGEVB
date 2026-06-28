@@ -210,11 +210,9 @@ export function TeamDetailPage() {
   return (
     <div>
       <PageHeader title={team?.name ?? 'Team'} backTo="/teams" />
-      {(team?.state || team?.school_year) && (
+      {team?.state && (
         <div className="px-4 pb-2 flex gap-2 text-sm text-slate-400">
-          {team.state && <span>{team.state}</span>}
-          {team.state && team.school_year && <span>·</span>}
-          {team.school_year && <span>{team.school_year}</span>}
+          <span>{team.state}</span>
         </div>
       )}
 

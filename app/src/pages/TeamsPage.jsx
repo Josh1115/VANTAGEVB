@@ -344,7 +344,6 @@ function TeamFormModal({ onClose, orgId, team, orgType }) {
   const [gender, setGender] = useState(team?.gender ?? 'F');
   const [state, setState] = useState(team?.state ?? '');
   const [classification, setClassification] = useState(team?.classification ?? '');
-  const [schoolYear, setSchoolYear] = useState(team?.school_year ?? '');
   const toArr = (v) => Array.isArray(v) ? v : (v ? [v] : []);
   const [teamJerseyColors,   setTeamJerseyColors]   = useState(() => toArr(team?.team_jersey_color));
   const [liberoJerseyColors, setLiberoJerseyColors] = useState(() => toArr(team?.libero_jersey_color));
@@ -377,7 +376,6 @@ function TeamFormModal({ onClose, orgId, team, orgType }) {
         gender,
         state: state.trim() || null,
         classification: classification.trim().toUpperCase() || null,
-        school_year: schoolYear.trim() || null,
         team_jersey_color:   teamJerseyColors,
         libero_jersey_color: liberoJerseyColors,
       };
@@ -495,16 +493,6 @@ function TeamFormModal({ onClose, orgId, team, orgType }) {
               onChange={(e) => setClassification(e.target.value.toUpperCase().slice(0, 6))}
               placeholder="2A"
               maxLength={6}
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-slate-400 mb-1">School Year <span className="text-slate-500">(opt)</span></label>
-            <input
-              className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
-              value={schoolYear}
-              onChange={(e) => setSchoolYear(e.target.value)}
-              placeholder="2025-26"
-              maxLength={10}
             />
           </div>
         </div>
