@@ -306,6 +306,12 @@ export function ReportsPage() {
 
   // Filter data
   const teams   = useLiveQuery(() => db.teams.toArray(), []);
+
+  // Auto-select when only one team or season exists and nothing is chosen yet
+  useEffect(() => {
+    if (selectedTeamId || !teams?.length) return;
+    if (teams.length === 1) setSelectedTeamId(String(teams[0].id));
+  }, [teams]); // eslint-disable-line react-hooks/exhaustive-deps
   const genderOptions = useMemo(() => {
     const seen = new Set((teams ?? []).map(t => t.gender ?? '').filter(Boolean));
     return [...seen].sort();
@@ -321,6 +327,11 @@ export function ReportsPage() {
       : Promise.resolve([]),
     [selectedTeamId]
   );
+
+  useEffect(() => {
+    if (selectedSeasonId || !seasons?.length) return;
+    if (seasons.length === 1) setSelectedSeasonId(String(seasons[0].id));
+  }, [seasons]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Matches for the selected season (for the match picker)
   const seasonMatches = useLiveQuery(

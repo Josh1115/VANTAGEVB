@@ -1162,15 +1162,23 @@ export function HistoryPage() {
     }
   }, [awardTypes]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // One-time auto-select: jump to the default team when page opens with nothing selected
+  // One-time auto-select: jump to the default team (or the only team) when page opens with nothing selected
   useEffect(() => {
-    if (!defaultTeamId || orgId) return;
-    db.teams.get(defaultTeamId).then(team => {
+    if (orgId) return;
+    const resolve = async () => {
+      let team = null;
+      if (defaultTeamId) {
+        team = await db.teams.get(defaultTeamId);
+      } else {
+        const all = await db.teams.toArray();
+        if (all.length === 1) team = all[0];
+      }
       if (!team) return;
       setOrgId(team.org_id);
       setGender(team.gender ?? null);
       setTeamId(team.id);
-    });
+    };
+    resolve();
   }, [defaultTeamId]); // eslint-disable-line react-hooks/exhaustive-deps -- run only on mount
 
   // The history entry (if any) whose year matches the active season — folded into the live card

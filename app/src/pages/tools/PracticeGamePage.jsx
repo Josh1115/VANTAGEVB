@@ -50,6 +50,11 @@ function SetupView({ onStart, onResume, onDiscardDraft }) {
   const [draft]                 = useState(() => readDraftJson(DRAFT_KEY));
 
   const teams   = useLiveQuery(() => db.teams.orderBy('name').toArray(), []);
+
+  useEffect(() => {
+    if (teamId != null || !teams?.length) return;
+    if (teams.length === 1) setTeamId(teams[0].id);
+  }, [teams]); // eslint-disable-line react-hooks/exhaustive-deps
   const players = useLiveQuery(
     () => teamId ? db.players.where('team_id').equals(teamId).filter((p) => p.is_active).toArray() : [],
     [teamId]
