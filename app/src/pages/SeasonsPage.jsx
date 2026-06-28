@@ -16,7 +16,7 @@ const GENDER_ORDER  = ['F', 'M'];
 const GENDER_LABELS = { F: 'Girls', M: 'Boys' };
 const LEVEL_ORDER   = ['varsity', 'jv', 'frosh', 'freshman', 'other'];
 const LEVEL_LABELS  = { varsity: 'Varsity', jv: 'JV', frosh: 'Freshman', freshman: 'Freshman' };
-const levelLabel = (l) => LEVEL_LABELS[l?.toLowerCase()] ?? (l ? l.charAt(0).toUpperCase() + l.slice(1) : 'Other');
+const levelLabel = (l) => LEVEL_LABELS[l?.toLowerCase()] ?? (l ? l.charAt(0).toUpperCase() + l.slice(1) : '');
 const levelRank  = (l) => { const i = LEVEL_ORDER.indexOf(l?.toLowerCase()); return i === -1 ? 99 : i; };
 
 function getAccent(team) {

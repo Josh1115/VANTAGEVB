@@ -370,7 +370,7 @@ function TeamFormModal({ onClose, orgId, team, orgType }) {
       const fields = {
         name: name.trim(),
         abbreviation: abbreviation.trim().toUpperCase() || null,
-        level: isClub ? 'varsity' : level,
+        level: isClub ? null : level,
         age_group: isClub ? ageGroup : null,
         gender,
         state: state.trim() || null,
