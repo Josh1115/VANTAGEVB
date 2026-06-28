@@ -95,13 +95,13 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function autoSync() {
+  async function autoSync(session) {
     try {
       const teamCount = await db.teams.count();
       if (teamCount === 0) {
-        await restoreFromCloud(supabase);
+        await restoreFromCloud(supabase, { session });
       } else {
-        await saveToCloud(supabase);
+        await saveToCloud(supabase, session);
       }
     } catch {
       // Sync failures are silent — app still works offline
@@ -147,7 +147,7 @@ export function AuthProvider({ children }) {
       if (session) {
         fetchProfile(session.user.id);
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          migrateSharedDb().then(() => autoSync());
+          migrateSharedDb().then(() => autoSync(session));
         }
       } else {
         setProfile(null);

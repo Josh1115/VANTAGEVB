@@ -26,7 +26,7 @@ const ALL_FEATURES = [
 ];
 
 export function UpgradePage() {
-  const { profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile, session } = useAuth();
   const [loadingPlan, setLoadingPlan] = useState(null);
   const [error, setError] = useState('');
   const [searchParams] = useSearchParams();
@@ -38,10 +38,9 @@ export function UpgradePage() {
   const didSucceed  = searchParams.get('success') === '1';
   const didCancel   = searchParams.get('canceled') === '1';
 
-  // Fix 5: Poll until the webhook has landed and the plan matches, instead of
-  // refreshing once immediately (webhook delivery can lag the redirect by 5-30s)
+  // Poll until the webhook has landed and the plan matches
   useEffect(() => {
-    if (!didSucceed || !successPlan) return;
+    if (!didSucceed || !successPlan || !session) return;
 
     let cancelled = false;
     let attempts = 0;
@@ -49,8 +48,6 @@ export function UpgradePage() {
 
     async function checkPlan() {
       if (cancelled) return;
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
       const { data } = await supabase
         .from('profiles')
         .select('plan')
@@ -66,13 +63,12 @@ export function UpgradePage() {
 
     checkPlan();
     return () => { cancelled = true; };
-  }, [didSucceed, successPlan]);
+  }, [didSucceed, successPlan, session]);
 
   async function handleUpgrade(planKey) {
     setError('');
     setLoadingPlan(planKey);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not signed in');
 
       const res = await fetch(

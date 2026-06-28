@@ -1393,7 +1393,7 @@ export function SettingsPage() {
   async function handleSaveToCloud() {
     setCloudSaving(true);
     try {
-      await saveToCloud(supabase);
+      await saveToCloud(supabase, session);
       const now = new Date().toISOString();
       setLastCloudSave(now);
       showToast('Saved to cloud', 'success');
@@ -1409,7 +1409,7 @@ export function SettingsPage() {
     setCloudRestoring(true);
     setConfirmCloudRestore(false);
     try {
-      await restoreFromCloud(supabase, { matchLimit, teamsAllowed });
+      await restoreFromCloud(supabase, { matchLimit, teamsAllowed, session });
       showToast('Restored from cloud', 'success');
       window.location.reload();
     } catch (e) {

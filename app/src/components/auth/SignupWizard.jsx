@@ -399,7 +399,14 @@ export function SignupWizard({ onComplete, onBack }) {
         setStep(5); // email confirmation required — show check-your-email screen
       }
     } catch (err) {
-      setError(err.message ?? 'Sign up failed. Please try again.');
+      const msg = err.message ?? '';
+      if (/already registered/i.test(msg) || /already been registered/i.test(msg) || /user already exists/i.test(msg)) {
+        setError('An account with that email already exists. Try logging in instead.');
+      } else if (/password/i.test(msg)) {
+        setError('Password must be at least 8 characters.');
+      } else {
+        setError('Sign up failed. Please try again.');
+      }
     } finally {
       setSubmitting(false);
     }

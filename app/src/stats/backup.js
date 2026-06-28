@@ -187,8 +187,7 @@ export async function importBackup(file, { teamsAllowed = Infinity, matchLimit =
 
 // ── Cloud sync ────────────────────────────────────────────────────────────────
 
-export async function saveToCloud(supabase) {
-  const { data: { session } } = await supabase.auth.getSession();
+export async function saveToCloud(supabase, session) {
   const user = session?.user;
   if (!user) throw new Error('Not signed in');
   const payload = await collectBackupData();
@@ -201,8 +200,7 @@ export async function saveToCloud(supabase) {
   if (error) throw error;
 }
 
-export async function restoreFromCloud(supabase, { teamsAllowed = Infinity, matchLimit = Infinity } = {}) {
-  const { data: { session } } = await supabase.auth.getSession();
+export async function restoreFromCloud(supabase, { teamsAllowed = Infinity, matchLimit = Infinity, session } = {}) {
   const user = session?.user;
   if (!user) throw new Error('Not signed in');
   const { data, error } = await supabase
@@ -229,8 +227,7 @@ export async function restoreFromCloud(supabase, { teamsAllowed = Infinity, matc
   await applyBackupData(payload);
 }
 
-export async function getCloudBackupMeta(supabase) {
-  const { data: { session } } = await supabase.auth.getSession();
+export async function getCloudBackupMeta(supabase, session) {
   const user = session?.user;
   if (!user) return null;
   const { data } = await supabase
