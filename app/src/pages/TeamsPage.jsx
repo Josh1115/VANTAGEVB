@@ -416,7 +416,7 @@ function TeamFormModal({ onClose, orgId, team, orgType }) {
               className={`w-full bg-bg border rounded-lg px-3 py-2 text-white ${nameError ? 'border-red-500' : 'border-slate-600'}`}
               value={name}
               onChange={(e) => { setName(e.target.value); setNameError(''); }}
-              placeholder="Varsity Girls"
+              placeholder="ex: Varsity, TNT 18 Gold"
               autoFocus
             />
             {nameError && <p className="text-xs text-red-400 mt-1">{nameError}</p>}
