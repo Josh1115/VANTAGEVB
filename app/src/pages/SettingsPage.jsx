@@ -1505,14 +1505,12 @@ export function SettingsPage() {
   async function handleManageBilling() {
     setPortalLoading(true);
     try {
-      const { data } = await supabase.auth.getSession();
-      const s = data?.session;
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-portal-session`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${s?.access_token}`,
+            'Authorization': `Bearer ${session?.access_token}`,
             'Content-Type': 'application/json',
           },
         }
