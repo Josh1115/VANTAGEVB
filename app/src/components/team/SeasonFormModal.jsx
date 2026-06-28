@@ -50,7 +50,7 @@ export function SeasonFormModal({ onClose, teamId, season, required = false }) {
             className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Fall 2025"
+            placeholder="ex: Fall 2025, 2026, SPR25"
             autoFocus
           />
         </div>

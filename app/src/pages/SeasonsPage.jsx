@@ -94,7 +94,7 @@ function NewSeasonModal({ onClose }) {
             className={sel}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Fall 2025"
+            placeholder="ex: Fall 2025, 2026, SPR25"
           />
         </div>
         <div>
