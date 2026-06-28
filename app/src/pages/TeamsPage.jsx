@@ -119,7 +119,7 @@ function OrgFormModal({ onClose, org }) {
   return (
     <>
       <div
-        className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+        className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       >
         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-md space-y-3 max-h-[92dvh] overflow-y-auto">
