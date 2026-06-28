@@ -170,7 +170,7 @@ export function UpgradePage() {
               <div className="px-4 py-3 flex items-center justify-between gap-4">
                 <div>
                   <div className="text-base font-black text-white">{teamsLabel}</div>
-                  <div className="text-xs text-slate-400 mt-0.5">Unlimited seasons · 50 matches/season</div>
+                  <div className="text-xs text-slate-400 mt-0.5">50 matches/season</div>
                 </div>
                 <div className="text-right shrink-0">
                   <div className="text-xl font-black text-white">{PLAN_PRICES[plan.key]}</div>
