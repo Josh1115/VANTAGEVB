@@ -1414,8 +1414,8 @@ export function HomePage() {
             const seasonRoute = firstSeasonId ? `/seasons/${firstSeasonId}` : teamRoute;
             const steps = [
               { label: 'Create a Team',     done: !!hasTeam,     action: () => navigate('/teams'),           hint: 'School, club, or program name'   },
-              { label: 'Add a Roster',      done: !!hasPlayers,  action: () => navigate(teamRoute),          hint: 'Add players and jersey numbers'   },
               { label: 'Create a Season',   done: !!hasSeason,   action: () => navigate(teamRoute),          hint: 'Year and season name'             },
+              { label: 'Add a Roster',      done: !!hasPlayers,  action: () => navigate(teamRoute),          hint: 'Add players and jersey numbers'   },
               { label: 'Add Your Schedule', done: !!hasSchedule, action: () => navigate(seasonRoute),        hint: 'Add opponents and match dates'    },
               { label: 'Start a Match',     done: false,         action: () => navigate('/matches/new'),     hint: 'Record your first live stats'     },
             ];
