@@ -118,10 +118,11 @@ function OrgFormModal({ onClose, org }) {
 
   return (
     <>
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      >
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60">
+        <div
+          className="flex min-h-full items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        >
         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-md space-y-3">
 
           {/* header */}
@@ -279,6 +280,7 @@ function OrgFormModal({ onClose, org }) {
             <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
             <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
           </div>
+        </div>
         </div>
       </div>
 
