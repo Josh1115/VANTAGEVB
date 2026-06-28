@@ -2399,7 +2399,7 @@ export function MatchSummaryPage() {
                     type="text"
                     value={editForm.tourneyName}
                     onChange={(e) => setEditForm(f => ({ ...f, tourneyName: e.target.value }))}
-                    placeholder="e.g. Holiday Classic, IHSA Sectional…"
+                    placeholder="ex: Holiday Classic, IHSA Sectional…"
                     className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
                   />
                 </div>
@@ -2429,7 +2429,7 @@ export function MatchSummaryPage() {
                   type="text"
                   value={editForm.playoffRound}
                   onChange={(e) => setEditForm(f => ({ ...f, playoffRound: e.target.value }))}
-                  placeholder="e.g. Regional, Sectional, Super-Sectional, State…"
+                  placeholder="ex: Regional, Sectional, Super-Sectional, State…"
                   className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
                 />
               </div>

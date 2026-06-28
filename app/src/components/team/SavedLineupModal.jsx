@@ -56,7 +56,7 @@ export function SavedLineupModal({ onClose, teamId, savedLineup, activePlayers }
             className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Base Rotation, 6-2 Serve Receive"
+            placeholder="ex: Base Rotation, 6-2 Serve Receive"
             autoFocus
           />
         </div>

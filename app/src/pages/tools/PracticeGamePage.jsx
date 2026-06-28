@@ -111,7 +111,7 @@ function SetupView({ onStart, onResume, onDiscardDraft }) {
           type="text"
           value={opponent}
           onChange={(e) => setOpponent(e.target.value)}
-          placeholder="e.g. Blue team, JV scrimmage…"
+          placeholder="ex: Blue team, JV scrimmage…"
           className="w-full bg-slate-700 rounded-lg px-3 py-2.5 text-sm text-white border border-slate-600 focus:outline-none focus:border-primary placeholder-slate-500"
         />
       </div>

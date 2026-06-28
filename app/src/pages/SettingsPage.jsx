@@ -2056,7 +2056,7 @@ export function SettingsPage() {
                 type="text"
                 value={programName}
                 onChange={(e) => saveProgramName(e.target.value)}
-                placeholder="e.g. Lincoln Wildcats"
+                placeholder="ex: Lincoln Wildcats"
                 maxLength={60}
                 className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
               />
@@ -2072,7 +2072,7 @@ export function SettingsPage() {
                 type="text"
                 value={coachName}
                 onChange={(e) => saveCoachName(e.target.value)}
-                placeholder="e.g. Coach Johnson"
+                placeholder="ex: Coach Johnson"
                 maxLength={60}
                 className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
               />

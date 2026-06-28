@@ -534,7 +534,7 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
 
           <div>
             <label className={labelCls}>Value</label>
-            <input ref={isIndividual ? undefined : firstInputRef} className={inputCls} type="number" step="any" placeholder="e.g. 24" value={form.value} onChange={e => set('value', e.target.value)} />
+            <input ref={isIndividual ? undefined : firstInputRef} className={inputCls} type="number" step="any" placeholder="ex: 24" value={form.value} onChange={e => set('value', e.target.value)} />
           </div>
 
           {needsSeason && (
@@ -940,7 +940,7 @@ function TourneyEntryModal({ teamId, onClose, entryId, initialData }) {
         <div className="space-y-3">
           <div>
             <label className={labelCls}>Tournament Name</label>
-            <input className={inputCls} placeholder="e.g. Southside Classic" value={form.name} onChange={e => setField('name', e.target.value)} />
+            <input className={inputCls} placeholder="ex: Southside Classic" value={form.name} onChange={e => setField('name', e.target.value)} />
           </div>
 
           <div className="grid grid-cols-3 gap-2">

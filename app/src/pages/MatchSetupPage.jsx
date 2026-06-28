@@ -552,7 +552,7 @@ export function MatchSetupPage() {
               type="text"
               value={opponentRecord}
               onChange={(e) => setOpponentRecord(e.target.value)}
-              placeholder="e.g. 12-3"
+              placeholder="ex: 12-3"
               className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
             />
           </div>
@@ -565,7 +565,7 @@ export function MatchSetupPage() {
               min={1}
               value={opponentMaxprepsRank}
               onChange={(e) => setOpponentMaxprepsRank(e.target.value)}
-              placeholder="e.g. 42"
+              placeholder="ex: 42"
               className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
             />
           </div>
@@ -648,7 +648,7 @@ export function MatchSetupPage() {
                 type="text"
                 value={tournamentName}
                 onChange={(e) => setTournamentName(e.target.value)}
-                placeholder="e.g. Holiday Classic, IHSA Sectional…"
+                placeholder="ex: Holiday Classic, IHSA Sectional…"
                 className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
               />
             </div>
@@ -705,7 +705,7 @@ export function MatchSetupPage() {
               type="text"
               value={playoffRound}
               onChange={(e) => setPlayoffRound(e.target.value)}
-              placeholder="e.g. Regional, Sectional, Super-Sectional, State…"
+              placeholder="ex: Regional, Sectional, Super-Sectional, State…"
               className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
             />
           </div>
@@ -721,7 +721,7 @@ export function MatchSetupPage() {
               min="1"
               value={oppPlayoffSeed}
               onChange={(e) => setOppPlayoffSeed(e.target.value)}
-              placeholder="e.g. 3"
+              placeholder="ex: 3"
               className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
             />
           </div>

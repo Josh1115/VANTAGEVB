@@ -70,7 +70,7 @@ export function SeasonFormModal({ onClose, teamId, season, required = false }) {
               className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
               value={classification}
               onChange={(e) => setClassification(e.target.value)}
-              placeholder="e.g. 4A"
+              placeholder="ex: 4A"
             />
           </div>
           <div>
@@ -79,7 +79,7 @@ export function SeasonFormModal({ onClose, teamId, season, required = false }) {
               className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
               value={classRank}
               onChange={(e) => setClassRank(e.target.value)}
-              placeholder="e.g. 3"
+              placeholder="ex: 3"
             />
           </div>
         </div>

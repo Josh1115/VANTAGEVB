@@ -252,7 +252,7 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
                 <div key={i} className="flex items-center gap-2">
                   <input
                     className={`${inp} flex-1`}
-                    placeholder="e.g. Conference Champions"
+                    placeholder="ex: Conference Champions"
                     value={t}
                     onChange={e => {
                       const updated = [...(form.title ?? [])];
@@ -277,7 +277,7 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
 
           <div>
             <label className={lbl}>Class <span className="text-slate-600 font-normal">(optional)</span></label>
-            <input className={inp} placeholder="e.g. 4A" value={form.classification} onChange={e => set('classification', e.target.value)} />
+            <input className={inp} placeholder="ex: 4A" value={form.classification} onChange={e => set('classification', e.target.value)} />
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -316,15 +316,15 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
           <div className="grid grid-cols-3 gap-2">
             <div>
               <label className={lbl}>State Rank</label>
-              <input className={inp} type="number" min="1" placeholder="e.g. 3" value={form.state_rank} onChange={e => set('state_rank', e.target.value)} />
+              <input className={inp} type="number" min="1" placeholder="ex: 3" value={form.state_rank} onChange={e => set('state_rank', e.target.value)} />
             </div>
             <div>
               <label className={lbl}>National Rank</label>
-              <input className={inp} type="number" min="1" placeholder="e.g. 12" value={form.national_rank} onChange={e => set('national_rank', e.target.value)} />
+              <input className={inp} type="number" min="1" placeholder="ex: 12" value={form.national_rank} onChange={e => set('national_rank', e.target.value)} />
             </div>
             <div>
               <label className={lbl}>Class Rank</label>
-              <input className={inp} placeholder="e.g. 1" value={form.class_rank} onChange={e => set('class_rank', e.target.value)} />
+              <input className={inp} placeholder="ex: 1" value={form.class_rank} onChange={e => set('class_rank', e.target.value)} />
             </div>
           </div>
 
@@ -381,7 +381,7 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
                       <label className={lbl}>Opponent</label>
                       <input
                         className={inp}
-                        placeholder="e.g. Lincoln-Way Central"
+                        placeholder="ex: Lincoln-Way Central"
                         value={r.opponent}
                         onChange={e => setRound('opponent', e.target.value)}
                       />
@@ -594,7 +594,7 @@ function AwardTypeModal({ teamId, onClose, editId, initialData }) {
           <label className={lbl}>Award Name *</label>
           <input
             className={inp}
-            placeholder="e.g. All Conference"
+            placeholder="ex: All Conference"
             value={form.name}
             onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setError(''); }}
             autoFocus

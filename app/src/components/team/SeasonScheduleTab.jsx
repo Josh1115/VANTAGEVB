@@ -847,7 +847,7 @@ export function SeasonScheduleTab({ seasonId }) {
                     type="text"
                     value={schedOppRecord}
                     onChange={e => setSchedOppRecord(e.target.value)}
-                    placeholder="e.g. 12-3"
+                    placeholder="ex: 12-3"
                     className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
                   />
                 </div>
@@ -860,7 +860,7 @@ export function SeasonScheduleTab({ seasonId }) {
                     min={1}
                     value={schedOppRank}
                     onChange={e => setSchedOppRank(e.target.value)}
-                    placeholder="e.g. 42"
+                    placeholder="ex: 42"
                     className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
                   />
                 </div>
@@ -956,7 +956,7 @@ export function SeasonScheduleTab({ seasonId }) {
                       type="text"
                       value={schedTourneyName}
                       onChange={e => setSchedTourneyName(e.target.value)}
-                      placeholder="e.g. Holiday Classic, IHSA Sectional…"
+                      placeholder="ex: Holiday Classic, IHSA Sectional…"
                       className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
                     />
                   </div>
@@ -989,7 +989,7 @@ export function SeasonScheduleTab({ seasonId }) {
                       type="text"
                       value={schedPlayoffRound}
                       onChange={e => setSchedPlayoffRound(e.target.value)}
-                      placeholder="e.g. Regional, Sectional…"
+                      placeholder="ex: Regional, Sectional…"
                       className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
                     />
                   </div>
@@ -1002,7 +1002,7 @@ export function SeasonScheduleTab({ seasonId }) {
                       min={1}
                       value={schedOppSeed}
                       onChange={e => setSchedOppSeed(e.target.value)}
-                      placeholder="e.g. 4"
+                      placeholder="ex: 4"
                       className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
                     />
                   </div>
