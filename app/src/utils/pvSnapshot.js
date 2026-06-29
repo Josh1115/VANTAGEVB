@@ -15,38 +15,40 @@ export async function computeMatchSnapshot(matchId) {
   const playerStats = computePlayerStats(contacts, setsPlayed);
   const teamStats   = computeTeamStats(contacts, setsPlayed);
 
-  // Get players who appear in any lineup for this match
-  const lineupRows = await db.lineups
-    .where('set_id').anyOf(sets.map(s => s.id))
-    .toArray();
-  const playerIds = [...new Set(lineupRows.map(r => r.player_id))];
-  const playerRecords = playerIds.length ? await db.players.bulkGet(playerIds) : [];
+  // All active players on the team — shown regardless of court time
+  const playerRecords = team
+    ? await db.players.where('team_id').equals(team.id).filter(p => p.is_active).toArray()
+    : [];
 
-  const players = playerRecords.filter(Boolean).map(p => {
-    const s = playerStats[p.id] ?? {};
-    return {
-      id:       p.id,
-      name:     p.name,
-      jersey:   p.jersey_number ?? '',
-      position: p.position ?? '',
-      stats: {
-        kills:    s.k    ?? 0,
-        killPct:  s.k_pct  ?? null,
-        hitPct:   s.hit_pct ?? null,
-        aces:     s.ace   ?? 0,
-        acePct:   s.ace_pct ?? null,
-        apr:      s.apr   ?? null,
-        blocks:   (s.bs ?? 0) + (s.ba ?? 0),
-        digs:     s.dig   ?? 0,
-        assists:  s.ast   ?? 0,
-        serves:   s.sa    ?? 0,
-        serveErr: s.se    ?? 0,
-        passes:   s.pa    ?? 0,
-        sp:       s.sp    ?? 0,
-        mp:       s.mp    ?? 0,
-      },
-    };
-  });
+  const players = playerRecords.filter(Boolean)
+    .sort((a, b) => (a.jersey_number ?? 99) - (b.jersey_number ?? 99))
+    .map(p => {
+      const s = playerStats[p.id] ?? {};
+      return {
+        id:       p.id,
+        name:     p.name,
+        jersey:   p.jersey_number ?? '',
+        position: p.position ?? '',
+        stats: {
+          kills:      s.k      ?? 0,
+          attackAtt:  s.ta     ?? 0,
+          attackErr:  s.ae     ?? 0,
+          killPct:    s.k_pct  ?? null,
+          hitPct:     s.hit_pct ?? null,
+          aces:       s.ace    ?? 0,
+          acePct:     s.ace_pct ?? null,
+          serves:     s.sa     ?? 0,
+          serveErr:   s.se     ?? 0,
+          apr:        s.apr    ?? null,
+          passes:     s.pa     ?? 0,
+          blocks:     (s.bs ?? 0) + (s.ba ?? 0),
+          digs:       s.dig    ?? 0,
+          assists:    s.ast    ?? 0,
+          sp:         s.sp     ?? 0,
+          mp:         s.mp     ?? 0,
+        },
+      };
+    });
 
   return {
     matchId,

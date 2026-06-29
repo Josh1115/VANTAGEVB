@@ -3,7 +3,6 @@ import { useParams } from 'react-router-dom';
 import { fetchPvStats, subscribePvChanges } from '../utils/supabase';
 import { LiveScoreBoard } from '../components/parentvantage/LiveScoreBoard';
 import { LiveFeed } from '../components/parentvantage/LiveFeed';
-import { PlayerStatCard } from '../components/parentvantage/PlayerStatCard';
 
 const LIVE_TIMEOUT_MS = 45_000;
 
@@ -19,62 +18,44 @@ function LocationBadge({ location }) {
   return <span className={`text-[10px] font-black px-1.5 py-0.5 rounded uppercase ${cls}`}>{label}</span>;
 }
 
-function BoxScoreTable({ players, selectedId, onSelect }) {
-  const [sort, setSort] = useState('kills');
-  const COLS = [
-    { key: 'kills',   label: 'K'   },
-    { key: 'aces',    label: 'ACE' },
-    { key: 'apr',     label: 'APR' },
-    { key: 'digs',    label: 'DIG' },
+function PlayerCard({ player }) {
+  const s = player.stats ?? {};
+  const stats = [
+    { label: 'K',    value: s.kills    ?? 0 },
+    { label: 'TA',   value: s.attackAtt ?? 0 },
+    { label: 'AE',   value: s.attackErr ?? 0 },
+    { label: 'ACE',  value: s.aces     ?? 0 },
+    { label: 'SA',   value: s.serves   ?? 0 },
+    { label: 'SE',   value: s.serveErr ?? 0 },
+    { label: 'APR',  value: s.apr != null ? Number(s.apr).toFixed(2) : '—' },
+    { label: 'DIG',  value: s.digs     ?? 0 },
+    { label: 'BLK',  value: s.blocks   ?? 0 },
   ];
-  const sorted = [...players].sort((a, b) => {
-    const av = a.stats?.[sort] ?? 0;
-    const bv = b.stats?.[sort] ?? 0;
-    return bv - av;
-  });
-
   return (
     <div className="bg-slate-800 rounded-xl overflow-hidden">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-700/50 overflow-x-auto">
-        <span className="text-xs font-semibold text-slate-400 shrink-0">Sort:</span>
-        {COLS.map(c => (
-          <button
-            key={c.key}
-            onClick={() => setSort(c.key)}
-            className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 transition-colors ${
-              sort === c.key ? 'bg-primary text-white' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            {c.label}
-          </button>
+      <div className="flex items-center gap-3 px-3 py-2.5 border-b border-slate-700/40">
+        <span className="text-xs font-black text-primary w-8 shrink-0">#{player.jersey}</span>
+        <span className="flex-1 text-sm font-bold text-white truncate">{player.name}</span>
+        {player.position && (
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{player.position}</span>
+        )}
+      </div>
+      <div className="grid grid-cols-9 divide-x divide-slate-700/40">
+        {stats.map(({ label, value }) => (
+          <div key={label} className="flex flex-col items-center py-2 gap-0.5">
+            <span className="text-sm font-black text-white tabular-nums leading-none">{value}</span>
+            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">{label}</span>
+          </div>
         ))}
       </div>
-      <div className="divide-y divide-slate-700/30">
-        {sorted.map(p => (
-          <button
-            key={p.id}
-            onClick={() => onSelect(p.id)}
-            className={`w-full flex items-center px-3 py-2.5 text-left transition-colors ${
-              selectedId === p.id ? 'bg-primary/10' : 'hover:bg-slate-700/30'
-            }`}
-          >
-            <span className="w-7 text-xs font-black text-slate-400 shrink-0">#{p.jersey}</span>
-            <span className="flex-1 text-sm font-semibold text-white truncate">{p.name}</span>
-            <span className="w-7 text-right text-xs font-bold text-white tabular-nums">{p.stats?.kills ?? 0}</span>
-            <span className="w-9 text-right text-xs text-slate-400 tabular-nums">{p.stats?.aces ?? 0}</span>
-            <span className="w-9 text-right text-xs text-slate-400 tabular-nums">
-              {p.stats?.apr != null ? Number(p.stats.apr).toFixed(2) : '—'}
-            </span>
-            <span className="w-7 text-right text-xs text-slate-400 tabular-nums">{p.stats?.digs ?? 0}</span>
-          </button>
-        ))}
-      </div>
-      <div className="grid grid-cols-4 px-3 py-1.5 border-t border-slate-700/50">
-        <span className="col-span-1" />
-        {['K','ACE','APR','DIG'].map(h => (
-          <span key={h} className="text-right text-[10px] font-bold text-slate-500 uppercase">{h}</span>
-        ))}
-      </div>
+    </div>
+  );
+}
+
+function BoxScore({ players }) {
+  return (
+    <div className="space-y-2">
+      {players.map(p => <PlayerCard key={p.id} player={p} />)}
     </div>
   );
 }
@@ -105,7 +86,6 @@ export function FamilyScopeViewPage() {
   const [snapshot, setSnapshot]       = useState(null);
   const [loading, setLoading]         = useState(true);
   const [notFound, setNotFound]       = useState(false);
-  const [selectedPlayerId, setSelectedPlayerId] = useState(null);
   const [liveData, setLiveData]       = useState(null);
   const [feedEvents, setFeedEvents]   = useState([]);
   const [isLive, setIsLive]           = useState(false);
@@ -153,7 +133,6 @@ export function FamilyScopeViewPage() {
   }, [token, resetLiveTimer, isOnline]);
 
   const players = snapshot?.players ?? [];
-  const selectedPlayer = players.find(p => p.id === selectedPlayerId) ?? null;
   const matchData = snapshot?.match;
   const ourTeam   = snapshot?.ourTeam;
 
@@ -261,19 +240,12 @@ export function FamilyScopeViewPage() {
           </div>
         )}
 
-        {/* In-progress but broadcast just stopped / not yet started */}
-        {matchStatus === 'in_progress' && !isLive && (
-          <div className="bg-amber-900/20 border border-amber-700/40 rounded-xl px-4 py-3 text-center">
-            <p className="text-xs text-amber-300 font-semibold">Match in progress — waiting for live updates…</p>
-          </div>
-        )}
-
         {/* Team stat totals */}
         {snapshot?.teamStats && matchStatus !== 'scheduled' && (
           <TeamStatBar teamStats={snapshot.teamStats} />
         )}
 
-        {/* No-data state when snapshot exists but no players published yet */}
+        {/* No-data state when snapshot exists but no players yet */}
         {players.length === 0 && matchStatus !== 'scheduled' && (
           <div className="bg-slate-800/60 rounded-xl px-4 py-5 text-center space-y-2">
             <div className="text-2xl">📊</div>
@@ -288,7 +260,7 @@ export function FamilyScopeViewPage() {
           </div>
         )}
 
-        {/* Play-by-play / Box Score tabs */}
+        {/* Box Score + Play-by-Play tabs */}
         {players.length > 0 && (
           <div>
             <div className="flex border-b border-slate-700/60 mb-3">
@@ -307,18 +279,7 @@ export function FamilyScopeViewPage() {
               ))}
             </div>
 
-            {activeTab === 'boxscore' && (
-              <div className="space-y-3">
-                <BoxScoreTable
-                  players={players}
-                  selectedId={selectedPlayerId}
-                  onSelect={id => setSelectedPlayerId(prev => prev === id ? null : id)}
-                />
-                {selectedPlayer && (
-                  <PlayerStatCard player={selectedPlayer} />
-                )}
-              </div>
-            )}
+            {activeTab === 'boxscore' && <BoxScore players={players} />}
 
             {activeTab === 'feed' && (
               <div>
@@ -331,6 +292,13 @@ export function FamilyScopeViewPage() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* In-progress banner — below box score */}
+        {matchStatus === 'in_progress' && !isLive && (
+          <div className="bg-amber-900/20 border border-amber-700/40 rounded-xl px-4 py-3 text-center">
+            <p className="text-xs text-amber-300 font-semibold">Match in progress — waiting for live updates…</p>
           </div>
         )}
 
