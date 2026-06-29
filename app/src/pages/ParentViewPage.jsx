@@ -73,6 +73,28 @@ function BoxScore({ players }) {
   );
 }
 
+function RecentPlays({ events }) {
+  if (!events.length) return null;
+  const recent = [...events].reverse().slice(0, 10);
+  return (
+    <div className="bg-slate-800/60 rounded-xl overflow-hidden">
+      <div className="px-3 py-2 border-b border-slate-700/40">
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Recent Plays</span>
+      </div>
+      <div className="px-3 py-2 space-y-1.5">
+        {recent.map((ev, i) => (
+          <div key={ev.id ?? i} className="flex items-center gap-2">
+            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+              ev.label?.includes('+1') ? 'bg-emerald-400' : 'bg-slate-500'
+            }`} />
+            <span className={`text-sm ${i === 0 ? 'text-white font-semibold' : 'text-slate-400'}`}>{ev.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function TeamStatBar({ teamStats }) {
   if (!teamStats) return null;
   const stats = [
@@ -105,6 +127,7 @@ export function FamilyScopeViewPage() {
   const [activeTab, setActiveTab]     = useState('boxscore'); // 'boxscore' | 'feed'
   const [isOnline, setIsOnline]       = useState(navigator.onLine);
   const liveTimerRef                  = useRef(null);
+  const hasEverBeenLiveRef            = useRef(false);
 
   useEffect(() => {
     const up   = () => setIsOnline(true);
@@ -126,6 +149,7 @@ export function FamilyScopeViewPage() {
 
   const resetLiveTimer = useCallback(() => {
     setIsLive(true);
+    hasEverBeenLiveRef.current = true;
     clearTimeout(liveTimerRef.current);
     liveTimerRef.current = setTimeout(() => setIsLive(false), LIVE_TIMEOUT_MS);
   }, []);
@@ -253,6 +277,16 @@ export function FamilyScopeViewPage() {
           </div>
         )}
 
+        {/* Stat-taker disconnection banner — only after we've seen at least one live update */}
+        {matchData?.status === 'in_progress' && !isLive && hasEverBeenLiveRef.current && (
+          <div className="bg-amber-900/20 border border-amber-700/40 rounded-xl px-4 py-3 flex items-center gap-3">
+            <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0 animate-pulse" />
+            <p className="text-xs text-amber-300 font-semibold leading-snug">
+              Stat recorder lost connection — updates will resume when they reconnect
+            </p>
+          </div>
+        )}
+
         {/* Team stat totals */}
         {snapshot?.teamStats && matchStatus !== 'scheduled' && (
           <TeamStatBar teamStats={snapshot.teamStats} />
@@ -271,6 +305,11 @@ export function FamilyScopeViewPage() {
                 : 'Player stats update after each rally once the lineup is set.'}
             </div>
           </div>
+        )}
+
+        {/* Recent plays feed */}
+        {feedEvents.length > 0 && matchStatus !== 'scheduled' && (
+          <RecentPlays events={feedEvents} />
         )}
 
         {/* Box Score + Play-by-Play tabs */}
@@ -305,13 +344,6 @@ export function FamilyScopeViewPage() {
                 )}
               </div>
             )}
-          </div>
-        )}
-
-        {/* In-progress banner — below box score */}
-        {matchStatus === 'in_progress' && !isLive && (
-          <div className="bg-amber-900/20 border border-amber-700/40 rounded-xl px-4 py-3 text-center">
-            <p className="text-xs text-amber-300 font-semibold">Match in progress — waiting for live updates…</p>
           </div>
         )}
 
