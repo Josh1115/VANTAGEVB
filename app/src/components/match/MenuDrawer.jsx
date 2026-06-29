@@ -9,6 +9,34 @@ import { useShallow } from 'zustand/react/shallow';
 import { db } from '../../db/schema';
 import { SIDE } from '../../constants';
 
+function FamilyFocusLink({ token }) {
+  const [copied, setCopied] = useState(false);
+  if (!token) return null;
+  const url = `${window.location.origin}/fs/${token}`;
+  const copy = () => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <div className="mb-3 pb-3 border-b border-slate-700">
+      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+        Family Focus Link
+      </div>
+      <div className="flex items-center gap-2 bg-slate-900 rounded-lg px-3 py-2">
+        <span className="flex-1 text-xs text-slate-300 truncate select-all">{url}</span>
+        <button
+          onPointerDown={(e) => { e.preventDefault(); copy(); }}
+          className="shrink-0 text-xs font-bold px-2.5 py-1 rounded-md bg-primary/20 text-primary border border-primary/40 active:brightness-75 transition-colors"
+        >
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const JERSEY_COLORS = [
   { id: 'black',  label: 'Black',  bg: '#111827', border: '#374151' },
   { id: 'white',  label: 'White',  bg: '#f8fafc', border: '#94a3b8' },
@@ -27,6 +55,7 @@ export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName
     matchId, currentSetId, ourScore, oppScore, fudgeScore,
     endSet, endMatch, resetCurrentSet, resetToRotation,
     teamJerseyColor, liberoJerseyColor, setTeamJerseyColor, setLiberoJerseyColor,
+    pvToken,
   } = useMatchStore(useShallow((s) => ({
     matchId:              s.matchId,
     currentSetId:         s.currentSetId,
@@ -41,6 +70,7 @@ export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName
     liberoJerseyColor:    s.liberoJerseyColor,
     setTeamJerseyColor:   s.setTeamJerseyColor,
     setLiberoJerseyColor: s.setLiberoJerseyColor,
+    pvToken:              s._pvToken,
   })));
   const navigate             = useNavigate();
 
@@ -82,6 +112,8 @@ export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName
   return (
     <>
       <Drawer title="Match Menu" onClose={onClose}>
+        <FamilyFocusLink token={pvToken} />
+
         {/* ── Score Adjustment ── */}
         <div className="mb-3 pb-3 border-b border-slate-700">
           <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Score Adjustment</div>
