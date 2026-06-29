@@ -1467,8 +1467,11 @@ export function SettingsPage() {
       setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, null);
       clearSectionStates();
       // Push an empty backup to the cloud so autoSync doesn't restore the old
-      // data on the next page load.
-      if (session) await saveToCloud(supabase, session).catch(() => {});
+      // data on the next page load, and reset the server-side match counter.
+      if (session) {
+        await saveToCloud(supabase, session).catch(() => {});
+        await supabase.from('profiles').update({ matches_created: 0 }).eq('id', session.user.id).catch(() => {});
+      }
       showToast('All data cleared', 'info');
       window.location.reload();
     } catch {
