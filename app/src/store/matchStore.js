@@ -296,7 +296,7 @@ export const useMatchStore = create((set, get) => ({
   broadcastUpdate: async () => {
     const s = get();
     if (!s.broadcastEnabled || !s._pvToken) return;
-    const { updatePvLiveScore } = await import('../utils/supabase');
+    const { updatePvLiveScore, publishPvStats } = await import('../utils/supabase');
     updatePvLiveScore(s._pvToken, {
       ourScore:    s.ourScore,
       oppScore:    s.oppScore,
@@ -315,6 +315,12 @@ export const useMatchStore = create((set, get) => ({
       })),
       ts: Date.now(),
     }).catch(() => {});
+    // Re-publish full snapshot so FamilyScope player stats stay live.
+    if (s.matchId) {
+      const { computeMatchSnapshot } = await import('../utils/pvSnapshot');
+      const snapshot = await computeMatchSnapshot(s.matchId).catch(() => null);
+      if (snapshot) publishPvStats(s._pvToken, snapshot.ourTeam?.name ?? '', snapshot).catch(() => {});
+    }
   },
   setLineup:          (lineup, rotationNum) => set({ lineup, ...(rotationNum !== undefined ? { rotationNum } : {}) }),
   setPlayerNicknames: (map)    => set({ playerNicknames: map }),

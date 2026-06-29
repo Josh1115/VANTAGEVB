@@ -139,6 +139,7 @@ export function FamilyScopeViewPage() {
   useEffect(() => {
     if (!token || !isOnline) return;
     const channel = subscribePvChanges(token, (row) => {
+      if (row.payload) setSnapshot(row.payload);
       const live = row.live_score;
       if (!live) return;
       setLiveData(live);
