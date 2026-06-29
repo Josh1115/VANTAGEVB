@@ -9,8 +9,8 @@ export function LiveScoreBoard({ liveData, teamName, opponentName }) {
     <div className="bg-slate-800 rounded-xl p-4 space-y-2">
       {/* Live badge */}
       <div className="flex items-center gap-2 mb-1">
-        <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 uppercase tracking-widest">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <span className="flex items-center gap-1.5 text-xs font-bold text-red-500 uppercase tracking-widest">
+          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
           Live
         </span>
         <span className="text-xs text-slate-400">Set {setNumber}</span>

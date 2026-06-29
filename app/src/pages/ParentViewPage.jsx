@@ -18,44 +18,57 @@ function LocationBadge({ location }) {
   return <span className={`text-[10px] font-black px-1.5 py-0.5 rounded uppercase ${cls}`}>{label}</span>;
 }
 
-function PlayerCard({ player }) {
-  const s = player.stats ?? {};
-  const stats = [
-    { label: 'K',    value: s.kills    ?? 0 },
-    { label: 'TA',   value: s.attackAtt ?? 0 },
-    { label: 'AE',   value: s.attackErr ?? 0 },
-    { label: 'ACE',  value: s.aces     ?? 0 },
-    { label: 'SA',   value: s.serves   ?? 0 },
-    { label: 'SE',   value: s.serveErr ?? 0 },
-    { label: 'APR',  value: s.apr != null ? Number(s.apr).toFixed(2) : '—' },
-    { label: 'DIG',  value: s.digs     ?? 0 },
-    { label: 'BLK',  value: s.blocks   ?? 0 },
-  ];
-  return (
-    <div className="bg-slate-800 rounded-xl overflow-hidden">
-      <div className="flex items-center gap-3 px-3 py-2.5 border-b border-slate-700/40">
-        <span className="text-xs font-black text-primary w-8 shrink-0">#{player.jersey}</span>
-        <span className="flex-1 text-sm font-bold text-white truncate">{player.name}</span>
-        {player.position && (
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{player.position}</span>
-        )}
-      </div>
-      <div className="grid grid-cols-9 divide-x divide-slate-700/40">
-        {stats.map(({ label, value }) => (
-          <div key={label} className="flex flex-col items-center py-2 gap-0.5">
-            <span className="text-sm font-black text-white tabular-nums leading-none">{value}</span>
-            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">{label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+const STAT_COLS = [
+  { key: 'attackAtt', label: 'TA'  },
+  { key: 'kills',     label: 'K'   },
+  { key: 'attackErr', label: 'AE'  },
+  { key: 'serves',    label: 'SA'  },
+  { key: 'aces',      label: 'ACE' },
+  { key: 'serveErr',  label: 'SE'  },
+  { key: 'apr',       label: 'APR' },
+  { key: 'blocks',    label: 'BLK' },
+  { key: 'digs',      label: 'DIG' },
+];
+
+function fmt(key, val) {
+  if (key === 'apr') return val != null ? Number(val).toFixed(2) : '—';
+  return val ?? 0;
 }
 
 function BoxScore({ players }) {
   return (
-    <div className="space-y-2">
-      {players.map(p => <PlayerCard key={p.id} player={p} />)}
+    <div className="rounded-xl overflow-hidden border border-slate-700/50">
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs border-collapse">
+          <thead>
+            <tr className="bg-slate-900 border-b border-slate-700/60">
+              <th className="sticky left-0 z-10 bg-slate-900 text-left px-3 py-2.5 font-bold text-slate-400 uppercase tracking-wide whitespace-nowrap">Player</th>
+              {STAT_COLS.map(c => (
+                <th key={c.key} className="text-center px-3 py-2.5 font-bold text-slate-400 uppercase tracking-wide whitespace-nowrap">{c.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {players.map((p, i) => {
+              const s = p.stats ?? {};
+              const rowBg = i % 2 === 0 ? 'bg-slate-800' : 'bg-slate-750';
+              return (
+                <tr key={p.id} className={rowBg}>
+                  <td className={`sticky left-0 z-10 ${rowBg} px-3 py-2.5 whitespace-nowrap border-b border-slate-700/30`}>
+                    <span className="font-black text-primary mr-1.5">#{p.jersey}</span>
+                    <span className="font-semibold text-white">{p.name}</span>
+                  </td>
+                  {STAT_COLS.map(c => (
+                    <td key={c.key} className="text-center px-3 py-2.5 tabular-nums text-white font-medium border-b border-slate-700/30">
+                      {fmt(c.key, s[c.key])}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
