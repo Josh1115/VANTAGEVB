@@ -203,7 +203,7 @@ export function FamilyScopeViewPage() {
 
         {/* Live scoreboard — visible whenever we have score data */}
         {liveData && matchStatus !== 'scheduled' && (
-          <LiveScoreBoard liveData={liveData} teamName={ourTeam?.name} />
+          <LiveScoreBoard liveData={liveData} teamName={ourTeam?.name} opponentName={matchData?.opponent} />
         )}
 
         {/* Final score from snapshot */}

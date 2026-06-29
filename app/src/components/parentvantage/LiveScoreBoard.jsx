@@ -1,4 +1,4 @@
-export function LiveScoreBoard({ liveData, teamName }) {
+export function LiveScoreBoard({ liveData, teamName, opponentName }) {
   const {
     ourScore = 0, oppScore = 0,
     ourSetsWon = 0, oppSetsWon = 0,
@@ -39,7 +39,7 @@ export function LiveScoreBoard({ liveData, teamName }) {
 
         {/* Them */}
         <div className="flex-1 text-center">
-          <div className="text-xs text-slate-400 mb-1">Opponent</div>
+          <div className="text-xs text-slate-400 truncate mb-1">{opponentName ?? 'Opponent'}</div>
           <div className="flex items-center justify-center gap-1.5">
             {serveSide === 'them' && (
               <span className="text-slate-400 text-lg leading-none">▶</span>
