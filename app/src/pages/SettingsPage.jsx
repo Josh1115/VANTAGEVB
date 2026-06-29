@@ -1656,7 +1656,7 @@ export function SettingsPage() {
                   <span className="text-emerald-400 text-lg font-black">✓</span>
                   <div>
                     <div className="text-sm font-bold text-white">
-                      {teamsAllowed === 99 ? '5+ Teams' : `${teamsAllowed} Team${teamsAllowed > 1 ? 's' : ''}`} / Season
+                      {teamsAllowed === 99 ? 'Unlimited Teams' : `${teamsAllowed} Team${teamsAllowed > 1 ? 's' : ''}`} / Season
                     </div>
                     <div className="text-xs text-slate-400">
                       All features included · 50 matches per team per season

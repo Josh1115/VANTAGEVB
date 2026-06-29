@@ -153,7 +153,7 @@ export function LoginPage({ onSignup }) {
                       { label: '2 Teams',  price: '$139.99', desc: '2 teams · 50 matches/season each' },
                       { label: '3 Teams',  price: '$189.99', desc: '3 teams · 50 matches/season each' },
                       { label: '4 Teams',  price: '$229.99', desc: '4 teams · 50 matches/season each' },
-                      { label: '5+ Teams', price: '$259.99', desc: 'Unlimited teams · 50 matches/season each' },
+                      { label: '5 Teams',  price: '$259.99', desc: '5 teams · 50 matches/season each' },
                     ].map(({ label, price, desc }) => (
                       <div key={label} className="rounded-xl border border-slate-700 px-3 py-2.5 flex items-center justify-between">
                         <div>

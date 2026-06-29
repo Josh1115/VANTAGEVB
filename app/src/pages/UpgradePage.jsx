@@ -10,7 +10,7 @@ const PLANS = [
   { key: '2_teams',     teams: 2,  highlight: true  },
   { key: '3_teams',     teams: 3,  highlight: false },
   { key: '4_teams',     teams: 4,  highlight: false },
-  { key: '5plus_teams', teams: 99, highlight: false },
+  { key: '5plus_teams', teams: 5,  highlight: false },
 ];
 
 const ALL_FEATURES = [

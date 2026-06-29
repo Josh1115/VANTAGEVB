@@ -26,7 +26,7 @@ export const PLAN_LABELS = {
   '2_teams':     '2 Teams',
   '3_teams':     '3 Teams',
   '4_teams':     '4 Teams',
-  '5plus_teams': '5+ Teams',
+  '5plus_teams': '5 Teams',
 };
 
 export const TRIAL_MATCH_LIMIT = 5;
