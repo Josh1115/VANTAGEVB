@@ -84,6 +84,7 @@ export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions,
 
   // When "Assume Setter Rotation 1" is on, auto-set startRotation so the setter = ROT 1.
   useEffect(() => {
+    if (!setStartRotation) return;
     if (!getBoolStorageDefaultTrue(STORAGE_KEYS.ASSUME_SETTER_ROT1)) return;
     const setterIdx = slotPositions.findIndex((pos) => pos === 'S');
     if (setterIdx === -1) return;
@@ -230,7 +231,7 @@ export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions,
             <button
               key={rot}
               type="button"
-              onClick={() => setStartRotation(rot)}
+              onClick={() => setStartRotation?.(rot)}
               className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-colors
                 ${startRotation === rot
                   ? 'bg-primary/20 text-primary border-primary/50'
