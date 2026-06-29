@@ -77,20 +77,23 @@ function RecentPlays({ events }) {
   if (!events.length) return null;
   const recent = [...events].reverse().slice(0, 10);
   return (
-    <div className="bg-slate-800/60 rounded-xl overflow-hidden">
-      <div className="px-3 py-2 border-b border-slate-700/40">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Recent Plays</span>
-      </div>
-      <div className="px-3 py-2 space-y-1.5">
-        {recent.map((ev, i) => (
-          <div key={ev.id ?? i} className="flex items-center gap-2">
-            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-              ev.label?.includes('+1') ? 'bg-emerald-400' : 'bg-slate-500'
-            }`} />
-            <span className={`text-sm ${i === 0 ? 'text-white font-semibold' : 'text-slate-400'}`}>{ev.label}</span>
+    <div className="space-y-1.5">
+      {recent.map((ev, i) => {
+        const scoring = ev.label?.startsWith('+1');
+        return (
+          <div
+            key={ev.id ?? i}
+            style={{ opacity: Math.max(0.3, 1 - i * 0.1) }}
+            className={`px-3 py-1.5 rounded-full border font-bold text-sm ${
+              scoring
+                ? 'bg-emerald-900/25 border-emerald-700/40 text-white'
+                : 'bg-slate-700/80 border-slate-500/60 text-slate-200'
+            }`}
+          >
+            {ev.label}
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
