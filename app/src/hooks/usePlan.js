@@ -8,7 +8,7 @@ export const PLAN_TEAMS = {
   '2_teams':     2,
   '3_teams':     3,
   '4_teams':     4,
-  '5plus_teams': 99,
+  '5plus_teams': 5,
   master:        99,
 };
 
@@ -65,7 +65,9 @@ export function usePlan() {
     return tier >= t;
   }
 
-  const matchLimit = plan === 'trial' ? TRIAL_MATCH_LIMIT : Infinity;
+  const matchLimit = plan === 'trial' ? TRIAL_MATCH_LIMIT
+    : plan === '5plus_teams' ? 50
+    : Infinity;
 
   // Days until expiry — positive integer if expiring in future, null otherwise
   const daysUntilExpiry = (!isExpired && expiresAt)
