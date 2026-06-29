@@ -1328,6 +1328,7 @@ export function SettingsPage() {
   const [promoCode,           setPromoCode]           = useState('');
   const [promoLoading,        setPromoLoading]        = useState(false);
   const [confirmClear,        setConfirmClear]        = useState(false);
+  const [confirmResetPersonalization, setConfirmResetPersonalization] = useState(false);
   const [confirmImport,       setConfirmImport]       = useState(false);
   const [confirmLogout,       setConfirmLogout]       = useState(false);
   const [showChangePw,        setShowChangePw]        = useState(false);
@@ -1465,7 +1466,10 @@ export function SettingsPage() {
       setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, null);
       setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, null);
       clearSectionStates();
-      showToast('Match data cleared', 'info');
+      // Push an empty backup to the cloud so autoSync doesn't restore the old
+      // data on the next page load.
+      if (session) await saveToCloud(supabase, session).catch(() => {});
+      showToast('All data cleared', 'info');
       window.location.reload();
     } catch {
       showToast('Failed to clear data. Please try again.', 'error');
@@ -2234,7 +2238,7 @@ export function SettingsPage() {
             <div>
               <div className="text-sm font-medium mb-1">Accent Color</div>
               <div className="text-xs text-slate-400 mb-3">Applied to buttons, badges, and highlights throughout the app</div>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap justify-center gap-3">
                 {ACCENT_COLORS.map((c) => (
                   <button
                     key={c.id}
@@ -2257,6 +2261,14 @@ export function SettingsPage() {
                 ))}
               </div>
             </div>
+
+            {/* Reset personalization */}
+            <button
+              onClick={() => setConfirmResetPersonalization(true)}
+              className="w-full rounded-lg border border-slate-600 bg-slate-800/40 py-2.5 text-sm font-semibold text-slate-400 hover:text-slate-200 hover:border-slate-400 transition-colors"
+            >
+              Restore all personalized settings to default
+            </button>
 
           </div>
         </CollapsibleSection>
@@ -2635,6 +2647,28 @@ export function SettingsPage() {
       </div>
 
       {/* Dialogs */}
+      {confirmResetPersonalization && (
+        <ConfirmDialog
+          title="Restore Defaults"
+          message="This will reset your program name, coach name, accent color, theme, and all other personalization settings back to their defaults."
+          confirmLabel="Restore Defaults"
+          onConfirm={() => {
+            saveProgramName('');
+            saveCoachName('');
+            savePlayoffOrg('');
+            saveWinMessage('');
+            saveDefaultTeam(null);
+            saveDefaultSeason(null);
+            saveScoreDetail('sets');
+            saveMatchViewDefault('recent');
+            saveSidelineMode(false);
+            saveAccent('orange');
+            setConfirmResetPersonalization(false);
+          }}
+          onCancel={() => setConfirmResetPersonalization(false)}
+        />
+      )}
+
       {confirmClear && (
         <ConfirmDialog
           title="Clear All Data"

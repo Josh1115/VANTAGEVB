@@ -5,7 +5,17 @@ import { saveToCloud, restoreFromCloud } from '../stats/backup';
 import { db } from '../db/schema';
 import { getStorageItem, setStorageItem, STORAGE_KEYS } from '../utils/storage';
 
-const AuthContext = createContext(null);
+const AUTH_CONTEXT_DEFAULT = {
+  session: null,
+  profile: null,
+  loading: true,
+  recoveryMode: false,
+  clearRecoveryMode: () => {},
+  signOut: async () => {},
+  refreshProfile: () => {},
+};
+
+const AuthContext = createContext(AUTH_CONTEXT_DEFAULT);
 
 const USER_ID_KEY  = 'vbstat_user_id';
 const MIGRATED_KEY = 'vbstat_shared_migrated';
@@ -96,6 +106,10 @@ export function AuthProvider({ children }) {
   }
 
   async function autoSync(session) {
+    // Guard: if the open DB doesn't belong to this session user, the page is
+    // mid-reload after an account switch. Abort to prevent saving one user's
+    // local data under a different user's cloud backup.
+    if (db.name !== `VBAPPv2_${session.user.id}`) return;
     try {
       const teamCount = await db.teams.count();
       if (teamCount === 0) {
