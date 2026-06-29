@@ -126,6 +126,7 @@ export function FamilyScopeViewPage() {
     fetchPvStats(token).then(data => {
       if (!data) { setNotFound(true); setLoading(false); return; }
       setSnapshot(data.payload);
+      if (data.live_score) setLiveData(data.live_score);
       setLoading(false);
     }).catch(() => { setNotFound(true); setLoading(false); });
   }, [token]);
@@ -214,15 +215,15 @@ export function FamilyScopeViewPage() {
             {matchStatus === 'final' && (
               <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Final</span>
             )}
-            <span className="text-[10px] font-bold text-slate-600 tracking-widest">VBSTAT</span>
+            <span className="text-[10px] font-bold text-slate-600 tracking-widest">VANTAGE</span>
           </div>
         </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
 
-        {/* Live scoreboard — always visible when live or in-progress */}
-        {(isLive || matchStatus === 'final') && liveData && (
+        {/* Live scoreboard — visible whenever we have score data */}
+        {liveData && matchStatus !== 'scheduled' && (
           <LiveScoreBoard liveData={liveData} teamName={ourTeam?.name} />
         )}
 
@@ -276,9 +277,13 @@ export function FamilyScopeViewPage() {
         {players.length === 0 && matchStatus !== 'scheduled' && (
           <div className="bg-slate-800/60 rounded-xl px-4 py-5 text-center space-y-2">
             <div className="text-2xl">📊</div>
-            <div className="text-sm font-semibold text-white">No stats published yet</div>
+            <div className="text-sm font-semibold text-white">
+              {matchStatus === 'final' ? 'No stats recorded' : 'Stats will appear as the match progresses'}
+            </div>
             <div className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
-              Check back after the match — the coach will publish stats when available.
+              {matchStatus === 'final'
+                ? 'No stat data was recorded for this match.'
+                : 'Player stats update after each rally once the lineup is set.'}
             </div>
           </div>
         )}
@@ -331,7 +336,7 @@ export function FamilyScopeViewPage() {
 
         {/* Footer */}
         <div className="text-center py-6">
-          <span className="text-xs text-slate-700 font-bold tracking-widest">POWERED BY VBSTAT</span>
+          <span className="text-xs text-slate-700 font-bold tracking-widest">POWERED BY VANTAGE</span>
         </div>
       </div>
     </div>
