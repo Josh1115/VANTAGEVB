@@ -34,6 +34,10 @@ export default {
           '20%, 60%':      { transform: 'translateX(-8px)' },
           '40%, 80%':      { transform: 'translateX(8px)' },
         },
+        'pillIn': {
+          from: { opacity: '0', transform: 'translateY(8px)' },
+          to:   { opacity: '1', transform: 'translateY(0)' },
+        },
       },
       animation: {
         'fade-in':   'fade-in 150ms ease-out forwards',
@@ -41,6 +45,7 @@ export default {
         'win-flash': 'win-flash 0.4s ease-in-out infinite',
         'slide-up':  'slide-up 220ms cubic-bezier(0.16,1,0.3,1) forwards',
         'shake':     'shake 0.4s ease-in-out',
+        'pill-in':   'pillIn 0.25s cubic-bezier(0.16,1,0.3,1) forwards',
       },
     },
   },

@@ -51,7 +51,7 @@ function BoxScore({ players }) {
           <tbody>
             {players.map((p, i) => {
               const s = p.stats ?? {};
-              const rowBg = i % 2 === 0 ? 'bg-slate-800' : 'bg-slate-750';
+              const rowBg = i % 2 === 0 ? 'bg-slate-800' : 'bg-slate-900';
               return (
                 <tr key={p.id} className={rowBg}>
                   <td className={`sticky left-0 z-10 ${rowBg} px-3 py-2.5 whitespace-nowrap border-b border-slate-700/30`}>
@@ -78,14 +78,11 @@ function RecentPlays({ events }) {
   const ev = events[events.length - 1];
   const scoring = ev.label?.startsWith('+1');
   return (
-    <div
-      key={ev.id}
-      className={`px-3 py-1.5 rounded-full border font-bold text-sm ${
-        scoring
-          ? 'bg-emerald-900/25 border-emerald-700/40 text-white'
-          : 'bg-slate-700/80 border-slate-500/60 text-slate-200'
-      }`}
-    >
+    <div className={`px-3 py-1.5 rounded-full border font-bold text-sm animate-pill-in ${
+      scoring
+        ? 'bg-emerald-900/25 border-emerald-700/40 text-white'
+        : 'bg-slate-700/80 border-slate-500/60 text-slate-200'
+    }`}>
       {ev.label}
     </div>
   );
@@ -218,12 +215,6 @@ export function FamilyScopeViewPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {matchStatus === 'live' && (
-              <span className="flex items-center gap-1.5 text-xs font-black text-emerald-400 uppercase tracking-widest">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                Live
-              </span>
-            )}
             {matchStatus === 'final' && (
               <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Final</span>
             )}
@@ -305,7 +296,7 @@ export function FamilyScopeViewPage() {
 
         {/* Recent plays feed */}
         {feedEvents.length > 0 && matchStatus !== 'scheduled' && (
-          <RecentPlays events={feedEvents} />
+          <RecentPlays key={feedEvents[feedEvents.length - 1]?.id} events={feedEvents} />
         )}
 
         {/* Box Score + Play-by-Play tabs */}

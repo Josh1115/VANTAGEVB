@@ -21,28 +21,20 @@ export function LiveScoreBoard({ liveData, teamName, opponentName }) {
         </span>
       </div>
 
-      {/* Team names row */}
-      <div className="flex items-center justify-center gap-6">
-        <div className="flex-1 text-center">
-          <div className="text-xs text-slate-400 truncate">{teamName ?? 'Us'}</div>
-        </div>
-        <div className="w-16" />
-        <div className="flex-1 text-center">
-          <div className="text-xs text-slate-400 truncate">{opponentName ?? 'Opponent'}</div>
-        </div>
-      </div>
-
-      {/* Scores row — set boxes on outer edges */}
+      {/* Scores row — team names sit above each score, perfectly aligned */}
       <div className="flex items-center justify-center gap-3">
         {/* Home set wins — far left */}
         {setBox(ourSetsWon, true)}
 
-        {/* Home score */}
-        <div className="flex-1 flex items-center justify-end gap-1.5">
-          {serveSide === 'us' && (
-            <span className="text-primary text-lg leading-none">▶</span>
-          )}
-          <span className="text-5xl font-black tabular-nums text-white leading-none">{ourScore}</span>
+        {/* Home name + score */}
+        <div className="flex-1 flex flex-col items-end gap-0.5">
+          <div className="text-xs text-slate-400 truncate max-w-full">{teamName ?? 'Us'}</div>
+          <div className="flex items-center gap-1.5">
+            {serveSide === 'us' && (
+              <span className="text-primary text-lg leading-none">▶</span>
+            )}
+            <span className="text-5xl font-black tabular-nums text-white leading-none">{ourScore}</span>
+          </div>
         </div>
 
         {/* Divider */}
@@ -51,12 +43,15 @@ export function LiveScoreBoard({ liveData, teamName, opponentName }) {
           <span className="text-2xl text-slate-600 font-light leading-none">—</span>
         </div>
 
-        {/* Away score */}
-        <div className="flex-1 flex items-center justify-start gap-1.5">
-          <span className="text-5xl font-black tabular-nums text-slate-300 leading-none">{oppScore}</span>
-          {serveSide === 'them' && (
-            <span className="text-slate-400 text-lg leading-none">▶</span>
-          )}
+        {/* Away name + score */}
+        <div className="flex-1 flex flex-col items-start gap-0.5">
+          <div className="text-xs text-slate-400 truncate max-w-full">{opponentName ?? 'Opponent'}</div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-5xl font-black tabular-nums text-slate-300 leading-none">{oppScore}</span>
+            {serveSide === 'them' && (
+              <span className="text-slate-400 text-lg leading-none">▶</span>
+            )}
+          </div>
         </div>
 
         {/* Away set wins — far right */}
