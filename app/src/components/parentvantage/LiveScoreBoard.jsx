@@ -13,7 +13,6 @@ export function LiveScoreBoard({ liveData, teamName, opponentName }) {
           <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
           Live
         </span>
-        <span className="text-xs text-slate-400">Set {setNumber}</span>
       </div>
 
       {/* Scores */}
@@ -34,8 +33,11 @@ export function LiveScoreBoard({ liveData, teamName, opponentName }) {
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="text-2xl text-slate-600 font-light">—</div>
+        {/* Divider — set number above dash */}
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Set {setNumber}</span>
+          <span className="text-2xl text-slate-600 font-light leading-none">—</span>
+        </div>
 
         {/* Them */}
         <div className="flex-1 text-center">
