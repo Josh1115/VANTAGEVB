@@ -327,6 +327,23 @@ export function MatchSetupPage() {
 
       // Create or update match
       let effectiveMatchId;
+      if (!isMaster) {
+        try {
+          const { data, error } = await supabase.rpc('consume_match_slot');
+          if (!error && data?.allowed === false) {
+            const e = new Error(
+              data.reason === 'inactive'
+                ? 'Your plan is inactive. Upgrade to record matches.'
+                : `Match limit reached (${data.used}/${data.limit} matches). Upgrade to continue.`
+            );
+            e.code = 'MATCH_LIMIT';
+            throw e;
+          }
+        } catch (rpcErr) {
+          if (rpcErr.code === 'MATCH_LIMIT') throw rpcErr;
+          // offline — local check below will catch it
+        }
+      }
       if (scheduledMatchId) {
         await db.matches.update(scheduledMatchId, {
           ...matchPayload,
@@ -335,23 +352,6 @@ export function MatchSetupPage() {
         });
         effectiveMatchId = scheduledMatchId;
       } else {
-        if (!isMaster) {
-          try {
-            const { data, error } = await supabase.rpc('consume_match_slot');
-            if (!error && data?.allowed === false) {
-              const e = new Error(
-                data.reason === 'inactive'
-                  ? 'Your plan is inactive. Upgrade to record matches.'
-                  : `Trial limit reached (${data.used}/${data.limit} matches). Upgrade to continue.`
-              );
-              e.code = 'MATCH_LIMIT';
-              throw e;
-            }
-          } catch (rpcErr) {
-            if (rpcErr.code === 'MATCH_LIMIT') throw rpcErr;
-            // offline — local check inside the transaction below will catch it
-          }
-        }
         effectiveMatchId = await db.transaction('rw', [db.matches, db.seasons], async () => {
           const [liveCount, season, totalCount] = await Promise.all([
             db.matches.where('season_id').equals(Number(seasonId)).count(),

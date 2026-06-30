@@ -17,7 +17,7 @@ function RecordRow({ record, playerStats, teamStats }) {
 
   const currentVal = record.type === 'team_match'
     ? (teamStats?.[statDef.key] ?? 0)
-    : (playerStats?.[record.player_id]?.[statDef.key] ?? 0);
+    : (playerStats?.[String(record.player_id)]?.[statDef.key] ?? 0);
 
   const milestone = computeMilestone(currentVal, recordVal, statDef.type);
   const badge     = milestone ? MILESTONE_BADGE[milestone] : null;

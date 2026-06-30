@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { db } from '../../db/schema';
 import { useMatchStore } from '../../store/matchStore';
 import { useUiStore, selectShowToast } from '../../store/uiStore';
-import { SIDE, SET_STATUS, MATCH_STATUS } from '../../constants';
+import { SIDE, SET_STATUS, MATCH_STATUS, FORMAT } from '../../constants';
 
 const STAT_FIELDS = [
   { key: 'sa',  label: 'SA'  },
@@ -152,23 +152,32 @@ export function BoxScoreEntryModal({ set, matchId, players, onClose, onSaved }) 
         winner,
       });
 
-      // Recount and finalize the match
+      // Recount completed sets and only finalize match if enough sets won
       const allComplete = await db.sets
         .where('match_id').equals(matchId)
         .filter((row) => row.status === SET_STATUS.COMPLETE)
         .toArray();
       const newSetsUs   = allComplete.filter((row) => row.winner === SIDE.US).length;
       const newSetsThem = allComplete.filter((row) => row.winner === SIDE.THEM).length;
-      await db.matches.update(matchId, {
-        status:       MATCH_STATUS.COMPLETE,
-        our_sets_won: newSetsUs,
-        opp_sets_won: newSetsThem,
-      });
-      // Remove any orphan in-progress sets
-      await db.sets
-        .where('match_id').equals(matchId)
-        .filter((row) => row.status === SET_STATUS.IN_PROGRESS)
-        .delete();
+      const match = await db.matches.get(matchId);
+      const setsNeeded  = match?.format === FORMAT.BEST_OF_5 ? 3 : 2;
+      const isMatchOver = newSetsUs >= setsNeeded || newSetsThem >= setsNeeded;
+      if (isMatchOver) {
+        await db.matches.update(matchId, {
+          status:       MATCH_STATUS.COMPLETE,
+          our_sets_won: newSetsUs,
+          opp_sets_won: newSetsThem,
+        });
+        await db.sets
+          .where('match_id').equals(matchId)
+          .filter((row) => row.status === SET_STATUS.IN_PROGRESS)
+          .delete();
+      } else {
+        await db.matches.update(matchId, {
+          our_sets_won: newSetsUs,
+          opp_sets_won: newSetsThem,
+        });
+      }
 
       onSaved();
     } catch {

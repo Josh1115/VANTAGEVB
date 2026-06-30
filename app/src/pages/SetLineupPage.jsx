@@ -4,7 +4,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { useMatchStore } from '../store/matchStore';
-import { SET_STATUS, SIDE } from '../constants';
+import { SET_STATUS, SIDE, FORMAT } from '../constants';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { serveOrderToZone } from '../components/court/CourtZonePicker';
@@ -22,6 +22,7 @@ export function SetLineupPage() {
   const storeServeSide = useMatchStore((s) => s.serveSide);
 
   const [allSets,   setAllSets]   = useState([]);
+  const [maxSets,   setMaxSets]   = useState(3);
   const [setId,     setSetId]     = useState(null);
   const [setNumber, setSetNumber] = useState(null);
   const [teamId,    setTeamId]    = useState(null);
@@ -54,6 +55,7 @@ export function SetLineupPage() {
       const season = match.season_id ? await db.seasons.get(match.season_id) : null;
       const team   = season?.team_id  ? await db.teams.get(season.team_id)   : null;
       if (team) setTeamId(team.id);
+      setMaxSets(match.format === FORMAT.BEST_OF_5 ? 5 : 3);
 
       const sets = await db.sets.where('match_id').equals(matchId).sortBy('set_number');
       setAllSets(sets);
@@ -174,7 +176,10 @@ export function SetLineupPage() {
         .sort((a, b) => a.position - b.position);
 
       setLineup(storeLineup, startRotation);
-      if (liberoId) setLibero(Number(liberoId));
+      if (liberoId) {
+        const liberoPlayer = await db.players.get(Number(liberoId));
+        setLibero(Number(liberoId), liberoPlayer?.name ?? '', liberoPlayer?.jersey_number ?? '');
+      }
       useMatchStore.setState({ serveSide: servingSide });
 
       if (isRevising && revisingSetId) {
@@ -210,7 +215,7 @@ export function SetLineupPage() {
             Set
           </label>
           <div className="flex gap-2">
-            {[1, 2, 3].map((num) => {
+            {Array.from({ length: maxSets }, (_, i) => i + 1).map((num) => {
               const s = allSets.find((x) => x.set_number === num);
               const isActive = setId === s?.id;
               const exists   = !!s;

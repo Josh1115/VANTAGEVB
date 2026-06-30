@@ -591,6 +591,7 @@ export function ReportsPage() {
   const transRows = useMemo(() => {
     if (!stats?.transitionAttack) return [];
     const { free, transition } = stats.transitionAttack;
+    const emptyRot = { ta: 0, k_pct: null, hit_pct: null, win_pct: null };
     const toRow = (rot, label, f, t) => ({
       rot,
       name:          label,
@@ -605,7 +606,7 @@ export function ReportsPage() {
     });
     const rows = [];
     for (let r = 1; r <= 6; r++) {
-      rows.push(toRow(String(r), `R${r}`, free.byRotation[r], transition.byRotation[r]));
+      rows.push(toRow(String(r), `R${r}`, free.byRotation[r] ?? emptyRot, transition.byRotation[r] ?? emptyRot));
     }
     rows.push({ ...toRow('total', 'Total', free.total, transition.total), isTotal: true });
     const dataRows = rows.filter(r => !r.isTotal);

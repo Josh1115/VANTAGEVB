@@ -185,7 +185,7 @@ export function SeasonDetailPage() {
       if (existing) {
         await db.season_history.update(existing.id, { playoff_rounds: merged });
       } else {
-        await db.season_history.add({ team_id: season.team_id, year: season.year, playoff_rounds: merged });
+        await db.season_history.add({ team_id: season.team_id, year: String(season.year), playoff_rounds: merged });
       }
 
       completed.forEach(m => syncedMatchIds.current.add(m.id));

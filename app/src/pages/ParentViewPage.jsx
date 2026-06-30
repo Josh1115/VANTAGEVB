@@ -159,15 +159,15 @@ export function FamilyScopeViewPage() {
         setFeedEvents(prev => [...prev, live.lastFeedItem].slice(-40));
       }
     });
-    return () => { channel.unsubscribe(); clearTimeout(liveTimerRef.current); };
+    return () => { channel.unsubscribe(); };
   }, [token, resetLiveTimer, isOnline]);
 
   const players = snapshot?.players ?? [];
   const matchData = snapshot?.match;
   const ourTeam   = snapshot?.ourTeam;
 
-  const matchStatus = isLive ? 'live'
-    : matchData?.status === 'complete' ? 'final'
+  const matchStatus = matchData?.status === 'complete' ? 'final'
+    : isLive ? 'live'
     : matchData?.status === 'in_progress' ? 'in_progress'
     : 'scheduled';
 

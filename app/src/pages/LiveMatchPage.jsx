@@ -158,6 +158,8 @@ export function LiveMatchPage() {
 
   const { activeAlerts } = useRecordAlerts(records ?? [], matchPlayerStats, matchTeamStats);
 
+  const pendingSetConfirmRef = useRef(false);
+
   // Keep screen awake during live match if setting is on
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const wakeLockEnabled = useMemo(() => {
@@ -624,6 +626,9 @@ export function LiveMatchPage() {
             confirmLabel={isRevising ? 'Save Set' : (isMatchOver ? 'End Match' : 'End Set')}
             cancelLabel="Keep Playing"
             onConfirm={async () => {
+              if (pendingSetConfirmRef.current) return;
+              pendingSetConfirmRef.current = true;
+              try {
               if (isRevising) {
                 await finishRevisedSet(pendingSetWin);
                 clearPendingSetWin();
@@ -646,6 +651,9 @@ export function LiveMatchPage() {
                 const winner = pendingSetWin;
                 clearPendingSetWin();
                 setSummaryModalData({ winner });
+              }
+              } finally {
+                pendingSetConfirmRef.current = false;
               }
             }}
             onCancel={clearPendingSetWin}

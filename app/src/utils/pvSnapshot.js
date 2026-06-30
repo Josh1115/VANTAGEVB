@@ -130,20 +130,22 @@ export async function computeSnapshotPayload(teamId) {
       jersey:   p.jersey_number ?? '',
       position: p.position ?? '',
       stats: {
-        kills:    s.k    ?? 0,
-        killPct:  s.k_pct  ?? null,
-        hitPct:   s.hit_pct ?? null,
-        aces:     s.ace   ?? 0,
-        acePct:   s.ace_pct ?? null,
-        apr:      s.apr   ?? null,
-        blocks:   (s.bs ?? 0) + (s.ba ?? 0),
-        digs:     s.dig   ?? 0,
-        assists:  s.ast   ?? 0,
-        serves:   s.sa    ?? 0,
-        serveErr: s.se    ?? 0,
-        passes:   s.pa    ?? 0,
-        sp:       s.sp    ?? 0,
-        mp:       s.mp    ?? 0,
+        kills:      s.k      ?? 0,
+        attackAtt:  s.ta     ?? 0,
+        attackErr:  s.ae     ?? 0,
+        killPct:    s.k_pct  ?? null,
+        hitPct:     s.hit_pct ?? null,
+        aces:       s.ace    ?? 0,
+        acePct:     s.ace_pct ?? null,
+        apr:        s.apr    ?? null,
+        blocks:     (s.bs ?? 0) + (s.ba ?? 0),
+        digs:       s.dig    ?? 0,
+        assists:    s.ast    ?? 0,
+        serves:     s.sa     ?? 0,
+        serveErr:   s.se     ?? 0,
+        passes:     s.pa     ?? 0,
+        sp:         s.sp     ?? 0,
+        mp:         s.mp     ?? 0,
       },
     };
   });
@@ -159,6 +161,13 @@ export async function computeSnapshotPayload(teamId) {
   })).sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return {
+    ourTeam: { name: team?.name ?? '' },
+    match: {
+      status:     matches.length > 0 ? 'in_progress' : 'scheduled',
+      opponent:   null,
+      date:       null,
+      location:   null,
+    },
     team: {
       id:         teamId,
       name:       team?.name ?? '',

@@ -66,7 +66,8 @@ export function usePlan() {
   }
 
   const matchLimit = plan === 'trial' ? TRIAL_MATCH_LIMIT
-    : plan === '5plus_teams' ? 50
+    : plan === 'master' ? Infinity
+    : isActive ? 50
     : Infinity;
 
   // Days until expiry — positive integer if expiring in future, null otherwise
