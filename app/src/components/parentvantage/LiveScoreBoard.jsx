@@ -1,4 +1,4 @@
-export function LiveScoreBoard({ liveData, teamName, opponentName }) {
+export function LiveScoreBoard({ liveData, teamName, opponentName, isLive = false }) {
   const {
     ourScore = 0, oppScore = 0,
     ourSetsWon = 0, oppSetsWon = 0,
@@ -14,12 +14,14 @@ export function LiveScoreBoard({ liveData, teamName, opponentName }) {
   return (
     <div className="bg-slate-800 rounded-xl p-4 space-y-2">
       {/* Live badge */}
-      <div className="flex items-center gap-2 mb-1">
-        <span className="flex items-center gap-1.5 text-xs font-bold text-red-500 uppercase tracking-widest">
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          Live
-        </span>
-      </div>
+      {isLive && (
+        <div className="flex items-center gap-2 mb-1">
+          <span className="flex items-center gap-1.5 text-xs font-bold text-red-500 uppercase tracking-widest">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            Live
+          </span>
+        </div>
+      )}
 
       {/* Scores row — team names sit above each score, perfectly aligned */}
       <div className="flex items-center justify-center gap-3">

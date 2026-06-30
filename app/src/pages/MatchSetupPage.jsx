@@ -444,7 +444,7 @@ export function MatchSetupPage() {
             </p>
           </div>
         )}
-        {!isMaster && selectedSeason && seasonMatchCount !== undefined && seasonMatchCount >= matchLimit * 0.9 && seasonMatchCount < matchLimit && (
+        {!isMaster && selectedSeason && seasonMatchCount !== undefined && seasonMatchCount >= Math.floor(matchLimit * 0.9) && seasonMatchCount < matchLimit && (
           <div className="rounded-xl border border-amber-700/50 bg-amber-900/20 px-4 py-3">
             <p className="text-sm text-amber-300">
               Trial match <span className="font-black">{seasonMatchCount + 1} of {matchLimit}</span>.

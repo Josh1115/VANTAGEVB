@@ -1279,7 +1279,7 @@ export function HomePage() {
           {nextMatch ? (
             <div
               className="group flex-1 card-top-glow bg-surface rounded-xl p-3 text-left flex items-center gap-2.5 cursor-pointer active:scale-[0.97] transition-transform"
-              onClick={() => navigate(`/matches/new?match=${nextMatch.id}`)}
+              onClick={() => navigate(`/matches/new?season=${nextMatch.season_id}&match=${nextMatch.id}`)}
             >
               {(() => {
                 const d = nextMatch.date ? new Date(nextMatch.date) : null;

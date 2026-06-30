@@ -21,7 +21,7 @@ export function LiveFeed({ events }) {
             className="flex items-center gap-2 text-sm py-0.5 animate-fade-in"
           >
             <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-              ev.label?.includes('+1') ? 'bg-emerald-400' : 'bg-slate-500'
+              ev.label?.startsWith('+1') ? 'bg-emerald-400' : 'bg-slate-500'
             }`} />
             <span className="text-slate-200">{ev.label}</span>
           </div>

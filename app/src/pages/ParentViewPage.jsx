@@ -227,7 +227,7 @@ export function FamilyScopeViewPage() {
 
         {/* Live scoreboard — visible whenever we have score data */}
         {liveData && matchStatus !== 'scheduled' && (
-          <LiveScoreBoard liveData={liveData} teamName={ourTeam?.name} opponentName={matchData?.opponent} />
+          <LiveScoreBoard liveData={liveData} teamName={ourTeam?.name} opponentName={matchData?.opponent} isLive={matchStatus === 'live'} />
         )}
 
         {/* Final score from snapshot */}
@@ -240,9 +240,11 @@ export function FamilyScopeViewPage() {
             <div className="text-center">
               <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Sets</div>
               <div className="flex items-center gap-1">
-                {matchData.ourSetsWon > matchData.oppSetsWon
-                  ? <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-400">W</span>
-                  : <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-900/60 text-red-400">L</span>
+                {(matchData.ourSetsWon ?? 0) === 0 && (matchData.oppSetsWon ?? 0) === 0
+                  ? null
+                  : matchData.ourSetsWon > matchData.oppSetsWon
+                    ? <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-400">W</span>
+                    : <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-900/60 text-red-400">L</span>
                 }
               </div>
             </div>

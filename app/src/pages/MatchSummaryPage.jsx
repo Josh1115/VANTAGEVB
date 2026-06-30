@@ -304,7 +304,10 @@ function MatchNotes({ matchId, initialNotes }) {
 
 // ── Score Timeline Chart ─────────────────────────────────────────────────────
 
-function SetScoreChart({ setData, setLabel, teamName, opponentName }) {
+function SetScoreChart({ setData, setLabel, teamName, opponentName, maxScore = 0 }) {
+  const yMax = Math.max(25, maxScore + 2);
+  const yTicks = [];
+  for (let t = 5; t <= yMax; t += 5) yTicks.push(t);
   return (
     <div>
       <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">{setLabel}</p>
@@ -312,7 +315,7 @@ function SetScoreChart({ setData, setLabel, teamName, opponentName }) {
         <LineChart data={setData} margin={{ top: 4, right: 8, left: -24, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
           <XAxis dataKey="x" hide />
-          <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} domain={[0, 25]} ticks={[5, 10, 15, 20, 25]} interval={0} allowDecimals={false} />
+          <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} domain={[0, yMax]} ticks={yTicks} interval={0} allowDecimals={false} />
           <Tooltip
             contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
             labelStyle={{ color: '#cbd5e1' }}
@@ -1443,7 +1446,7 @@ export function MatchSummaryPage() {
     <div>
       <PageHeader title="Match Summary" backTo="/" />
 
-      {loading && (
+      {loading && !stats && (
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
       )}
 
@@ -1455,7 +1458,7 @@ export function MatchSummaryPage() {
         </div>
       )}
 
-      {!loading && !statsError && match && (
+      {!statsError && match && stats && (
         <>
           {/* Match header */}
           <div className="px-4 pt-4 pb-2">
