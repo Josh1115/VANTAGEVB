@@ -50,10 +50,10 @@ const JERSEY_COLORS = [
   { id: 'pink',   label: 'Pink',   bg: '#db2777', border: '#ec4899' },
 ];
 
-export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName, opponentName }) {
+export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName, opponentName, onEndMatch }) {
   const {
     matchId, currentSetId, ourScore, oppScore, fudgeScore,
-    endSet, endMatch, resetCurrentSet, resetToRotation,
+    endSet, resetCurrentSet, resetToRotation,
     teamJerseyColor, liberoJerseyColor, setTeamJerseyColor, setLiberoJerseyColor,
     pvToken,
   } = useMatchStore(useShallow((s) => ({
@@ -63,7 +63,6 @@ export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName
     oppScore:             s.oppScore,
     fudgeScore:           s.fudgeScore,
     endSet:               s.endSet,
-    endMatch:             s.endMatch,
     resetCurrentSet:      s.resetCurrentSet,
     resetToRotation:      s.resetToRotation,
     teamJerseyColor:      s.teamJerseyColor,
@@ -91,8 +90,9 @@ export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName
   };
 
   const handleEndMatch = async () => {
-    await endMatch(computeWinner());
-    navigate(`/matches/${matchId}/summary`);
+    setConfirmEndMatch(false);
+    onClose();
+    await onEndMatch?.(computeWinner());
   };
 
   const handleResetConfirmed = async () => {

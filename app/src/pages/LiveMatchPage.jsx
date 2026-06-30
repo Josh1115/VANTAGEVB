@@ -546,7 +546,27 @@ export function LiveMatchPage() {
           onPick={(idx) => { swapLibero(liberoPlayer, idx); setLiberoSwapOpen(false); }}
         />
       )}
-      {menuOpen  && <MenuDrawer onClose={() => setMenuOpen(false)} flipLayout={flipLayout} onFlipLayout={handleToggleFlip} teamName={teamName} opponentName={opponentName} />}
+      {menuOpen && (
+        <MenuDrawer
+          onClose={() => setMenuOpen(false)}
+          flipLayout={flipLayout}
+          onFlipLayout={handleToggleFlip}
+          teamName={teamName}
+          opponentName={opponentName}
+          onEndMatch={async (winner) => {
+            await endMatch(winner);
+            stopBroadcast();
+            autoSaveBackup('match_end').catch(() => {});
+            setExportPromptNav(() => () => {
+              if (winner === SIDE.US) {
+                setConfettiNav({ path: `/matches/${matchIdParam}/summary`, matchWin: true });
+              } else {
+                navigate(`/matches/${matchIdParam}/summary`);
+              }
+            });
+          }}
+        />
+      )}
       <LiveStatsModal
         open={statsOpen}
         onClose={() => setStatsOpen(false)}

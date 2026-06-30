@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../db/schema';
 import clsx from 'clsx';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { useMatchStore } from '../../store/matchStore';
@@ -101,19 +103,35 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
 
   const historicalPQ = useHistoricalPQ(matchId);
 
+  const allMatchContactsFromDb = useLiveQuery(
+    () => scope === 'match' && matchId
+      ? db.contacts.where('match_id').equals(matchId).toArray()
+      : Promise.resolve(null),
+    [scope, matchId]
+  );
+
+  const allMatchRalliesFromDb = useLiveQuery(
+    () => scope === 'match' && matchId
+      ? db.rallies.where('match_id').equals(matchId).toArray()
+      : Promise.resolve(null),
+    [scope, matchId]
+  );
+
   const setContacts = useMemo(
     () => scope === 'set'
       ? committedContacts.filter((c) => c.set_id === currentSetId)
-      : committedContacts,
-    [committedContacts, currentSetId, scope]
+      : (allMatchContactsFromDb ?? committedContacts),
+    [committedContacts, currentSetId, scope, allMatchContactsFromDb]
   );
 
   const setRallies = useMemo(
     () => scope === 'set'
       ? committedRallies.filter((r) => r.set_id === currentSetId)
-      : committedRallies,
-    [committedRallies, currentSetId, scope]
+      : (allMatchRalliesFromDb ?? committedRallies),
+    [committedRallies, currentSetId, scope, allMatchRalliesFromDb]
   );
+
+  const setsPlayed = scope === 'match' ? Math.max(1, ourSetsWon + oppSetsWon) : 1;
 
   const timelineData = useMemo(() => {
     const sorted = [...setRallies].sort((a, b) => a.rally_number - b.rally_number);
@@ -127,8 +145,8 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
     return pts;
   }, [setRallies]);
 
-  const playerStats  = useMemo(() => computePlayerStats(setContacts, 1),  [setContacts]);
-  const teamStats    = useMemo(() => computeTeamStats(setContacts, 1),    [setContacts]);
+  const playerStats  = useMemo(() => computePlayerStats(setContacts, setsPlayed),  [setContacts, setsPlayed]);
+  const teamStats    = useMemo(() => computeTeamStats(setContacts, setsPlayed),    [setContacts, setsPlayed]);
   const pointQuality = useMemo(() => computePointQuality(setContacts),    [setContacts]);
   const oppStats     = useMemo(() => computeOppDisplayStats(setContacts), [setContacts]);
 
