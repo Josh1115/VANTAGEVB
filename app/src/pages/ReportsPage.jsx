@@ -1636,7 +1636,7 @@ export function ReportsPage() {
                 {/* Transition & Free Ball by Rotation */}
                 {transRows.length > 0 && (
                   <div className="bg-surface rounded-xl p-3">
-                    <SectionHeader>Transition &amp; Free Ball Offense by Rotation</SectionHeader>
+                    <SectionHeader>Free Ball &amp; Transition Offense by Rotation</SectionHeader>
                     <MiniTable cols={TRANS_COLS} rows={transRows} />
                   </div>
                 )}
