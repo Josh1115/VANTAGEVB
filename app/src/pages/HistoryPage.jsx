@@ -1367,8 +1367,9 @@ export function HistoryPage() {
     let losses = 0;
     for (const h of sortedHistory) {
       if (activeSeasonYear && String(h.year) === activeSeasonYear) continue;
-      wins   += h.wins   ?? 0;
-      losses += h.losses ?? 0;
+      const live = liveRecordsByYear?.[String(h.year)];
+      wins   += live?.wins   ?? h.wins   ?? 0;
+      losses += live?.losses ?? h.losses ?? 0;
     }
     if (hasActiveSeason) {
       const completed = (activeMatches ?? []).filter(
@@ -1380,7 +1381,7 @@ export function HistoryPage() {
     const total  = wins + losses;
     const winPct = total > 0 ? fmtWinPct(wins, total) : null;
     return { wins, losses, total, winPct };
-  }, [sortedHistory, activeMatches, hasActiveSeason, activeSeasonYear]);
+  }, [sortedHistory, activeMatches, hasActiveSeason, activeSeasonYear, liveRecordsByYear]);
 
   const [displayProgramRecord, setDisplayProgramRecord] = useState({ wins: 0, losses: 0 });
 

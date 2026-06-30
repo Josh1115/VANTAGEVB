@@ -192,9 +192,23 @@ export function SeasonDetailPage() {
     })();
   }, [data]);
 
-  if (!data) return (
+  if (data === undefined) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  if (data === null) return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-3 px-6 text-center">
+      <p className="text-2xl">🏐</p>
+      <p className="text-base font-bold text-white">Season not found</p>
+      <p className="text-sm text-slate-400">This season may have been deleted.</p>
+      <button
+        onClick={() => navigate('/seasons')}
+        className="mt-2 text-sm text-primary font-semibold hover:underline"
+      >
+        Back to seasons
+      </button>
     </div>
   );
   const { season, team, matches, playerNames, playerJerseys } = data;
