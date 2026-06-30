@@ -5,6 +5,14 @@ import { saveToCloud, restoreFromCloud } from '../stats/backup';
 import { db } from '../db/schema';
 import { getStorageItem, setStorageItem, STORAGE_KEYS } from '../utils/storage';
 
+// Wipe all user-specific localStorage settings so one account's data can't
+// bleed into the next account that opens the app on the same device.
+function clearUserSettings() {
+  try {
+    Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
+  } catch {}
+}
+
 const AUTH_CONTEXT_DEFAULT = {
   session: null,
   profile: null,
@@ -77,6 +85,7 @@ export function AuthProvider({ children }) {
   function switchToUser(uid) {
     if (reloading.current) return;
     reloading.current = true;
+    clearUserSettings();
     try { localStorage.setItem(USER_ID_KEY, uid); } catch {}
     window.location.reload();
   }
@@ -84,6 +93,7 @@ export function AuthProvider({ children }) {
   function clearUser() {
     if (reloading.current) return;
     reloading.current = true;
+    clearUserSettings();
     try { localStorage.removeItem(USER_ID_KEY); } catch {}
     window.location.reload();
   }
