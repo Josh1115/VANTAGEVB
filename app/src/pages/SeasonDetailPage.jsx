@@ -97,7 +97,7 @@ export function SeasonDetailPage() {
         aces:    findLeader(s => (s.sa  ?? 0) >= 10 ? (s.ace  ?? 0) : 0),
         blocks:  findLeader(s => (s.bs ?? 0) + (s.ba ?? 0) + (s.be ?? 0) >= 10 ? (s.bs ?? 0) + (s.ba ?? 0) : 0),
         digs:    findLeader(s => (s.dig ?? 0) >= 10 ? (s.dig  ?? 0) : 0),
-        assists: findLeader(s => (s.ast ?? 0) + (s.bhe ?? 0) >= 10 ? (s.ast ?? 0) : 0),
+        assists: findLeader(s => (s.ast ?? 0) >= 10 ? (s.ast ?? 0) : 0),
         rec:     findLeader(s => (s.pa  ?? 0) >= 10 ? (s.pa   ?? 0) : 0),
         apr:     findLeader(s => (s.pa  ?? 0) >= 10 ? (s.apr  ?? 0) : 0),
       },
