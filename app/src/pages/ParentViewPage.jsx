@@ -75,25 +75,18 @@ function BoxScore({ players }) {
 
 function RecentPlays({ events }) {
   if (!events.length) return null;
-  const recent = [...events].reverse().slice(0, 10);
+  const ev = events[events.length - 1];
+  const scoring = ev.label?.startsWith('+1');
   return (
-    <div className="space-y-1.5">
-      {recent.map((ev, i) => {
-        const scoring = ev.label?.startsWith('+1');
-        return (
-          <div
-            key={ev.id ?? i}
-            style={{ opacity: Math.max(0.3, 1 - i * 0.1) }}
-            className={`px-3 py-1.5 rounded-full border font-bold text-sm ${
-              scoring
-                ? 'bg-emerald-900/25 border-emerald-700/40 text-white'
-                : 'bg-slate-700/80 border-slate-500/60 text-slate-200'
-            }`}
-          >
-            {ev.label}
-          </div>
-        );
-      })}
+    <div
+      key={ev.id}
+      className={`px-3 py-1.5 rounded-full border font-bold text-sm ${
+        scoring
+          ? 'bg-emerald-900/25 border-emerald-700/40 text-white'
+          : 'bg-slate-700/80 border-slate-500/60 text-slate-200'
+      }`}
+    >
+      {ev.label}
     </div>
   );
 }
