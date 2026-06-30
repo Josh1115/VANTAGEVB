@@ -26,10 +26,10 @@ export function LiveScoreBoard({ liveData, teamName, opponentName }) {
             )}
             <span className="text-5xl font-black tabular-nums text-white leading-none">{ourScore}</span>
           </div>
-          <div className="text-xs text-slate-500 mt-1">
-            {Array.from({ length: ourSetsWon }).map((_, i) => (
-              <span key={i} className="text-primary">●</span>
-            ))}
+          <div className="mt-2 flex justify-center">
+            <div className="border-2 border-orange-500 rounded px-3 py-0.5 bg-orange-950/30">
+              <span className="text-base font-black tabular-nums text-orange-400 leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>{ourSetsWon}</span>
+            </div>
           </div>
         </div>
 
@@ -48,10 +48,10 @@ export function LiveScoreBoard({ liveData, teamName, opponentName }) {
             )}
             <span className="text-5xl font-black tabular-nums text-slate-300 leading-none">{oppScore}</span>
           </div>
-          <div className="text-xs text-slate-500 mt-1">
-            {Array.from({ length: oppSetsWon }).map((_, i) => (
-              <span key={i} className="text-slate-400">●</span>
-            ))}
+          <div className="mt-2 flex justify-center">
+            <div className="border-2 border-slate-500 rounded px-3 py-0.5 bg-slate-800/40">
+              <span className="text-base font-black tabular-nums text-slate-300 leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>{oppSetsWon}</span>
+            </div>
           </div>
         </div>
       </div>
