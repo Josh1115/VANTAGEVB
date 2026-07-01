@@ -13,6 +13,24 @@ function clearUserSettings() {
   } catch {}
 }
 
+// Read the Supabase session straight out of localStorage, bypassing
+// supabase-js's own getSession()/getUser(). On iOS Safari those calls run an
+// internal validity check that can wrongly decide a perfectly good session is
+// invalid, delete it from storage, and broadcast a false SIGNED_OUT — which
+// logs the coach out and reloads the app. Reading the raw value ourselves
+// can't trigger that check.
+function readStoredSession() {
+  try {
+    const host = new URL(import.meta.env.VITE_SUPABASE_URL).hostname;
+    const key = `sb-${host.split('.')[0]}-auth-token`;
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.access_token && parsed?.refresh_token && parsed?.user) return parsed;
+  } catch {}
+  return null;
+}
+
 const AUTH_CONTEXT_DEFAULT = {
   session: null,
   profile: null,
@@ -135,27 +153,41 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     // On load: verify the open DB matches the session user.
     // If not, store the correct user ID and reload so schema.js opens the right DB.
-    supabase.auth.getSession()
-      .then(({ data: { session } }) => {
-        if (session) {
-          const stored = localStorage.getItem(USER_ID_KEY);
-          if (stored !== session.user.id) {
-            switchToUser(session.user.id);
-            return;
-          }
-          setSession(session);
-          fetchProfile(session.user.id);
-        } else {
-          setSession(null);
-        }
-      })
-      .catch(() => setSession(null));
+    const initialSession = readStoredSession();
+
+    // Deferred (not called synchronously in the effect body) to match how
+    // this always ran before — previously inside a getSession() .then().
+    Promise.resolve().then(() => {
+      const initialUid = initialSession ? localStorage.getItem(USER_ID_KEY) : null;
+
+      if (initialSession && initialUid !== initialSession.user?.id) {
+        switchToUser(initialSession.user.id);
+      } else if (initialSession) {
+        setSession(initialSession);
+        fetchProfile(initialSession.user.id);
+        migrateSharedDb().then(() => autoSync(initialSession));
+      } else {
+        setSession(null);
+      }
+    });
+
+    // supabase-js always fires one callback immediately after subscribing
+    // (INITIAL_SESSION, or SIGNED_OUT if the bug above tripped). We've
+    // already established the real state above from raw storage, so ignore
+    // that one leading callback whenever we know a session actually exists —
+    // every callback after it is trusted normally.
+    let settled = false;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         setSession(session ?? null);
         setRecoveryMode(true);
         return;
+      }
+
+      if (!settled) {
+        settled = true;
+        if (initialSession) return;
       }
 
       if (session) {

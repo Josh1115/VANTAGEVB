@@ -1,6 +1,20 @@
 import { useState } from 'react';
 import { supabase } from '../../utils/supabase';
 
+// Supabase's raw error text can include internal/server details that mean
+// nothing to a coach and shouldn't be shown as-is. Map known cases to a
+// plain-language message and fall back to a generic one otherwise.
+function friendlyResetError(error) {
+  const message = error?.message?.toLowerCase() ?? '';
+  if (message.includes('expired') || message.includes('invalid') || message.includes('token')) {
+    return 'Your reset link has expired. Please request a new one.';
+  }
+  if (message.includes('network') || message.includes('fetch')) {
+    return 'Network error. Check your connection and try again.';
+  }
+  return 'Something went wrong updating your password. Please try again.';
+}
+
 export function ResetPasswordPage({ onDone }) {
   const [password, setPassword] = useState('');
   const [confirm,  setConfirm]  = useState('');
@@ -16,7 +30,7 @@ export function ResetPasswordPage({ onDone }) {
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
-    if (error) { setError(error.message); return; }
+    if (error) { setError(friendlyResetError(error)); return; }
     setDone(true);
     setTimeout(onDone, 1800);
   }
