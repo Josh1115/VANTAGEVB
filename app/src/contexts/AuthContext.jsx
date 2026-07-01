@@ -10,6 +10,11 @@ import { getStorageItem, setStorageItem, STORAGE_KEYS } from '../utils/storage';
 function clearUserSettings() {
   try {
     Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
+    // Tool-page drafts (PracticeGame/ServeTracker/ServeReceive) and per-match
+    // scout flags use dynamic keys outside STORAGE_KEYS — sweep them too.
+    Object.keys(localStorage)
+      .filter(key => key.startsWith('vbstat_draft_') || key.startsWith('vbstat_scout_'))
+      .forEach(key => localStorage.removeItem(key));
   } catch {}
 }
 

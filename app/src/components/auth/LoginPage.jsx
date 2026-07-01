@@ -3,6 +3,7 @@ import { VantageLogo } from '../ui/VantageLogo';
 import { NetDivider } from '../ui/NetDivider';
 import { supabase, trackPageView } from '../../utils/supabase';
 import { router } from '../../router';
+import { TurnstileWidget, CAPTCHA_REQUIRED } from './TurnstileWidget';
 
 function friendlyAuthError(msg) {
   if (!msg) return 'Something went wrong. Please try again.';
@@ -26,7 +27,9 @@ export function LoginPage({ onSignup }) {
   const [loading,    setLoading]    = useState(false);
   const [forgotSent,   setForgotSent]   = useState(false);
   const [pricingOpen,  setPricingOpen]  = useState(true);
+  const [captchaToken, setCaptchaToken] = useState(null);
   const passRef = useRef(null);
+  const turnstileRef = useRef(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -49,9 +52,16 @@ export function LoginPage({ onSignup }) {
 
   async function handleLogin() {
     if (!email || !password) { setError('Please enter your email and password.'); return; }
+    if (CAPTCHA_REQUIRED && !captchaToken) { setError('Please complete the verification challenge.'); return; }
     setLoading(true);
     setError('');
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+      options: { captchaToken: captchaToken ?? undefined },
+    });
+    turnstileRef.current?.reset();
+    setCaptchaToken(null);
     if (error) {
       setError(friendlyAuthError(error.message));
       setLoading(false);
@@ -62,10 +72,14 @@ export function LoginPage({ onSignup }) {
 
   async function handleForgot() {
     if (!email.trim()) { setError('Enter your email above first.'); return; }
+    if (CAPTCHA_REQUIRED && !captchaToken) { setError('Please complete the verification challenge.'); return; }
     setError('');
     await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
       redirectTo: window.location.origin,
+      captchaToken: captchaToken ?? undefined,
     });
+    turnstileRef.current?.reset();
+    setCaptchaToken(null);
     setForgotSent(true);
   }
 
@@ -656,12 +670,14 @@ export function LoginPage({ onSignup }) {
                 className={inp}
               />
 
+              <TurnstileWidget ref={turnstileRef} onToken={setCaptchaToken} />
+
               {error      && <p className="text-sm text-red-400 text-center -mt-1">{error}</p>}
               {forgotSent && <p className="text-sm text-emerald-400 text-center -mt-1">Reset link sent — check your email</p>}
 
               <button
                 onClick={handleLogin}
-                disabled={loading}
+                disabled={loading || (CAPTCHA_REQUIRED && !captchaToken)}
                 className="w-full rounded-2xl bg-primary py-5 text-lg font-black text-white tracking-wide active:scale-[0.97] transition-transform disabled:opacity-50"
               >
                 {loading ? 'Signing in…' : 'Log In'}
@@ -676,7 +692,8 @@ export function LoginPage({ onSignup }) {
                 </button>
                 <button
                   onClick={handleForgot}
-                  className="text-sm text-slate-500 hover:text-slate-300 transition-colors"
+                  disabled={CAPTCHA_REQUIRED && !captchaToken}
+                  className="text-sm text-slate-500 hover:text-slate-300 transition-colors disabled:opacity-50"
                 >
                   Forgot password?
                 </button>

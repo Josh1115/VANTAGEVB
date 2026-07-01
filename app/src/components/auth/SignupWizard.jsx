@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { supabase } from '../../utils/supabase';
 import { TRIAL_MATCH_LIMIT } from '../../constants';
+import { TurnstileWidget, CAPTCHA_REQUIRED } from './TurnstileWidget';
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA',
@@ -228,7 +229,7 @@ function StepSchool({ data, onChange, onNext, error }) {
 }
 
 // ── Step 4: Coach (final step — triggers account creation) ───────────────────
-function StepCoach({ value, onChange, onSubmit, submitting, error }) {
+function StepCoach({ value, onChange, onSubmit, submitting, error, captchaToken, onCaptchaToken, turnstileRef }) {
   const [ageAck,    setAgeAck]    = useState(false);
   const [nameError, setNameError] = useState('');
   const inp = 'w-full rounded-2xl border-2 border-slate-600 bg-slate-800/40 px-5 py-4 text-lg text-white placeholder-slate-500 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all';
@@ -290,11 +291,13 @@ function StepCoach({ value, onChange, onSubmit, submitting, error }) {
         </p>
       </label>
 
+      <TurnstileWidget ref={turnstileRef} onToken={onCaptchaToken} />
+
       {error && <p className="text-sm text-red-400 text-center">{error}</p>}
 
       <button
         onClick={handleSubmit}
-        disabled={submitting || !ageAck}
+        disabled={submitting || !ageAck || (CAPTCHA_REQUIRED && !captchaToken)}
         className="w-full rounded-2xl bg-primary py-4 text-base font-black text-white tracking-wide active:scale-[0.97] transition-transform disabled:opacity-50"
       >
         {submitting ? 'Creating account…' : 'Start Free Trial'}
@@ -354,6 +357,8 @@ export function SignupWizard({ onComplete, onBack }) {
   const [coachName,  setCoachName]  = useState('');
   const [error,      setError]      = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const turnstileRef = useRef(null);
 
   function clearError() { setError(''); }
   function next()       { clearError(); setStep(s => s + 1); }
@@ -386,6 +391,7 @@ export function SignupWizard({ onComplete, onBack }) {
             school_type:  school.school_type || null,
             school_state: school.school_state || null,
           },
+          captchaToken: captchaToken ?? undefined,
         },
       });
       if (error) throw error;
@@ -395,6 +401,8 @@ export function SignupWizard({ onComplete, onBack }) {
         setStep(5); // email confirmation required — show check-your-email screen
       }
     } catch (err) {
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
       const msg = err.message ?? '';
       if (/already registered/i.test(msg) || /already been registered/i.test(msg) || /user already exists/i.test(msg)) {
         setError('An account with that email already exists. Try logging in instead.');
@@ -449,6 +457,9 @@ export function SignupWizard({ onComplete, onBack }) {
             onSubmit={handleSubmit}
             submitting={submitting}
             error={error}
+            captchaToken={captchaToken}
+            onCaptchaToken={setCaptchaToken}
+            turnstileRef={turnstileRef}
           />
         )}
 
