@@ -211,10 +211,10 @@ token_verifications = 30
 web3 = 30
 
 # Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
-[auth.captcha]
-enabled = true
-provider = "turnstile"
-secret = "env(TURNSTILE_SECRET_KEY)"
+# [auth.captcha]
+# enabled = true
+# provider = "turnstile"
+# secret = "env(TURNSTILE_SECRET_KEY)"
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
@@ -223,7 +223,7 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = true
+enable_confirmations = false
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
@@ -234,14 +234,14 @@ otp_length = 6
 otp_expiry = 3600
 
 # Use a production-ready SMTP server
-# [auth.email.smtp]
-# enabled = true
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+[auth.email.smtp]
+enabled = true
+host = "smtp-relay.brevo.com"
+port = 587
+user = "b09b3f001@smtp-brevo.com"
+pass = "env(BREVO_SMTP_KEY)"
+admin_email = "vantagevb@gmail.com"
+sender_name = "Vantage"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]
