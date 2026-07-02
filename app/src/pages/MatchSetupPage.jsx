@@ -323,6 +323,10 @@ export function MatchSetupPage() {
         tournament_round:       matchType === 'tourney' ? tournamentRound : null,
         playoff_round:          matchType === 'ihsa-playoffs' ? playoffRound.trim() || null : null,
         opponent_playoff_seed:  matchType === 'ihsa-playoffs' && oppPlayoffSeed !== '' ? parseInt(oppPlayoffSeed, 10) : null,
+        // Single chosen color per match (team rows store arrays of options) —
+        // persisted so the live page can restore them after remount/reload
+        team_jersey_color:      teamJerseyColor,
+        libero_jersey_color:    liberoJerseyColor,
       };
 
       // Create or update match
@@ -403,6 +407,7 @@ export function MatchSetupPage() {
         opp_score:        0,
         libero_player_id: liberoId ? Number(liberoId) : null,
         start_rotation:   startRotation,
+        serving_first:    servingSide, // persisted so the live page survives remount/reload
         ...(startFormations ? { serve_receive_formations: startFormations } : {}),
       });
 

@@ -121,6 +121,103 @@ function checkSetWin(ourScore, oppScore, setNumber, format, lastSetScore) {
   return null;
 }
 
+// Rebuild live-set state from persisted rows. Called on every LiveMatchPage
+// mount so the between-sets round trip (live → set-lineup → live) and a
+// mid-set app reload both land back on the true score, set number, sets-won
+// tally, serve side, rotation, lineup (with subs replayed), and timeout/sub
+// counts. Pure so it can be unit-tested.
+//
+// Known limits: manual score adjustments (fudgeScore) create no rally rows so
+// they aren't recoverable, and libero on-court state isn't persisted — the
+// libero rejoins via the swap button after a reload.
+export function reconstructSetState({
+  setRow, allSets, rallies, timeoutRows, subRows,
+  baseLineup, baseRotation, playersById, format, lastSetScore,
+}) {
+  const setNumber = setRow.set_number ?? 1;
+
+  const completed  = (allSets ?? []).filter((s) => s.status === SET_STATUS.COMPLETE && s.id !== setRow.id);
+  const ourSetsWon = completed.filter((s) => s.winner === SIDE.US).length;
+  const oppSetsWon = completed.filter((s) => s.winner === SIDE.THEM).length;
+
+  // Insert order (auto-increment id) is the reliable ordering; rally_number
+  // can restart at 0 after a mid-set reload.
+  const ordered  = [...(rallies ?? [])].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+  const ourScore = ordered.filter((r) => r.point_winner === SIDE.US).length;
+  const oppScore = ordered.filter((r) => r.point_winner === SIDE.THEM).length;
+  const last     = ordered[ordered.length - 1] ?? null;
+
+  // Winner of the last rally serves next; a fresh set uses the recorded
+  // serving_first choice from the lineup/setup page.
+  const serveSide = last ? last.point_winner : (setRow.serving_first ?? SIDE.US);
+
+  // Rotation: anchor on the last rally's recorded rotation (respects any
+  // manual rotation resets made mid-set), advancing once if that rally was a
+  // sideout win for us.
+  const lastRotated = last ? (last.serve_side === SIDE.THEM && last.point_winner === SIDE.US) : false;
+  const rotationNum = last && last.our_rotation != null
+    ? (lastRotated ? (last.our_rotation % 6) + 1 : last.our_rotation)
+    : baseRotation;
+
+  // Replay substitutions oldest-first by player id (rotation-independent),
+  // then rotate the arrangement from the set's starting rotation.
+  let lineup = baseLineup;
+  const subsOrdered = [...(subRows ?? [])]
+    .filter((r) => !r.libero_swap)
+    .sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+  const subPairs = {};
+  const exhaustedPlayerIds = [];
+  for (const row of subsOrdered) {
+    const idx = lineup.findIndex((sl) => sl.playerId === row.player_out);
+    if (idx !== -1) {
+      const p = playersById?.[row.player_in];
+      lineup = lineup.map((sl, i) => i === idx
+        ? { ...sl, playerId: row.player_in, playerName: p?.name ?? '', jersey: p?.jersey_number ?? '', positionLabel: row.in_position_label || p?.position || sl.positionLabel }
+        : sl);
+    }
+    const slotIdx = (row.position ?? 1) - 1;
+    if (subPairs[row.player_in] === slotIdx) exhaustedPlayerIds.push(row.player_out, row.player_in);
+    subPairs[row.player_out] = slotIdx;
+    subPairs[row.player_in]  = slotIdx;
+  }
+  const rotOffset = ((rotationNum - baseRotation) % 6 + 6) % 6;
+  for (let i = 0; i < rotOffset; i++) lineup = rotateFwd(lineup);
+
+  let currentRun = { side: null, count: 0 };
+  if (last) {
+    let count = 0;
+    for (let i = ordered.length - 1; i >= 0 && ordered[i].point_winner === last.point_winner; i--) count++;
+    currentRun = { side: last.point_winner, count: Math.min(25, count) };
+  }
+
+  return {
+    setNumber,
+    ourSetsWon, oppSetsWon,
+    ourScore, oppScore,
+    rallyCount:  ordered.length,
+    serveSide,
+    rotationNum,
+    lineup,
+    ourTimeouts: (timeoutRows ?? []).filter((t) => t.side === SIDE.US).length,
+    oppTimeouts: (timeoutRows ?? []).filter((t) => t.side === SIDE.THEM).length,
+    subsUsed:    subsOrdered.length,
+    subPairs,
+    exhaustedPlayerIds,
+    committedRallies: ordered.map((r) => ({
+      set_id:           r.set_id,
+      rally_number:     r.rally_number,
+      serve_side:       r.serve_side,
+      point_winner:     r.point_winner,
+      our_rotation:     r.our_rotation,
+      server_player_id: r.server_player_id ?? null,
+    })),
+    pointHistory: ordered.map((r) => ({ side: r.point_winner })),
+    currentRun,
+    // Recovers the "app died right as the set ended" case by re-prompting
+    pendingSetWin: checkSetWin(ourScore, oppScore, setNumber, format, lastSetScore),
+  };
+}
+
 const OPP_REASON = {
   K:   { action: ACTION.ATTACK, result: RESULT.KILL,                pointSide: SIDE.THEM, feedLabel: 'Opp Kill'        },
   BLK: { action: ACTION.BLOCK,  result: RESULT.SOLO,                pointSide: SIDE.THEM, feedLabel: 'Opp Block'       },
@@ -324,8 +421,16 @@ export const useMatchStore = create((set, get) => ({
   },
   setLineup:          (lineup, rotationNum) => set({ lineup, ...(rotationNum !== undefined ? { rotationNum } : {}) }),
   setPlayerNicknames: (map)    => set({ playerNicknames: map }),
-  setTeamJerseyColor:   (color) => set({ teamJerseyColor: color }),
-  setLiberoJerseyColor: (color) => set({ liberoJerseyColor: color }),
+  setTeamJerseyColor:   (color) => {
+    set({ teamJerseyColor: color });
+    const { matchId } = get();
+    if (matchId) db.matches.update(matchId, { team_jersey_color: color }).catch(() => {});
+  },
+  setLiberoJerseyColor: (color) => {
+    set({ liberoJerseyColor: color });
+    const { matchId } = get();
+    if (matchId) db.matches.update(matchId, { libero_jersey_color: color }).catch(() => {});
+  },
   setLibero: (liberoId, name, jersey) => set({ liberoId, liberoName: name ?? '', liberoJersey: jersey ?? '' }),
 
   rotateForward:  () => set((s) => ({ lineup: rotateFwd(s.lineup), rotationNum: (s.rotationNum % 6) + 1 })),

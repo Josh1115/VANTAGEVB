@@ -144,6 +144,7 @@ export function SetLineupPage() {
         serve_receive_formations: (useFormations  && pendingFormations)  ? pendingFormations  : null,
         planned_subs:             (usePlannedSubs && pendingPlannedSubs) ? pendingPlannedSubs : null,
         start_rotation:           startRotation,
+        serving_first:            servingSide, // persisted so the live page survives remount/reload
       });
 
       // Replace existing lineup rows for this set

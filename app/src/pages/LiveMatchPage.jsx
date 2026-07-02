@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { db } from '../db/schema';
-import { useMatchStore } from '../store/matchStore';
+import { useMatchStore, reconstructSetState } from '../store/matchStore';
 import { useShallow } from 'zustand/react/shallow';
 import { computePlayerStats, computeTeamStats, computeSeasonStats } from '../stats/engine';
 import { computeMatchSnapshot } from '../utils/pvSnapshot';
@@ -277,8 +277,13 @@ export function LiveMatchPage() {
         currentSet.libero_player_id ? db.players.get(currentSet.libero_player_id) : null,
       ]);
 
+      const so1Row = lineupRows.find(r => r.serve_order === 1);
+      const sz = so1Row?.position ?? 1;
+      const zoneRotNum = ((1 - sz + 6) % 6) + 1;
+      const baseRotation = currentSet.start_rotation ?? zoneRotNum;
+      let baseLineup = useMatchStore.getState().lineup; // empty-slot default from resetMatch()
       if (lineupRows.length > 0) {
-        const lineup = lineupRows
+        baseLineup = lineupRows
           .map((row, i) => ({
             position:      row.position,
             serveOrder:    row.serve_order ?? row.position,
@@ -289,11 +294,7 @@ export function LiveMatchPage() {
             year:          players[i]?.year ?? '',
           }))
           .sort((a, b) => a.position - b.position);
-        const so1Row = lineupRows.find(r => r.serve_order === 1);
-        const sz = so1Row?.position ?? 1;
-        const zoneRotNum = ((1 - sz + 6) % 6) + 1;
-        const initialRotNum = currentSet.start_rotation ?? zoneRotNum;
-        setLineup(lineup, initialRotNum);
+        setLineup(baseLineup, baseRotation);
       }
 
       // Resolve libero: explicit set designation → full-roster 'L' scan → nothing
@@ -333,6 +334,46 @@ export function LiveMatchPage() {
       setTeamName(teamDisplayName);
       setOpponentName(oppDisplayName);
       setMatch(matchId, currentSet.id, season?.team_id ?? null, match.format ?? null, match.last_set_score ?? 15);
+
+      // Rebuild live state (score, set number, sets won, serve side, rotation,
+      // subs, timeouts) from persisted rows — resetMatch() wiped the store.
+      // Covers both the between-sets round trip and a mid-set app reload.
+      const [allSets, rallyRows, timeoutRows, subRows, currentSetContacts] = await Promise.all([
+        db.sets.where('match_id').equals(matchId).toArray(),
+        db.rallies.where('set_id').equals(currentSet.id).toArray(),
+        db.timeouts.where('set_id').equals(currentSet.id).toArray(),
+        db.substitutions.where('set_id').equals(currentSet.id).toArray(),
+        db.contacts.where('set_id').equals(currentSet.id).toArray(),
+      ]);
+      const subInIds   = [...new Set(subRows.filter(r => !r.libero_swap).map(r => r.player_in))];
+      const subPlayers = subInIds.length ? await db.players.bulkGet(subInIds) : [];
+      const playersById = Object.fromEntries(
+        [...players, ...subPlayers, libero].filter(Boolean).map(p => [p.id, p])
+      );
+      useMatchStore.setState({
+        ...reconstructSetState({
+          setRow:       currentSet,
+          allSets,
+          rallies:      rallyRows,
+          timeoutRows,
+          subRows,
+          baseLineup,
+          baseRotation,
+          playersById,
+          format:       match.format ?? null,
+          lastSetScore: match.last_set_score ?? 15,
+        }),
+        committedContacts: currentSetContacts,
+        ...(subPlayers.length ? {
+          playerNicknames: {
+            ...useMatchStore.getState().playerNicknames,
+            ...Object.fromEntries(subPlayers.filter(Boolean).map(p => [p.id, p.nickname ?? ''])),
+          },
+        } : {}),
+        ...(match.team_jersey_color   ? { teamJerseyColor:   match.team_jersey_color }   : {}),
+        ...(match.libero_jersey_color ? { liberoJerseyColor: match.libero_jersey_color } : {}),
+      });
+
       if (match.season_id) setSeasonId(match.season_id);
       setHasFamilyScope(!!match.pv_token && navigator.onLine);
       loadSetFormationData(currentSet);
