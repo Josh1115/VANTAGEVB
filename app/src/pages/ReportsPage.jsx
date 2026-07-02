@@ -6,7 +6,7 @@ import { getIntStorage, STORAGE_KEYS, getPlayoffLabel } from '../utils/storage';
 import { db } from '../db/schema';
 import { computeSeasonStats, computePQ, computeSetWinProb, computeExpectedPts, aggregateXKTeamStats, computeRotationContactStats } from '../stats/engine';
 import { InsightsPanel } from '../components/stats/InsightsPanel';
-import { fmtHitting, fmtPassRating, fmtPct, fmtCount, fmtVER } from '../stats/formatters';
+import { fmtHitting, fmtPassRating, fmtPct, fmtCount } from '../stats/formatters';
 import { VERBadge, VER_TIERS } from '../components/stats/VERBadge';
 import { ROTATION_COLS, SERVING_COLS, TAB_COLUMNS, ISOOS_COLS, TRANS_COLS, RUN_COLS } from '../stats/columns';
 import { PageHeader } from '../components/layout/PageHeader';
