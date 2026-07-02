@@ -101,7 +101,7 @@ function makeHistoricalRows(historicalAll, playerLookup = null) {
           class_year:        r.class_year ?? '',
           career_year_start: r.career_year_start ?? null,
           career_year_end:   r.career_year_end   ?? null,
-          active:            (activeByRoster && seasonMatch) || (r.career_year_start != null && !r.career_year_end),
+          active:            activeByRoster && seasonMatch,
           player_id:         pid ?? undefined,
         };
       });
@@ -1181,16 +1181,16 @@ export function RecordsPage() {
     if (!teamId || tab !== 'season') return null;
 
     const storedSeasonId = getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID);
-    let seasonId = storedSeasonId;
-    if (!seasonId) {
-      const seasons = await db.seasons.where('team_id').equals(teamId).toArray();
-      if (!seasons.length) return null;
-      seasonId = seasons.sort((a, b) => String(b.year).localeCompare(String(a.year)))[0].id;
+    const allSeasons = await db.seasons.where('team_id').equals(teamId).toArray();
+    if (!allSeasons.length) return null;
+    let season = storedSeasonId ? allSeasons.find(s => s.id === storedSeasonId) : null;
+    if (!season || season.status === 'ended') {
+      season = allSeasons
+        .filter(s => s.status !== 'ended')
+        .sort((a, b) => String(b.year).localeCompare(String(a.year)))[0] ?? null;
     }
-
-    const season = await db.seasons.get(seasonId);
-    if (!season || season.team_id !== teamId) return null;
-    if (season.status === 'ended') return null;
+    if (!season) return null;
+    const seasonId = season.id;
 
     const matches = await db.matches
       .where('season_id').equals(seasonId)

@@ -23,6 +23,18 @@ import {
   getIntStorage, STORAGE_KEYS,
 } from '../utils/storage';
 
+// ─── Release notes shown in the About section ────────────────────────────────
+// Keyed by version so a forgotten update fails safe (section just doesn't
+// render) instead of showing a stale list under the new version number.
+const CHANGELOG = {
+  '1.0.0': [
+    'Season sparklines & PDF export in History',
+    'Season search and count badges',
+    'Sound effect preview in Settings',
+    'Storage usage bar & auto-save badges',
+  ],
+};
+
 // ─── Help illustrations (inline SVG mockups) ─────────────────────────────────
 
 const HELP_ILLUSTRATIONS = {
@@ -1366,7 +1378,7 @@ export function SettingsPage() {
     // getSession() / __loadSession() calls, which can fire SIGNED_OUT on iOS Safari
     // if the stored session is in an unexpected state.
     if (!session?.access_token) return;
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/backups?select=created_at&user_id=eq.${encodeURIComponent(session.user.id)}`;
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/backups?select=created_at&user_id=eq.${encodeURIComponent(session.user.id)}&order=created_at.desc&limit=1`;
     fetch(url, {
       headers: {
         Authorization: `Bearer ${session.access_token}`,
@@ -1571,29 +1583,30 @@ export function SettingsPage() {
             <p className="text-[10px] text-slate-600 mt-1 font-mono">v{__APP_VERSION__}</p>
           </div>
           <div className="border-t border-slate-700 mb-4" />
-          <p className="text-sm text-slate-200 leading-relaxed italic text-center">
-            VANTAGE is a comprehensive volleyball statistics platform built for coaches who want a competitive edge. Record every contact live during a match — serves, passes, attacks, blocks, and digs — and instantly access deep analytics: rotation efficiency, player VER ratings, win correlation insights, and real-time performance alerts. All data lives on your device and works offline. From pre-match lineup prep to gametime decisions, VANTAGE gives your program the same data-driven tools used at the highest levels of the sport.
+          <p className="text-sm text-white font-semibold leading-relaxed text-center">
+            Vantage was built on a simple belief: the best decisions happen in the moment, not after the fact. By putting real-time, in-game data directly in coaches' hands, we empower coaches and players to become their best — and make the game better, one decision at a time.
+          </p>
+          <div className="border-t border-slate-700 my-4" />
+          <p className="text-sm text-slate-200 leading-relaxed text-center">
+            Vantage is a comprehensive volleyball statistics platform built for coaches who want a competitive edge. Record every contact live during a match — serves, passes, attacks, blocks, and digs — and instantly access deep analytics: rotation efficiency, player VER ratings, win correlation insights, and real-time performance alerts. All data lives on your device and works offline. From pre-match lineup prep to gametime decisions, Vantage gives your program the same data-driven tools used at the highest levels of the sport.
           </p>
           <div className="border-t border-slate-700 mt-4 pt-3">
             <p className="text-[11px] text-slate-500 text-center tracking-wide">New accounts include a full-featured 5-match trial. Upgrade anytime.</p>
           </div>
 
-          <div className="border-t border-slate-700 mt-4 pt-4">
-            <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-slate-500 mb-2">What's New in v{__APP_VERSION__}</p>
-            <ul className="space-y-1.5">
-              {[
-                'Season sparklines & PDF export in History',
-                'Season search and count badges',
-                'Sound effect preview in Settings',
-                'Storage usage bar & auto-save badges',
-              ].map(note => (
-                <li key={note} className="flex items-start gap-1.5 text-xs text-slate-400">
-                  <span className="text-primary mt-px shrink-0">▸</span>
-                  {note}
-                </li>
-              ))}
-            </ul>
-          </div>
+          {CHANGELOG[__APP_VERSION__]?.length > 0 && (
+            <div className="border-t border-slate-700 mt-4 pt-4">
+              <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-slate-500 mb-2">What's New in v{__APP_VERSION__}</p>
+              <ul className="space-y-1.5">
+                {CHANGELOG[__APP_VERSION__].map(note => (
+                  <li key={note} className="flex items-start gap-1.5 text-xs text-slate-400">
+                    <span className="text-primary mt-px shrink-0">▸</span>
+                    {note}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="flex items-baseline gap-2 mt-4 flex-wrap">
             <Link to="/terms" className="text-xs text-primary hover:text-orange-300 transition-colors underline underline-offset-2">
@@ -1659,7 +1672,7 @@ export function SettingsPage() {
                       {teamsAllowed === 99 ? 'Unlimited Teams' : `${teamsAllowed} Team${teamsAllowed > 1 ? 's' : ''}`} / Season
                     </div>
                     <div className="text-xs text-slate-400">
-                      All features included · 50 matches per team per season
+                      All features included · Unlimited matches/season
                       {expiresAt && ` · Expires ${expiresAt.toLocaleDateString()}`}
                     </div>
                   </div>
@@ -2434,7 +2447,7 @@ export function SettingsPage() {
             {!isActive ? (
               <div className="rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-3 space-y-1">
                 <p className="text-sm font-semibold text-slate-300">Import Backup (JSON)</p>
-                <p className="text-xs text-slate-500">Cloud merge requires an active subscription. <button onClick={() => navigate('/upgrade')} className="text-primary hover:text-orange-300 transition-colors font-semibold">Subscribe →</button></p>
+                <p className="text-xs text-slate-500">Restoring a backup requires an active plan. <button onClick={() => navigate('/upgrade')} className="text-primary hover:text-orange-300 transition-colors font-semibold">Subscribe →</button></p>
               </div>
             ) : (
               <>
@@ -2509,7 +2522,7 @@ export function SettingsPage() {
                   <Button
                     className="flex-1"
                     variant="secondary"
-                    disabled={cloudRestoring}
+                    disabled={cloudRestoring || !lastCloudSave}
                     onClick={() => setConfirmCloudRestore(true)}
                   >
                     {cloudRestoring ? 'Restoring…' : 'Restore from Cloud'}
@@ -2731,7 +2744,12 @@ export function SettingsPage() {
           danger
           onConfirm={async () => {
             clearSectionStates();
-            await supabase.auth.signOut();
+            try {
+              const { error } = await supabase.auth.signOut();
+              if (error) showToast('Sign out failed. Try again.', 'error');
+            } catch {
+              showToast('Sign out failed. Try again.', 'error');
+            }
           }}
           onCancel={() => setConfirmLogout(false)}
         />

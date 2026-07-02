@@ -48,6 +48,8 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
 
   useEffect(() => {
     if (!seasonId) return;
+    setData(null);
+    setAllStats(null);
     setLoading(true);
     setBarsReady(false);
     const tasks = currentStats

@@ -23,6 +23,11 @@ export function StatTable({ columns, rows, totalsRow, onRowClick, onNameClick, s
   }
 
   const sorted = useMemo(() => [...rows].sort((a, b) => {
+    if (sortKey === 'name') {
+      return desc
+        ? (b.name ?? '').localeCompare(a.name ?? '')
+        : (a.name ?? '').localeCompare(b.name ?? '');
+    }
     const av = a[sortKey] ?? -Infinity;
     const bv = b[sortKey] ?? -Infinity;
     return desc ? bv - av : av - bv;

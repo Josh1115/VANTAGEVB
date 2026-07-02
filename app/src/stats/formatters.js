@@ -1,5 +1,5 @@
-// Null-safe wrapper — returns '—' when val is null/undefined
-export const fmt = (val, fn) => val == null ? '—' : fn(val);
+// Null-safe wrapper — returns '—' when val is null/undefined/NaN
+export const fmt = (val, fn) => (val == null || (typeof val === 'number' && isNaN(val))) ? '—' : fn(val);
 
 // +0.312 / -0.045  (hitting%)
 export const fmtHitting = (val) =>

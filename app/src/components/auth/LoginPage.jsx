@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { VantageLogo } from '../ui/VantageLogo';
 import { NetDivider } from '../ui/NetDivider';
 import { supabase, trackPageView } from '../../utils/supabase';
 import { router } from '../../router';

@@ -251,10 +251,11 @@ function AprByRotationChart({ rotationContactStats }) {
           <div
             key={i + 1}
             className={`py-2 font-black tabular-nums flex flex-col items-center gap-0.5 ${
-              apr == null    ? 'bg-slate-900 text-slate-700'
-            : apr === maxApr ? 'bg-emerald-900/40 text-emerald-300'
-            : apr === minApr ? 'bg-red-900/30 text-red-400'
-            :                  'bg-slate-900 text-slate-200'
+              apr == null              ? 'bg-slate-900 text-slate-700'
+            : maxApr === minApr       ? 'bg-slate-900 text-slate-200'
+            : apr === minApr          ? 'bg-red-900/30 text-red-400'
+            : apr === maxApr          ? 'bg-emerald-900/40 text-emerald-300'
+            :                           'bg-slate-900 text-slate-200'
             }`}
           >
             <span>{apr != null ? apr.toFixed(2) : '—'}</span>
@@ -420,14 +421,14 @@ export function ReportsPage() {
       .filter((m) => m.status !== 'scheduled')
       .slice(-n)
       .map((m) => m.id);
-    if (lastN.length) activeFilters.matchIds = lastN;
+    activeFilters.matchIds = lastN.length ? lastN : [-1];
   } else if (result === 'h1' || result === 'h2') {
     const played = (seasonMatches ?? []).filter((m) => m.status !== 'scheduled');
     const mid = Math.ceil(played.length / 2);
     const halfIds = result === 'h1'
       ? played.slice(0, mid).map((m) => m.id)
       : played.slice(mid).map((m) => m.id);
-    if (halfIds.length) activeFilters.matchIds = halfIds;
+    activeFilters.matchIds = halfIds.length ? halfIds : [-1];
   } else {
     if (conference) activeFilters.conference = conference;
     if (location)   activeFilters.location   = location;
