@@ -1,3 +1,13 @@
+import { db } from '../db/schema';
+
+// The plan's team limit is per season: a team only counts against it while
+// it has a season that hasn't been ended. Ending last year's seasons frees
+// up slots for this year's teams.
+export async function countActiveSeasonTeams() {
+  const activeSeasons = await db.seasons.filter(s => s.status !== 'ended').toArray();
+  return new Set(activeSeasons.map(s => s.team_id)).size;
+}
+
 // Teams eligible for program-wide pages (Records, History).
 // Schools/colleges: varsity only — program history is a varsity concept.
 // Clubs: teams have no level, so honor the org's records_scope instead —

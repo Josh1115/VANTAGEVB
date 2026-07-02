@@ -16,6 +16,7 @@ import { FORMAT, ACCENT_COLORS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlan, PLAN_TEAMS, PLAN_PRICES, PLAN_LABELS, TRIAL_MATCH_LIMIT } from '../hooks/usePlan';
 import { previewSound } from '../utils/sound';
+import { countActiveSeasonTeams } from '../utils/teams';
 import {
   getStorageItem, setStorageItem,
   getBoolStorage, setBoolStorage,
@@ -1311,6 +1312,8 @@ export function SettingsPage() {
   const [playerNameFormat, savePlayerNameFormat] = useStrSetting(STORAGE_KEYS.PLAYER_NAME_FORMAT, 'initial_last');
   const [rosterSort,       saveRosterSort]       = useStrSetting(STORAGE_KEYS.ROSTER_SORT, 'jersey');
   const teams = useLiveQuery(() => db.teams.orderBy('name').toArray(), []);
+  // Team limit is per season — mirror the enforcement in TeamsPage
+  const activeSeasonTeamCount = useLiveQuery(countActiveSeasonTeams, []);
   const teamMatchCounts = useLiveQuery(async () => {
     if (!teams?.length) return {};
     const result = {};
@@ -1715,7 +1718,7 @@ export function SettingsPage() {
             )}
             {/* Credit usage */}
             {(() => {
-              const teamsUsed = teams?.length ?? 0;
+              const teamsUsed = activeSeasonTeamCount ?? 0;
               const teamsAllowedDisplay = isMaster ? 'Unlimited' : teamsAllowed === 99 ? '5+' : String(teamsAllowed);
               const teamsRemaining = isMaster ? 'Unlimited' : teamsAllowed === 99 ? 'Unlimited' : String(Math.max(0, teamsAllowed - teamsUsed));
               return (

@@ -6,6 +6,8 @@ import { db } from '../db/schema';
 import { useOrganizations, useTeams } from '../hooks/useTeamData';
 import { useUiStore, selectShowToast } from '../store/uiStore';
 import { JERSEY_COLORS } from '../constants';
+import { STORAGE_KEYS, getIntStorage, setStorageItem } from '../utils/storage';
+import { countActiveSeasonTeams } from '../utils/teams';
 
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
@@ -359,11 +361,12 @@ function TeamFormModal({ onClose, orgId, team, orgType }) {
     setNameError('');
     setSaving(true);
     try {
-      // Fix 4: Re-check team limit at save time, not just at button-press time
+      // Re-check team limit at save time, not just at button-press time.
+      // Limit is per season: only teams with a non-ended season count.
       if (!team && !isMaster) {
-        const currentCount = await db.teams.count();
+        const currentCount = await countActiveSeasonTeams();
         if (currentCount >= teamsAllowed) {
-          showToast('Team limit reached — upgrade your plan to add more teams', 'error');
+          showToast('Team limit reached — end a previous season or upgrade your plan', 'error');
           setSaving(false);
           return;
         }
@@ -518,7 +521,6 @@ function TeamFormModal({ onClose, orgId, team, orgType }) {
 export function TeamsPage() {
   const navigate = useNavigate();
   const orgs = useOrganizations();
-  const allTeams = useTeams();
   const { teamsAllowed, isMaster } = usePlan();
   const [orgModal,    setOrgModal]    = useState(null); // null | { org? }
   const [teamModal,   setTeamModal]   = useState(null); // null | { orgId, team? }
@@ -527,7 +529,19 @@ export function TeamsPage() {
   const [pendingSeasonTeamId, setPendingSeasonTeamId] = useState(null); // new team id awaiting first season
   const showToast = useUiStore(selectShowToast);
 
-  const atTeamLimit = !isMaster && (allTeams?.length ?? 0) >= (Number.isFinite(teamsAllowed) ? teamsAllowed : 0);
+  // Team limit is per season — only teams with a non-ended season count
+  const activeTeamCount = useLiveQuery(countActiveSeasonTeams, []);
+  const atTeamLimit = !isMaster && (activeTeamCount ?? 0) >= (Number.isFinite(teamsAllowed) ? teamsAllowed : 0);
+
+  // Deleting the default team would leave every page auto-selecting a ghost
+  function clearStaleDefaults(deletedTeamIds, deletedSeasonIds) {
+    if (deletedTeamIds.includes(getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID))) {
+      setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, null);
+      setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, null);
+    } else if (deletedSeasonIds.includes(getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID))) {
+      setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, null);
+    }
+  }
 
   const handleDeleteOrg = async () => {
     try {
@@ -577,6 +591,7 @@ export function TeamsPage() {
         }
         await db.organizations.delete(deleteOrg.id);
       });
+      clearStaleDefaults(teamIds, seasonIds);
       setDeleteOrg(null);
     } catch (err) {
       setDeleteOrg(null);
@@ -627,6 +642,7 @@ export function TeamsPage() {
         ]);
         await db.teams.delete(deleteTeam.id);
       });
+      clearStaleDefaults([deleteTeam.id], seasonIds);
       setDeleteTeam(null);
     } catch (err) {
       setDeleteTeam(null);
@@ -689,7 +705,9 @@ export function TeamsPage() {
           orgType={(orgs ?? []).find(o => o.id === teamModal.orgId)?.type ?? null}
           onClose={(newTeamId) => {
             setTeamModal(null);
-            if (newTeamId) setPendingSeasonTeamId(newTeamId);
+            // Cancel/✕/backdrop pass the click event here — only a real id
+            // (from a successful add) may open the required season modal.
+            if (typeof newTeamId === 'number') setPendingSeasonTeamId(newTeamId);
           }}
         />
       )}
@@ -842,7 +860,7 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
             <IconTrash />
           </button>
         </div>
-        <Button size="sm" variant="ghost" onClick={onAddTeam ?? undefined} disabled={!onAddTeam} title={!onAddTeam ? 'Team limit reached — upgrade your plan' : undefined}>+ Team</Button>
+        <Button size="sm" variant="ghost" onClick={onAddTeam ?? undefined} disabled={!onAddTeam} title={!onAddTeam ? 'Team limit reached — end a previous season or upgrade your plan' : undefined}>+ Team</Button>
       </div>
 
       {(teams ?? []).length === 0 ? (
@@ -854,7 +872,7 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
             action={
               onAddTeam
                 ? <Button onClick={onAddTeam}>+ Add Team</Button>
-                : <p className="text-xs text-slate-500">Upgrade your plan to add more teams</p>
+                : <p className="text-xs text-slate-500">End a previous season or upgrade your plan to add more teams</p>
             }
           />
         </div>
