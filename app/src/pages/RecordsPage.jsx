@@ -51,6 +51,24 @@ const TABS = [
 
 const RANK_ICONS = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
+const PRE_VBSTAT_KEY = { k: 'pre_vbstat_k', ace: 'pre_vbstat_ace', blk: 'pre_vbstat_blk', ast: 'pre_vbstat_ast', dig: 'pre_vbstat_dig', sp: 'pre_vbstat_sp' };
+
+// Rate stats need a minimum sample size to qualify for the leaderboard,
+// otherwise a 1-for-1 performance posts a 1.000 all-time record.
+const RATE_MINIMUMS = {
+  career: {
+    hit_pct: { field: 'ta', min: 100, label: '100 attack attempts' },
+    k_pct:   { field: 'ta', min: 100, label: '100 attack attempts' },
+    ace_pct: { field: 'sa', min: 100, label: '100 serve attempts' },
+  },
+  team_season: {
+    hit_pct: { field: 'ta', min: 300, label: '300 team attack attempts' },
+    k_pct:   { field: 'ta', min: 300, label: '300 team attack attempts' },
+    si_pct:  { field: 'sa', min: 300, label: '300 team serve attempts' },
+    ace_pct: { field: 'sa', min: 300, label: '300 team serve attempts' },
+  },
+};
+
 // ── computation ───────────────────────────────────────────────────────────────
 
 function groupByMatch(contacts) {
@@ -198,8 +216,11 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
     // entered manually and would double-count stats already captured in contacts.
     const offsetsByPid = preVbstatByPid;
 
-    // Standalone historical = records with no matching in-app player (pure manual entries)
+    // Standalone historical = records with no matching in-app player (pure manual entries).
+    // Rate records (HIT%, K%, ACE%) can't act as baselines, so they always display
+    // directly — even when the name matches a roster player.
     const standaloneHistorical = historicalAll.filter(r => {
+      if (!BASELINE_KEYS.has(r.stat)) return true;
       const pid = r.player_id ?? nameToPlayerId[r.player_name?.toLowerCase().trim() ?? ''];
       return !pid || !playerNamesMap[pid];
     });
@@ -210,26 +231,31 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
       ...Object.keys(offsetsByPid).map(Number),
     ]);
 
+    const preYearsByPid = Object.fromEntries(
+      players.map(p => [p.id, { start: p.pre_vbstat_year_start ?? null, end: p.pre_vbstat_year_end ?? null }])
+    );
+
     return Object.fromEntries(
       CAREER_STATS.map(({ key }) => {
+        const rule = RATE_MINIMUMS.career[key];
         const computed = [...allPids]
           .map(pid => {
+            if (rule && (careerStats[pid]?.[rule.field] ?? 0) < rule.min) return null;
             const fromContacts = getStatValue(careerStats[pid] ?? {}, key) ?? 0;
             const offset       = offsetsByPid[pid]?.[key] ?? 0;
             const val          = fromContacts + offset;
             if (!val) return null;
             const yearRange   = playerYearRange[pid] ?? null;
             const isActive    = activePlayerIds.has(pid);
-            const histStart   = histCareerStartByPid[pid] ?? null;
-            const careerStart = yearRange
-              ? (histStart != null ? Math.min(yearRange.min, histStart) : yearRange.min)
-              : histStart;
+            const preYears    = preYearsByPid[pid] ?? {};
+            const starts      = [yearRange?.min, histCareerStartByPid[pid], preYears.start].filter(v => v != null);
+            const ends        = [yearRange?.max, preYears.end].filter(v => v != null);
             return {
               name:              playerNamesMap[pid] ?? '?',
               val,
               class_year:        playerClassYears[pid] ?? '',
-              career_year_start: careerStart,
-              career_year_end:   isActive ? null : (yearRange?.max ?? null),
+              career_year_start: starts.length ? Math.min(...starts) : null,
+              career_year_end:   isActive ? null : (ends.length ? Math.max(...ends) : null),
               active:            isActive,
               player_id:         pid,
             };
@@ -329,8 +355,9 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
 
     return Object.fromEntries(
       statsForTab.map(({ key }) => {
+        const rule = RATE_MINIMUMS.team_season[key];
         const computed = seasonRows.map(({ ts, year, currentSeason }) => ({
-          val: getStatValue(ts, key),
+          val: rule && (ts[rule.field] ?? 0) < rule.min ? null : getStatValue(ts, key),
           year,
           currentSeason,
         }));
@@ -391,7 +418,21 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
   const [form, setForm] = useState(initialData ?? EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [teamPlayers, setTeamPlayers] = useState(null);
   const firstInputRef = useRef(null);
+
+  // Roster loaded so career entries matching a current player are disclosed
+  // as baseline updates instead of silently rerouting the save.
+  useEffect(() => {
+    if (tab !== 'career' || recordId || !teamId) return;
+    db.players.where('team_id').equals(teamId).toArray().then(setTeamPlayers);
+  }, [tab, recordId, teamId]);
+
+  const baselineKey = tab === 'career' && !recordId ? PRE_VBSTAT_KEY[statKey] : null;
+  const typedName = form.player_name.toLowerCase().trim();
+  const matchedPlayer = (baselineKey && typedName && teamPlayers
+    ? teamPlayers.find(p => p.name?.toLowerCase().trim() === typedName)
+    : null) ?? null;
 
   const isIndividual   = tab !== 'team_match' && tab !== 'team_season';
   const needsOpponent  = tab === 'match' || tab === 'team_match';
@@ -429,15 +470,13 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
     return val;
   }
 
-  const PRE_VBSTAT_KEY = { k: 'pre_vbstat_k', ace: 'pre_vbstat_ace', blk: 'pre_vbstat_blk', ast: 'pre_vbstat_ast', dig: 'pre_vbstat_dig', sp: 'pre_vbstat_sp' };
-
-  async function resolveActivePlayer() {
-    if (tab !== 'career' || recordId || !teamId) return null;
-    const preKey = PRE_VBSTAT_KEY[statKey];
-    if (!preKey) return null;
-    const name = form.player_name.toLowerCase().trim();
-    const players = await db.players.where('team_id').equals(teamId).toArray();
-    return players.find(p => p.name?.toLowerCase().trim() === name) ?? null;
+  // Baseline update carries the typed career years so they aren't discarded
+  function buildBaselineUpdate(val) {
+    return {
+      [baselineKey]: val,
+      ...(form.career_year_start ? { pre_vbstat_year_start: Number(form.career_year_start) } : {}),
+      ...(form.career_year_end   ? { pre_vbstat_year_end:   Number(form.career_year_end)   } : {}),
+    };
   }
 
   async function handleSave() {
@@ -445,9 +484,8 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
     if (val === null) return;
     setSaving(true);
     try {
-      const activePlayer = await resolveActivePlayer();
-      if (activePlayer) {
-        await db.players.update(activePlayer.id, { [PRE_VBSTAT_KEY[statKey]]: val });
+      if (matchedPlayer) {
+        await db.players.update(matchedPlayer.id, buildBaselineUpdate(val));
         onClose(true);
       } else if (recordId) {
         await db.historical_records.update(recordId, buildFields(val));
@@ -468,18 +506,14 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
     if (val === null) return;
     setSaving(true);
     try {
-      const activePlayer = await resolveActivePlayer();
-      if (activePlayer) {
-        await db.players.update(activePlayer.id, { [PRE_VBSTAT_KEY[statKey]]: val });
-        setForm(EMPTY_FORM);
-        setError('');
-        setTimeout(() => firstInputRef.current?.focus(), 0);
+      if (matchedPlayer) {
+        await db.players.update(matchedPlayer.id, buildBaselineUpdate(val));
       } else {
         await db.historical_records.add(buildFields(val));
-        setForm(EMPTY_FORM);
-        setError('');
-        setTimeout(() => firstInputRef.current?.focus(), 0);
       }
+      setForm(EMPTY_FORM);
+      setError('');
+      setTimeout(() => firstInputRef.current?.focus(), 0);
     } catch {
       setError('Failed to save. Please try again.');
     } finally {
@@ -516,6 +550,17 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
                     {CLASS_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                 </div>
+              )}
+            </div>
+          )}
+
+          {matchedPlayer && (
+            <div className="rounded-lg bg-sky-900/30 border border-sky-700/40 px-3 py-2 text-[11px] text-sky-200 leading-relaxed">
+              <span className="font-bold">{matchedPlayer.name}</span> is on your roster, so this saves as their
+              pre-VBSTAT {CAREER_STATS.find(s => s.key === statKey)?.label ?? statKey} baseline. It's added on top of
+              app-recorded stats — enter only stats earned <span className="font-bold">before</span> using VBSTAT.
+              {matchedPlayer[baselineKey] != null && (
+                <span> Current baseline: <span className="font-bold">{matchedPlayer[baselineKey]}</span> — saving will replace it.</span>
               )}
             </div>
           )}
@@ -576,7 +621,7 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
             disabled={saving}
             className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold active:scale-95 disabled:opacity-50"
           >
-            {saving ? 'Saving…' : recordId ? 'Save Changes' : 'Save Record'}
+            {saving ? 'Saving…' : recordId ? 'Save Changes' : matchedPlayer ? 'Save Baseline' : 'Save Record'}
           </button>
         </div>
       </div>
@@ -1508,6 +1553,12 @@ export function RecordsPage() {
                           />
                         ))}
                       </div>
+                    )}
+
+                    {!loading && RATE_MINIMUMS[tab]?.[statKey] && (
+                      <p className="text-[10px] text-slate-600 text-center">
+                        Minimum {RATE_MINIMUMS[tab][statKey].label} to qualify
+                      </p>
                     )}
 
                     <CurrentSeasonLeaders
