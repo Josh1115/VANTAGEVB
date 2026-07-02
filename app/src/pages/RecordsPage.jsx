@@ -5,6 +5,7 @@ import { db } from '../db/schema';
 import { computeTeamStats, computePlayerStats } from '../stats/engine';
 import { getContactsForMatches, getBatchSetsPlayedCount } from '../stats/queries';
 import { buildPlayerMaps } from '../utils/players';
+import { getEligibleTeams } from '../utils/teams';
 import { fmtCount, fmtBlocks, fmtDate, fmtPct, fmtHitting, fmtRawPct } from '../stats/formatters';
 import { MATCH_STATUS } from '../constants';
 import { STORAGE_KEYS, getIntStorage } from '../utils/storage';
@@ -1229,19 +1230,7 @@ export function RecordsPage() {
 
   const genderTeams = useMemo(() => {
     const org = (orgs ?? []).find(o => o.id === orgId) ?? null;
-    const isClub = org?.type === 'club';
-    let eligible;
-    if (isClub) {
-      if (org.records_scope === 'all_ages') {
-        eligible = orgTeams ?? [];
-      } else {
-        // top_only (default): 18U teams; fall back to all if none tagged
-        const top = (orgTeams ?? []).filter(t => t.age_group === '18U');
-        eligible = top.length > 0 ? top : (orgTeams ?? []);
-      }
-    } else {
-      eligible = (orgTeams ?? []).filter(t => t.level === 'varsity');
-    }
+    const eligible = getEligibleTeams(org, orgTeams);
     return {
       F: eligible.filter(t => t.gender === 'F'),
       M: eligible.filter(t => t.gender === 'M'),

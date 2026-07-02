@@ -9,6 +9,7 @@ import { STORAGE_KEYS, getIntStorage, getStorageItem } from '../utils/storage';
 import { PageHeader } from '../components/layout/PageHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { toTitleArr, ordinal, titlePriority } from '../utils/historyUtils';
+import { getEligibleTeams } from '../utils/teams';
 import { ChampionshipBannersSection } from '../components/shared/ChampionshipBanner';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { PostSeasonModal } from '../components/shared/PostSeasonModal';
@@ -1123,12 +1124,13 @@ export function HistoryPage() {
   );
 
   const genderTeams = useMemo(() => {
-    const varsity = (orgTeams ?? []).filter(t => t.level === 'varsity');
+    const org = (orgs ?? []).find(o => o.id === orgId) ?? null;
+    const eligible = getEligibleTeams(org, orgTeams);
     return {
-      F: varsity.filter(t => t.gender === 'F'),
-      M: varsity.filter(t => t.gender === 'M'),
+      F: eligible.filter(t => t.gender === 'F'),
+      M: eligible.filter(t => t.gender === 'M'),
     };
-  }, [orgTeams]);
+  }, [orgTeams, orgs, orgId]);
 
   // Auto-select the only org when there's just one
   useEffect(() => {
