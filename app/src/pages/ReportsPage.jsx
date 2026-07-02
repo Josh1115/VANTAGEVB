@@ -301,6 +301,7 @@ export function ReportsPage() {
   const [prodSort, setProdSort] = useState({ key: 'ptPct', dir: 'desc' });
   const [oppView,  setOppView]  = useState('totals');
   const statsDebounceRef = useRef(null);
+  const statsRequestRef = useRef(0);
   const genderInitRef = useRef(false);
 
   const GENDER_LABELS = { F: 'Girls', M: 'Boys', Mixed: 'Mixed' };
@@ -456,14 +457,22 @@ export function ReportsPage() {
   // Load season stats when season, match selection, or chip filters change.
   // Debounced 150ms so rapid filter taps don't fire multiple expensive scans.
   useEffect(() => {
-    if (!selectedSeasonId) return;
+    if (!selectedSeasonId) {
+      statsRequestRef.current++; // invalidate any in-flight compute
+      setLoading(false);
+      setStats(null);
+      setContacts([]);
+      return;
+    }
     setLoading(true);
     clearTimeout(statsDebounceRef.current);
     statsDebounceRef.current = setTimeout(() => {
+      const requestId = ++statsRequestRef.current;
+      const isCurrent = () => requestId === statsRequestRef.current;
       computeSeasonStats(Number(selectedSeasonId), activeFilters)
-        .then((s) => { setStats(s); setContacts(s?.contacts ?? []); })
-        .catch(() => setStats(null))
-        .finally(() => setLoading(false));
+        .then((s) => { if (isCurrent()) { setStats(s); setContacts(s?.contacts ?? []); } })
+        .catch(() => { if (isCurrent()) setStats(null); })
+        .finally(() => { if (isCurrent()) setLoading(false); });
     }, 150);
     return () => clearTimeout(statsDebounceRef.current);
   }, [selectedSeasonId, selectedMatchIds, conference, location, matchTypes, result, seasonMatches]); // eslint-disable-line react-hooks/exhaustive-deps
