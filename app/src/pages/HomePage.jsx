@@ -9,6 +9,7 @@ import { MATCH_STATUS } from '../constants';
 import { fmtDate, fmtHitting, fmtPct, fmtSetScores } from '../stats/formatters';
 import { computePlayerStats, computeTeamStats } from '../stats/engine';
 import { deleteMatch } from '../stats/queries';
+import { useUiStore, selectShowToast } from '../store/uiStore';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -356,6 +357,7 @@ export function HomePage() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const showToast = useUiStore(selectShowToast);
   const [matchView, setMatchView] = useState(() => {
     const v = getStorageItem(STORAGE_KEYS.MATCH_VIEW_DEFAULT, 'closest');
     return v === 'recent' ? 'closest' : v;
@@ -463,9 +465,11 @@ export function HomePage() {
     ]);
     const matches = allSeasonMatches.filter(m => m.status === MATCH_STATUS.COMPLETE);
     if (!team || !season) return null;
+    // Match on season year first (how HistoryPage links entries); fall back
+    // to the season name for users who keyed history entries that way.
     const historyEntry = await db.season_history
       .where('team_id').equals(defaultTeamId)
-      .filter(h => String(h.year) === (season.name ?? String(season.year)))
+      .filter(h => String(h.year) === String(season.year) || (season.name != null && String(h.year) === season.name))
       .first();
     const wins   = matches.filter(isWin).length;
     const losses = matches.length - wins;
@@ -1697,7 +1701,15 @@ export function HomePage() {
           message="Are you sure you want to sign out?"
           confirmLabel="Sign Out"
           danger
-          onConfirm={async () => { await supabase.auth.signOut(); }}
+          onConfirm={async () => {
+            try {
+              const { error } = await supabase.auth.signOut();
+              if (error) showToast('Sign out failed. Try again.', 'error');
+            } catch {
+              showToast('Sign out failed. Try again.', 'error');
+            }
+            setConfirmLogout(false);
+          }}
           onCancel={() => setConfirmLogout(false)}
         />
       )}
