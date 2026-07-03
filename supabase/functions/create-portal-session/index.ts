@@ -2,7 +2,7 @@ import Stripe from 'npm:stripe@14';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Fix 7: Restrict CORS to known origins instead of wildcard
-const ALLOWED_ORIGINS = ['https://vbstat.app', 'http://localhost:5173', 'http://localhost:4173'];
+const ALLOWED_ORIGINS = ['https://vantagevb.net', 'https://www.vantagevb.net', 'http://localhost:5173', 'http://localhost:4173'];
 
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? '';
