@@ -2,11 +2,11 @@ import Stripe from 'npm:stripe@14';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const PRICE_IDS: Record<string, string> = {
-  '1_team':      'price_1Tgv6hEZO853IB28UMuYmThg',
-  '2_teams':     'price_1Tgv6hEZO853IB28oD6EK5Nv',
-  '3_teams':     'price_1Tgv6iEZO853IB28yjTenLlh',
-  '4_teams':     'price_1Tgv6iEZO853IB28cvivhAJ1',
-  '5plus_teams': 'price_1Tgv6jEZO853IB28b5NnUVVJ',
+  '1_team':      'price_1TovYrR160jcuzTwbVuf4qUp',
+  '2_teams':     'price_1TovZQR160jcuzTwI3m6t1du',
+  '3_teams':     'price_1TovZpR160jcuzTwW9jW8MzR',
+  '4_teams':     'price_1TovaAR160jcuzTw5Bl3BvZt',
+  '5plus_teams': 'price_1TovaWR160jcuzTwxMfFpdKd',
 };
 
 // Fix 7: Restrict CORS to known origins instead of wildcard

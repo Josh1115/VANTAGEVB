@@ -3,11 +3,11 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Map Stripe Price IDs back to plan names
 const PRICE_TO_PLAN: Record<string, string> = {
-  'price_1Tgv6hEZO853IB28UMuYmThg': '1_team',
-  'price_1Tgv6hEZO853IB28oD6EK5Nv': '2_teams',
-  'price_1Tgv6iEZO853IB28yjTenLlh': '3_teams',
-  'price_1Tgv6iEZO853IB28cvivhAJ1': '4_teams',
-  'price_1Tgv6jEZO853IB28b5NnUVVJ': '5plus_teams',
+  'price_1TovYrR160jcuzTwbVuf4qUp': '1_team',
+  'price_1TovZQR160jcuzTwI3m6t1du': '2_teams',
+  'price_1TovZpR160jcuzTwW9jW8MzR': '3_teams',
+  'price_1TovaAR160jcuzTw5Bl3BvZt': '4_teams',
+  'price_1TovaWR160jcuzTwxMfFpdKd': '5plus_teams',
 };
 
 Deno.serve(async (req) => {
@@ -58,9 +58,9 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Plans expire 1 year from purchase date
+        // Plans expire 6 months from purchase date
         const planExpiresAt = new Date();
-        planExpiresAt.setFullYear(planExpiresAt.getFullYear() + 1);
+        planExpiresAt.setMonth(planExpiresAt.getMonth() + 6);
 
         await supabase
           .from('profiles')
