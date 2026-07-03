@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import Dexie from 'dexie';
 import { supabase } from '../utils/supabase';
 import { saveToCloud, restoreFromCloud } from '../stats/backup';
+import { resolvePlanFromProfile } from '../utils/planLimits';
 import { db } from '../db/schema';
 import { getStorageItem, setStorageItem, STORAGE_KEYS } from '../utils/storage';
 
@@ -146,7 +147,16 @@ export function AuthProvider({ children }) {
     try {
       const teamCount = await db.teams.count();
       if (teamCount === 0) {
-        await restoreFromCloud(supabase, { session });
+        // Auto-restore must respect the same plan limits as the manual "Restore
+        // from Cloud" button — otherwise an oversized/stale cloud backup can
+        // silently reappear on any device where local data is empty.
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('plan, plan_expires_at')
+          .eq('id', session.user.id)
+          .single();
+        const { teamsAllowed, matchLimit } = resolvePlanFromProfile(prof);
+        await restoreFromCloud(supabase, { session, teamsAllowed, matchLimit });
       } else {
         await saveToCloud(supabase, session);
       }
