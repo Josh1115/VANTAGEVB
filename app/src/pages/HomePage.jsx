@@ -755,9 +755,6 @@ export function HomePage() {
       if (quota > 0) setStorageUsagePct(usage / quota);
     });
   }, []);
-  const [closestSortAsc, setClosestSortAsc] = useState(
-    () => getStorageItem(STORAGE_KEYS.CLOSEST_SORT_ASC, 'true') !== 'false'
-  );
   const [guideVisible, setGuideVisible] = useState(() => !getBoolStorage(STORAGE_KEYS.HELP_GUIDE_SEEN));
   const displayMatches = recentMatches ?? [];
 
@@ -1374,16 +1371,6 @@ export function HomePage() {
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold text-white uppercase tracking-wide flex items-center gap-1.5">
               Schedule
-              {matchView === 'closest' && displayMatches.length > 0 && (
-                <button
-                  onClick={() => setClosestSortAsc(v => { const next = !v; setStorageItem(STORAGE_KEYS.CLOSEST_SORT_ASC, String(next)); return next; })}
-                  className="flex flex-col items-center leading-none text-slate-500 hover:text-slate-300 transition-colors"
-                  aria-label={closestSortAsc ? 'Sort newest first' : 'Sort oldest first'}
-                >
-                  <span className={`text-[9px] leading-none ${closestSortAsc ? 'text-slate-400' : 'text-slate-600'}`}>▲</span>
-                  <span className={`text-[9px] leading-none ${!closestSortAsc ? 'text-slate-400' : 'text-slate-600'}`}>▼</span>
-                </button>
-              )}
             </h2>
             <div className="flex items-center gap-2">
               <div className="flex bg-slate-800 rounded-lg p-0.5">
@@ -1391,7 +1378,7 @@ export function HomePage() {
                   onClick={() => { setMatchView('closest'); setStorageItem(STORAGE_KEYS.MATCH_VIEW_DEFAULT, 'closest'); }}
                   className={`text-[10px] font-semibold px-2 py-1 rounded-md transition-colors ${matchView === 'closest' ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                  Closest
+                  Recent
                 </button>
                 <button
                   onClick={() => { setMatchView('schedule'); setStorageItem(STORAGE_KEYS.MATCH_VIEW_DEFAULT, 'schedule'); }}
@@ -1490,7 +1477,7 @@ export function HomePage() {
             />
           )}
 
-          {recentMatches !== undefined && matchView !== 'schedule' && (closestSortAsc ? displayMatches : [...displayMatches].reverse()).map((match, idx) => (
+          {recentMatches !== undefined && matchView !== 'schedule' && [...displayMatches].reverse().map((match, idx) => (
             <SwipeableMatchCard
               key={match.id}
               onDeleteConfirm={() => setConfirmDelete(match)}

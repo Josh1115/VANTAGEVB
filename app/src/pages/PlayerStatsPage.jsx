@@ -275,7 +275,7 @@ function PlayerReportCard({ row, allRows = [], teamPoints = 0, oppPoints = 0 }) 
 
   // Reuses VER_TIERS' own thresholds (rather than separate hardcoded numbers) so this
   // color scale can never drift out of sync with the tier badge shown right below it.
-  const eliteTier = VER_TIERS.find(t => t.label === 'ELITE');
+  const eliteTier = VER_TIERS.find(t => t.label === 'GREAT');
   const avgTier   = VER_TIERS.find(t => t.label === 'AVG');
   const verColor = row.ver == null            ? 'text-slate-400'
     : row.ver >= eliteTier.min ? 'text-emerald-400'

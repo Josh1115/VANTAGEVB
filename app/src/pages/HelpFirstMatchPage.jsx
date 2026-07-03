@@ -187,9 +187,9 @@ function DiagGoLive() {
 // Step 7 — Read the Match Summary
 function DiagMatchSummary() {
   const stats = [
-    { name: 'Harris', k: 14, ace: 3, ver: '5.20', tier: 'ELITE' },
+    { name: 'Harris', k: 14, ace: 3, ver: '5.20', tier: 'GREAT' },
     { name: 'Kim',    k: 8,  ace: 0, ver: '3.40', tier: 'GOOD'  },
-    { name: 'Jones',  k: 2,  ace: 1, ver: '2.80', tier: 'GOOD'  },
+    { name: 'Jones',  k: 2,  ace: 1, ver: '3.20', tier: 'GOOD'  },
   ];
   return (
     <svg viewBox="0 0 320 170" className="w-full rounded-xl" style={{ background: BG }}>
@@ -208,9 +208,9 @@ function DiagMatchSummary() {
           <text x="158" y={83 + i * 30} fill={BLUE} fontSize="10">{ace}A</text>
           <text x="196" y={83 + i * 30} fill={TXT3} fontSize="10">VER {ver}</text>
           <rect x="260" y={68 + i * 30} width="40" height="16" rx="3"
-            fill={tier === 'ELITE' ? `${PRIMARY}30` : `${GREEN}20`}
-            stroke={tier === 'ELITE' ? PRIMARY : GREEN} strokeWidth="0.8" />
-          <text x="280" y={80 + i * 30} fill={tier === 'ELITE' ? PRIMARY : GREEN}
+            fill={tier === 'GREAT' ? `${PRIMARY}30` : `${GREEN}20`}
+            stroke={tier === 'GREAT' ? PRIMARY : GREEN} strokeWidth="0.8" />
+          <text x="280" y={80 + i * 30} fill={tier === 'GREAT' ? PRIMARY : GREEN}
             fontSize="7" fontWeight="800" textAnchor="middle">{tier}</text>
         </g>
       ))}

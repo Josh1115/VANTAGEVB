@@ -3,9 +3,9 @@ import { BG, SURFACE, SURFACE2, BORDER, BORDER2, TXT, TXT3, TXT4, TXT5, PRIMARY,
 
 function DiagOpenReport() {
   const rows = [
-    { name: 'Harris', k: 14, ver: '5.20', tier: 'ELITE', tierColor: PRIMARY },
+    { name: 'Harris', k: 14, ver: '5.20', tier: 'GREAT', tierColor: PRIMARY },
     { name: 'Kim',    k: 8,  ver: '3.40', tier: 'GOOD',  tierColor: GREEN   },
-    { name: 'Jones',  k: 2,  ver: '2.80', tier: 'GOOD',  tierColor: GREEN   },
+    { name: 'Jones',  k: 2,  ver: '3.20', tier: 'GOOD',  tierColor: GREEN   },
   ];
   return (
     <svg viewBox="0 0 320 150" className="w-full rounded-xl" style={{ background: BG }}>
@@ -41,10 +41,10 @@ function DiagVERHero() {
       {/* Big VER number */}
       <text x="160" y="80" fill={PRIMARY} fontSize="44" fontWeight="900" textAnchor="middle">5.20</text>
       <text x="160" y="96" fill={TXT4} fontSize="9" textAnchor="middle" letterSpacing="2">VER SCORE</text>
-      {/* ELITE badge */}
+      {/* GREAT badge */}
       <rect x="222" y="58" width="72" height="28" rx="7"
         fill={`${PRIMARY}25`} stroke={PRIMARY} strokeWidth="1.5" />
-      <text x="258" y="77" fill={PRIMARY} fontSize="12" fontWeight="900" textAnchor="middle">ELITE</text>
+      <text x="258" y="77" fill={PRIMARY} fontSize="12" fontWeight="900" textAnchor="middle">GREAT</text>
       {/* Pos multiplier note */}
       <text x="28" y="113" fill={TXT5} fontSize="8">Position multiplier: OH ×2.70  ·  Sets played: 12</text>
     </svg>
@@ -54,9 +54,9 @@ function DiagVERHero() {
 // Step 3 — VER Tier scale
 function DiagVERTiers() {
   const tiers = [
-    { lbl: 'ELITE+', min: 6.00, color: '#fbbf24' },
-    { lbl: 'ELITE',  min: 4.00, color: PRIMARY   },
-    { lbl: 'GOOD',   min: 2.50, color: GREEN     },
+    { lbl: 'ELITE',  min: 7.00, color: '#fbbf24' },
+    { lbl: 'GREAT',  min: 4.50, color: PRIMARY   },
+    { lbl: 'GOOD',   min: 3.00, color: GREEN     },
     { lbl: 'AVG',    min: 1.50, color: BLUE      },
     { lbl: 'LOW',    min: 1.00, color: TXT4      },
     { lbl: 'BENCH',  min: 0,    color: BORDER2   },
@@ -231,7 +231,7 @@ export function HelpPlayerReportPage() {
         <Step
           number={2}
           title="VER Hero — Your Player's Bottom Line"
-          note="The top of the report shows the player's VER (Volleyball Efficiency Rating) — a single number that weights all their contributions by position. A higher VER = more efficient player. The tier badge (ELITE, GOOD, AVG, etc.) appears next to the score for a quick read."
+          note="The top of the report shows the player's VER (Volleyball Efficiency Rating) — a single number that weights all their contributions by position. A higher VER = more efficient player. The tier badge (ELITE, GREAT, GOOD, AVG, etc.) appears next to the score for a quick read."
         >
           <DiagVERHero />
         </Step>

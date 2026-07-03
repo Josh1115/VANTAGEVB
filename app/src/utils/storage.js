@@ -26,7 +26,6 @@ export const STORAGE_KEYS = {
   ROSTER_SORT:        'vbstat_roster_sort',
   PLAYOFF_ORG:        'vbstat_playoff_org',
   ASSUME_SETTER_ROT1:   'vbstat_assume_setter_rot1',
-  CLOSEST_SORT_ASC:     'vbstat_closest_sort_asc',
   HISTORY_COMMITS_OPEN: 'vbstat_history_commits_open',
   HISTORY_AWARDS_OPEN:  'vbstat_history_awards_open',
   HISTORY_PROGRAM_OPEN: 'vbstat_history_program_open',

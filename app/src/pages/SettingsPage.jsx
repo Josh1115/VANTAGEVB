@@ -1314,7 +1314,6 @@ export function SettingsPage() {
   const [defaultTeamId,    saveDefaultTeam]    = useNullableIntSetting(STORAGE_KEYS.DEFAULT_TEAM_ID);
   const [defaultSeasonId,  saveDefaultSeason]  = useNullableIntSetting(STORAGE_KEYS.DEFAULT_SEASON_ID);
   const [scoreDetail,      saveScoreDetail]    = useStrSetting(STORAGE_KEYS.SCORE_DETAIL, 'sets');
-  const [matchViewDefault, saveMatchViewDefault] = useStrSetting(STORAGE_KEYS.MATCH_VIEW_DEFAULT, 'recent');
   const [playerNameFormat, savePlayerNameFormat] = useStrSetting(STORAGE_KEYS.PLAYER_NAME_FORMAT, 'initial_last');
   const [rosterSort,       saveRosterSort]       = useStrSetting(STORAGE_KEYS.ROSTER_SORT, 'jersey');
   const teams = useLiveQuery(() => db.teams.orderBy('name').toArray(), []);
@@ -2123,7 +2122,7 @@ export function SettingsPage() {
         </CollapsibleSection>
 
         {/* Personalization */}
-        <CollapsibleSection id="personalization" title="Personalization" isCustomized={!!(programName || coachName || playoffOrg || winMessage || scoreDetail !== 'sets' || matchViewDefault !== 'recent' || sidelineMode || accent !== 'orange' || defaultTeamId)}>
+        <CollapsibleSection id="personalization" title="Personalization" isCustomized={!!(programName || coachName || playoffOrg || winMessage || scoreDetail !== 'sets' || sidelineMode || accent !== 'orange' || defaultTeamId)}>
           <div className="p-4 space-y-5">
 
             {/* Program name */}
@@ -2256,31 +2255,6 @@ export function SettingsPage() {
                   >
                     <span>{label}</span>
                     <span className={`text-[10px] font-normal font-mono ${scoreDetail === val ? 'text-orange-100/70' : 'text-slate-500'}`}>{example}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Default match view */}
-            <div>
-              <div className="text-sm font-medium mb-0.5">Home Screen Match List</div>
-              <div className="text-xs text-slate-400 mb-2">Default view when opening the app</div>
-              <div className="flex gap-2">
-                {[
-                  { val: 'recent',  label: 'Recent',  example: 'newest first' },
-                  { val: 'closest', label: 'Closest', example: 'near today'   },
-                ].map(({ val, label, example }) => (
-                  <button
-                    key={val}
-                    onClick={() => saveMatchViewDefault(val)}
-                    className={`flex-1 py-2 px-2 rounded-lg text-sm font-semibold border transition-colors flex flex-col items-center gap-0.5 ${
-                      matchViewDefault === val
-                        ? 'bg-primary text-white border-primary'
-                        : 'bg-bg text-slate-300 border-slate-600 hover:border-slate-400'
-                    }`}
-                  >
-                    <span>{label}</span>
-                    <span className={`text-[10px] font-normal ${matchViewDefault === val ? 'text-orange-100/70' : 'text-slate-500'}`}>{example}</span>
                   </button>
                 ))}
               </div>
@@ -2736,7 +2710,6 @@ export function SettingsPage() {
             saveDefaultTeam(null);
             saveDefaultSeason(null);
             saveScoreDetail('sets');
-            saveMatchViewDefault('recent');
             saveSidelineMode(false);
             saveAccent('orange');
             setConfirmResetPersonalization(false);
