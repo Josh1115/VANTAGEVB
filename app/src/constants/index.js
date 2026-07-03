@@ -110,20 +110,22 @@ export const TRACKABLE_STATS = [
   { label: 'Avg Pass Rating', key: 'apr',     type: 'rate'  },
 ];
 
-// VER position multipliers — adjust raw efficiency to account for positional opportunity.
-// L (1.65) and DS (2.00) receive large boosts because they earn zero from the four
-// highest-weighted stats (K, ACE, BS, BA) and must build VER entirely from digs and passing.
-// MB (1.05) is slightly boosted because middle opportunities are fewer per set than OH/OPP.
-// S (0.90) reflects that setters accumulate assists (not kills), which are weighted lower.
-// OH/OPP (1.00) are the baseline. Adjust for your program's positional balance if needed.
+// VER position multipliers — calibrated against real season data (2026), not guessed.
+// Every position was tested by computing an actual best-player-of-the-season's raw
+// (pre-multiplier) VER and solving for the multiplier that placed that season in its
+// deserved tier. Earlier round-number guesses (OH 1.00, MB 1.05, S 0.90, L 1.65, DS 2.00)
+// left every non-OH position landing at BENCH/AVG even in genuinely great seasons —
+// a flat multiplier can't fix a position having fewer stat categories to draw from
+// (a Libero only ever touches DIG/passing; a setter/OH touch nearly everything).
+// OH/OPP/RS are no longer a fixed "baseline" — they needed real recalibration too.
 export const POSITION_MULTIPLIERS = {
-  OH:  1.00,
-  OPP: 1.00,
-  RS:  1.00,
-  MB:  1.05,
-  S:   0.90,
-  L:   1.65,
-  DS:  2.00,
+  OH:  2.70,
+  OPP: 2.70,
+  RS:  2.70,
+  MB:  4.75,
+  S:   4.00,
+  L:   5.00,
+  DS:  5.00,
 };
 
 // App accent colors — shared between main.jsx (CSS variable bootstrap) and SettingsPage

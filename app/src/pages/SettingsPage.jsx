@@ -612,7 +612,11 @@ const FAQ_TOPICS = [
       },
       {
         heading: 'Positive vs Negative Actions',
-        body: 'Kills, aces, blocks, and high pass ratings add to VER. Service errors, attack errors, ball handling errors, and aced passes subtract. The net result relative to sets played produces the VER score.',
+        body: 'Kills, aces, blocks, and high pass ratings add to VER. Service errors, attack errors, block errors, ball handling errors, lifts, net touches, double contacts, and aced passes all subtract — every tracked error type costs the same amount. The net result relative to sets played produces the VER score.',
+      },
+      {
+        heading: 'Hitting Efficiency (HIT%)',
+        body: 'On top of raw kills and errors, VER also factors in the player\'s hitting percentage — (Kills − Errors) ÷ Attempts. This rewards efficiency on its own: a hitter who takes fewer swings but converts them cleanly gets a boost that a raw kill count alone wouldn\'t capture. It\'s a smaller factor than volume, though — a hitter who carries a heavy workload will still out-score one with a handful of perfect swings.',
       },
       {
         heading: 'Reading VER',

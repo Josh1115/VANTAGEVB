@@ -5,6 +5,7 @@ import { saveToCloud, restoreFromCloud } from '../stats/backup';
 import { resolvePlanFromProfile } from '../utils/planLimits';
 import { PENDING_PLAN_KEY, startPlanCheckout } from '../utils/checkout';
 import { db } from '../db/schema';
+import { backfillLiberoSwapPositions } from '../db/liberoBackfill';
 import { getStorageItem, setStorageItem, STORAGE_KEYS } from '../utils/storage';
 
 // Wipe all user-specific localStorage settings so one account's data can't
@@ -197,7 +198,7 @@ export function AuthProvider({ children }) {
         setSession(initialSession);
         fetchProfile(initialSession.user.id);
         maybeStartPendingCheckout(initialSession);
-        migrateSharedDb().then(() => autoSync(initialSession));
+        Promise.all([migrateSharedDb(), backfillLiberoSwapPositions()]).then(() => autoSync(initialSession));
       } else {
         setSession(null);
       }
@@ -236,7 +237,7 @@ export function AuthProvider({ children }) {
         fetchProfile(session.user.id);
         maybeStartPendingCheckout(session);
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          migrateSharedDb().then(() => autoSync(session));
+          Promise.all([migrateSharedDb(), backfillLiberoSwapPositions()]).then(() => autoSync(session));
         }
       } else {
         setProfile(null);

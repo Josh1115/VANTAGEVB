@@ -108,7 +108,8 @@ export const TAB_COLUMNS = {
   ver: [
     { key: 'name',      label: 'Player' },
     ...SP_MP_COLS,
-    { key: 'ver',       label: 'VER',   fmt: fmtVER,    render: (v) => <VERBadge ver={v} /> },
+    { key: 'ver_raw',   label: 'VER',   fmt: fmtVER     },
+    { key: 'ver',       label: 'wVER',  fmt: fmtVER,    render: (v) => <VERBadge ver={v} /> },
     { key: 'wpa',       label: 'WPA',   fmt: fmtVER     },
     { key: 'wpa_pos',   label: 'WPA+',  fmt: fmtVER     },
     { key: 'wpa_neg',   label: 'WPA−',  fmt: fmtVER     },

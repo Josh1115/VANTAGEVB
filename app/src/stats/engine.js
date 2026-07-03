@@ -10,6 +10,11 @@ import { POSITION_MULTIPLIERS, MATCH_STATUS } from '../constants';
 
 const div = (n, d) => (d > 0 ? n / d : null);
 
+// Uniform divisor applied to the whole VER formula so the final numbers are
+// smaller and easier to read. Every weight and tier threshold shares this same
+// factor, so no ratio between stats changes — this is purely a display scale.
+export const VER_SCALE = 4;
+
 function mkAccum() {
   return {
     // serve — totals
@@ -122,6 +127,33 @@ function accumContact(p, { action, result, serve_type, receive_type, error_type,
 // Derive all display-ready stat values from an accumulator + sets played
 function deriveStats(p, sp, posLabel = null) {
   const posMult = POSITION_MULTIPLIERS[posLabel] ?? 1.0;
+  const hitPct  = div(p.k - p.ae, p.ta);
+  // Raw VER — every weight below, before the position multiplier is applied.
+  // Not position-comparable on its own (a Libero's raw ceiling is far lower than an
+  // OH's, since they draw from far fewer stat categories) — that's what posMult exists
+  // to correct for. Exposed separately as ver_raw so the Stats page can show both.
+  const verRaw = sp > 0
+    ? (
+        (1 / sp) * (
+          4.0  * p.k    +
+          4.0  * p.ace  +
+          5.0  * p.bs   +
+          2.5  * p.ba   +
+          1.0  * p.ast  +
+          2.0  * (p.dig + p.fb_dig) +
+          (p.p1 + p.p2 * 2 + p.p3 * 3 - p.pa * 2) -
+          3.0  * p.ae   -
+          3.0  * p.se   -
+          3.0  * p.be   -
+          3.0  * p.bhe  -
+          3.0  * p.fbe  -
+          3.0  * p.lift -
+          3.0  * p.net  -
+          3.0  * p.dbl
+        ) +
+        13.3 * (hitPct ?? 0)
+      ) / VER_SCALE
+    : null;
   return {
     // Serving — totals
     sa: p.sa, ace: p.ace, se: p.se, se_ob: p.se_ob, se_net: p.se_net, se_foot: p.se_foot,
@@ -163,7 +195,7 @@ function deriveStats(p, sp, posLabel = null) {
     ae_net_pct: div(p.ae_net, p.ae),
     ae_blk_pct: div(p.ae_blk, p.ae),
     ae_bra_pct: div(p.ae_bra, p.ae),
-    hit_pct: div(p.k - p.ae, p.ta),
+    hit_pct: hitPct,
     k_pct:   div(p.k,  p.ta),
     kps:     div(p.k,  sp),
     aeps:    div(p.ae, sp),
@@ -187,28 +219,22 @@ function deriveStats(p, sp, posLabel = null) {
     fbr: p.fbr, fbs: p.fbs, fbe: p.fbe,
 
     // Volleyball Efficiency Rating (position-adjusted)
-    // VER = posMult × (1/sp) × [4K + 4ACE + 5BS + 2.5BA + 1.0AST + 2.0DIG
-    //       + (P1 + 2·P2 + 3·P3 − 2·PA) − 3.0AE − 3.0SE − 3.0BHE − 3.0DROP − 3.0L − 3.0NET]
+    // VER = posMult × verRaw — see verRaw above for the full weighted formula.
     // APR component (P1+2P2+3P3−2PA): +1 per perfect pass, 0 at APR=2 (neutral), −2 per ace-against.
     // Naturally zero when PA=0 (no pass attempts), so no special-casing needed.
-    ver: sp > 0
-      ? posMult * (1 / sp) * (
-          4.0  * p.k    +
-          4.0  * p.ace  +
-          5.0  * p.bs   +
-          2.5  * p.ba   +
-          1.0  * p.ast  +
-          2.0  * (p.dig + p.fb_dig) +
-          (p.p1 + p.p2 * 2 + p.p3 * 3 - p.pa * 2) -
-          3.0  * p.ae   -
-          3.0  * p.se   -
-          3.0  * p.bhe  -
-          3.0  * p.fbe  -
-          3.0  * p.lift -
-          3.0  * p.net  -
-          3.0  * p.dbl
-        )
-      : null,
+    // HIT% term sits outside the (1/sp) division — it's already a rate, not a count, so
+    // dividing it by sets played again would wrongly shrink it for players with more playing
+    // time. Multiplier of 13.3 makes a realistic hit% swing (.100 to .400) worth about one
+    // kill's worth of VER (4.0); it's null-guarded to 0 when a player has no attack attempts.
+    // VER_SCALE divides the whole thing down so the numbers stay easy to read at a glance —
+    // ratios between every stat are untouched, kills/aces just read as a clean 1.0 baseline
+    // instead of 4.0. VERBadge's tier thresholds are scaled by the same factor.
+    //
+    // ver_raw is exposed for the Stats page's "VER" column (position-unweighted, NOT
+    // comparable across positions); ver is the position-weighted value used everywhere
+    // else in the app (tier badges, sorting, hero displays) and shown as "wVER" there.
+    ver_raw: verRaw,
+    ver: sp > 0 ? posMult * verRaw : null,
     pos_label: posLabel ?? null,
     pos_mult:  posMult,
   };

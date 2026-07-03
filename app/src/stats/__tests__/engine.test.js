@@ -1218,38 +1218,42 @@ describe('computeRunsByRotation', () => {
 describe('VER position multipliers', () => {
   const makeKill = (pid) => contact({ player_id: pid, action: 'attack', result: 'kill' });
 
-  it('applies L multiplier (1.65) vs OH multiplier (1.00)', () => {
+  it('applies L multiplier (5.00) vs OH multiplier (2.70)', () => {
     const contacts = [makeKill('libero'), makeKill('outside')];
     const positions = { libero: 'L', outside: 'OH' };
     const stats = computePlayerStats(contacts, 1, positions);
-    // VER_libero = 1.65 × (1/1) × (4×1) = 6.6
-    // VER_outside = 1.00 × (1/1) × (4×1) = 4.0
-    expect(stats.libero.ver).toBeCloseTo(6.6);
-    expect(stats.outside.ver).toBeCloseTo(4.0);
-    expect(stats.libero.pos_mult).toBe(1.65);
-    expect(stats.outside.pos_mult).toBe(1.00);
+    // A single kill on a single attempt is also a 1.000 hit% game, so the bracket
+    // is (4×1) from the kill plus (13.3×1.000) from HIT% = 17.3 before posMult,
+    // then the whole thing is divided by VER_SCALE (4) for readability.
+    // VER_libero = 5.00 × 17.3 / 4 = 21.625
+    // VER_outside = 2.70 × 17.3 / 4 = 11.6775
+    expect(stats.libero.ver).toBeCloseTo(21.625);
+    expect(stats.outside.ver).toBeCloseTo(11.6775);
+    expect(stats.libero.pos_mult).toBe(5.00);
+    expect(stats.outside.pos_mult).toBe(2.70);
   });
 
-  it('applies S multiplier (0.90)', () => {
+  it('applies S multiplier (4.00)', () => {
     const contacts = [makeKill('setter')];
     const positions = { setter: 'S' };
     const stats = computePlayerStats(contacts, 1, positions);
-    // VER = 0.90 × 4 × 1 = 3.6
-    expect(stats.setter.ver).toBeCloseTo(3.6);
+    // VER = 4.00 × (4 + 13.3×1.000) / 4 = 4.00 × 17.3 / 4 = 17.3
+    expect(stats.setter.ver).toBeCloseTo(17.3);
   });
 
-  it('applies MB multiplier (1.05)', () => {
+  it('applies MB multiplier (4.75)', () => {
     const contacts = [makeKill('mb')];
     const positions = { mb: 'MB' };
     const stats = computePlayerStats(contacts, 1, positions);
-    // VER = 1.05 × 4 × 1 = 4.2
-    expect(stats.mb.ver).toBeCloseTo(4.2);
+    // VER = 4.75 × (4 + 13.3×1.000) / 4 = 4.75 × 17.3 / 4 = 20.54375
+    expect(stats.mb.ver).toBeCloseTo(20.54375);
   });
 
   it('defaults to 1.0 multiplier for unknown position', () => {
     const contacts = [makeKill('p1')];
     const stats = computePlayerStats(contacts, 1, { p1: 'UNKNOWN' });
-    expect(stats.p1.ver).toBeCloseTo(4.0);
+    // VER = 1.00 × (4 + 13.3×1.000) / 4 = 17.3 / 4 = 4.325
+    expect(stats.p1.ver).toBeCloseTo(4.325);
     expect(stats.p1.pos_mult).toBe(1.0);
   });
 

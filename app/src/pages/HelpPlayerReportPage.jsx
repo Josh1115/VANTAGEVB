@@ -3,9 +3,9 @@ import { BG, SURFACE, SURFACE2, BORDER, BORDER2, TXT, TXT3, TXT4, TXT5, PRIMARY,
 
 function DiagOpenReport() {
   const rows = [
-    { name: 'Harris', k: 14, ver: '24.1', tier: 'ELITE', tierColor: PRIMARY },
-    { name: 'Kim',    k: 8,  ver: '18.7', tier: 'GOOD',  tierColor: GREEN   },
-    { name: 'Jones',  k: 2,  ver: '16.2', tier: 'GOOD',  tierColor: GREEN   },
+    { name: 'Harris', k: 14, ver: '5.20', tier: 'ELITE', tierColor: PRIMARY },
+    { name: 'Kim',    k: 8,  ver: '3.40', tier: 'GOOD',  tierColor: GREEN   },
+    { name: 'Jones',  k: 2,  ver: '2.80', tier: 'GOOD',  tierColor: GREEN   },
   ];
   return (
     <svg viewBox="0 0 320 150" className="w-full rounded-xl" style={{ background: BG }}>
@@ -39,14 +39,14 @@ function DiagVERHero() {
       <rect x="28" y="36" width="28" height="14" rx="3" fill={`${PRIMARY}30`} stroke={PRIMARY} strokeWidth="0.8" />
       <text x="42" y="47" fill={PRIMARY} fontSize="8" fontWeight="700" textAnchor="middle">OH</text>
       {/* Big VER number */}
-      <text x="160" y="80" fill={PRIMARY} fontSize="44" fontWeight="900" textAnchor="middle">24.1</text>
+      <text x="160" y="80" fill={PRIMARY} fontSize="44" fontWeight="900" textAnchor="middle">5.20</text>
       <text x="160" y="96" fill={TXT4} fontSize="9" textAnchor="middle" letterSpacing="2">VER SCORE</text>
       {/* ELITE badge */}
       <rect x="222" y="58" width="72" height="28" rx="7"
         fill={`${PRIMARY}25`} stroke={PRIMARY} strokeWidth="1.5" />
       <text x="258" y="77" fill={PRIMARY} fontSize="12" fontWeight="900" textAnchor="middle">ELITE</text>
       {/* Pos multiplier note */}
-      <text x="28" y="113" fill={TXT5} fontSize="8">Position multiplier: OH ×1.00  ·  Sets played: 12</text>
+      <text x="28" y="113" fill={TXT5} fontSize="8">Position multiplier: OH ×2.70  ·  Sets played: 12</text>
     </svg>
   );
 }
@@ -54,13 +54,13 @@ function DiagVERHero() {
 // Step 3 — VER Tier scale
 function DiagVERTiers() {
   const tiers = [
-    { lbl: 'ELITE+', min: 28,  color: '#fbbf24' },
-    { lbl: 'ELITE',  min: 22,  color: PRIMARY   },
-    { lbl: 'GOOD',   min: 15,  color: GREEN     },
-    { lbl: 'AVG',    min: 10,  color: BLUE      },
-    { lbl: 'LOW',    min: 5,   color: TXT4      },
-    { lbl: 'BENCH',  min: 0,   color: BORDER2   },
-    { lbl: 'NEG',    min: -99, color: RED       },
+    { lbl: 'ELITE+', min: 6.00, color: '#fbbf24' },
+    { lbl: 'ELITE',  min: 4.00, color: PRIMARY   },
+    { lbl: 'GOOD',   min: 2.50, color: GREEN     },
+    { lbl: 'AVG',    min: 1.50, color: BLUE      },
+    { lbl: 'LOW',    min: 1.00, color: TXT4      },
+    { lbl: 'BENCH',  min: 0,    color: BORDER2   },
+    { lbl: 'NEG',    min: -99,  color: RED       },
   ];
   return (
     <svg viewBox="0 0 320 120" className="w-full rounded-xl" style={{ background: BG }}>
@@ -239,7 +239,7 @@ export function HelpPlayerReportPage() {
         <Step
           number={3}
           title="VER Tier Scale"
-          note="The same tier scale applies to all positions — position multipliers (OH ×1.00, L ×1.65, DS ×2.00, etc.) are already baked into the VER calculation, so you can compare across positions on the same scale. A libero with a VER of 18 is just as efficient at their role as an OH with a VER of 18."
+          note="The same tier scale applies to all positions — position multipliers (OH ×2.70, MB ×4.75, S ×4.00, L/DS ×5.00) are already baked into the VER calculation, so you can compare across positions on the same scale. A libero with a VER of 4.5 is just as efficient at their role as an OH with a VER of 4.5."
         >
           <DiagVERTiers />
         </Step>

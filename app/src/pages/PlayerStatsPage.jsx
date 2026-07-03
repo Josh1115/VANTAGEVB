@@ -273,10 +273,14 @@ function PlayerReportCard({ row, allRows = [], teamPoints = 0, oppPoints = 0 }) 
     },
   ].filter(Boolean);
 
-  const verColor = row.ver == null ? 'text-slate-400'
-    : row.ver >= 6   ? 'text-emerald-400'
-    : row.ver >= 2   ? 'text-blue-400'
-    : row.ver >= -1  ? 'text-yellow-400'
+  // Reuses VER_TIERS' own thresholds (rather than separate hardcoded numbers) so this
+  // color scale can never drift out of sync with the tier badge shown right below it.
+  const eliteTier = VER_TIERS.find(t => t.label === 'ELITE');
+  const avgTier   = VER_TIERS.find(t => t.label === 'AVG');
+  const verColor = row.ver == null            ? 'text-slate-400'
+    : row.ver >= eliteTier.min ? 'text-emerald-400'
+    : row.ver >= avgTier.min   ? 'text-blue-400'
+    : row.ver >= 0             ? 'text-yellow-400'
     : 'text-red-400';
 
   const verTier = row.ver != null ? VER_TIERS.find(t => row.ver >= t.min) : null;

@@ -143,7 +143,7 @@ export function HelpReportsPage() {
           {[
             ['SO% — Sideout Percentage', 'How often you score the point when receiving serve. League average is roughly 55–65%. Elite teams target 65%+.'],
             ['SP% — Serving Point %', 'How often you score the point when serving. Harder to control than sideout, but critical in close matches.'],
-            ['VER — Volleyball Efficiency Rating', 'A composite score that weighs positive contacts (kills, aces, digs on live ball) against negative ones (errors, poor passes). Higher is better; above +10 per set is strong.'],
+            ['VER — Volleyball Efficiency Rating', 'A composite score that weighs positive contacts (kills, aces, digs on live ball) against negative ones (errors, poor passes), plus a hitting-efficiency bonus. Higher is better; above +2.5 per set is strong.'],
             ['HIT% — Hitting Efficiency', 'Standard formula: (kills − errors) ÷ attempts. .250 is considered good at the high school level. Negative means more errors than kills.'],
           ].map(([title, body]) => (
             <div key={title} className="pl-10 flex gap-3">

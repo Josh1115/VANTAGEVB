@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { buildPlayerMaps } from '../utils/players';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getIntStorage, STORAGE_KEYS, getPlayoffLabel } from '../utils/storage';
+import { POSITION_MULTIPLIERS } from '../constants';
 import { db } from '../db/schema';
 import { computeSeasonStats, computePQ, computeSetWinProb, computeExpectedPts, aggregateXKTeamStats, computeRotationContactStats } from '../stats/engine';
 import { InsightsPanel } from '../components/stats/InsightsPanel';
@@ -1533,25 +1534,31 @@ export function ReportsPage() {
                         <p>VER is scaled by position before tier assignment so all positions share one standard scale:</p>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 mt-1">
                           {[
-                            ['OH / OPP / RS', '1.00×'],
-                            ['MB',            '1.05×'],
-                            ['S',             '0.90×'],
-                            ['DS',            '2.00×'],
-                            ['L',             '1.65×'],
+                            ['OH / OPP / RS', POSITION_MULTIPLIERS.OH],
+                            ['MB',            POSITION_MULTIPLIERS.MB],
+                            ['S',             POSITION_MULTIPLIERS.S],
+                            ['DS',            POSITION_MULTIPLIERS.DS],
+                            ['L',             POSITION_MULTIPLIERS.L],
                           ].map(([pos, mult]) => (
                             <div key={pos} className="flex items-center justify-between gap-2">
                               <span className="text-slate-300 font-bold">{pos}</span>
-                              <span className="text-slate-500 tabular-nums">{mult}</span>
+                              <span className="text-slate-500 tabular-nums">{mult.toFixed(2)}×</span>
                             </div>
                           ))}
                         </div>
                       </div>
                       <div className="space-y-1.5 pt-1 border-t border-slate-700/40">
-                        {VER_TIERS.map(({ label, min, cls }) => (
+                        {VER_TIERS.map(({ label, min, cls }, i) => (
                           <div key={label} className="flex items-center gap-2">
                             <span className={`text-[9px] font-bold px-1.5 py-px rounded border w-14 text-center shrink-0 ${cls}`}>{label}</span>
                             <span className="text-[11px] text-slate-400 tabular-nums">
-                              {min === -Infinity ? '< 0' : min === 0 ? '0 – 4.99' : `≥ ${min}`}
+                              {min === -Infinity
+                                ? '< 0'
+                                : i === 0
+                                  ? `≥ ${min.toFixed(2)}`
+                                  // Upper bound derived from the tier above rather than hardcoded,
+                                  // so this can't go stale if the tier boundaries ever change.
+                                  : `${min.toFixed(2)} – ${(VER_TIERS[i - 1].min - 0.01).toFixed(2)}`}
                             </span>
                           </div>
                         ))}

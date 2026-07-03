@@ -187,9 +187,9 @@ function DiagGoLive() {
 // Step 7 — Read the Match Summary
 function DiagMatchSummary() {
   const stats = [
-    { name: 'Harris', k: 14, ace: 3, ver: '24.1', tier: 'ELITE' },
-    { name: 'Kim',    k: 8,  ace: 0, ver: '18.7', tier: 'GOOD'  },
-    { name: 'Jones',  k: 2,  ace: 1, ver: '16.2', tier: 'GOOD'  },
+    { name: 'Harris', k: 14, ace: 3, ver: '5.20', tier: 'ELITE' },
+    { name: 'Kim',    k: 8,  ace: 0, ver: '3.40', tier: 'GOOD'  },
+    { name: 'Jones',  k: 2,  ace: 1, ver: '2.80', tier: 'GOOD'  },
   ];
   return (
     <svg viewBox="0 0 320 170" className="w-full rounded-xl" style={{ background: BG }}>

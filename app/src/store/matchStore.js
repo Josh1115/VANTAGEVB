@@ -1081,8 +1081,20 @@ export const useMatchStore = create((set, get) => ({
     const prevReplacedJersey        = s.liberoReplacedJersey;
     const prevReplacedPositionLabel = s.liberoReplacedPositionLabel;
 
+    // Recorded below so getPlayerPositionsForMatches (and therefore each player's VER
+    // position multiplier) can see who was playing what position during a libero swap —
+    // previously these fields were never set, so a libero's appearance silently fell
+    // through to the default 1.0 multiplier instead of their real one.
+    let subPlayerOut, subPlayerIn, subPosition, subInPositionLabel;
+
     if (s.liberoOnCourt) {
       // Swap libero out — restore the player they replaced
+      const liberoSlotIdx = s.lineup.findIndex((sl) => sl.playerId === s.liberoId);
+      subPlayerOut        = s.liberoId;
+      subPlayerIn         = s.liberoReplacedPlayerId;
+      subPosition         = liberoSlotIdx + 1;
+      subInPositionLabel  = s.liberoReplacedPositionLabel;
+
       set({
         lineup: s.lineup.map((sl) =>
           sl.playerId === s.liberoId
@@ -1105,7 +1117,12 @@ export const useMatchStore = create((set, get) => ({
           ?? backRow.find((i) => eligible(i));
       if (targetIdx === undefined) return;
 
-      const target = s.lineup[targetIdx];
+      const target       = s.lineup[targetIdx];
+      subPlayerOut        = target.playerId;
+      subPlayerIn         = liberoPlayer.id;
+      subPosition         = targetIdx + 1;
+      subInPositionLabel  = 'L';
+
       set({
         lineup: s.lineup.map((sl, i) =>
           i === targetIdx
@@ -1125,10 +1142,14 @@ export const useMatchStore = create((set, get) => ({
     let subDbId;
     try {
       subDbId = await db.substitutions.add({
-        set_id:       s.currentSetId,
-        rally_number: 0,
-        libero_swap:  true,
-        timestamp:    Date.now(),
+        set_id:            s.currentSetId,
+        rally_number:      0,
+        player_out:        subPlayerOut,
+        player_in:         subPlayerIn,
+        position:          subPosition,
+        libero_swap:       true,
+        in_position_label: subInPositionLabel,
+        timestamp:         Date.now(),
       });
     } catch (err) {
       useUiStore.getState().showToast('Libero swap failed. Check device storage.', 'error');
