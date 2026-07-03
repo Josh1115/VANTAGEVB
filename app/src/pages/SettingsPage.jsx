@@ -1658,6 +1658,9 @@ export function SettingsPage() {
             )}
           </div>
           <div className="p-4 flex flex-col gap-3">
+            <p className="text-sm text-slate-400 leading-relaxed text-center">
+              Every account starts with a free 5-match trial with full platform access — 1 team, up to 5 matches, no import features. Plans below are one-time, per-season purchases — Vantage does not offer subscriptions.
+            </p>
             {isMaster ? (
               <div className="flex items-center gap-3">
                 <span className="text-yellow-400 text-lg font-black">★</span>
@@ -1675,7 +1678,7 @@ export function SettingsPage() {
                       {teamsAllowed === 99 ? 'Unlimited Teams' : `${teamsAllowed} Team${teamsAllowed > 1 ? 's' : ''}`} / Season
                     </div>
                     <div className="text-xs text-slate-400">
-                      All features included · Unlimited matches/season
+                      All features included · 50 matches/season
                       {expiresAt && ` · Expires ${expiresAt.toLocaleDateString()}`}
                     </div>
                   </div>
@@ -1699,7 +1702,6 @@ export function SettingsPage() {
               </div>
             ) : (
               <>
-                <p className="text-sm text-slate-400">No active subscription. Subscribe to unlock all features.</p>
                 {!!profile?.plan_expires_at && (
                   <div className="flex items-center justify-between gap-3 bg-amber-900/30 border border-amber-600/40 rounded-xl px-3 py-2.5 mt-3">
                     <div className="flex items-center gap-2 min-w-0">
@@ -1716,6 +1718,18 @@ export function SettingsPage() {
                 )}
               </>
             )}
+            {/* Account level */}
+            <div className="flex items-center justify-center gap-2 bg-slate-800/60 rounded-xl px-3 py-2.5">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Account Level</span>
+              <span className={`text-sm font-bold ${
+                isMaster ? 'text-yellow-400'
+                : !isActive ? 'text-red-400'
+                : plan === 'trial' ? 'text-slate-300'
+                : 'text-primary'
+              }`}>
+                {isMaster ? 'Master' : isActive ? PLAN_LABELS[plan] : 'Expired'}
+              </span>
+            </div>
             {/* Credit usage */}
             {(() => {
               const teamsUsed = activeSeasonTeamCount ?? 0;
@@ -1798,7 +1812,7 @@ export function SettingsPage() {
                     <div className="flex items-center gap-2">
                       {plan === key && !isMaster && <span className="text-primary text-xs font-black">✓</span>}
                       <span className={`text-sm font-semibold ${plan === key && !isMaster ? 'text-primary' : 'text-slate-300'}`}>{label}</span>
-                      <span className="text-xs text-slate-500">· {PLAN_TEAMS[key] === 99 ? '5+' : PLAN_TEAMS[key]} team{PLAN_TEAMS[key] !== 1 ? 's' : ''} · unlimited matches/season</span>
+                      <span className="text-xs text-slate-500">- 50 matches per team, per 1 season</span>
                     </div>
                     <span className={`text-sm font-bold ${plan === key && !isMaster ? 'text-primary' : 'text-slate-300'}`}>{PLAN_PRICES[key]}<span className="text-xs font-normal text-slate-500">/yr</span></span>
                   </div>
