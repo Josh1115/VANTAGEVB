@@ -4,6 +4,8 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { PLAN_PRICES, PLAN_LABELS, usePlan } from '../hooks/usePlan';
+import { ALL_FEATURES } from '../utils/planLimits';
+import { startPlanCheckout } from '../utils/checkout';
 
 const PLANS = [
   { key: '1_team',      teams: 1,  highlight: false },
@@ -11,18 +13,6 @@ const PLANS = [
   { key: '3_teams',     teams: 3,  highlight: false },
   { key: '4_teams',     teams: 4,  highlight: false },
   { key: '5plus_teams', teams: 5,  highlight: false },
-];
-
-const ALL_FEATURES = [
-  'Full live match stat entry',
-  'Complete analytics & reports',
-  'Career records & season history',
-  'Opponent scouting & tracking',
-  'Rotation optimizer',
-  'Practice tools (serve tracker, serve receive, practice games)',
-  'FamilyScope live sharing',
-  'PDF, CSV & MaxPreps export',
-  'Up to 50 matches per team per season',
 ];
 
 export function UpgradePage() {
@@ -70,22 +60,7 @@ export function UpgradePage() {
     setLoadingPlan(planKey);
     try {
       if (!session) throw new Error('Not signed in');
-
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ plan: planKey }),
-        }
-      );
-
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? 'Checkout failed');
-      window.location.href = json.url;
+      await startPlanCheckout(session, planKey);
     } catch (err) {
       setError(err.message);
       setLoadingPlan(null);

@@ -3,6 +3,7 @@ import { NetDivider } from '../ui/NetDivider';
 import { supabase, trackPageView } from '../../utils/supabase';
 import { router } from '../../router';
 import { TurnstileWidget, CAPTCHA_REQUIRED } from './TurnstileWidget';
+import { PENDING_PLAN_KEY } from '../../utils/checkout';
 
 function friendlyAuthError(msg) {
   if (!msg) return 'Something went wrong. Please try again.';
@@ -162,30 +163,37 @@ export function LoginPage({ onSignup }) {
                       <span className="text-sm font-black" style={{ color: '#e8530b' }}>FREE</span>
                     </div>
                     {[
-                      { label: '1 Team',   price: '$79.99',  desc: '1 team · 50 matches/season' },
-                      { label: '2 Teams',  price: '$139.99', desc: '2 teams · 50 matches/season each' },
-                      { label: '3 Teams',  price: '$189.99', desc: '3 teams · 50 matches/season each' },
-                      { label: '4 Teams',  price: '$229.99', desc: '4 teams · 50 matches/season each' },
-                      { label: '5 Teams',  price: '$259.99', desc: '5 teams · 50 matches/season each' },
-                    ].map(({ label, price, desc }) => (
-                      <div key={label} className="rounded-xl border border-slate-700 px-3 py-2.5 flex items-center justify-between">
-                        <div>
+                      { key: '1_team',      label: '1 Team',   price: '$79.99',  desc: '1 team · 50 matches/season' },
+                      { key: '2_teams',     label: '2 Teams',  price: '$139.99', desc: '2 teams · 50 matches/season each' },
+                      { key: '3_teams',     label: '3 Teams',  price: '$189.99', desc: '3 teams · 50 matches/season each' },
+                      { key: '4_teams',     label: '4 Teams',  price: '$229.99', desc: '4 teams · 50 matches/season each' },
+                      { key: '5plus_teams', label: '5 Teams',  price: '$259.99', desc: '5 teams · 50 matches/season each' },
+                    ].map(({ key, label, price, desc }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          localStorage.setItem(PENDING_PLAN_KEY, key);
+                          onSignup();
+                        }}
+                        className="w-full rounded-xl border border-slate-700 hover:border-primary/60 bg-transparent hover:bg-primary/5 px-3 py-2.5 flex items-center justify-between transition-colors active:scale-[0.98]"
+                      >
+                        <div className="text-left">
                           <p className="text-sm font-bold text-white">{label}</p>
                           <p className="text-xs text-slate-400">{desc}</p>
                         </div>
-                        <div className="text-right shrink-0 ml-3">
-                          <p className="text-sm font-black" style={{ color: '#e8530b' }}>{price}</p>
-                          <p className="text-[10px] text-slate-500">/year</p>
+                        <div className="flex items-center gap-2 shrink-0 ml-3">
+                          <div className="text-right">
+                            <p className="text-sm font-black" style={{ color: '#e8530b' }}>{price}</p>
+                            <p className="text-[10px] text-slate-500">/year</p>
+                          </div>
+                          <span className="text-slate-500">›</span>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )}
               </div>
-              <p className="text-[11px] text-slate-500 text-center -mt-2">
-                Ready to purchase?{' '}
-                <a href="mailto:vantagevb@gmail.com" className="underline text-slate-400 hover:text-slate-300 transition-colors">vantagevb@gmail.com</a>
-              </p>
 
               <p className="text-center text-sm rounded-xl px-4 py-2" style={{ color: '#fbbf24', border: '1px solid rgba(232,83,11,0.5)', background: 'rgba(232,83,11,0.1)' }}>
                 Experiencing technical difficulties?{' '}

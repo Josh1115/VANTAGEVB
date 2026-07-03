@@ -15,6 +15,8 @@ import { useUiStore } from '../store/uiStore';
 import { FORMAT, ACCENT_COLORS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlan, PLAN_TEAMS, PLAN_PRICES, PLAN_LABELS, TRIAL_MATCH_LIMIT } from '../hooks/usePlan';
+import { ALL_FEATURES } from '../utils/planLimits';
+import { startPlanCheckout } from '../utils/checkout';
 import { previewSound } from '../utils/sound';
 import { countActiveSeasonTeams } from '../utils/teams';
 import {
@@ -1364,6 +1366,7 @@ export function SettingsPage() {
   const [lastCloudSave,       setLastCloudSave]       = useState(null);
   const [confirmCloudRestore, setConfirmCloudRestore] = useState(false);
   const [portalLoading,       setPortalLoading]       = useState(false);
+  const [checkoutPlan,        setCheckoutPlan]        = useState(null);
 
   const autoBackups = useLiveQuery(
     () => db.auto_backups.orderBy('created_at').reverse().limit(5).toArray(),
@@ -1547,6 +1550,16 @@ export function SettingsPage() {
     }
   }
 
+  async function handlePlanCheckout(planKey) {
+    setCheckoutPlan(planKey);
+    try {
+      await startPlanCheckout(session, planKey);
+    } catch (e) {
+      showToast(e.message ?? 'Checkout failed', 'error');
+      setCheckoutPlan(null);
+    }
+  }
+
   async function handleChangePassword() {
     if (newPassword.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
     if (newPassword !== confirmPassword) { showToast('Passwords do not match.', 'error'); return; }
@@ -1648,14 +1661,6 @@ export function SettingsPage() {
               className="text-[18.4px] font-black uppercase leading-none section-twinkle"
               style={{ color: '#ffffff', letterSpacing: '0.15em' }}
             >Pricing</h2>
-            {!isMaster && (
-              <button
-                onClick={() => navigate('/upgrade')}
-                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-black text-white active:scale-95 transition-transform"
-              >
-                {isActive ? 'Change Plan' : 'Subscribe'}
-              </button>
-            )}
           </div>
           <div className="p-4 flex flex-col gap-3">
             <p className="text-sm text-slate-400 leading-relaxed text-center">
@@ -1790,6 +1795,19 @@ export function SettingsPage() {
             {/* Pricing table */}
             <div className="space-y-2">
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Plan Options</p>
+              <div className="bg-slate-800/60 rounded-xl p-4">
+                <div className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">
+                  Everything included
+                </div>
+                <ul className="flex flex-col gap-1.5">
+                  {ALL_FEATURES.map(f => (
+                    <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
+                      <span className="text-emerald-400 mt-px leading-none shrink-0">✓</span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
               <div className="rounded-xl overflow-hidden border border-slate-700 divide-y divide-slate-700">
                 {isMaster && (
                   <div className="flex items-center justify-between px-3 py-2.5 bg-yellow-400/10">
@@ -1801,21 +1819,49 @@ export function SettingsPage() {
                     <span className="text-sm font-bold text-yellow-400">Unlimited</span>
                   </div>
                 )}
-                {Object.entries(PLAN_LABELS).filter(([key]) => key !== 'trial').map(([key, label]) => (
-                  <div
-                    key={key}
-                    className={`flex items-center justify-between px-3 py-2.5 ${plan === key && !isMaster ? 'bg-primary/10' : 'bg-slate-800/40'}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      {plan === key && !isMaster && <span className="text-primary text-xs font-black">✓</span>}
-                      <span className={`text-sm font-semibold ${plan === key && !isMaster ? 'text-primary' : 'text-slate-300'}`}>{label}</span>
-                      <span className="text-xs text-slate-500">- 50 matches per team, per 1 season</span>
-                    </div>
-                    <span className={`text-sm font-bold ${plan === key && !isMaster ? 'text-primary' : 'text-slate-300'}`}>{PLAN_PRICES[key]}<span className="text-xs font-normal text-slate-500">/yr</span></span>
-                  </div>
-                ))}
+                {Object.entries(PLAN_LABELS).filter(([key]) => key !== 'trial').map(([key, label]) => {
+                  const isCurrent = plan === key && !isMaster;
+                  const isLoading = checkoutPlan === key;
+                  const clickDisabled = isMaster || isCurrent || (checkoutPlan !== null && !isLoading);
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => handlePlanCheckout(key)}
+                      disabled={clickDisabled}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors ${
+                        isCurrent ? 'bg-primary/10' : 'bg-slate-800/40 enabled:hover:bg-slate-700/60 enabled:active:bg-slate-700'
+                      } disabled:cursor-default`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {isCurrent && <span className="text-primary text-xs font-black">✓</span>}
+                        <span className={`text-sm font-semibold ${isCurrent ? 'text-primary' : 'text-slate-300'}`}>{label}</span>
+                        <span className="text-xs text-slate-500">- 50 matches per team, per 1 season</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-sm font-bold ${isCurrent ? 'text-primary' : 'text-slate-300'}`}>{PLAN_PRICES[key]}<span className="text-xs font-normal text-slate-500">/yr</span></span>
+                        {isCurrent ? (
+                          <span className="text-[10px] font-bold text-primary uppercase tracking-wide">Current</span>
+                        ) : isLoading ? (
+                          <span className="text-xs text-slate-500">Redirecting…</span>
+                        ) : !isMaster ? (
+                          <span className="text-slate-500">›</span>
+                        ) : null}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
+
+            {!isMaster && (
+              <button
+                onClick={() => navigate('/upgrade')}
+                className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 active:scale-95 text-white font-black text-sm transition-all duration-150"
+              >
+                {isActive ? 'Change Plan' : 'Subscribe'}
+              </button>
+            )}
 
             {profile?.stripe_customer_id && (
               <button

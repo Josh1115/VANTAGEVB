@@ -3,6 +3,7 @@ import Dexie from 'dexie';
 import { supabase } from '../utils/supabase';
 import { saveToCloud, restoreFromCloud } from '../stats/backup';
 import { resolvePlanFromProfile } from '../utils/planLimits';
+import { PENDING_PLAN_KEY, startPlanCheckout } from '../utils/checkout';
 import { db } from '../db/schema';
 import { getStorageItem, setStorageItem, STORAGE_KEYS } from '../utils/storage';
 
@@ -139,6 +140,21 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // A visitor may have picked a plan before signing up (see LoginPage). Once a
+  // real session exists, honor that intent by starting checkout immediately —
+  // this redirects away from the app entirely on success, so nothing else needs
+  // to run after it.
+  async function maybeStartPendingCheckout(session) {
+    const planKey = localStorage.getItem(PENDING_PLAN_KEY);
+    if (!planKey) return;
+    localStorage.removeItem(PENDING_PLAN_KEY);
+    try {
+      await startPlanCheckout(session, planKey);
+    } catch {
+      // If this fails, just drop it — the user can still pick a plan manually.
+    }
+  }
+
   async function autoSync(session) {
     // Guard: if the open DB doesn't belong to this session user, the page is
     // mid-reload after an account switch. Abort to prevent saving one user's
@@ -180,6 +196,7 @@ export function AuthProvider({ children }) {
       } else if (initialSession) {
         setSession(initialSession);
         fetchProfile(initialSession.user.id);
+        maybeStartPendingCheckout(initialSession);
         migrateSharedDb().then(() => autoSync(initialSession));
       } else {
         setSession(null);
@@ -217,6 +234,7 @@ export function AuthProvider({ children }) {
 
       if (session) {
         fetchProfile(session.user.id);
+        maybeStartPendingCheckout(session);
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
           migrateSharedDb().then(() => autoSync(session));
         }

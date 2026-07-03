@@ -33,6 +33,19 @@ export const PLAN_LABELS = {
 
 export const TRIAL_MATCH_LIMIT = 5;
 
+// Features shared across every paid plan — only team count and price differ.
+export const ALL_FEATURES = [
+  'Vantage Point - Full Live Match Stat Entry',
+  'Complete Access To Records, History, And Stats Pages',
+  'Detailed Player & Team Analysis',
+  'Family Scope - Live Gamecast-Like Sharing',
+  'Rotation Analysis & Optimization',
+  'Opponent Scouting & Tracking',
+  'Practice Tools',
+  'Up To 50 Matches Per Team Per Season',
+  'PDF, CSV & MaxPreps Export (Trial User May Have Limitations)',
+];
+
 // Numeric tier: 0=inactive, 1=trial, 2=paid, 3=master
 export const PLAN_TIER = {
   inactive:      0,
