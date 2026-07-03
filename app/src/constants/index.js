@@ -124,7 +124,7 @@ export const POSITION_MULTIPLIERS = {
   RS:  2.70,
   MB:  4.75,
   S:   4.00,
-  L:   5.00,
+  L:   4.75,
   DS:  5.00,
 };
 

@@ -1218,18 +1218,18 @@ describe('computeRunsByRotation', () => {
 describe('VER position multipliers', () => {
   const makeKill = (pid) => contact({ player_id: pid, action: 'attack', result: 'kill' });
 
-  it('applies L multiplier (5.00) vs OH multiplier (2.70)', () => {
+  it('applies L multiplier (4.75) vs OH multiplier (2.70)', () => {
     const contacts = [makeKill('libero'), makeKill('outside')];
     const positions = { libero: 'L', outside: 'OH' };
     const stats = computePlayerStats(contacts, 1, positions);
     // A single kill on a single attempt is also a 1.000 hit% game, so the bracket
     // is (4×1) from the kill plus (13.3×1.000) from HIT% = 17.3 before posMult,
     // then the whole thing is divided by VER_SCALE (4) for readability.
-    // VER_libero = 5.00 × 17.3 / 4 = 21.625
+    // VER_libero = 4.75 × 17.3 / 4 = 20.54375
     // VER_outside = 2.70 × 17.3 / 4 = 11.6775
-    expect(stats.libero.ver).toBeCloseTo(21.625);
+    expect(stats.libero.ver).toBeCloseTo(20.54375);
     expect(stats.outside.ver).toBeCloseTo(11.6775);
-    expect(stats.libero.pos_mult).toBe(5.00);
+    expect(stats.libero.pos_mult).toBe(4.75);
     expect(stats.outside.pos_mult).toBe(2.70);
   });
 

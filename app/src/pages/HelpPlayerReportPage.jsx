@@ -239,7 +239,7 @@ export function HelpPlayerReportPage() {
         <Step
           number={3}
           title="VER Tier Scale"
-          note="The same tier scale applies to all positions — position multipliers (OH ×2.70, MB ×4.75, S ×4.00, L/DS ×5.00) are already baked into the VER calculation, so you can compare across positions on the same scale. A libero with a VER of 4.5 is just as efficient at their role as an OH with a VER of 4.5."
+          note="The same tier scale applies to all positions — position multipliers (OH ×2.70, MB ×4.75, S ×4.00, L ×4.75, DS ×5.00) are already baked into the VER calculation, so you can compare across positions on the same scale. A libero with a VER of 4.5 is just as efficient at their role as an OH with a VER of 4.5."
         >
           <DiagVERTiers />
         </Step>
