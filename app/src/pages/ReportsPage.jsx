@@ -8,7 +8,7 @@ import { db } from '../db/schema';
 import { computeSeasonStats, computePQ, computeSetWinProb, computeExpectedPts, aggregateXKTeamStats, computeRotationContactStats } from '../stats/engine';
 import { InsightsPanel } from '../components/stats/InsightsPanel';
 import { fmtHitting, fmtPassRating, fmtPct, fmtCount } from '../stats/formatters';
-import { VERBadge, VER_TIERS } from '../components/stats/VERBadge';
+import { VERBadge, VER_TIERS, WVER_TIERS } from '../components/stats/VERBadge';
 import { ROTATION_COLS, SERVING_COLS, TAB_COLUMNS, ISOOS_COLS, TRANS_COLS, RUN_COLS } from '../stats/columns';
 import { PageHeader } from '../components/layout/PageHeader';
 import { TabBar } from '../components/ui/Tab';
@@ -1528,40 +1528,61 @@ export function ReportsPage() {
                 {playerStatView === 'ver' && (
                   <>
                     <StatTable columns={TAB_COLUMNS.ver} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} showGlossary />
-                    <div className="bg-surface rounded-xl p-3 space-y-2.5">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">VER Tiers</p>
-                      <div className="space-y-1 text-[10px] text-slate-400 leading-relaxed">
-                        <p>VER is scaled by position before tier assignment so all positions share one standard scale:</p>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 mt-1">
-                          {[
-                            ['OH / OPP / RS', POSITION_MULTIPLIERS.OH],
-                            ['MB',            POSITION_MULTIPLIERS.MB],
-                            ['S',             POSITION_MULTIPLIERS.S],
-                            ['DS',            POSITION_MULTIPLIERS.DS],
-                            ['L',             POSITION_MULTIPLIERS.L],
-                          ].map(([pos, mult]) => (
-                            <div key={pos} className="flex items-center justify-between gap-2">
-                              <span className="text-slate-300 font-bold">{pos}</span>
-                              <span className="text-slate-500 tabular-nums">{mult.toFixed(2)}×</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="space-y-1.5 pt-1 border-t border-slate-700/40">
-                        {VER_TIERS.map(({ label, min, cls }, i) => (
-                          <div key={label} className="flex items-center gap-2">
-                            <span className={`text-[9px] font-bold px-1.5 py-px rounded border w-14 text-center shrink-0 ${cls}`}>{label}</span>
-                            <span className="text-[11px] text-slate-400 tabular-nums">
-                              {min === -Infinity
-                                ? '< 0'
-                                : i === 0
-                                  ? `≥ ${min.toFixed(2)}`
-                                  // Upper bound derived from the tier above rather than hardcoded,
-                                  // so this can't go stale if the tier boundaries ever change.
-                                  : `${min.toFixed(2)} – ${(VER_TIERS[i - 1].min - 0.01).toFixed(2)}`}
-                            </span>
+                    <div className="bg-surface rounded-xl p-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2 pr-3 border-r border-slate-700/40">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">VER Tiers</p>
+                          <div className="space-y-1.5">
+                            {VER_TIERS.map(({ label, min, cls }, i) => (
+                              <div key={label} className="flex items-center gap-2">
+                                <span className={`text-[9px] font-bold px-1.5 py-px rounded border w-14 text-center shrink-0 ${cls}`}>{label}</span>
+                                <span className="text-[11px] text-slate-400 tabular-nums">
+                                  {min === -Infinity
+                                    ? '< 0'
+                                    : i === 0
+                                      ? `≥ ${min.toFixed(2)}`
+                                      // Upper bound derived from the tier above rather than hardcoded,
+                                      // so this can't go stale if the tier boundaries ever change.
+                                      : `${min.toFixed(2)} – ${(VER_TIERS[i - 1].min - 0.01).toFixed(2)}`}
+                                </span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">wVER Tiers</p>
+                          <div className="space-y-1.5">
+                            {WVER_TIERS.map(({ label, min, cls }, i) => (
+                              <div key={label} className="flex items-center gap-2">
+                                <span className={`text-[9px] font-bold px-1.5 py-px rounded border w-14 text-center shrink-0 ${cls}`}>{label}</span>
+                                <span className="text-[11px] text-slate-400 tabular-nums">
+                                  {min === -Infinity
+                                    ? '< 0'
+                                    : i === 0
+                                      ? `≥ ${min.toFixed(2)}`
+                                      : `${min.toFixed(2)} – ${(WVER_TIERS[i - 1].min - 0.01).toFixed(2)}`}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="pt-1.5 mt-1.5 border-t border-slate-700/40 space-y-1 text-[10px] text-slate-400 leading-relaxed">
+                            <p>Position multiplier (wVER = VER × mult):</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {[
+                                ['OH/OPP/RS', POSITION_MULTIPLIERS.OH],
+                                ['MB',        POSITION_MULTIPLIERS.MB],
+                                ['S',         POSITION_MULTIPLIERS.S],
+                                ['DS',        POSITION_MULTIPLIERS.DS],
+                                ['L',         POSITION_MULTIPLIERS.L],
+                              ].map(([pos, mult]) => (
+                                <span key={pos} className="inline-flex items-center gap-1 bg-slate-800/60 rounded px-1.5 py-0.5">
+                                  <span className="text-slate-300 font-bold">{pos}</span>
+                                  <span className="text-slate-500 tabular-nums">{mult.toFixed(2)}×</span>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </>

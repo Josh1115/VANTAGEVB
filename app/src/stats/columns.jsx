@@ -1,5 +1,5 @@
 import { fmtPct, fmtCount, fmtBlocks, fmtRate, fmtPassRating, fmtHitting, fmtVER } from './formatters';
-import { VERBadge } from '../components/stats/VERBadge';
+import { VERBadge, WVERBadge } from '../components/stats/VERBadge';
 
 function soColor(v, row) {
   if (row?._minSo) return 'text-red-400 font-bold';
@@ -109,7 +109,7 @@ export const TAB_COLUMNS = {
     { key: 'name',      label: 'Player' },
     ...SP_MP_COLS,
     { key: 'ver_raw',   label: 'VER',   fmt: fmtVER,    render: (v) => <VERBadge ver={v} /> },
-    { key: 'ver',       label: 'wVER',  fmt: fmtVER     },
+    { key: 'ver',       label: 'wVER',  fmt: fmtVER,    render: (v) => <WVERBadge ver={v} /> },
     { key: 'wpa',       label: 'WPA',   fmt: fmtVER     },
     { key: 'wpa_pos',   label: 'WPA+',  fmt: fmtVER     },
     { key: 'wpa_neg',   label: 'WPA−',  fmt: fmtVER     },
