@@ -35,6 +35,21 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
 
+  // Skip events we've already handled — Stripe redelivers when a response is slow
+  // or dropped, and without this check a redelivery would reprocess the same
+  // purchase/refund a second time.
+  const { data: alreadyProcessed } = await supabase
+    .from('processed_stripe_events')
+    .select('event_id')
+    .eq('event_id', event.id)
+    .maybeSingle();
+  if (alreadyProcessed) {
+    console.log(`Event ${event.id} already processed, skipping`);
+    return new Response(JSON.stringify({ received: true, duplicate: true }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     switch (event.type) {
       case 'checkout.session.completed': {

@@ -4,6 +4,7 @@ import { supabase } from '../utils/supabase';
 import { saveToCloud, restoreFromCloud } from '../stats/backup';
 import { resolvePlanFromProfile } from '../utils/planLimits';
 import { PENDING_PLAN_KEY, startPlanCheckout } from '../utils/checkout';
+import { router } from '../router';
 import { db } from '../db/schema';
 import { backfillLiberoSwapPositions } from '../db/liberoBackfill';
 import { getStorageItem, setStorageItem, STORAGE_KEYS } from '../utils/storage';
@@ -152,7 +153,10 @@ export function AuthProvider({ children }) {
     try {
       await startPlanCheckout(session, planKey);
     } catch {
-      // If this fails, just drop it — the user can still pick a plan manually.
+      // Surface the failure instead of dropping it silently — the visitor picked
+      // a plan before creating an account, so losing that signal here means they'd
+      // land in the app on Trial with no explanation of what happened to it.
+      router.navigate('/upgrade?checkout_failed=1');
     }
   }
 

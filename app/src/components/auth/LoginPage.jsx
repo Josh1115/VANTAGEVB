@@ -74,12 +74,16 @@ export function LoginPage({ onSignup }) {
     if (!email.trim()) { setError('Enter your email above first.'); return; }
     if (CAPTCHA_REQUIRED && !captchaToken) { setError('Please complete the verification challenge.'); return; }
     setError('');
-    await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
       redirectTo: window.location.origin,
       captchaToken: captchaToken ?? undefined,
     });
     turnstileRef.current?.reset();
     setCaptchaToken(null);
+    if (error) {
+      setError(friendlyAuthError(error.message));
+      return;
+    }
     setForgotSent(true);
   }
 

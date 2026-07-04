@@ -24,9 +24,10 @@ export function UpgradePage() {
 
   const { plan: normalizedPlan } = usePlan();
   const currentPlan = profile?.plan ?? 'inactive';
-  const successPlan = searchParams.get('plan');
-  const didSucceed  = searchParams.get('success') === '1';
-  const didCancel   = searchParams.get('canceled') === '1';
+  const successPlan     = searchParams.get('plan');
+  const didSucceed      = searchParams.get('success') === '1';
+  const didCancel       = searchParams.get('canceled') === '1';
+  const checkoutFailed  = searchParams.get('checkout_failed') === '1';
 
   // Poll until the webhook has landed and the plan matches
   useEffect(() => {
@@ -85,6 +86,11 @@ export function UpgradePage() {
         {didCancel && (
           <div className="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-sm text-slate-400 text-center">
             No problem — you can subscribe any time.
+          </div>
+        )}
+        {checkoutFailed && (
+          <div className="bg-red-900/40 border border-red-700 rounded-xl px-4 py-3 text-sm text-red-300 text-center">
+            We couldn&rsquo;t start checkout for the plan you picked. Pick a plan below to try again.
           </div>
         )}
 

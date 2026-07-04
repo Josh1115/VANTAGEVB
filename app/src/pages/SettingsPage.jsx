@@ -1564,7 +1564,7 @@ export function SettingsPage() {
   }
 
   async function handleChangePassword() {
-    if (newPassword.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
+    if (newPassword.length < 8) { showToast('Password must be at least 8 characters.', 'error'); return; }
     if (newPassword !== confirmPassword) { showToast('Passwords do not match.', 'error'); return; }
     setChangingPw(true);
     try {
@@ -2647,7 +2647,7 @@ export function SettingsPage() {
             <div className="space-y-2 pt-1">
               <input
                 type="password"
-                placeholder="New password (min 6 characters)"
+                placeholder="New password (min 8 characters)"
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
                 className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"

@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import { supabase } from '../../utils/supabase';
 import { TRIAL_MATCH_LIMIT } from '../../constants';
 import { TurnstileWidget, CAPTCHA_REQUIRED } from './TurnstileWidget';
+import { TERMS_STORAGE_KEY } from './TermsGate';
+import { TERMS_VERSION } from './TermsContent';
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA',
@@ -310,11 +312,26 @@ function StepCoach({ value, onChange, onSubmit, submitting, error, captchaToken,
 function ConfirmEmailScreen({ email, onBack }) {
   const [resent,    setResent]    = useState(false);
   const [resending, setResending] = useState(false);
+  const [error,     setError]     = useState('');
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const turnstileRef = useRef(null);
 
   async function handleResend() {
+    if (CAPTCHA_REQUIRED && !captchaToken) { setError('Please complete the verification challenge.'); return; }
+    setError('');
     setResending(true);
-    await supabase.auth.resend({ type: 'signup', email });
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { captchaToken: captchaToken ?? undefined },
+    });
+    turnstileRef.current?.reset();
+    setCaptchaToken(null);
     setResending(false);
+    if (error) {
+      setError(error.message || "Couldn't resend the email — try again in a moment.");
+      return;
+    }
     setResent(true);
   }
 
@@ -335,9 +352,11 @@ function ConfirmEmailScreen({ email, onBack }) {
         >
           Back to Log In
         </button>
+        {!resent && <TurnstileWidget ref={turnstileRef} onToken={setCaptchaToken} />}
+        {error && <p className="text-sm text-red-400 text-center">{error}</p>}
         <button
           onClick={handleResend}
-          disabled={resending || resent}
+          disabled={resending || resent || (CAPTCHA_REQUIRED && !captchaToken)}
           className="w-full text-sm text-slate-500 hover:text-slate-300 transition-colors disabled:opacity-50"
         >
           {resent ? 'Email resent ✓' : resending ? 'Resending…' : "Didn't get it? Resend email"}
@@ -380,6 +399,11 @@ export function SignupWizard({ onComplete, onBack }) {
   async function handleSubmit() {
     setSubmitting(true);
     setError('');
+    // This step's checkbox already covers Terms & Privacy consent (ageAck is required
+    // to reach here) — record it now under TermsGate's own key so a same-session
+    // auto-checkout redirect (see AuthContext) can't outrun TermsGate ever mounting,
+    // which would otherwise re-prompt for terms redundantly right after payment.
+    try { localStorage.setItem(TERMS_STORAGE_KEY, JSON.stringify({ version: TERMS_VERSION, acceptedAt: new Date().toISOString() })); } catch {}
     try {
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
@@ -406,8 +430,12 @@ export function SignupWizard({ onComplete, onBack }) {
       const msg = err.message ?? '';
       if (/already registered/i.test(msg) || /already been registered/i.test(msg) || /user already exists/i.test(msg)) {
         setError('An account with that email already exists. Try logging in instead.');
-      } else if (/password/i.test(msg)) {
+      } else if (/at least \d+ characters?/i.test(msg)) {
         setError('Password must be at least 8 characters.');
+      } else if (/password/i.test(msg)) {
+        // Other password rejections (breached/weak-password checks, etc.) —
+        // show Supabase's actual reason instead of the misleading length message.
+        setError(msg);
       } else {
         setError('Sign up failed. Please try again.');
       }
