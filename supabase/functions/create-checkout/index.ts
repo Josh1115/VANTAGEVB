@@ -10,7 +10,7 @@ const PRICE_IDS: Record<string, string> = {
 };
 
 // Fix 7: Restrict CORS to known origins instead of wildcard
-const ALLOWED_ORIGINS = ['https://vantagevb.net', 'https://www.vantagevb.net', 'http://localhost:5173', 'http://localhost:4173'];
+const ALLOWED_ORIGINS = ['https://vantagevb.net', 'https://www.vantagevb.net'];
 
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? '';
@@ -61,10 +61,18 @@ Deno.serve(async (req) => {
         metadata: { supabase_user_id: user.id },
       });
       customerId = customer.id;
-      await supabase
+      // stripe_customer_id is now tamper-guarded against authenticated clients
+      // (enforce_plan_immutability trigger), so this write must use the service
+      // role — the user-scoped anon client would be rejected.
+      const admin = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+      const { error: linkError } = await admin
         .from('profiles')
         .update({ stripe_customer_id: customerId })
         .eq('id', user.id);
+      if (linkError) throw new Error(`Failed to link billing account: ${linkError.message}`);
     }
 
     const rawOrigin = req.headers.get('origin') ?? '';

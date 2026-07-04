@@ -1,6 +1,38 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const ALLOWED_ORIGINS = ['https://vantagevb.net', 'https://www.vantagevb.net', 'http://localhost:5173', 'http://localhost:4173'];
+const ALLOWED_ORIGINS = ['https://vantagevb.net', 'https://www.vantagevb.net'];
+
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+// This endpoint is necessarily unauthenticated (crashes happen on logged-out
+// screens), which makes it spammable: garbage rows in error_logs and Discord
+// pings that bury real alerts. In-memory counters don't work here — the edge
+// runtime serves requests from fresh isolates, so state never accumulates.
+// Instead, count recent error_logs rows in the DB (shared across all isolates)
+// before accepting a report. Crashes are rare, so two head-count queries per
+// report cost nothing; under a flood the counts trip and we skip the insert
+// and the Discord ping entirely.
+const WINDOW_MS = 60_000;
+const MAX_PER_IP = 5;      // one client crash-looping
+const MAX_GLOBAL = 30;     // everything, incl. spoofed/distributed IPs
+
+async function rateLimited(supabase: ReturnType<typeof createClient>, ip: string): Promise<boolean> {
+  const since = new Date(Date.now() - WINDOW_MS).toISOString();
+
+  const { count: globalCount, error: gErr } = await supabase
+    .from('error_logs')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', since);
+  if (!gErr && (globalCount ?? 0) >= MAX_GLOBAL) return true;
+
+  const { count: ipCount, error: iErr } = await supabase
+    .from('error_logs')
+    .select('*', { count: 'exact', head: true })
+    .eq('ip', ip)
+    .gte('created_at', since);
+  if (!iErr && (ipCount ?? 0) >= MAX_PER_IP) return true;
+
+  return false;
+}
 
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? '';
@@ -23,6 +55,21 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders(req) });
   }
 
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown';
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  );
+
+  try {
+    if (await rateLimited(supabase, ip)) {
+      return new Response(JSON.stringify({ received: false, rate_limited: true }), {
+        status: 429,
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
+    }
+  } catch { /* limit check is best-effort — never block a real crash report on it */ }
+
   // Best-effort telemetry: whatever happens, don't hand the caller (an app
   // that's already mid-crash) a failed fetch to worry about.
   try {
@@ -33,11 +80,6 @@ Deno.serve(async (req) => {
     const pageUrl          = truncate(body.url, 500);
     const userAgent        = truncate(req.headers.get('user-agent'), 500);
     const kind              = truncate(body.kind, 50) ?? 'unknown';
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
 
     // Best-effort: attach the user if this request came in with a valid session.
     let userId: string | null = null;
@@ -55,6 +97,7 @@ Deno.serve(async (req) => {
       user_agent: userAgent,
       kind,
       user_id: userId,
+      ip,
     });
 
     const webhookUrl = Deno.env.get('DISCORD_WEBHOOK_URL');
