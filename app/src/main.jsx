@@ -4,6 +4,7 @@ import './index.css';
 import App from './App.jsx';
 import { STORAGE_KEYS, getBoolStorage, getStorageItem } from './utils/storage.js';
 import { ACCENT_COLORS } from './constants/index.js';
+import { reportError } from './utils/errorReporting.js';
 
 // Apply persisted AMOLED mode before first render to avoid flash
 if (getBoolStorage(STORAGE_KEYS.AMOLED)) {
@@ -25,6 +26,21 @@ if (getBoolStorage(STORAGE_KEYS.SIDELINE_MODE)) {
 
 window.addEventListener('unhandledrejection', (e) => {
   console.error('[VANTAGE] Unhandled promise rejection:', e.reason);
+  reportError({
+    message: e.reason?.message ?? String(e.reason),
+    stack: e.reason?.stack,
+    kind: 'unhandled-rejection',
+  });
+});
+
+// Catches errors outside React's render (event handlers, timers, etc.) that
+// ErrorBoundary never sees since it only guards the component tree.
+window.addEventListener('error', (e) => {
+  reportError({
+    message: e.message,
+    stack: e.error?.stack,
+    kind: 'window-error',
+  });
 });
 
 createRoot(document.getElementById('root')).render(
