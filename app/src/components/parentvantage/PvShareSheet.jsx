@@ -71,7 +71,13 @@ export function PvShareSheet({ match, teamName, logoDataUrl, onClose, onContinue
         {/* QR Code */}
         <div className="flex justify-center">
           <div className="relative bg-white rounded-xl p-3">
-            <QRCodeSVG value={shareUrl} size={180} level="M" />
+            <QRCodeSVG
+              value={shareUrl}
+              size={180}
+              level="H"
+              fgColor="#0f172a"
+              imageSettings={{ src: '/icons/icon-192.png', height: 36, width: 36, excavate: true }}
+            />
             {logoDataUrl && (
               <div className="absolute -top-4 -right-4 w-10 h-10 rounded-full bg-white border-2 border-slate-200 shadow-md flex items-center justify-center overflow-hidden">
                 <img src={logoDataUrl} alt="Team logo" className="max-w-full max-h-full object-contain p-0.5" />

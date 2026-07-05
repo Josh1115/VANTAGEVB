@@ -1489,6 +1489,12 @@ export function HistoryPage() {
     const name = orgName || 'Program';
     const genderLabel = currentTeam?.gender === 'F' ? 'Girls' : currentTeam?.gender === 'M' ? 'Boys' : '';
 
+    doc.setTextColor(249, 115, 22);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('VANTAGE', doc.internal.pageSize.getWidth() - 14, 13, { align: 'right' });
+    doc.setTextColor(0);
+
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text(`${name} ${genderLabel} Volleyball — Program History`.trim(), 14, 18);
@@ -1538,6 +1544,21 @@ export function HistoryPage() {
         styles: { fontSize: 8, cellPadding: 2 },
         headStyles: { fillColor: [249, 115, 22], textColor: 255, fontStyle: 'bold' },
       });
+    }
+
+    const pageCount = doc.internal.getNumberOfPages();
+    const w = doc.internal.pageSize.getWidth();
+    const h = doc.internal.pageSize.getHeight();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setDrawColor(200);
+      doc.setLineWidth(0.2);
+      doc.line(14, h - 12, w - 14, h - 12);
+      doc.setTextColor(150);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Vantage · vantagevb.net', 14, h - 7);
+      doc.text(`Page ${i} of ${pageCount}`, w - 14, h - 7, { align: 'right' });
     }
 
     doc.save(`${name.replace(/\s+/g, '_')}_History.pdf`);
@@ -1605,6 +1626,7 @@ export function HistoryPage() {
                   orgName={orgName}
                   primaryColorId={teamPrimaryColor}
                   secondaryColorId={teamSecondaryColor}
+                  bannerClassName="w-[104px]"
                 />
 
                 {/* College Commits */}

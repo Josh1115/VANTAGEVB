@@ -140,7 +140,13 @@ function HubContent() {
             {/* QR Code */}
             <div className="flex justify-center">
               <div className="bg-white rounded-xl p-3">
-                <QRCodeSVG value={shareUrl} size={160} level="M" />
+                <QRCodeSVG
+                  value={shareUrl}
+                  size={160}
+                  level="H"
+                  fgColor="#0f172a"
+                  imageSettings={{ src: '/icons/icon-192.png', height: 32, width: 32, excavate: true }}
+                />
               </div>
             </div>
 

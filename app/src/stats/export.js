@@ -100,8 +100,9 @@ const WHITE = [255, 255, 255];
 const MUTED = [148, 163, 184];   // slate-400
 
 function addPageHeader(doc, title, subtitle) {
+  const w = doc.internal.pageSize.getWidth();
   doc.setFillColor(...DARK);
-  doc.rect(0, 0, doc.internal.pageSize.getWidth(), 30, 'F');
+  doc.rect(0, 0, w, 30, 'F');
   doc.setTextColor(...PRIMARY);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
@@ -110,6 +111,32 @@ function addPageHeader(doc, title, subtitle) {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.text(subtitle, 14, 22);
+
+  doc.setTextColor(...WHITE);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('VANTAGE', w - 14, 13, { align: 'right' });
+  doc.setTextColor(...PRIMARY);
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'normal');
+  doc.text('VOLLEYBALL ANALYTICS', w - 14, 18, { align: 'right' });
+}
+
+function addPageFooters(doc) {
+  const pageCount = doc.internal.getNumberOfPages();
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(...MUTED);
+    doc.setLineWidth(0.2);
+    doc.line(14, h - 12, w - 14, h - 12);
+    doc.setTextColor(...MUTED);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Vantage · vantagevb.net', 14, h - 7);
+    doc.text(`Page ${i} of ${pageCount}`, w - 14, h - 7, { align: 'right' });
+  }
 }
 
 export function exportMatchPDF(matchMeta, playerStats, teamStats, rotationStats, playerNames, perSetStats = [], filename = 'match-stats.pdf') {
@@ -266,5 +293,6 @@ export function exportMatchPDF(matchMeta, playerStats, teamStats, rotationStats,
     theme: 'grid',
   });
 
+  addPageFooters(doc);
   doc.save(filename);
 }
