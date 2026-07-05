@@ -1602,6 +1602,7 @@ export function SettingsPage() {
             <p className="text-[10px] text-slate-600 mt-1 font-mono">v{__APP_VERSION__}</p>
           </div>
           <div className="border-t border-slate-700 mb-4" />
+          <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-slate-500 mb-2 text-center">Mission Statement</p>
           <p className="text-sm text-white font-semibold leading-relaxed text-center">
             Vantage was built on a simple belief: the best decisions happen in the moment, not after the fact. By putting real-time, in-game data directly in coaches' hands, we empower coaches and players to become their best — and make the game better, one decision at a time.
           </p>
