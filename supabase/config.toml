@@ -243,16 +243,28 @@ pass = "env(BREVO_SMTP_KEY)"
 admin_email = "vantagevb@gmail.com"
 sender_name = "Vantage"
 
+# Branded templates — the only two auth emails the app's flows actually
+# trigger (signup confirmation, password reset) plus the automatic
+# password-changed security notice. Deployed to the live project via the
+# Management API (config push isn't used here — this file also carries a lot
+# of local-dev-only defaults that would clobber unrelated live settings).
+[auth.email.template.confirmation]
+subject = "Confirm your email address"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Reset your password"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.notification.password_changed]
+enabled = true
+subject = "Your password was changed"
+content_path = "./supabase/templates/password_changed_notification.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"
-
-# Uncomment to customize notification email template
-# [auth.email.notification.password_changed]
-# enabled = true
-# subject = "Your password has been changed"
-# content_path = "./templates/password_changed_notification.html"
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.
