@@ -12,7 +12,7 @@ import { serveOrderToZone } from '../components/court/CourtZonePicker';
 import { LineupForm } from '../components/match/LineupForm';
 import { usePlan } from '../hooks/usePlan';
 import { PvShareSheet } from '../components/parentvantage/PvShareSheet';
-import { supabase } from '../utils/supabase';
+import { supabase, consumeMatchSlotStrict } from '../utils/supabase';
 
 
 export function MatchSetupPage() {
@@ -25,7 +25,7 @@ export function MatchSetupPage() {
   const rawMatchId = searchParams.get('match');
   const scheduledMatchId = rawMatchId ? parseInt(rawMatchId, 10) || null : null;
 
-  const { isActive, isMaster, matchLimit } = usePlan();
+  const { isActive, isMaster, plan, matchLimit } = usePlan();
 
   const [seasonId,  setSeasonId]  = useState(searchParams.get('season') ?? '');
   const [opponent,           setOpponent]           = useState('');
@@ -329,23 +329,34 @@ export function MatchSetupPage() {
         libero_jersey_color:    liberoJerseyColor,
       };
 
-      // Create or update match
+      // Create or update match.
+      // A slot was already confirmed with the server when this match was
+      // scheduled, so starting it doesn't check again (that would double-charge
+      // the trial counter for one match). Only a brand-new, unscheduled match
+      // needs a check here — for trial specifically that check must actually
+      // succeed with the server (no offline fallback), same reasoning as
+      // scheduling; other plans keep the best-effort/offline-tolerant check
+      // since their real limit is the local per-season count below.
       let effectiveMatchId;
-      if (!isMaster) {
-        try {
-          const { data, error } = await supabase.rpc('consume_match_slot');
-          if (!error && data?.allowed === false) {
-            const e = new Error(
-              data.reason === 'inactive'
-                ? 'Your plan is inactive. Upgrade to record matches.'
-                : `Match limit reached (${data.used}/${data.limit} matches). Upgrade to continue.`
-            );
-            e.code = 'MATCH_LIMIT';
-            throw e;
+      if (!isMaster && !scheduledMatchId) {
+        if (plan === 'trial') {
+          await consumeMatchSlotStrict();
+        } else {
+          try {
+            const { data, error } = await supabase.rpc('consume_match_slot');
+            if (!error && data?.allowed === false) {
+              const e = new Error(
+                data.reason === 'inactive'
+                  ? 'Your plan is inactive. Upgrade to record matches.'
+                  : `Match limit reached (${data.used}/${data.limit} matches). Upgrade to continue.`
+              );
+              e.code = 'MATCH_LIMIT';
+              throw e;
+            }
+          } catch (rpcErr) {
+            if (rpcErr.code === 'MATCH_LIMIT') throw rpcErr;
+            // offline — local check below will catch it
           }
-        } catch (rpcErr) {
-          if (rpcErr.code === 'MATCH_LIMIT') throw rpcErr;
-          // offline — local check below will catch it
         }
       }
       if (scheduledMatchId) {

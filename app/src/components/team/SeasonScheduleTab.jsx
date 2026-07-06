@@ -17,11 +17,12 @@ import { applyInferredSeasonFinish } from '../../utils/seasonUtils';
 import { PvShareSheet } from '../parentvantage/PvShareSheet';
 import { ScheduleImportModal } from '../match/ScheduleImportModal';
 import { usePlan } from '../../hooks/usePlan';
+import { consumeMatchSlotStrict } from '../../utils/supabase';
 
 export function SeasonScheduleTab({ seasonId }) {
   const navigate = useNavigate();
   const playoffLabel = getPlayoffLabel();
-  const { isMaster, matchLimit } = usePlan();
+  const { isMaster, plan, matchLimit } = usePlan();
 
   const data = useLiveQuery(async () => {
     if (!seasonId) return null;
@@ -124,6 +125,7 @@ export function SeasonScheduleTab({ seasonId }) {
   const [schedOppSeed,     setSchedOppSeed]     = useState('');
   const [schedTime,        setSchedTime]        = useState('');
   const [schedSaving,      setSchedSaving]      = useState(false);
+  const [schedError,       setSchedError]       = useState('');
 
   const syncedMatchIds = useRef(new Set());
   useEffect(() => {
@@ -206,6 +208,7 @@ export function SeasonScheduleTab({ seasonId }) {
     setSchedOppSeed('');
     setSchedTime('');
     setSchedOpen(false);
+    setSchedError('');
   }
 
   function openEditMatch(match) {
@@ -255,6 +258,11 @@ export function SeasonScheduleTab({ seasonId }) {
         const existing = await db.matches.get(editMatchId);
         await db.matches.update(editMatchId, { ...fields, pv_token: existing?.pv_token ?? crypto.randomUUID() });
       } else {
+        // Trial slot is confirmed with the server up front, before it's ever
+        // added locally — scheduling ahead of time is when a trial coach can
+        // reasonably be asked to have a connection, so the match can be
+        // recorded fully offline later without any further server check.
+        if (!isMaster && plan === 'trial') await consumeMatchSlotStrict();
         await db.transaction('rw', [db.matches, db.seasons], async () => {
           const [liveCount, season] = await Promise.all([
             db.matches.where('season_id').equals(seasonId).count(),
@@ -272,7 +280,11 @@ export function SeasonScheduleTab({ seasonId }) {
       }
       resetSchedForm();
     } catch (e) {
-      if (e.code !== 'MATCH_LIMIT') throw e;
+      if (e.code === 'MATCH_LIMIT') {
+        setSchedError(e.message === 'limit' ? 'Match limit reached for this season. Upgrade your plan to add more.' : e.message);
+      } else {
+        throw e;
+      }
     } finally {
       setSchedSaving(false);
     }
@@ -1014,11 +1026,14 @@ export function SeasonScheduleTab({ seasonId }) {
                 <Button
                   className="flex-1"
                   disabled={!schedOpp.trim() || schedSaving}
-                  onClick={handleScheduleGame}
+                  onClick={() => { setSchedError(''); handleScheduleGame(); }}
                 >
                   {schedSaving ? 'Saving…' : 'Save Game'}
                 </Button>
               </div>
+              {schedError && (
+                <p className="text-sm text-red-400 text-center -mt-1">{schedError}</p>
+              )}
             </div>
           </div>
         </div>

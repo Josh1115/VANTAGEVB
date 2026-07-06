@@ -18,6 +18,7 @@ import { applyInferredSeasonFinish } from '../utils/seasonUtils';
 import { PvShareSheet } from '../components/parentvantage/PvShareSheet';
 import { ScheduleImportModal } from '../components/match/ScheduleImportModal';
 import { usePlan } from '../hooks/usePlan';
+import { consumeMatchSlotStrict } from '../utils/supabase';
 
 
 export function SeasonDetailPage() {
@@ -25,7 +26,7 @@ export function SeasonDetailPage() {
   const navigate = useNavigate();
   const id = Number(seasonId);
   const playoffLabel = getPlayoffLabel();
-  const { isMaster, matchLimit } = usePlan();
+  const { isMaster, plan, matchLimit } = usePlan();
 
   const data = useLiveQuery(async () => {
     const season = await db.seasons.get(id);
@@ -294,6 +295,11 @@ export function SeasonDetailPage() {
           pv_token: existing?.pv_token ?? crypto.randomUUID(),
         });
       } else {
+        // Trial slot is confirmed with the server up front, before it's ever
+        // added locally — scheduling ahead of time is when a trial coach can
+        // reasonably be asked to have a connection, so the match can be
+        // recorded fully offline later without any further server check.
+        if (!isMaster && plan === 'trial') await consumeMatchSlotStrict();
         await db.transaction('rw', [db.matches, db.seasons], async () => {
           const [liveCount, season] = await Promise.all([
             db.matches.where('season_id').equals(id).count(),
@@ -312,7 +318,7 @@ export function SeasonDetailPage() {
       resetSchedForm();
     } catch (e) {
       if (e.code === 'MATCH_LIMIT') {
-        setSchedError(`Match limit reached for this season. Upgrade your plan to add more.`);
+        setSchedError(e.message === 'limit' ? 'Match limit reached for this season. Upgrade your plan to add more.' : e.message);
       } else {
         throw e;
       }
