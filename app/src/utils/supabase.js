@@ -6,20 +6,28 @@ export const supabase = createClient(
 );
 
 // ── FamilyScope HUB helpers ───────────────────────────────────────────────────
+//
+// pv_stats has no client-readable SELECT policy — reads go through the
+// get_pv_stats RPC (SECURITY DEFINER, looks up by token) and live updates go
+// over Realtime Broadcast on a channel named after the token, not Postgres
+// Changes. Both mean a caller can only ever act on the one token they already
+// have; they can't enumerate every team's data via a filter-less REST call
+// the way the old public-SELECT + Postgres Changes setup allowed.
+
+function pvChannel(token) {
+  return supabase.channel(`pv-changes-${token}`);
+}
 
 export async function publishPvStats(token, teamName, payload) {
   const { error } = await supabase
     .from('pv_stats')
     .upsert({ token, team_name: teamName, payload, updated_at: new Date().toISOString() });
   if (error) throw error;
+  pvChannel(token).httpSend('update', { payload }).catch(() => {});
 }
 
 export async function fetchPvStats(token) {
-  const { data, error } = await supabase
-    .from('pv_stats')
-    .select('*')
-    .eq('token', token)
-    .single();
+  const { data, error } = await supabase.rpc('get_pv_stats', { p_token: token });
   if (error) return null;
   return data;
 }
@@ -31,18 +39,13 @@ export async function updatePvLiveScore(token, liveState) {
     .from('pv_stats')
     .update({ live_score: liveState, updated_at: new Date().toISOString() })
     .eq('token', token);
+  pvChannel(token).httpSend('update', { live_score: liveState }).catch(() => {});
 }
 
-// Subscribe to Postgres Changes on pv_stats for a specific token.
-// Only fires on real DB writes (authenticated coach), so fake events are impossible.
+// Subscribe to live broadcast updates for a specific token.
 export function subscribePvChanges(token, onUpdate) {
-  const channel = supabase
-    .channel(`pv-changes-${token}`)
-    .on(
-      'postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'pv_stats', filter: `token=eq.${token}` },
-      (change) => onUpdate(change.new),
-    )
+  const channel = pvChannel(token)
+    .on('broadcast', { event: 'update' }, ({ payload }) => onUpdate(payload))
     .subscribe();
   return channel;
 }
