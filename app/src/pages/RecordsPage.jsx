@@ -572,7 +572,7 @@ function AddRecordModal({ teamId, tab, statKey, onClose, recordId, initialData }
                 <input className={inputCls} type="number" placeholder="2019" min="1900" max="2100" value={form.career_year_start} onChange={e => set('career_year_start', e.target.value)} />
               </div>
               <div>
-                <label className={labelCls}>Active To</label>
+                <label className={labelCls}>Active To <span className="text-slate-600 font-normal">(leave blank if active)</span></label>
                 <input className={inputCls} type="number" placeholder="2023" min="1900" max="2100" value={form.career_year_end} onChange={e => set('career_year_end', e.target.value)} />
               </div>
             </div>

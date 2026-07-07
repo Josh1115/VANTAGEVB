@@ -193,9 +193,13 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
         head_coach:     form.head_coach.trim()           || null,
         asst_coach:     form.asst_coach.trim()           || null,
         tenure_year:    form.tenure_year  ? Number(form.tenure_year)  : null,
-        games:          form.games        ? Number(form.games)        : null,
-        wins:           form.wins         ? Number(form.wins)         : null,
-        losses:         form.losses       ? Number(form.losses)       : null,
+        // liveMode's form never shows/populates these, so leave them out of the
+        // update entirely rather than writing null over any value already saved.
+        ...(!liveMode ? {
+          games:  form.games  ? Number(form.games)  : null,
+          wins:   form.wins   ? Number(form.wins)   : null,
+          losses: form.losses ? Number(form.losses) : null,
+        } : {}),
         state_rank:     newStateRank,
         national_rank:  newNationalRank,
         class_rank:     (form.class_rank ?? '').trim()   || null,
