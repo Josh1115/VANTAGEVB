@@ -37,6 +37,7 @@ export function LiveMatchPage() {
   const revisingSetId  = searchParams.get('setId') ? parseInt(searchParams.get('setId'), 10) : null;
   const [ready,        setReady]        = useState(false);
   const [initError,    setInitError]    = useState(false);
+  const [retryToken,   setRetryToken]   = useState(0);
   const [screenH,      setScreenH]      = useState(() => window.innerHeight);
   const [subOpen,      setSubOpen]      = useState(false);
   const [menuOpen,     setMenuOpen]     = useState(false);
@@ -429,7 +430,7 @@ export function LiveMatchPage() {
     }
 
     init();
-  }, [matchIdParam, isRevising, revisingSetId]);
+  }, [matchIdParam, isRevising, revisingSetId, retryToken]);
 
   if (initError) {
     return (
@@ -439,7 +440,7 @@ export function LiveMatchPage() {
         <p className="text-slate-400 text-sm">There was a problem reading match data. Check available storage and try again.</p>
         <button
           className="mt-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold"
-          onClick={() => { setInitError(false); setReady(false); }}
+          onClick={() => { setInitError(false); setReady(false); setRetryToken((t) => t + 1); }}
         >
           Retry
         </button>
