@@ -1144,7 +1144,9 @@ const ROT_BAYES_K = 8;  // per-rotation blend (fewer rallies per rotation)
 export function computePQ(rallies, priorP = WP_FALLBACK_P, priorQ = WP_FALLBACK_Q, alpha = 1) {
   const pp = priorP ?? WP_FALLBACK_P;
   const pq = priorQ ?? WP_FALLBACK_Q;
-  if (!rallies?.length) return { p: pp, q: pq };
+  if (!rallies?.length) {
+    return { p: pp, q: pq, pAlpha: pp * BAYES_K, pBeta: (1 - pp) * BAYES_K, qAlpha: pq * BAYES_K, qBeta: (1 - pq) * BAYES_K };
+  }
   const sorted = alpha < 1
     ? [...rallies].sort((a, b) =>
         a.set_id !== b.set_id ? a.set_id - b.set_id : a.rally_number - b.rally_number)
@@ -1161,10 +1163,13 @@ export function computePQ(rallies, priorP = WP_FALLBACK_P, priorQ = WP_FALLBACK_
       if (r.point_winner === 'us') servWinW += w;
     }
   });
-  // Posterior mean of Beta(α₀ + wins, β₀ + losses) where α₀ = pp*K, β₀ = (1-pp)*K
-  const p = (pp * BAYES_K + recvWinW) / (BAYES_K + recvTotalW);
-  const q = (pq * BAYES_K + servWinW) / (BAYES_K + servTotalW);
-  return { p, q };
+  // Posterior mean of Beta(α₀ + wins, β₀ + losses) where α₀ = pp*K, β₀ = (1-pp)*K.
+  // pAlpha/pBeta/qAlpha/qBeta are that full Beta shape, not just its mean — kept
+  // alongside p/q so callers that need to know *how sure* the estimate is (see
+  // computeSetWinProbUncertain below) don't have to redo this blend themselves.
+  const pAlpha = pp * BAYES_K + recvWinW, pBeta = (1 - pp) * BAYES_K + (recvTotalW - recvWinW);
+  const qAlpha = pq * BAYES_K + servWinW, qBeta = (1 - pq) * BAYES_K + (servTotalW - servWinW);
+  return { p: pAlpha / (pAlpha + pBeta), q: qAlpha / (qAlpha + qBeta), pAlpha, pBeta, qAlpha, qBeta };
 }
 
 // Compute per-rotation Bayesian-blended SO%/BP% rates.
@@ -1280,6 +1285,93 @@ export function computeSetWinProb(p, q, ourScore, oppScore, serveSide, isDecider
   return dp(ourScore, oppScore, startSide);
 }
 
+// ── Uncertainty-aware set win probability ────────────────────────────────────
+// computeSetWinProb() above treats p/q as certain, but they're really just the
+// mean of a Beta-distributed estimate — most sharply wrong early in a season or
+// against a new opponent, where the estimate rests on very little evidence.
+// Plugging a single point estimate into a nonlinear win-probability curve
+// systematically overstates confidence (measured directly against a real
+// season: see MATCH_WP_CALIBRATION below). This version instead averages the
+// same DP across a fixed grid of plausible p/q values drawn from that Beta
+// uncertainty, so a confident estimate (lots of evidence, narrow spread) and a
+// shaky one (little evidence, wide spread) no longer produce equally-certain
+// output from the same mean.
+//
+// Numerical Recipes' standard continued-fraction incomplete beta function —
+// used only to invert the Beta CDF for a handful of quantile points below.
+function logGamma(x) {
+  const cof = [
+    76.180091729471, -86.505320329417, 24.014098240831,
+    -1.231739572451, 0.001208650973867, -0.000005395239385,
+  ];
+  let y = x, tmp = x + 5.5;
+  tmp -= (x + 0.5) * Math.log(tmp);
+  let ser = 1.000000000190015;
+  for (let j = 0; j < 6; j++) { y += 1; ser += cof[j] / y; }
+  return -tmp + Math.log(2.506628274631 * ser / x);
+}
+
+function betaContinuedFraction(x, a, b) {
+  const MAXIT = 200, EPS = 3e-9, FPMIN = 1e-300;
+  const qab = a + b, qap = a + 1, qam = a - 1;
+  let c = 1, d = 1 - qab * x / qap;
+  if (Math.abs(d) < FPMIN) d = FPMIN;
+  d = 1 / d;
+  let h = d;
+  for (let m = 1; m <= MAXIT; m++) {
+    const m2 = 2 * m;
+    let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1 / d; h *= d * c;
+    aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1 / d;
+    const del = d * c; h *= del;
+    if (Math.abs(del - 1) < EPS) break;
+  }
+  return h;
+}
+
+function regularizedIncompleteBeta(x, a, b) {
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  const bt = Math.exp(
+    logGamma(a + b) - logGamma(a) - logGamma(b) + a * Math.log(x) + b * Math.log(1 - x)
+  );
+  return x < (a + 1) / (a + b + 2)
+    ? bt * betaContinuedFraction(x, a, b) / a
+    : 1 - bt * betaContinuedFraction(1 - x, b, a) / b;
+}
+
+// Inverse Beta CDF via bisection. We only ever need 5 quantile points, so
+// bisection's simplicity and reliability beat a faster-but-fiddlier Newton's
+// method here — this isn't running often enough for the extra speed to matter.
+function betaQuantile(prob, a, b) {
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    if (regularizedIncompleteBeta(mid, a, b) < prob) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+// Fixed 5-point discretization of the posterior — deterministic (no RNG
+// jitter in a live UI number that re-renders every rally) and cheap enough to
+// run every point: 5×5 DP evaluations instead of 1.
+const WP_UNCERTAINTY_QUANTILES = [0.1, 0.3, 0.5, 0.7, 0.9];
+
+export function computeSetWinProbUncertain(pAlpha, pBeta, qAlpha, qBeta, ourScore, oppScore, serveSide, isDecider = false) {
+  const pPoints = WP_UNCERTAINTY_QUANTILES.map((lvl) => betaQuantile(lvl, pAlpha, pBeta));
+  const qPoints = WP_UNCERTAINTY_QUANTILES.map((lvl) => betaQuantile(lvl, qAlpha, qBeta));
+  let sum = 0;
+  for (const p of pPoints) {
+    for (const q of qPoints) sum += computeSetWinProb(p, q, ourScore, oppScore, serveSide, isDecider);
+  }
+  return sum / (pPoints.length * qPoints.length);
+}
+
 // pDeciderSet: win prob for the deciding set (target 15); pass null to use pFutureSet for all sets.
 export function computeMatchWinProb(pCurrentSet, pFutureSet, ourSets, oppSets, setsToWin = 3, pDeciderSet = null) {
   const memo = new Map();
@@ -1302,6 +1394,67 @@ export function computeMatchWinProb(pCurrentSet, pFutureSet, ourSets, oppSets, s
   const loseAfter = dp(ourSets, oppSets + 1);
   return pCurrentSet * winAfter + (1 - pCurrentSet) * loseAfter;
 }
+
+// ── Win-probability calibration ──────────────────────────────────────────────
+// computeSetWinProbUncertain() above fixes most of the overconfidence problem
+// structurally (it no longer treats a shaky estimate as certain), but a real
+// season replay still showed a smaller residual gap on top of that — these
+// tables are a thin empirical correction for what's left over, not a
+// replacement for the uncertainty-awareness above. [rawModelOutput,
+// whatActuallyHappened] pairs, measured by replaying a real season's
+// rally-by-rally history point-in-time (no lookahead) through
+// computeSetWinProbUncertain/computeMatchWinProb against real match/set
+// outcomes. Derived from one team's 2026 season (44 matches, ~4,200 points) —
+// re-derive from a fresh backup export periodically as more data accumulates
+// or before relying on this for a very different-sized program.
+const MATCH_WP_CALIBRATION = [
+  [0,     0],
+  [0.034, 0.015],
+  [0.151, 0.087],
+  [0.249, 0.184],
+  [0.345, 0.275],
+  [0.446, 0.282],
+  [0.548, 0.384],
+  [0.649, 0.532],
+  [0.746, 0.612],
+  [0.852, 0.780],
+  [0.968, 0.958],
+  [1,     1],
+];
+
+const SET_WP_CALIBRATION = [
+  [0,     0],
+  [0.034, 0.058],
+  [0.150, 0.093],
+  [0.253, 0.183],
+  [0.349, 0.296],
+  [0.449, 0.372],
+  [0.552, 0.499],
+  [0.648, 0.517],
+  [0.749, 0.678],
+  [0.848, 0.838],
+  [0.971, 0.962],
+  [1,     1],
+];
+
+// Piecewise-linear lookup through a sorted [rawProb, actualRate] table.
+function calibrateWinProb(rawProb, table) {
+  if (rawProb <= table[0][0]) return table[0][1];
+  const last = table[table.length - 1];
+  if (rawProb >= last[0]) return last[1];
+  for (let i = 1; i < table.length; i++) {
+    const [x1, y1] = table[i - 1];
+    const [x2, y2] = table[i];
+    if (rawProb <= x2) {
+      const t = (rawProb - x1) / (x2 - x1);
+      return y1 + t * (y2 - y1);
+    }
+  }
+  return rawProb;
+}
+
+export function calibrateMatchWinProb(rawProb) { return calibrateWinProb(rawProb, MATCH_WP_CALIBRATION); }
+export function calibrateSetWinProb(rawProb)   { return calibrateWinProb(rawProb, SET_WP_CALIBRATION); }
 
 // Per-player Win Probability Added (WPA) using a rally-by-rally Markov delta.
 // For each rally: compute WP_before and WP_after using the flat p/q model,

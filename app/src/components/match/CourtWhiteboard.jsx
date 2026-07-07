@@ -74,7 +74,7 @@ export function CourtWhiteboard({ onClose, secondsLeft = 0 }) {
       <div className="flex items-center gap-3 px-4 py-2 bg-slate-900 border-b border-slate-700 shrink-0">
         <button
           onPointerDown={(e) => { e.preventDefault(); onClose(); }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-bold"
+          className="flex items-center gap-1.5 px-4 py-2.5 min-h-11 min-w-11 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-bold"
         >
           ✕ Close
         </button>
@@ -103,7 +103,7 @@ export function CourtWhiteboard({ onClose, secondsLeft = 0 }) {
 
         <button
           onPointerDown={(e) => { e.preventDefault(); clearCanvas(); }}
-          className="ml-auto px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-red-900/60 text-slate-300 hover:text-red-300 text-xs font-bold"
+          className="ml-auto px-4 py-2.5 min-h-11 min-w-11 rounded-lg bg-slate-700 hover:bg-red-900/60 text-slate-300 hover:text-red-300 text-sm font-bold"
         >
           CLEAR
         </button>

@@ -4,15 +4,14 @@ import { useMatchStore } from '../store/matchStore';
 import { useShallow } from 'zustand/react/shallow';
 import { FORMAT, MATCH_STATUS } from '../constants';
 import {
-  computePQ, computeRotationPQ, computeRotationStats,
-  computeSetWinProb, computeSetWinProbRotation, computeMatchWinProb,
+  computePQ, computeSetWinProbUncertain, computeMatchWinProb,
+  calibrateMatchWinProb, calibrateSetWinProb,
 } from '../stats/engine';
 import { getRalliesForMatches } from '../stats/queries';
 import { db } from '../db/schema';
 
-// Queries completed season matches (excluding current) and returns Bayesian priors:
-// { p, q } — global blended rates, and rotationStats — per-rotation counts from
-// season history used to seed the per-rotation Bayesian prior.
+// Queries completed season matches (excluding current) and returns Bayesian
+// priors: { p, q } — global blended rates used as the season prior.
 export function useHistoricalPQ(matchId) {
   return useLiveQuery(async () => {
     if (!matchId) return null;
@@ -58,11 +57,7 @@ export function useHistoricalPQ(matchId) {
       if (h2hRallies.length) ({ p, q } = computePQ(h2hRallies, seasonP, seasonQ));
     }
 
-    return {
-      p, q,
-      rotationStats: seasonRallies.length ? computeRotationStats(seasonRallies) : null,
-      currentMatchRallies,
-    };
+    return { p, q, currentMatchRallies };
   }, [matchId]);
 }
 
@@ -98,36 +93,30 @@ export function useWinProbability() {
 
     // [#1] Recency-weighted p/q for current set — recent rallies count more (alpha=0.93),
     // so momentum shifts register faster without discarding the season prior entirely.
-    const { p, q } = computePQ(committedRallies, historicalPQ?.p, historicalPQ?.q, 0.93);
+    // pAlpha/pBeta/qAlpha/qBeta carry how *sure* this estimate is, not just its mean —
+    // computeSetWinProbUncertain uses that spread instead of treating a shaky
+    // early-season/new-opponent guess as fact (see engine.js for why).
+    const { p, q, pAlpha, pBeta, qAlpha, qBeta } = computePQ(committedRallies, historicalPQ?.p, historicalPQ?.q, 0.93);
 
     // [#2] Match-level p/q for future-set projection: blend all completed-set rallies
     // from this match (equal weight) with the current set. This makes future-set win%
     // reflect how the team is actually performing today, not just the season average.
     const allMatchRallies = [...(historicalPQ?.currentMatchRallies ?? []), ...committedRallies];
-    const { p: matchP, q: matchQ } = computePQ(allMatchRallies, historicalPQ?.p, historicalPQ?.q);
+    const {
+      pAlpha: matchPAlpha, pBeta: matchPBeta, qAlpha: matchQAlpha, qBeta: matchQBeta,
+    } = computePQ(allMatchRallies, historicalPQ?.p, historicalPQ?.q);
 
-    // Determine current rotation from the last committed rally.
-    const lastRally = committedRallies[committedRallies.length - 1];
-    let currentRotation = lastRally?.our_rotation ?? 1;
-    if (lastRally?.point_winner === 'us' && lastRally?.serve_side === 'them') {
-      currentRotation = (currentRotation % 6) + 1;
-    }
-
-    // Per-rotation Bayesian rates — season prior blended with live-set rallies.
-    const rotationRates = historicalPQ?.rotationStats
-      ? computeRotationPQ(historicalPQ.rotationStats, committedRallies, p, q)
-      : null;
-
-    // Current set: use rotation-aware model when rotation data is available
-    const setWinProb = rotationRates
-      ? computeSetWinProbRotation(rotationRates, ourScore, oppScore, currentRotation, serveSide, isDecider)
-      : computeSetWinProb(p, q, ourScore, oppScore, serveSide, isDecider);
+    const setWinProb = computeSetWinProbUncertain(pAlpha, pBeta, qAlpha, qBeta, ourScore, oppScore, serveSide, isDecider);
 
     // [#2] Future sets use match-level rates — today's performance is stronger evidence
     // for upcoming sets than the season average alone.
-    const pFutureSet   = computeSetWinProb(matchP, matchQ, 0, 0, 'them', false);
+    const pFutureSet   = computeSetWinProbUncertain(matchPAlpha, matchPBeta, matchQAlpha, matchQBeta, 0, 0, 'them', false);
     const matchWinProb = computeMatchWinProb(setWinProb, pFutureSet, ourSetsWon, oppSetsWon, setsToWin);
 
-    return { matchWinProb, setWinProb, p, q };
+    return {
+      matchWinProb: calibrateMatchWinProb(matchWinProb),
+      setWinProb:   calibrateSetWinProb(setWinProb),
+      p, q,
+    };
   }, [committedRallies, historicalPQ, ourScore, oppScore, serveSide, ourSetsWon, oppSetsWon, setNumber, format]);
 }

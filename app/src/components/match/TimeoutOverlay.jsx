@@ -10,7 +10,8 @@ import {
   computePlayerStats, computeTeamStats, computeRotationStats,
   computePointQuality, computeOppDisplayStats, computeXKByPassRating,
   computeISvsOOS,
-  computePQ, computeSetWinProb, computeMatchWinProb,
+  computePQ, computeSetWinProbUncertain, computeMatchWinProb,
+  calibrateMatchWinProb, calibrateSetWinProb,
 } from '../../stats/engine';
 import { FORMAT } from '../../constants';
 import { fmtWinProb } from '../../stats/formatters';
@@ -170,8 +171,8 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
   const winProbHistory = useMemo(() => {
     if (!committedRallies.length) return [];
     const setsToWin = format === FORMAT.BEST_OF_5 ? 3 : 2;
-    const { p, q } = computePQ(committedRallies, historicalPQ?.p, historicalPQ?.q);
-    const pFutureSet = computeSetWinProb(p, q, 0, 0, 'them', false);
+    const { pAlpha, pBeta, qAlpha, qBeta } = computePQ(committedRallies, historicalPQ?.p, historicalPQ?.q);
+    const pFutureSet = computeSetWinProbUncertain(pAlpha, pBeta, qAlpha, qBeta, 0, 0, 'them', false);
 
     const sorted = [...committedRallies].sort((a, b) =>
       a.set_id !== b.set_id ? a.set_id - b.set_id : a.rally_number - b.rally_number
@@ -182,8 +183,8 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
 
     for (const r of sorted) {
       const isDecider = (useSets + oppSets + 1) >= setsToWin * 2 - 1;
-      const setWin = computeSetWinProb(p, q, usScore, themScore, side, isDecider);
-      const matchWin = computeMatchWinProb(setWin, pFutureSet, useSets, oppSets, setsToWin);
+      const setWin = computeSetWinProbUncertain(pAlpha, pBeta, qAlpha, qBeta, usScore, themScore, side, isDecider);
+      const matchWin = calibrateMatchWinProb(computeMatchWinProb(setWin, pFutureSet, useSets, oppSets, setsToWin));
       data.push({ x: data.length + 1, pct: Math.round(matchWin * 100) });
 
       if (r.point_winner === 'us') {
@@ -205,13 +206,15 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
   const currentWinProbs = useMemo(() => {
     const setsToWin = format === FORMAT.BEST_OF_5 ? 3 : 2;
     const isDecider = setNumber === (format === FORMAT.BEST_OF_5 ? 5 : 3);
-    const { p, q } = computePQ(committedRallies, historicalPQ?.p, historicalPQ?.q, 0.93);
-    const setWinProb = computeSetWinProb(p, q, ourScore, oppScore, serveSide, isDecider);
+    const { p, q, pAlpha, pBeta, qAlpha, qBeta } = computePQ(committedRallies, historicalPQ?.p, historicalPQ?.q, 0.93);
+    const setWinProb = computeSetWinProbUncertain(pAlpha, pBeta, qAlpha, qBeta, ourScore, oppScore, serveSide, isDecider);
     const allMatchRallies = [...(historicalPQ?.currentMatchRallies ?? []), ...committedRallies];
-    const { p: matchP, q: matchQ } = computePQ(allMatchRallies, historicalPQ?.p, historicalPQ?.q);
-    const pFutureSet = computeSetWinProb(matchP, matchQ, 0, 0, 'them', false);
+    const {
+      pAlpha: matchPAlpha, pBeta: matchPBeta, qAlpha: matchQAlpha, qBeta: matchQBeta,
+    } = computePQ(allMatchRallies, historicalPQ?.p, historicalPQ?.q);
+    const pFutureSet = computeSetWinProbUncertain(matchPAlpha, matchPBeta, matchQAlpha, matchQBeta, 0, 0, 'them', false);
     const mwp = computeMatchWinProb(setWinProb, pFutureSet, ourSetsWon, oppSetsWon, setsToWin);
-    return { setWinProb, matchWinProb: mwp, p, q };
+    return { setWinProb: calibrateSetWinProb(setWinProb), matchWinProb: calibrateMatchWinProb(mwp), p, q };
   }, [committedRallies, historicalPQ, ourScore, oppScore, serveSide, setNumber, format, ourSetsWon, oppSetsWon]);
 
   const xkByPass = useMemo(() => {

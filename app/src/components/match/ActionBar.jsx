@@ -9,6 +9,27 @@ import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 const HOLD_MS = 450;
 
+// Same scoreboard glyph used for the Dashboard tab elsewhere in the app
+// (components/layout/NavBar.jsx), kept in sync so the Home button here
+// reads as "back to Dashboard" instead of a stray logo mark.
+function DashboardIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#e8530b' }}>
+      <rect x="1.5" y="4" width="21" height="16" rx="1.5"
+        fill="currentColor" fillOpacity="0.15"
+        stroke="currentColor" strokeWidth="1.5" />
+      <rect x="1.5" y="4" width="21" height="4" rx="1.5"
+        fill="currentColor" fillOpacity="0.35"
+        stroke="none" />
+      <line x1="12" y1="8" x2="12" y2="20" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <rect x="4"    y="11" width="3.5" height="5" rx="0.5" fill="currentColor" fillOpacity="0.7" />
+      <rect x="8"    y="11" width="2"   height="5" rx="0.5" fill="currentColor" fillOpacity="0.7" />
+      <rect x="13.5" y="11" width="2"   height="5" rx="0.5" fill="currentColor" fillOpacity="0.7" />
+      <rect x="16.5" y="11" width="3.5" height="5" rx="0.5" fill="currentColor" fillOpacity="0.7" />
+    </svg>
+  );
+}
+
 function useHoldButton(onFire) {
   const timerRef    = useRef(null);
   const [held, setHeld] = useState(false);
@@ -186,7 +207,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         onPointerDown={(e) => { e.preventDefault(); setHomeConfirm(true); }}
         className={`${btnBase} bg-slate-800 text-slate-400 hover:bg-slate-700`}
       >
-        <img src="/icons/logo_vec2.png" alt="Home" className="w-[4.6vmin] h-[4.6vmin] object-contain" aria-hidden="true" />
+        <DashboardIcon className="w-[4.6vmin] h-[4.6vmin]" />
       </button>
 
       {/* Menu */}
@@ -194,7 +215,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         onPointerDown={(e) => { e.preventDefault(); onMenuOpen(); }}
         className={`${btnBase} bg-slate-800 text-slate-400 hover:bg-slate-700`}
       >
-        <svg className="w-[2.4vmin] h-[2.4vmin]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <svg className="w-[4.99vmin] h-[4.99vmin]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <line x1="3" y1="6"  x2="21" y2="6"  stroke="#e8530b" strokeWidth="2.2" strokeLinecap="round" />
           <line x1="3" y1="12" x2="21" y2="12" stroke="#e8530b" strokeWidth="2.2" strokeLinecap="round" />
           <line x1="3" y1="18" x2="21" y2="18" stroke="#e8530b" strokeWidth="2.2" strokeLinecap="round" />
