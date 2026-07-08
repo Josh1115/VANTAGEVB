@@ -517,7 +517,7 @@ export function PlayerStatsPage() {
         setStats({ playerRow, allRows, trends, teamPoints, oppPoints, teamRow, wpaByMatch });
       })
       .finally(() => setLoading(false));
-  }, [matches, pid]); // eslint-disable-line react-hooks/exhaustive-deps -- intentional: recompute only when source data or player changes, not on internal setter references
+  }, [matches, pid]);
 
   // Single-row array for StatTable
   const statRow = useMemo(() => {

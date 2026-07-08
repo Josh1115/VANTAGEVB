@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../components/layout/PageHeader';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,7 +20,6 @@ export function UpgradePage() {
   const [loadingPlan, setLoadingPlan] = useState(null);
   const [error, setError] = useState('');
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
 
   const { plan: normalizedPlan } = usePlan();
   const currentPlan = profile?.plan ?? 'inactive';

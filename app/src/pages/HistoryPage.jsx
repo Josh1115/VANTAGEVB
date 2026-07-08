@@ -1224,12 +1224,12 @@ export function HistoryPage() {
   );
 
   async function doDeleteEntry(id) {
-    try { await db.season_history.delete(id); } catch {}
+    try { await db.season_history.delete(id); } catch { /* best-effort delete */ }
     setConfirmDeleteEntry(null);
   }
 
   async function doDeleteCommit(id) {
-    try { await db.player_commits.delete(id); } catch {}
+    try { await db.player_commits.delete(id); } catch { /* best-effort delete */ }
     setConfirmDeleteCommit(null);
   }
 
@@ -1239,12 +1239,14 @@ export function HistoryPage() {
         await db.accolade_winners.where('type_id').equals(id).delete();
         await db.accolade_types.delete(id);
       });
-    } catch {}
+    } catch {
+      // best-effort delete
+    }
     setConfirmDeleteAwardType(null);
   }
 
   async function doDeleteWinner(id) {
-    try { await db.accolade_winners.delete(id); } catch {}
+    try { await db.accolade_winners.delete(id); } catch { /* best-effort delete */ }
     setConfirmDeleteWinner(null);
   }
 

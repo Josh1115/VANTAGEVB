@@ -26,7 +26,7 @@ export function TermsGate({ children }) {
   if (accepted) return children;
 
   function handleAccept() {
-    try { localStorage.setItem(TERMS_STORAGE_KEY, JSON.stringify({ version: TERMS_VERSION, acceptedAt: new Date().toISOString() })); } catch {}
+    try { localStorage.setItem(TERMS_STORAGE_KEY, JSON.stringify({ version: TERMS_VERSION, acceptedAt: new Date().toISOString() })); } catch { /* best-effort, not required for gate to proceed */ }
     setAccepted(true);
   }
 

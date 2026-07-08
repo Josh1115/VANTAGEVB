@@ -9,7 +9,9 @@ export function reportError({ message, stack, componentStack, kind }) {
       const host = new URL(import.meta.env.VITE_SUPABASE_URL).hostname;
       const raw = localStorage.getItem(`sb-${host.split('.')[0]}-auth-token`);
       accessToken = raw ? JSON.parse(raw)?.access_token ?? null : null;
-    } catch {}
+    } catch {
+      // No token available — report anonymously without auth.
+    }
 
     fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/log-error`, {
       method: 'POST',
@@ -25,5 +27,7 @@ export function reportError({ message, stack, componentStack, kind }) {
         kind: kind ?? 'unknown',
       }),
     }).catch(() => {});
-  } catch {}
+  } catch {
+    // Reporting must never throw on top of the original error.
+  }
 }

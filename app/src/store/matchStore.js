@@ -606,7 +606,7 @@ export const useMatchStore = create((set, get) => ({
           a._actionKey === actionKey ? { ...a, rallyId } : a
         ),
       }));
-    } catch (err) {
+    } catch {
       // Rally write failed — score stays as-is. Undo for this point won't work
       // but the live score is correct, which is what matters during a match.
     }
@@ -916,7 +916,7 @@ export const useMatchStore = create((set, get) => ({
     let assistId;
     try {
       assistId = await db.contacts.add(assistContact);
-    } catch (err) {
+    } catch {
       return;
     }
     set((cur) => ({
@@ -965,7 +965,8 @@ export const useMatchStore = create((set, get) => ({
         ),
       }));
       setFeed(set, 'Opp Block');
-    } catch (err) {
+    } catch {
+      // Block write failed — feed already updated optimistically, not worth surfacing mid-rally.
     }
   },
 
@@ -1024,7 +1025,7 @@ export const useMatchStore = create((set, get) => ({
             setFeed(set, `+1 ${n1} & ${n2} Blk Ast`);
 
             await get().addPoint(SIDE.US);
-          } catch (err) {
+          } catch {
             useUiStore.getState().showToast('Block record failed. Try again.', 'error');
             set({ pendingHblk: null });
           }
@@ -1077,7 +1078,7 @@ export const useMatchStore = create((set, get) => ({
         in_position_label: inPositionLabel,
         timestamp:         Date.now(),
       });
-    } catch (err) {
+    } catch {
       useUiStore.getState().showToast('Sub failed. Check device storage.', 'error');
       return false;
     }
@@ -1195,7 +1196,7 @@ export const useMatchStore = create((set, get) => ({
         in_position_label: subInPositionLabel,
         timestamp:         Date.now(),
       });
-    } catch (err) {
+    } catch {
       useUiStore.getState().showToast('Libero swap failed. Check device storage.', 'error');
       set({
         lineup:                      prevLineup,
@@ -1245,7 +1246,7 @@ export const useMatchStore = create((set, get) => ({
         committedContacts: [...cur.committedContacts, { ...contactFull, id }],
         actionHistory: [{ type: 'opp_contact', contactId: id, causedPoint: SIDE.THEM }, ...cur.actionHistory],
       }));
-    } catch (err) {
+    } catch {
       useUiStore.getState().showToast('Rotation error not recorded. Try again.', 'error');
     }
   },
@@ -1274,7 +1275,8 @@ export const useMatchStore = create((set, get) => ({
         committedContacts: [...cur.committedContacts, { ...contactFull, id }],
         actionHistory: [{ type: 'opp_contact', contactId: id, causedPoint: pointSide }, ...cur.actionHistory],
       }));
-    } catch (err) {
+    } catch {
+      // Contact write failed — score already applied, not worth surfacing mid-rally.
     }
   },
 
@@ -1297,7 +1299,8 @@ export const useMatchStore = create((set, get) => ({
         opp_score:    s.oppScore,
         side,
       });
-    } catch (err) {
+    } catch {
+      // Timeout write failed — local state still tracks it; DB row just won't exist for undo/history.
     }
     pushAction(get, set, { type: 'timeout', side, timeoutId });
   },

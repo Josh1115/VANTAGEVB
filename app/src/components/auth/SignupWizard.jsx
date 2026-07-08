@@ -403,7 +403,7 @@ export function SignupWizard({ onComplete, onBack }) {
     // to reach here) — record it now under TermsGate's own key so a same-session
     // auto-checkout redirect (see AuthContext) can't outrun TermsGate ever mounting,
     // which would otherwise re-prompt for terms redundantly right after payment.
-    try { localStorage.setItem(TERMS_STORAGE_KEY, JSON.stringify({ version: TERMS_VERSION, acceptedAt: new Date().toISOString() })); } catch {}
+    try { localStorage.setItem(TERMS_STORAGE_KEY, JSON.stringify({ version: TERMS_VERSION, acceptedAt: new Date().toISOString() })); } catch { /* best-effort, not required for signup to proceed */ }
     try {
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),

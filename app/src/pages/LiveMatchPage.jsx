@@ -162,7 +162,6 @@ export function LiveMatchPage() {
   const pendingSetConfirmRef = useRef(false);
 
   // Keep screen awake during live match if setting is on
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const wakeLockEnabled = useMemo(() => {
     try { return localStorage.getItem(STORAGE_KEYS.WAKE_LOCK) === '1'; } catch { return false; }
   }, []);

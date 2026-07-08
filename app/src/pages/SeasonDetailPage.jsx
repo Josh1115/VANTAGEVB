@@ -19,6 +19,7 @@ import { PvShareSheet } from '../components/parentvantage/PvShareSheet';
 import { ScheduleImportModal } from '../components/match/ScheduleImportModal';
 import { usePlan } from '../hooks/usePlan';
 import { consumeMatchSlotStrict } from '../utils/supabase';
+import { useUiStore, selectShowToast } from '../store/uiStore';
 
 
 export function SeasonDetailPage() {
@@ -27,6 +28,7 @@ export function SeasonDetailPage() {
   const id = Number(seasonId);
   const playoffLabel = getPlayoffLabel();
   const { isMaster, plan, matchLimit } = usePlan();
+  const showToast = useUiStore(selectShowToast);
 
   const data = useLiveQuery(async () => {
     const season = await db.seasons.get(id);
@@ -299,7 +301,10 @@ export function SeasonDetailPage() {
         // added locally — scheduling ahead of time is when a trial coach can
         // reasonably be asked to have a connection, so the match can be
         // recorded fully offline later without any further server check.
-        if (!isMaster && plan === 'trial') await consumeMatchSlotStrict();
+        if (!isMaster && plan === 'trial') {
+          const slot = await consumeMatchSlotStrict();
+          if (slot) showToast(`Trial match ${slot.used} of ${slot.limit} used`, 'info');
+        }
         await db.transaction('rw', [db.matches, db.seasons], async () => {
           const [liveCount, season] = await Promise.all([
             db.matches.where('season_id').equals(id).count(),

@@ -25,7 +25,7 @@ export function MatchSetupPage() {
   const rawMatchId = searchParams.get('match');
   const scheduledMatchId = rawMatchId ? parseInt(rawMatchId, 10) || null : null;
 
-  const { isActive, isMaster, plan, matchLimit } = usePlan();
+  const { isMaster, plan, matchLimit } = usePlan();
 
   const [seasonId,  setSeasonId]  = useState(searchParams.get('season') ?? '');
   const [opponent,           setOpponent]           = useState('');
@@ -340,7 +340,8 @@ export function MatchSetupPage() {
       let effectiveMatchId;
       if (!isMaster && !scheduledMatchId) {
         if (plan === 'trial') {
-          await consumeMatchSlotStrict();
+          const slot = await consumeMatchSlotStrict();
+          if (slot) showToast(`Trial match ${slot.used} of ${slot.limit} used`, 'info');
         } else {
           try {
             const { data, error } = await supabase.rpc('consume_match_slot');

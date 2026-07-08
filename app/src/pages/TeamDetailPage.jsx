@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { usePlan } from '../hooks/usePlan';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { useTeam, usePlayers, useSeasons } from '../hooks/useTeamData';
@@ -99,7 +98,6 @@ export function TeamDetailPage() {
   const { teamId } = useParams();
   const navigate = useNavigate();
   const id = Number(teamId);
-  const { has } = usePlan();
   const team    = useTeam(id);
   const players = usePlayers(id);
   const seasons = useSeasons(id);

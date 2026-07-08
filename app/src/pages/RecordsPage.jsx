@@ -1329,14 +1329,18 @@ export function RecordsPage() {
   async function doDeleteRecord(row) {
     try {
       await db.historical_records.delete(row.id);
-    } catch {}
+    } catch {
+      // best-effort delete
+    }
     setConfirmDeleteRecord(null);
   }
 
   async function doDeleteTourney(entry) {
     try {
       await db.tourney_entries.delete(entry.id);
-    } catch {}
+    } catch {
+      // best-effort delete
+    }
     setConfirmDeleteTourney(null);
   }
 

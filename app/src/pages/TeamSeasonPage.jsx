@@ -301,7 +301,7 @@ export function TeamSeasonPage() {
 
       {!loading && (!matchStats?.length) && (
         <div className="px-4 pt-8">
-          <EmptyState message="No completed matches this season yet." />
+          <EmptyState title="No completed matches this season yet." />
         </div>
       )}
 

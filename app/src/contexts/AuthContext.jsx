@@ -19,7 +19,7 @@ function clearUserSettings() {
     Object.keys(localStorage)
       .filter(key => key.startsWith('vbstat_draft_') || key.startsWith('vbstat_scout_'))
       .forEach(key => localStorage.removeItem(key));
-  } catch {}
+  } catch { /* best-effort clear */ }
 }
 
 // Read the Supabase session straight out of localStorage, bypassing
@@ -36,7 +36,7 @@ function readStoredSession() {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed?.access_token && parsed?.refresh_token && parsed?.user) return parsed;
-  } catch {}
+  } catch { /* malformed/missing — treat as no session */ }
   return null;
 }
 
@@ -113,7 +113,7 @@ export function AuthProvider({ children }) {
     if (reloading.current) return;
     reloading.current = true;
     clearUserSettings();
-    try { localStorage.setItem(USER_ID_KEY, uid); } catch {}
+    try { localStorage.setItem(USER_ID_KEY, uid); } catch { /* best-effort */ }
     window.location.reload();
   }
 
@@ -121,7 +121,7 @@ export function AuthProvider({ children }) {
     if (reloading.current) return;
     reloading.current = true;
     clearUserSettings();
-    try { localStorage.removeItem(USER_ID_KEY); } catch {}
+    try { localStorage.removeItem(USER_ID_KEY); } catch { /* best-effort */ }
     window.location.reload();
   }
 

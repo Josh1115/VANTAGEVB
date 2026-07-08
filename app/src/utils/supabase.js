@@ -81,6 +81,7 @@ export async function consumeMatchSlotStrict() {
     e.code = 'MATCH_LIMIT';
     throw e;
   }
+  return data;
 }
 
 // ── Page view tracking ────────────────────────────────────────────────────────

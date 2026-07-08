@@ -667,7 +667,7 @@ export function HomePage() {
     const first   = setTimeout(trigger, 2500);
     const interval = setInterval(trigger, 15000);
     return () => { clearTimeout(first); clearInterval(interval); };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Long-press logo for burst ─────────────────────────────────────────────
   const longPressTimer = useRef(null);
