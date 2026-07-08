@@ -1058,7 +1058,7 @@ export function HomePage() {
               {seasonRecord.winPct !== null && (
                 <>
                   <span className="font-black text-primary">
-                    {Math.round(seasonRecord.winPct * 100)}% WIN
+                    {fmtPct(seasonRecord.winPct)} WIN
                   </span>
                   {seasonRecord.hasLocData && <span className="text-slate-400 font-black">·</span>}
                 </>

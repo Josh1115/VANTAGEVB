@@ -700,7 +700,7 @@ export function TeamDetailPage() {
                               <div className="flex items-baseline justify-between gap-2">
                                 <span className="font-semibold text-sm truncate">{s.label}</span>
                                 <span className="text-xs text-slate-500 flex-shrink-0">
-                                  {new Date(s.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                  {new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </span>
                               </div>
                               <div className="text-xs text-slate-400 mt-1">
@@ -751,7 +751,7 @@ export function TeamDetailPage() {
                                 <div className="flex items-baseline justify-between gap-2">
                                   <span className="font-semibold text-sm truncate">{s.label}</span>
                                   <span className="text-xs text-slate-500 flex-shrink-0">
-                                    {new Date(s.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    {new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                   </span>
                                 </div>
                               </div>

@@ -224,7 +224,7 @@ function ServeTrackerDetail({ data }) {
 
 export function PracticeSessionDetailModal({ session, onClose }) {
   const { tool_type, label, date, data } = session;
-  const dateStr = new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  const dateStr = new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const titles  = { practice_game: 'Practice Game', serve_receive: 'Serve Receive', serve_tracker: 'Serve Tracker' };
   return (
     <Modal title={titles[tool_type] ?? label} onClose={onClose}>

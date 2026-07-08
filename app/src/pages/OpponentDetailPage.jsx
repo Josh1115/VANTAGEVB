@@ -70,7 +70,7 @@ function HistoryTab({ oppId, oppName, selectedTeamId, selectedSeasonId }) {
       )}
       {matches.map(m => {
         const dateStr = m.date
-          ? new Date(m.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+          ? new Date(m.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
           : 'Date unknown';
         const isComplete = m.status === MATCH_STATUS.COMPLETE;
         const won = isComplete && (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0);

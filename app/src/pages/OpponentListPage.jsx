@@ -316,7 +316,7 @@ export function OpponentListPage() {
                 const isArchived = archivedIds.has(opp.id);
                 const record   = s.total > 0 ? `${s.wins}–${s.losses}` : null;
                 const lastDate = s.latest
-                  ? new Date(s.latest).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                  ? new Date(s.latest).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                   : null;
                 const scoutCount = scoutCountByOpp[opp.id] ?? 0;
                 return (
