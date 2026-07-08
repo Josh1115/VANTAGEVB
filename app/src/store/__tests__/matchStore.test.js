@@ -22,6 +22,9 @@ vi.mock('../../db/schema', () => ({
       add:    vi.fn().mockResolvedValue(7),
       delete: vi.fn().mockResolvedValue(undefined),
     },
+    sets: {
+      update: vi.fn().mockResolvedValue(undefined),
+    },
   },
 }));
 

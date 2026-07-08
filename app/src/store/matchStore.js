@@ -86,6 +86,8 @@ function replaceOneContact(arr, id, patch) {
 const makeSetResetState = () => ({
   ourScore:                    0,
   oppScore:                    0,
+  ourFudge:                    0,
+  oppFudge:                    0,
   ourTimeouts:                 0,
   oppTimeouts:                 0,
   subsUsed:                    0,
@@ -124,12 +126,8 @@ function checkSetWin(ourScore, oppScore, setNumber, format, lastSetScore) {
 // Rebuild live-set state from persisted rows. Called on every LiveMatchPage
 // mount so the between-sets round trip (live → set-lineup → live) and a
 // mid-set app reload both land back on the true score, set number, sets-won
-// tally, serve side, rotation, lineup (with subs replayed), and timeout/sub
-// counts. Pure so it can be unit-tested.
-//
-// Known limits: manual score adjustments (fudgeScore) create no rally rows so
-// they aren't recoverable, and libero on-court state isn't persisted — the
-// libero rejoins via the swap button after a reload.
+// tally, serve side, rotation, lineup (with subs and libero swaps replayed),
+// and timeout/sub counts. Pure so it can be unit-tested.
 export function reconstructSetState({
   setRow, allSets, rallies, timeoutRows, subRows,
   baseLineup, baseRotation, playersById, format, lastSetScore,
@@ -142,9 +140,11 @@ export function reconstructSetState({
 
   // Insert order (auto-increment id) is the reliable ordering; rally_number
   // can restart at 0 after a mid-set reload.
-  const ordered  = [...(rallies ?? [])].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
-  const ourScore = ordered.filter((r) => r.point_winner === SIDE.US).length;
-  const oppScore = ordered.filter((r) => r.point_winner === SIDE.THEM).length;
+  const ordered   = [...(rallies ?? [])].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+  const ourFudge  = setRow.our_fudge ?? 0;
+  const oppFudge  = setRow.opp_fudge ?? 0;
+  const ourScore  = ordered.filter((r) => r.point_winner === SIDE.US).length + ourFudge;
+  const oppScore  = ordered.filter((r) => r.point_winner === SIDE.THEM).length + oppFudge;
   const last     = ordered[ordered.length - 1] ?? null;
 
   // Winner of the last rally serves next; a fresh set uses the recorded
@@ -159,21 +159,46 @@ export function reconstructSetState({
     ? (lastRotated ? (last.our_rotation % 6) + 1 : last.our_rotation)
     : baseRotation;
 
-  // Replay substitutions oldest-first by player id (rotation-independent),
-  // then rotate the arrangement from the set's starting rotation.
+  // Replay substitutions AND libero swaps together, oldest-first by
+  // timestamp (rotation-independent), so the lineup reflects whoever is
+  // actually on court after a reload. Libero swaps affect the lineup and
+  // the libero-tracking fields below but don't count against the per-set
+  // sub limit, so they're excluded from subPairs/exhaustedPlayerIds/subsUsed.
   let lineup = baseLineup;
-  const subsOrdered = [...(subRows ?? [])]
-    .filter((r) => !r.libero_swap)
-    .sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+  const allSubsOrdered = [...(subRows ?? [])].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+  const subsOrdered = allSubsOrdered.filter((r) => !r.libero_swap);
   const subPairs = {};
   const exhaustedPlayerIds = [];
-  for (const row of subsOrdered) {
+  let liberoOnCourt               = false;
+  let liberoReplacedPlayerId      = null;
+  let liberoReplacedName          = '';
+  let liberoReplacedJersey        = '';
+  let liberoReplacedPositionLabel = '';
+  for (const row of allSubsOrdered) {
     const idx = lineup.findIndex((sl) => sl.playerId === row.player_out);
+    const outSlotLabel = idx !== -1 ? lineup[idx].positionLabel : null;
     if (idx !== -1) {
       const p = playersById?.[row.player_in];
       lineup = lineup.map((sl, i) => i === idx
         ? { ...sl, playerId: row.player_in, playerName: p?.name ?? '', jersey: p?.jersey_number ?? '', positionLabel: row.in_position_label || p?.position || sl.positionLabel }
         : sl);
+    }
+    if (row.libero_swap) {
+      if (row.in_position_label === 'L') {
+        const p = playersById?.[row.player_out];
+        liberoOnCourt               = true;
+        liberoReplacedPlayerId      = row.player_out;
+        liberoReplacedName          = p?.name ?? '';
+        liberoReplacedJersey        = p?.jersey_number ?? '';
+        liberoReplacedPositionLabel = outSlotLabel || p?.position || '';
+      } else {
+        liberoOnCourt               = false;
+        liberoReplacedPlayerId      = null;
+        liberoReplacedName          = '';
+        liberoReplacedJersey        = '';
+        liberoReplacedPositionLabel = '';
+      }
+      continue;
     }
     const slotIdx = (row.position ?? 1) - 1;
     if (subPairs[row.player_in] === slotIdx) exhaustedPlayerIds.push(row.player_out, row.player_in);
@@ -194,6 +219,7 @@ export function reconstructSetState({
     setNumber,
     ourSetsWon, oppSetsWon,
     ourScore, oppScore,
+    ourFudge, oppFudge,
     rallyCount:  ordered.length,
     serveSide,
     rotationNum,
@@ -203,6 +229,7 @@ export function reconstructSetState({
     subsUsed:    subsOrdered.length,
     subPairs,
     exhaustedPlayerIds,
+    liberoOnCourt, liberoReplacedPlayerId, liberoReplacedName, liberoReplacedJersey, liberoReplacedPositionLabel,
     committedRallies: ordered.map((r) => ({
       set_id:           r.set_id,
       rally_number:     r.rally_number,
@@ -318,6 +345,8 @@ const INITIAL_STATE = {
 
   ourScore:              0,
   oppScore:              0,
+  ourFudge:              0,
+  oppFudge:              0,
   ourSetsWon:            0,
   oppSetsWon:            0,
 
@@ -587,28 +616,38 @@ export const useMatchStore = create((set, get) => ({
 
   // Manually adjust home (us) or away (them) score by +1 or -1.
   // Used to correct scoring errors. Clamps at 0, checks set-win, fully undoable.
+  // Persisted on the set row (our_fudge/opp_fudge) so it survives a reload —
+  // reconstructSetState adds it back on top of the rally-counted score.
   fudgeScore: (side, delta) => {
     const s = get();
     if (side === SIDE.US) {
       const next = Math.max(0, s.ourScore + delta);
       if (next === s.ourScore) return;
+      const effectiveDelta = next - s.ourScore;
+      const nextFudge = s.ourFudge + effectiveDelta;
       set((cur) => ({
         ourScore:      next,
-        actionHistory: [{ type: 'fudge', side, delta }, ...cur.actionHistory],
+        ourFudge:      nextFudge,
+        actionHistory: [{ type: 'fudge', side, delta: effectiveDelta }, ...cur.actionHistory],
         lastFeedItem:  { label: `Score adj: ${delta > 0 ? '+' : ''}${delta} (Us)`, id: Date.now() },
       }));
       const winner = checkSetWin(next, s.oppScore, s.setNumber, s.format, s.lastSetScore);
       if (winner) set({ pendingSetWin: winner });
+      if (s.currentSetId) db.sets.update(s.currentSetId, { our_fudge: nextFudge }).catch(() => {});
     } else {
       const next = Math.max(0, s.oppScore + delta);
       if (next === s.oppScore) return;
+      const effectiveDelta = next - s.oppScore;
+      const nextFudge = s.oppFudge + effectiveDelta;
       set((cur) => ({
         oppScore:      next,
-        actionHistory: [{ type: 'fudge', side, delta }, ...cur.actionHistory],
+        oppFudge:      nextFudge,
+        actionHistory: [{ type: 'fudge', side, delta: effectiveDelta }, ...cur.actionHistory],
         lastFeedItem:  { label: `Score adj: ${delta > 0 ? '+' : ''}${delta} (Opp)`, id: Date.now() },
       }));
       const winner = checkSetWin(s.ourScore, next, s.setNumber, s.format, s.lastSetScore);
       if (winner) set({ pendingSetWin: winner });
+      if (s.currentSetId) db.sets.update(s.currentSetId, { opp_fudge: nextFudge }).catch(() => {});
     }
   },
 
@@ -778,10 +817,15 @@ export const useMatchStore = create((set, get) => ({
       }
 
       case 'fudge': {
-        if (action.side === SIDE.US)
-          set({ actionHistory: rest, ourScore: Math.max(0, s.ourScore - action.delta), lastFeedItem: null });
-        else
-          set({ actionHistory: rest, oppScore: Math.max(0, s.oppScore - action.delta), lastFeedItem: null });
+        if (action.side === SIDE.US) {
+          const nextFudge = s.ourFudge - action.delta;
+          set({ actionHistory: rest, ourScore: Math.max(0, s.ourScore - action.delta), ourFudge: nextFudge, lastFeedItem: null });
+          if (s.currentSetId) db.sets.update(s.currentSetId, { our_fudge: nextFudge }).catch(() => {});
+        } else {
+          const nextFudge = s.oppFudge - action.delta;
+          set({ actionHistory: rest, oppScore: Math.max(0, s.oppScore - action.delta), oppFudge: nextFudge, lastFeedItem: null });
+          if (s.currentSetId) db.sets.update(s.currentSetId, { opp_fudge: nextFudge }).catch(() => {});
+        }
         break;
       }
     }
@@ -1263,6 +1307,7 @@ export const useMatchStore = create((set, get) => ({
     await db.contacts.where('set_id').equals(s.currentSetId).delete();
     await db.rallies.where('set_id').equals(s.currentSetId).delete();
     await db.substitutions.where('set_id').equals(s.currentSetId).delete();
+    await db.sets.update(s.currentSetId, { our_fudge: 0, opp_fudge: 0 });
     set({
       ...makeSetResetState(),
       serveSide:              SIDE.US,

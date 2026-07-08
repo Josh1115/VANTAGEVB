@@ -98,6 +98,10 @@ function useSwipeReveal(REVEAL = 130) {
 
 // ── Shared coach-records builder ──────────────────────────────────────────────
 
+// Season "year" can be a plain year ("2024") or a school-year range ("2024-25");
+// always key off the first 4-digit year so ranges don't get dropped as 0/NaN.
+const parseYear = (y) => { const m = String(y ?? '').match(/\d{4}/); return m ? parseInt(m[0], 10) : 0; };
+
 function computeCoachRecords(sortedHistory, field, { hasActiveSeason, activeSeasonYear, activeMatches, liveHistoryEntry, activeSeason }) {
   const map = {};
   for (const h of sortedHistory) {
@@ -107,7 +111,7 @@ function computeCoachRecords(sortedHistory, field, { hasActiveSeason, activeSeas
     if (!map[name]) map[name] = { wins: 0, losses: 0, minYear: Infinity, maxYear: 0, isPresent: false };
     map[name].wins   += h.wins   ?? 0;
     map[name].losses += h.losses ?? 0;
-    const yr = Number(h.year) || 0;
+    const yr = parseYear(h.year);
     map[name].minYear = Math.min(map[name].minYear, yr);
     map[name].maxYear = Math.max(map[name].maxYear, yr);
   }
@@ -115,7 +119,7 @@ function computeCoachRecords(sortedHistory, field, { hasActiveSeason, activeSeas
     const name = (liveHistoryEntry?.[field] ?? activeSeason?.[field])?.trim();
     if (name) {
       if (!map[name]) map[name] = { wins: 0, losses: 0, minYear: Infinity, maxYear: 0, isPresent: false };
-      const yr = Number(activeSeason?.year) || 0;
+      const yr = parseYear(activeSeason?.year);
       map[name].minYear = Math.min(map[name].minYear, yr);
       map[name].maxYear = Math.max(map[name].maxYear, yr != null ? yr : 9999);
       map[name].isPresent = true;
