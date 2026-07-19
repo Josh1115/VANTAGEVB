@@ -435,6 +435,10 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
                 );
               })()}
               <LiberoBox liberoPlayer={liberoPlayer} onAssignLibero={onAssignLibero} />
+              <div className="flex flex-col items-center px-[1vmin] py-[0.4vmin] rounded border border-purple-700 bg-purple-950/40">
+                <span className="text-[1.1vmin] font-bold text-purple-500 leading-none uppercase tracking-wide">ROT</span>
+                <span className="text-[2.6vmin] font-black text-purple-400 leading-none tabular-nums">{rotationNum}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -539,15 +543,6 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
               {lastFeedItem.label}
             </div>
           )}
-        </div>
-
-        {/* ── Rotation tracker — right of center to avoid score overlap ── */}
-        <div className="flex flex-col items-center justify-center shrink-0">
-          {(broadcastEnabled || hasFamilyScope) && <div className="mb-[0.4vmin] invisible text-[1.2vmin] py-[0.3vmin]">·</div>}
-          <div className="flex flex-col items-center mr-1 px-[1vmin] py-[0.4vmin] rounded border border-purple-700 bg-purple-950/40">
-            <span className="text-[1.1vmin] font-bold text-purple-500 leading-none uppercase tracking-wide">ROT</span>
-            <span className="text-[2.6vmin] font-black text-purple-400 leading-none tabular-nums">{rotationNum}</span>
-          </div>
         </div>
 
         {/* ── Far right: their timeouts + THEM sets won  (swaps when flipped) ── */}

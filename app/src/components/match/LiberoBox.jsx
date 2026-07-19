@@ -1,19 +1,22 @@
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useMatchStore } from '../../store/matchStore';
-
-const lastName = (name) => {
-  if (!name) return '';
-  const parts = name.trim().split(' ');
-  return parts[parts.length - 1];
-};
+import { getStorageItem, STORAGE_KEYS } from '../../utils/storage';
+import { fmtPlayerName } from '../../stats/formatters';
 
 export const LiberoBox = memo(function LiberoBox({ liberoPlayer, onAssignLibero }) {
   const liberoOnCourt               = useMatchStore((s) => s.liberoOnCourt);
   const swapLibero                  = useMatchStore((s) => s.swapLibero);
   const lineup                      = useMatchStore((s) => s.lineup);
+  const liberoReplacedPlayerId      = useMatchStore((s) => s.liberoReplacedPlayerId);
   const liberoReplacedName          = useMatchStore((s) => s.liberoReplacedName);
   const liberoReplacedJersey        = useMatchStore((s) => s.liberoReplacedJersey);
   const liberoReplacedPositionLabel = useMatchStore((s) => s.liberoReplacedPositionLabel);
+  const playerNicknames             = useMatchStore((s) => s.playerNicknames);
+
+  const nameFormat = useMemo(
+    () => getStorageItem(STORAGE_KEYS.PLAYER_NAME_FORMAT, 'initial_last'),
+    []
+  );
 
   const [pulse, setPulse] = useState(false);
   const prevKey = useRef(`${liberoPlayer?.id}-${liberoOnCourt}`);
@@ -63,7 +66,7 @@ export const LiberoBox = memo(function LiberoBox({ liberoPlayer, onAssignLibero 
             #{liberoReplacedJersey}
             {liberoReplacedPositionLabel ? ` (${liberoReplacedPositionLabel})` : ''}
           </span>
-          <span className="text-xs text-slate-300 truncate max-w-[14vmin]">{lastName(liberoReplacedName)}</span>
+          <span className="text-xs text-slate-300 truncate max-w-[14vmin]">{fmtPlayerName(liberoReplacedName, playerNicknames[liberoReplacedPlayerId] ?? '', nameFormat)}</span>
         </div>
 
         <button
@@ -81,7 +84,7 @@ export const LiberoBox = memo(function LiberoBox({ liberoPlayer, onAssignLibero 
     <div className={`flex items-center gap-1.5 px-2 py-0.5 bg-black/30 rounded border transition-colors ${pulse ? 'border-emerald-400 animate-libero-pulse' : 'border-slate-700'}`}>
       <div className="flex flex-col leading-none">
         <span className="text-xs text-emerald-400 font-bold">#{liberoPlayer.jersey_number}</span>
-        <span className="text-xs text-slate-300 truncate max-w-[14vmin]">{lastName(liberoPlayer.name)}</span>
+        <span className="text-xs text-slate-300 truncate max-w-[14vmin]">{fmtPlayerName(liberoPlayer.name, playerNicknames[liberoPlayer.id] ?? '', nameFormat)}</span>
       </div>
 
       <button

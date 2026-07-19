@@ -182,7 +182,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
       </button>
 
       {/* Stats */}
-      <div className="relative flex-1 h-full">
+      <div className="relative flex-1 h-full border-r border-slate-700">
         <button
           onPointerDown={(e) => { e.preventDefault(); onStatsOpen(); }}
           className={`${btnBase} w-full bg-slate-800 text-slate-300 hover:bg-slate-700`}
