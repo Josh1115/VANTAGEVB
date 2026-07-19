@@ -73,6 +73,12 @@ export const TAB_COLUMNS = {
     { key: 'p1',      label: 'P1',    fmt: fmtCount     },
     { key: 'p2',      label: 'P2',    fmt: fmtCount     },
     { key: 'p3',      label: 'P3',    fmt: fmtCount     },
+    { key: 'rot1_apr', label: 'R1 APR', fmt: fmtPassRating },
+    { key: 'rot2_apr', label: 'R2 APR', fmt: fmtPassRating },
+    { key: 'rot3_apr', label: 'R3 APR', fmt: fmtPassRating },
+    { key: 'rot4_apr', label: 'R4 APR', fmt: fmtPassRating },
+    { key: 'rot5_apr', label: 'R5 APR', fmt: fmtPassRating },
+    { key: 'rot6_apr', label: 'R6 APR', fmt: fmtPassRating },
   ],
   attacking: [
     { key: 'name',      label: 'Player' },

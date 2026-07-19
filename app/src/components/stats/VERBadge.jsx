@@ -9,7 +9,7 @@
 //   ELITE  7.00+
 export const VER_TIERS = [
   { min: 7.00,      label: 'ELITE',  cls: 'bg-cyan-500/20   text-cyan-400   border-cyan-500/40'   },
-  { min: 4.50,      label: 'GREAT',  cls: 'bg-orange-500/20 text-orange-400 border-orange-500/40' },
+  { min: 4.50,      label: 'GREAT',  cls: 'bg-violet-500/20 text-violet-300 border-violet-500/40' },
   { min: 3.00,      label: 'GOOD',   cls: 'bg-green-500/20  text-green-400  border-green-500/40'  },
   { min: 1.50,      label: 'AVG',    cls: 'bg-slate-500/20  text-white      border-slate-500/40'  },
   { min: 1.00,      label: 'LOW',    cls: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40' },
@@ -39,7 +39,7 @@ export function VERBadge({ ver }) {
 //   ELITE  20.00+
 export const WVER_TIERS = [
   { min: 20.00,     label: 'ELITE',  cls: 'bg-cyan-500/20   text-cyan-400   border-cyan-500/40'   },
-  { min: 13.00,     label: 'GREAT',  cls: 'bg-orange-500/20 text-orange-400 border-orange-500/40' },
+  { min: 13.00,     label: 'GREAT',  cls: 'bg-violet-500/20 text-violet-300 border-violet-500/40' },
   { min: 9.00,      label: 'GOOD',   cls: 'bg-green-500/20  text-green-400  border-green-500/40'  },
   { min: 5.00,      label: 'AVG',    cls: 'bg-slate-500/20  text-white      border-slate-500/40'  },
   { min: 2.00,      label: 'LOW',    cls: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40' },

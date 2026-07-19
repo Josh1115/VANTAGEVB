@@ -381,6 +381,18 @@ export function computeRotationContactStats(contacts) {
 }
 
 /**
+ * One player's passing (APR) split out by the rotation they were in when they passed it.
+ * Returns { rot1_apr, rot2_apr, ..., rot6_apr } — null for a rotation with no receptions.
+ */
+export function computePlayerRotationPassing(contacts, playerId) {
+  const playerContacts = contacts.filter((c) => c.player_id === playerId);
+  const byRotation = computeRotationContactStats(playerContacts);
+  const row = {};
+  for (let r = 1; r <= 6; r++) row[`rot${r}_apr`] = byRotation[r]?.apr ?? null;
+  return row;
+}
+
+/**
  * In-System vs Out-of-System first-ball offense stats.
  *
  * IS  = serve-receive pass rated 3 → track the first attack outcome after that pass
@@ -1034,11 +1046,13 @@ export function computePlayerTrends(matches, contacts, setsPerMatch, playerPosit
   // Pass 1: compute per-match stats and collect all player IDs up front.
   // Avoids the O(n²) new Array(i).fill(null) pattern for late-discovered players.
   const allPlayerIds = new Set();
+  const contactsByMatch = [];
   const statsByMatch = sorted.map((match) => {
     const mc = byMatch[match.id] ?? [];
     const sp = setsPerMatch[match.id] ?? 1;
     const ms = computePlayerStats(mc, sp, playerPositions);
     for (const pid of Object.keys(ms)) allPlayerIds.add(pid);
+    contactsByMatch.push(mc);
     return ms;
   });
 
@@ -1049,7 +1063,8 @@ export function computePlayerTrends(matches, contacts, setsPerMatch, playerPosit
     const matchId = sorted[i].id;
     const ms = statsByMatch[i];
     for (const pid of allPlayerIds) {
-      byPlayer[pid].push(ms[pid] ? { matchId, ...ms[pid] } : null);
+      const rotApr = ms[pid] ? computePlayerRotationPassing(contactsByMatch[i], Number(pid)) : null;
+      byPlayer[pid].push(ms[pid] ? { matchId, ...ms[pid], ...rotApr } : null);
     }
   }
 
@@ -1261,9 +1276,11 @@ export function computeExpectedPts(rotationRates, startRot, serveSide, isDecider
   return dp(0, 0, startRot ?? 1, serveSide === 'us' ? 'us' : 'them');
 }
 
-export function computeSetWinProb(p, q, ourScore, oppScore, serveSide, isDecider = false) {
+export function computeSetWinProb(p, q, ourScore, oppScore, serveSide, isDecider = false, externalMemo = null) {
   const target = isDecider ? 15 : 25;
-  const memo = new Map();
+  // Callers that re-evaluate the same (p, q) many times (e.g. computePlayerWPA across
+  // a whole season) can pass their own persistent Map so repeated states aren't re-solved.
+  const memo = externalMemo ?? new Map();
 
   function dp(s1, s2, side) {
     if (s1 >= target && s1 >= s2 + 2) return 1;
@@ -1457,8 +1474,11 @@ export function calibrateMatchWinProb(rawProb) { return calibrateWinProb(rawProb
 export function calibrateSetWinProb(rawProb)   { return calibrateWinProb(rawProb, SET_WP_CALIBRATION); }
 
 // Per-player Win Probability Added (WPA) using a rally-by-rally Markov delta.
-// For each rally: compute WP_before and WP_after using the flat p/q model,
-// then attribute the delta (WP_after − WP_before) to the terminal-contact player.
+// For each rally: compute WP_before and WP_after using the same uncertainty-aware,
+// calibrated model as the live win-probability meter (computeSetWinProbUncertain +
+// calibrateSetWinProb), then attribute the delta (WP_after − WP_before) to the
+// terminal-contact player. pAlpha/pBeta/qAlpha/qBeta are the Beta-shape params from
+// computePQ (same blended prior/live estimate used for the live meter).
 //
 // Terminal contact attribution (our team only):
 //   We won  → ACE (server), KILL (attacker), BS (blocker), BA (split between assisters)
@@ -1467,8 +1487,33 @@ export function calibrateSetWinProb(rawProb)   { return calibrateWinProb(rawProb
 //   Opponent error / opponent earned point → unattributed
 //
 // Returns { [playerId]: { wpa, wpa_pos, wpa_neg, wpa_count } }
-export function computePlayerWPA(contacts, rallies, p = WP_FALLBACK_P, q = WP_FALLBACK_Q) {
+export function computePlayerWPA(
+  contacts, rallies,
+  pAlpha = WP_FALLBACK_P * BAYES_K, pBeta = (1 - WP_FALLBACK_P) * BAYES_K,
+  qAlpha = WP_FALLBACK_Q * BAYES_K, qBeta = (1 - WP_FALLBACK_Q) * BAYES_K,
+) {
   if (!rallies?.length || !contacts?.length) return {};
+
+  // pAlpha/pBeta/qAlpha/qBeta are fixed for this whole call, so the 5x5 quantile
+  // grid (see computeSetWinProbUncertain) and its DP results are reusable across
+  // every rally/set/match this function processes — the win-prob for a given
+  // (p, q, score, side) never changes. Without this cache, computeSetWinProbUncertain
+  // resolves the same handful of low-score states from scratch millions of times
+  // over a season (measured: ~35s for one team's season vs a few ms with it).
+  const pPoints = WP_UNCERTAINTY_QUANTILES.map((lvl) => betaQuantile(lvl, pAlpha, pBeta));
+  const qPoints = WP_UNCERTAINTY_QUANTILES.map((lvl) => betaQuantile(lvl, qAlpha, qBeta));
+  const memoGridRegular = pPoints.map(() => qPoints.map(() => new Map()));
+  const memoGridDecider = pPoints.map(() => qPoints.map(() => new Map()));
+  function wp(ourScore, oppScore, serveSide, isDecider) {
+    const grid = isDecider ? memoGridDecider : memoGridRegular;
+    let sum = 0;
+    for (let i = 0; i < pPoints.length; i++) {
+      for (let j = 0; j < qPoints.length; j++) {
+        sum += computeSetWinProb(pPoints[i], qPoints[j], ourScore, oppScore, serveSide, isDecider, grid[i][j]);
+      }
+    }
+    return calibrateSetWinProb(sum / (pPoints.length * qPoints.length));
+  }
 
   // Group all contacts (incl. opponent) by set_id + rally_number
   const contactsByRally = new Map();
@@ -1503,7 +1548,7 @@ export function computePlayerWPA(contacts, rallies, p = WP_FALLBACK_P, q = WP_FA
       const rally = setRallies[i];
       const next  = setRallies[i + 1];
 
-      const wpBefore = computeSetWinProb(p, q, ourScore, oppScore, rally.serve_side, isDecider);
+      const wpBefore = wp(ourScore, oppScore, rally.serve_side, isDecider);
 
       if (rally.point_winner === 'us') ourScore++; else oppScore++;
 
@@ -1513,7 +1558,7 @@ export function computePlayerWPA(contacts, rallies, p = WP_FALLBACK_P, q = WP_FA
       if (setEnded || !next) {
         wpAfter = rally.point_winner === 'us' ? 1 : 0;
       } else {
-        wpAfter = computeSetWinProb(p, q, ourScore, oppScore, next.serve_side, isDecider);
+        wpAfter = wp(ourScore, oppScore, next.serve_side, isDecider);
       }
 
       const delta = wpAfter - wpBefore;

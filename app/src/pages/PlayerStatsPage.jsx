@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import { db } from '../db/schema';
 import { SCHOOL_YEAR_CLS } from '../constants';
-import { computePlayerStats, computePlayerTrends, computeTeamStats, computePlayerWPA, computePQ } from '../stats/engine';
+import { computePlayerStats, computePlayerTrends, computeTeamStats, computePlayerWPA, computePQ, computePlayerRotationPassing } from '../stats/engine';
 import {
   getContactsForMatches,
   getBatchSetsPlayedCount,
@@ -76,6 +76,12 @@ const TREND_OPTS = {
     { key: 'pa',     label: 'PA',    color: '#94a3b8' },
     { key: 'p3',     label: 'P3',    color: '#22c55e' },
     { key: 'p0',     label: 'P0',    color: '#ef4444' },
+    { key: 'rot1_apr', label: 'R1 APR', color: '#f97316', fmt: v => Number(v).toFixed(2) },
+    { key: 'rot2_apr', label: 'R2 APR', color: '#eab308', fmt: v => Number(v).toFixed(2) },
+    { key: 'rot3_apr', label: 'R3 APR', color: '#22c55e', fmt: v => Number(v).toFixed(2) },
+    { key: 'rot4_apr', label: 'R4 APR', color: '#38bdf8', fmt: v => Number(v).toFixed(2) },
+    { key: 'rot5_apr', label: 'R5 APR', color: '#818cf8', fmt: v => Number(v).toFixed(2) },
+    { key: 'rot6_apr', label: 'R6 APR', color: '#e879f9', fmt: v => Number(v).toFixed(2) },
   ],
   attacking: [
     { key: 'k',       label: 'K',    color: '#22c55e' },
@@ -152,7 +158,7 @@ function PerGameTrendGraph({ rows, statTab, serveView, initialKey }) {
         <LineChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
           <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} axisLine={false} />
-          <YAxis domain={sel.key === 'apr' ? [0, 3] : ['auto', 'auto']} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
+          <YAxis domain={sel.key === 'apr' || sel.key.endsWith('_apr') ? [0, 3] : ['auto', 'auto']} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
           <Tooltip
             contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }}
             labelFormatter={(_, payload) => payload?.[0]?.payload?.opp ?? ''}
@@ -497,20 +503,21 @@ export function PlayerStatsPage() {
     ])
       .then(([contacts, setsPerMatch, playerPositions, teamPoints, oppPoints, rallies]) => {
         const allStats  = computePlayerStats(contacts, 1, playerPositions);
-        const playerRow = allStats[pid] ?? null;
+        const rotApr    = computePlayerRotationPassing(contacts, pid);
+        const playerRow = allStats[pid] ? { ...allStats[pid], ...rotApr } : null;
         const allRows   = Object.values(allStats).filter(r => (r.sp ?? 0) > 0);
         const trends    = computePlayerTrends(matches, contacts, setsPerMatch, playerPositions);
         const teamRow   = computeTeamStats(contacts, 1);
 
         // Per-match WPA: group contacts + rallies by match, compute WPA for each
-        const { p, q } = computePQ(rallies);
+        const { pAlpha, pBeta, qAlpha, qBeta } = computePQ(rallies);
         const contactByMatch = {};
         for (const c of contacts) (contactByMatch[c.match_id] ??= []).push(c);
         const rallyByMatch = {};
         for (const r of rallies) (rallyByMatch[r.match_id] ??= []).push(r);
         const wpaByMatch = {};
         for (const m of matches) {
-          const wpa = computePlayerWPA(contactByMatch[m.id] ?? [], rallyByMatch[m.id] ?? [], p, q);
+          const wpa = computePlayerWPA(contactByMatch[m.id] ?? [], rallyByMatch[m.id] ?? [], pAlpha, pBeta, qAlpha, qBeta);
           wpaByMatch[m.id] = wpa[String(pid)] ?? null;
         }
 
