@@ -720,13 +720,13 @@ export function SeasonDetailPage() {
                     key={match.id}
                     onDeleteConfirm={() => setConfirmDelete(match)}
                   >
-                  <button
+                  <div
                     onClick={() => navigate(
                       match.status === MATCH_STATUS.COMPLETE
                         ? `/matches/${match.id}/summary`
                         : `/matches/${match.id}/live`
                     )}
-                    className="w-full bg-surface rounded-xl px-4 py-3 text-left flex items-center justify-between hover:bg-slate-700 transition-colors"
+                    className="group w-full bg-surface rounded-xl px-4 py-3 text-left flex items-center justify-between hover:bg-slate-700 transition-colors cursor-pointer"
                   >
                     <div>
                       <div className="font-semibold">
@@ -776,6 +776,20 @@ export function SeasonDetailPage() {
                           MaxPreps
                         </button>
                       )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setConfirmDelete(match); }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-slate-500 hover:text-red-400"
+                        title="Delete match"
+                        aria-label="Delete match"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                          <path d="M10 11v6" />
+                          <path d="M14 11v6" />
+                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                        </svg>
+                      </button>
                       <div className="text-right flex flex-col items-end gap-0.5">
                         <div className="flex items-center gap-1.5">
                           {match.status === MATCH_STATUS.COMPLETE && (() => {
@@ -795,7 +809,7 @@ export function SeasonDetailPage() {
                         </div>
                       </div>
                     </div>
-                  </button>
+                  </div>
                   </SwipeableMatchCard>
                 );
               })}

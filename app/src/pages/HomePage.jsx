@@ -268,13 +268,13 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
                   </div>
                 </div>
               ) : (
-                <button
+                <div
                   onClick={() => navigate(
                     match.status === MATCH_STATUS.COMPLETE
                       ? `/matches/${match.id}/summary`
                       : `/matches/${match.id}/live`
                   )}
-                  className={`w-full bg-surface p-4 text-left flex items-center justify-between hover:bg-slate-700 rounded-xl transition-colors border-l-4 ${
+                  className={`group w-full bg-surface p-4 text-left flex items-center justify-between hover:bg-slate-700 rounded-xl transition-colors border-l-4 cursor-pointer ${
                     match.status === MATCH_STATUS.COMPLETE
                       ? (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0) ? 'border-emerald-600' : 'border-red-700'
                       : match.status === MATCH_STATUS.IN_PROGRESS ? 'border-primary' : 'border-transparent'
@@ -317,29 +317,45 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
                       )}
                     </div>
                   </div>
-                  <div className="text-right flex flex-col items-end gap-1">
-                    <div className="flex items-center gap-1.5">
-                      {match.status === MATCH_STATUS.COMPLETE && (() => {
-                        const won = (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
-                        return (
-                          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${won ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
-                            {won ? 'W' : 'L'}
-                          </span>
-                        );
-                      })()}
-                      {scoreDetail === 'scores' && match.sets?.length
-                        ? <span className="text-xs font-mono text-slate-300">{fmtSetScores(match.sets)}</span>
-                        : <SetPips ourSets={match.our_sets_won} oppSets={match.opp_sets_won} />
-                      }
-                    </div>
-                    <div className={`text-xs flex items-center gap-1 ${match.status === MATCH_STATUS.IN_PROGRESS ? 'text-primary' : 'text-slate-400'}`}>
-                      {match.status === MATCH_STATUS.IN_PROGRESS && (
-                        <span className="serve-pulse inline-block w-1.5 h-1.5 rounded-full bg-primary" />
-                      )}
-                      {match.status === MATCH_STATUS.IN_PROGRESS ? 'Live' : match.status === MATCH_STATUS.COMPLETE ? 'Final' : 'Setup'}
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDeleteConfirm(match); }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-slate-500 hover:text-red-400"
+                      title="Delete match"
+                      aria-label="Delete match"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                        <path d="M10 11v6" />
+                        <path d="M14 11v6" />
+                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                      </svg>
+                    </button>
+                    <div className="text-right flex flex-col items-end gap-1">
+                      <div className="flex items-center gap-1.5">
+                        {match.status === MATCH_STATUS.COMPLETE && (() => {
+                          const won = (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
+                          return (
+                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${won ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
+                              {won ? 'W' : 'L'}
+                            </span>
+                          );
+                        })()}
+                        {scoreDetail === 'scores' && match.sets?.length
+                          ? <span className="text-xs font-mono text-slate-300">{fmtSetScores(match.sets)}</span>
+                          : <SetPips ourSets={match.our_sets_won} oppSets={match.opp_sets_won} />
+                        }
+                      </div>
+                      <div className={`text-xs flex items-center gap-1 ${match.status === MATCH_STATUS.IN_PROGRESS ? 'text-primary' : 'text-slate-400'}`}>
+                        {match.status === MATCH_STATUS.IN_PROGRESS && (
+                          <span className="serve-pulse inline-block w-1.5 h-1.5 rounded-full bg-primary" />
+                        )}
+                        {match.status === MATCH_STATUS.IN_PROGRESS ? 'Live' : match.status === MATCH_STATUS.COMPLETE ? 'Final' : 'Setup'}
+                      </div>
                     </div>
                   </div>
-                </button>
+                </div>
               )}
             </SwipeableMatchCard>
           ))}
@@ -1544,13 +1560,13 @@ export function HomePage() {
                   </div>
                 </div>
               ) : (
-                <button
+                <div
                   onClick={() => navigate(
                     match.status === MATCH_STATUS.COMPLETE
                       ? `/matches/${match.id}/summary`
                       : `/matches/${match.id}/live`
                   )}
-                  className={`w-full bg-surface p-4 text-left flex items-center justify-between hover:bg-slate-700 rounded-xl transition-colors border-l-4 ${
+                  className={`group w-full bg-surface p-4 text-left flex items-center justify-between hover:bg-slate-700 rounded-xl transition-colors border-l-4 cursor-pointer ${
                     match.status === MATCH_STATUS.COMPLETE
                       ? (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0)
                         ? 'border-emerald-600'
@@ -1600,31 +1616,47 @@ export function HomePage() {
                       </span>
                     </div>
                   </div>
-                  <div className="text-right flex flex-col items-end gap-1">
-                    <div className="flex items-center gap-1.5">
-                      {match.status === MATCH_STATUS.COMPLETE && (() => {
-                        const won = (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
-                        return (
-                          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${won ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
-                            {won ? 'W' : 'L'}
-                          </span>
-                        );
-                      })()}
-                      {scoreDetail === 'scores' && match.sets?.length
-                        ? <span className="text-xs font-mono text-slate-300">{fmtSetScores(match.sets)}</span>
-                        : <SetPips ourSets={match.our_sets_won} oppSets={match.opp_sets_won} />
-                      }
-                    </div>
-                    <div className={`text-xs flex items-center gap-1 ${match.status === MATCH_STATUS.IN_PROGRESS ? 'text-primary' : 'text-slate-400'}`}>
-                      {match.status === MATCH_STATUS.IN_PROGRESS && (
-                        <span className="serve-pulse inline-block w-1.5 h-1.5 rounded-full bg-primary" />
-                      )}
-                      {match.status === MATCH_STATUS.IN_PROGRESS ? 'Live'
-                        : match.status === MATCH_STATUS.COMPLETE ? 'Final'
-                        : 'Setup'}
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setConfirmDelete(match); }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-slate-500 hover:text-red-400"
+                      title="Delete match"
+                      aria-label="Delete match"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                        <path d="M10 11v6" />
+                        <path d="M14 11v6" />
+                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                      </svg>
+                    </button>
+                    <div className="text-right flex flex-col items-end gap-1">
+                      <div className="flex items-center gap-1.5">
+                        {match.status === MATCH_STATUS.COMPLETE && (() => {
+                          const won = (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
+                          return (
+                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${won ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
+                              {won ? 'W' : 'L'}
+                            </span>
+                          );
+                        })()}
+                        {scoreDetail === 'scores' && match.sets?.length
+                          ? <span className="text-xs font-mono text-slate-300">{fmtSetScores(match.sets)}</span>
+                          : <SetPips ourSets={match.our_sets_won} oppSets={match.opp_sets_won} />
+                        }
+                      </div>
+                      <div className={`text-xs flex items-center gap-1 ${match.status === MATCH_STATUS.IN_PROGRESS ? 'text-primary' : 'text-slate-400'}`}>
+                        {match.status === MATCH_STATUS.IN_PROGRESS && (
+                          <span className="serve-pulse inline-block w-1.5 h-1.5 rounded-full bg-primary" />
+                        )}
+                        {match.status === MATCH_STATUS.IN_PROGRESS ? 'Live'
+                          : match.status === MATCH_STATUS.COMPLETE ? 'Final'
+                          : 'Setup'}
+                      </div>
                     </div>
                   </div>
-                </button>
+                </div>
               )}
             </SwipeableMatchCard>
           ))}
