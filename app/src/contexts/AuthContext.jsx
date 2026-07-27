@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import Dexie from 'dexie';
 import { supabase } from '../utils/supabase';
-import { saveToCloud, restoreFromCloud } from '../stats/backup';
+import { syncWithCloud } from '../stats/backup';
 import { resolvePlanFromProfile } from '../utils/planLimits';
 import { PENDING_PLAN_KEY, startPlanCheckout } from '../utils/checkout';
 import { router } from '../router';
@@ -166,21 +166,16 @@ export function AuthProvider({ children }) {
     // local data under a different user's cloud backup.
     if (db.name !== `VBAPPv2_${session.user.id}`) return;
     try {
-      const teamCount = await db.teams.count();
-      if (teamCount === 0) {
-        // Auto-restore must respect the same plan limits as the manual "Restore
-        // from Cloud" button — otherwise an oversized/stale cloud backup can
-        // silently reappear on any device where local data is empty.
-        const { data: prof } = await supabase
-          .from('profiles')
-          .select('plan, plan_expires_at')
-          .eq('id', session.user.id)
-          .single();
-        const { teamsAllowed, matchLimit } = resolvePlanFromProfile(prof);
-        await restoreFromCloud(supabase, { session, teamsAllowed, matchLimit });
-      } else {
-        await saveToCloud(supabase, session);
-      }
+      // Plan limits are enforced the same way as the manual "Restore from Cloud"
+      // button — otherwise an oversized/stale cloud backup could silently
+      // reappear via merge on a device that's under its plan's limits.
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('plan, plan_expires_at')
+        .eq('id', session.user.id)
+        .single();
+      const { teamsAllowed, matchLimit, isMaster } = resolvePlanFromProfile(prof);
+      await syncWithCloud(supabase, session, { teamsAllowed, matchLimit, isMaster });
     } catch {
       // Sync failures are silent — app still works offline
     }

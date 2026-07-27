@@ -6,7 +6,7 @@ import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { Modal } from '../components/ui/Modal';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
-import { exportBackup, importBackup, restoreAutoBackup, saveToCloud, restoreFromCloud } from '../stats/backup';
+import { exportBackup, importBackup, restoreAutoBackup, saveToCloud, restoreFromCloud, syncWithCloud } from '../stats/backup';
 import { supabase } from '../utils/supabase';
 import { MergeBackupModal } from '../components/settings/MergeBackupModal';
 import { TERMS_STORAGE_KEY } from '../components/auth/TermsGate';
@@ -1415,7 +1415,7 @@ export function SettingsPage() {
   async function handleSaveToCloud() {
     setCloudSaving(true);
     try {
-      await saveToCloud(supabase, session);
+      await syncWithCloud(supabase, session, { teamsAllowed, matchLimit, isMaster });
       const now = new Date().toISOString();
       setLastCloudSave(now);
       showToast('Saved to cloud', 'success');

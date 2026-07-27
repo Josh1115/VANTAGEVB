@@ -10,6 +10,8 @@ import { publishPvStats } from '../utils/supabase';
 import { SET_STATUS, FORMAT, SIDE, MATCH_STATUS } from '../constants';
 import { useRecordAlerts } from '../hooks/useRecordAlerts';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { useAuth } from '../contexts/AuthContext';
+import { usePlan } from '../hooks/usePlan';
 import { haptic } from '../utils/haptic';
 import { STORAGE_KEYS, getBoolStorage, setBoolStorage, getStorageItem } from '../utils/storage';
 import { autoSaveBackup, exportBackup } from '../stats/backup';
@@ -31,6 +33,8 @@ import { ServeZoneModal } from '../components/match/ServeZoneModal';
 
 export function LiveMatchPage() {
   const { matchId: matchIdParam } = useParams();
+  const { session } = useAuth();
+  const { teamsAllowed, matchLimit, isMaster } = usePlan();
   const navigate       = useNavigate();
   const [searchParams] = useSearchParams();
   const isRevising     = searchParams.get('revise') === '1';
@@ -597,7 +601,7 @@ export function LiveMatchPage() {
           onEndMatch={async (winner) => {
             await endMatch(winner);
             stopBroadcast();
-            autoSaveBackup('match_end').catch(() => {});
+            autoSaveBackup('match_end', { session, teamsAllowed, matchLimit, isMaster }).catch(() => {});
             setExportPromptNav(() => () => {
               if (winner === SIDE.US) {
                 setConfettiNav({ path: `/matches/${matchIdParam}/summary`, matchWin: true });
@@ -697,7 +701,7 @@ export function LiveMatchPage() {
               } else if (isMatchOver) {
                 await endMatch(pendingSetWin);
                 stopBroadcast();
-                autoSaveBackup('match_end').catch(() => {});
+                autoSaveBackup('match_end', { session, teamsAllowed, matchLimit, isMaster }).catch(() => {});
                 clearPendingSetWin();
                 const winner = pendingSetWin;
                 setExportPromptNav(() => () => {

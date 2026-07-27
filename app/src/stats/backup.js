@@ -1,6 +1,7 @@
 import { db } from '../db/schema';
 import { STORAGE_KEYS } from '../utils/storage';
 import { supabase } from '../utils/supabase';
+import { parseMergePreviewFromData, executeMerge } from './merge';
 
 const BACKUP_VERSION = 1;
 
@@ -96,7 +97,7 @@ export async function exportBackup() {
 
 const MAX_AUTO_BACKUPS = 5;
 
-export async function autoSaveBackup(label = 'auto') {
+export async function autoSaveBackup(label = 'auto', { session, teamsAllowed, matchLimit, isMaster } = {}) {
   const data = await collectBackupData();
   await db.auto_backups.add({ created_at: new Date().toISOString(), label, data });
 
@@ -106,7 +107,7 @@ export async function autoSaveBackup(label = 'auto') {
     await db.auto_backups.bulkDelete(toDelete);
   }
 
-  saveToCloud(supabase).catch(() => {});
+  syncWithCloud(supabase, session, { teamsAllowed, matchLimit, isMaster }).catch(() => {});
 }
 
 export async function restoreAutoBackup(backupId, { teamsAllowed = Infinity, matchLimit = Infinity } = {}) {
@@ -231,6 +232,47 @@ export async function restoreFromCloud(supabase, { teamsAllowed = Infinity, matc
     .from('profiles')
     .update({ matches_created: backupMatchCount })
     .eq('id', user.id);
+}
+
+// Merge the cloud backup into this device (never deleting local rows), then push the
+// combined result back up. Used instead of a plain overwrite so two coaches signed into
+// the same account on different devices (e.g. Varsity + JV) don't erase each other's data
+// when they sync — each device's new/unique records are additive, matched by team/season/
+// opponent/date rather than by row id, so two different games are always kept as two rows.
+export async function syncWithCloud(supabase, session, { teamsAllowed = Infinity, matchLimit = Infinity, isMaster = false } = {}) {
+  const user = session?.user;
+  if (!user) throw new Error('Not signed in');
+
+  const localTeamCount = await db.teams.count();
+  if (localTeamCount === 0) {
+    // Nothing local to merge with — behave like a plain restore (respects plan limits).
+    await restoreFromCloud(supabase, { session, teamsAllowed, matchLimit });
+    return;
+  }
+
+  const { data: cloudRow, error } = await supabase
+    .from('backups')
+    .select('payload')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (error) throw error;
+
+  if (cloudRow?.payload) {
+    const cloudData = migrateBackup({ ...cloudRow.payload });
+    const preview = await parseMergePreviewFromData(cloudData);
+    if (preview.valid) {
+      const decisions = {};
+      // No one is present to resolve conflicts during an automatic sync — default to
+      // keeping the local version so this can never silently overwrite a match someone
+      // is actively scoring on this device. True same-game conflicts are rare (it would
+      // take two devices editing the identical opponent/date/team) and can still be
+      // resolved manually via Import & Merge.
+      for (const c of preview.conflicts) decisions[c.importedId] = 'keep';
+      await executeMerge(preview, decisions, { isMaster, matchLimit });
+    }
+  }
+
+  await saveToCloud(supabase, session);
 }
 
 export async function getCloudBackupMeta(supabase, session) {

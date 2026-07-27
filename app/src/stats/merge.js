@@ -32,7 +32,12 @@ export async function parseMergePreview(file) {
   } catch {
     return { valid: false, error: 'Invalid file — could not parse JSON.' };
   }
+  return parseMergePreviewFromData(data);
+}
 
+// Same as parseMergePreview, but for callers that already have a parsed backup
+// object (e.g. a cloud payload) instead of a File to read.
+export async function parseMergePreviewFromData(data) {
   if (!data.version) return { valid: false, error: 'Invalid backup: missing version field.' };
 
   const required = ['organizations', 'teams', 'seasons', 'players', 'opponents', 'matches', 'sets', 'rallies', 'contacts'];

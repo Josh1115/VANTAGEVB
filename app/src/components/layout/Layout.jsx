@@ -6,6 +6,7 @@ import { useUiStore, selectToast } from '../../store/uiStore';
 import { autoSaveBackup } from '../../stats/backup';
 import { useInstallPrompt } from '../../hooks/useInstallPrompt';
 import { usePlan } from '../../hooks/usePlan';
+import { useAuth } from '../../contexts/AuthContext';
 
 const IOS_BANNER_KEY     = 'vbstat_ios_install_dismissed';
 const ANDROID_BANNER_KEY = 'vbstat_android_install_dismissed';
@@ -162,13 +163,16 @@ function ExpiryBanner() {
 
 export function Layout() {
   const { pathname } = useLocation();
+  const { session } = useAuth();
+  const { teamsAllowed, matchLimit, isMaster } = usePlan();
   const toast = useUiStore(selectToast);
   const hideNav = HIDE_NAV.some((p) => pathname.includes(p));
 
   useEffect(() => {
     if (sessionStorage.getItem('vbstat_auto_backup_done')) return;
     sessionStorage.setItem('vbstat_auto_backup_done', '1');
-    autoSaveBackup('app_open').catch(() => {});
+    autoSaveBackup('app_open', { session, teamsAllowed, matchLimit, isMaster }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
