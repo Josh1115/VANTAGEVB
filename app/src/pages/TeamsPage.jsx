@@ -8,6 +8,7 @@ import { useUiStore, selectShowToast } from '../store/uiStore';
 import { JERSEY_COLORS } from '../constants';
 import { STORAGE_KEYS, getIntStorage, setStorageItem } from '../utils/storage';
 import { countActiveSeasonTeams } from '../utils/teams';
+import { addTombstone, tombstoneKeyForOrg, tombstoneKeyForTeam } from '../stats/merge';
 
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
@@ -590,6 +591,7 @@ export function TeamsPage() {
           await db.teams.bulkDelete(teamIds);
         }
         await db.organizations.delete(deleteOrg.id);
+        await addTombstone('organization', tombstoneKeyForOrg(deleteOrg.name));
       });
       clearStaleDefaults(teamIds, seasonIds);
       setDeleteOrg(null);
@@ -609,6 +611,7 @@ export function TeamsPage() {
       const setIds      = sets.map(s => s.id);
       const accoTypes   = await db.accolade_types.where('team_id').equals(deleteTeam.id).toArray();
       const accoTypeIds = accoTypes.map(a => a.id);
+      const org         = await db.organizations.get(deleteTeam.org_id);
 
       await db.transaction('rw', db.tables, async () => {
         if (setIds.length) {
@@ -641,6 +644,7 @@ export function TeamsPage() {
           db.accolade_winners.where('team_id').equals(deleteTeam.id).delete(),
         ]);
         await db.teams.delete(deleteTeam.id);
+        if (org) await addTombstone('team', tombstoneKeyForTeam(org.name, deleteTeam));
       });
       clearStaleDefaults([deleteTeam.id], seasonIds);
       setDeleteTeam(null);

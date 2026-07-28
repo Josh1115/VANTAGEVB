@@ -1,7 +1,8 @@
 import { db } from '../db/schema';
 import { STORAGE_KEYS } from '../utils/storage';
 import { supabase } from '../utils/supabase';
-import { parseMergePreviewFromData, executeMerge } from './merge';
+import { parseMergePreviewFromData, executeMerge, tombstoneKeyForMatch } from './merge';
+import { deleteMatch } from './queries';
 
 const BACKUP_VERSION = 1;
 
@@ -16,6 +17,7 @@ const OPTIONAL_TABLES = [
   'saved_lineups', 'records', 'practice_sessions',
   'opp_tendencies', 'timeouts', 'historical_records', 'season_history',
   'tourney_entries', 'player_commits', 'accolade_types', 'accolade_winners',
+  'tombstones',
 ];
 
 const ALL_TABLES = [...REQUIRED_TABLES, ...OPTIONAL_TABLES];
@@ -61,6 +63,11 @@ async function collectBackupData() {
 }
 
 async function applyBackupData(data) {
+  // Full restore/import replaces every table wholesale — capture this device's
+  // own deletion history first so it survives the wipe even if the incoming
+  // payload predates it and doesn't know about it yet.
+  const localTombstones = await db.tombstones.toArray();
+
   await db.transaction('rw', db.tables, async () => {
     for (const table of [...ALL_TABLES].reverse()) {
       await db[table].clear();
@@ -71,12 +78,42 @@ async function applyBackupData(data) {
         await db[table].bulkAdd(rows);
       }
     }
+    for (const t of localTombstones) {
+      const exists = await db.tombstones.where('[type+key]').equals([t.type, t.key]).first();
+      if (!exists) await db.tombstones.add({ type: t.type, key: t.key, deleted_at: t.deleted_at });
+    }
   });
+
+  // Now that every known deletion (local + incoming) is recorded, remove any
+  // match the payload brought back that this device had already deleted.
+  await removeTombstonedMatches();
 
   if (data.settings && typeof data.settings === 'object') {
     for (const [key, value] of Object.entries(data.settings)) {
       if (typeof value === 'string' && !BLOCKED_SETTINGS_KEYS.has(key)) localStorage.setItem(key, value);
     }
+  }
+}
+
+async function removeTombstonedMatches() {
+  const tombstones = await db.tombstones.where('type').equals('match').toArray();
+  if (!tombstones.length) return;
+  const tombstoneSet = new Set(tombstones.map(t => t.key));
+
+  const [orgs, teams, seasons, matches] = await Promise.all([
+    db.organizations.toArray(), db.teams.toArray(), db.seasons.toArray(), db.matches.toArray(),
+  ]);
+  const orgById    = new Map(orgs.map(o => [o.id, o]));
+  const teamById   = new Map(teams.map(t => [t.id, t]));
+  const seasonById = new Map(seasons.map(s => [s.id, s]));
+
+  for (const m of matches) {
+    const season = seasonById.get(m.season_id);
+    const team   = season ? teamById.get(season.team_id) : null;
+    const org    = team ? orgById.get(team.org_id) : null;
+    if (!season || !team || !org) continue;
+    const key = tombstoneKeyForMatch(org.name, team, season.year, m);
+    if (tombstoneSet.has(key)) await deleteMatch(m.id);
   }
 }
 

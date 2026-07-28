@@ -22,6 +22,30 @@ const nkPlayer = p => `${p.jersey_number ?? ''}|${norm(p.name)}`;
 const nkOpp    = o => norm(o.name);
 const nkMatch  = m => `${norm(m.opponent_name)}|${(m.date ?? '').slice(0, 10)}`;
 
+// ── Tombstones ────────────────────────────────────────────────────────────────
+// Deliberate deletes are recorded here (by natural key, not local row id, since
+// ids differ per device) so a cloud sync can't silently re-add something the user
+// threw away. Keys are built from the same natural-key fields as the nk* helpers
+// above so a deleted item and its cloud twin always hash to the same string.
+
+export function tombstoneKeyForOrg(orgName) {
+  return norm(orgName);
+}
+export function tombstoneKeyForTeam(orgName, team) {
+  return `${norm(orgName)}|${nkTeam(team)}`;
+}
+export function tombstoneKeyForMatch(orgName, team, seasonYear, match) {
+  return `${norm(orgName)}|${nkTeam(team)}|${String(seasonYear ?? '')}|${nkMatch(match)}`;
+}
+
+// Records a delete. De-duped on (type, key) so re-deleting something that's
+// already gone (e.g. via a stale UI state) doesn't pile up duplicate rows.
+export async function addTombstone(type, key) {
+  const existing = await db.tombstones.where('[type+key]').equals([type, key]).first();
+  if (existing) return;
+  await db.tombstones.add({ type, key, deleted_at: new Date().toISOString() });
+}
+
 // ── Phase 1 — Preview (read-only) ─────────────────────────────────────────────
 
 export async function parseMergePreview(file) {
@@ -45,18 +69,23 @@ export async function parseMergePreviewFromData(data) {
   if (missing.length) return { valid: false, error: `Missing tables: ${missing.join(', ')}` };
 
   // Load existing DB records needed to classify imported matches
-  const [exOrgs, exTeams, exSeasons, exMatches, exContacts] = await Promise.all([
+  const [exOrgs, exTeams, exSeasons, exMatches, exContacts, exTombstones] = await Promise.all([
     db.organizations.toArray(),
     db.teams.toArray(),
     db.seasons.toArray(),
     db.matches.toArray(),
     db.contacts.toArray(),
+    db.tombstones.toArray(),
   ]);
 
   const exOrgByKey    = new Map(exOrgs.map(o    => [nkOrg(o),                       o]));
   const exTeamByKey   = new Map(exTeams.map(t   => [`${t.org_id}|${nkTeam(t)}`,     t]));
   const exSeasonByKey = new Map(exSeasons.map(s => [`${s.team_id}|${nkSeason(s)}`,  s]));
   const exMatchByKey  = new Map(exMatches.map(m => [`${m.season_id}|${nkMatch(m)}`, m]));
+  const exOrgById     = new Map(exOrgs.map(o    => [o.id, o]));
+  const exTeamById    = new Map(exTeams.map(t   => [t.id, t]));
+  const exSeasonById  = new Map(exSeasons.map(s => [s.id, s]));
+  const tombstoneSet  = new Set(exTombstones.map(t => `${t.type}::${t.key}`));
 
   const exContactsByMatch = new Map();
   for (const c of exContacts) {
@@ -117,6 +146,14 @@ export async function parseMergePreviewFromData(data) {
 
     const exMatch = exMatchByKey.get(`${exSeasonId}|${nkMatch(m)}`);
     if (!exMatch) {
+      // Don't offer to re-add a match the user deliberately deleted on this device.
+      const season = exSeasonById.get(exSeasonId);
+      const team   = season ? exTeamById.get(season.team_id) : null;
+      const org    = team ? exOrgById.get(team.org_id) : null;
+      if (season && team && org) {
+        const key = tombstoneKeyForMatch(org.name, team, season.year, m);
+        if (tombstoneSet.has(`match::${key}`)) continue;
+      }
       newMatches.push(info);
     } else {
       conflicts.push({
@@ -175,25 +212,50 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
   const exOppByKey    = new Map(exOpps.map(o    => [nkOpp(o),                       o]));
   const exMatchByKey  = new Map(exMatches.map(m => [`${m.season_id}|${nkMatch(m)}`, m]));
 
+  // Lookups by local id, seeded from existing rows and extended as new rows are
+  // added below — used to walk match → season → team → org for tombstone checks.
+  const orgNameById = new Map(exOrgs.map(o => [o.id, o.name]));
+  const teamById    = new Map(exTeams.map(t => [t.id, t]));
+  const seasonById  = new Map(exSeasons.map(s => [s.id, s]));
+
   const orgMap    = new Map(); // imported id → db id
   const teamMap   = new Map();
   const seasonMap = new Map();
   const playerMap = new Map();
   const oppMap    = new Map();
 
-  let matchesAdded    = 0;
-  let matchesReplaced = 0;
-  let matchesSkipped  = 0;
+  let matchesAdded      = 0;
+  let matchesReplaced   = 0;
+  let matchesSkipped    = 0;
+  let matchesTombstoned = 0;
 
   await db.transaction('rw', db.tables, async () => {
+
+    // ── 0. Tombstones ───────────────────────────────────────────────────────
+    // Union any deletions the cloud side knows about into our local list (so a
+    // delete recorded on one device eventually reaches every other device too),
+    // then load the full set for the skip-checks below.
+    if (Array.isArray(data.tombstones) && data.tombstones.length) {
+      const exTombRows = await db.tombstones.toArray();
+      const exTombSet  = new Set(exTombRows.map(t => `${t.type}::${t.key}`));
+      const toAdd = [];
+      for (const t of data.tombstones) {
+        const k = `${t.type}::${t.key}`;
+        if (!exTombSet.has(k)) { toAdd.push({ type: t.type, key: t.key, deleted_at: t.deleted_at }); exTombSet.add(k); }
+      }
+      if (toAdd.length) await db.tombstones.bulkAdd(toAdd);
+    }
+    const tombstoneSet = new Set((await db.tombstones.toArray()).map(t => `${t.type}::${t.key}`));
 
     // ── 1. Organizations ───────────────────────────────────────────────────
     for (const o of data.organizations) {
       const ex = exOrgByKey.get(nkOrg(o));
       if (ex) { orgMap.set(o.id, ex.id); continue; }
+      if (tombstoneSet.has(`organization::${tombstoneKeyForOrg(o.name)}`)) continue;
       const { id: _, ...rest } = o;
       const newId = await db.organizations.add(rest);
       orgMap.set(o.id, newId);
+      orgNameById.set(newId, rest.name);
       exOrgByKey.set(nkOrg({ ...rest, id: newId }), { ...rest, id: newId });
     }
 
@@ -203,9 +265,12 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
       if (exOrgId == null) continue;
       const ex = exTeamByKey.get(`${exOrgId}|${nkTeam(t)}`);
       if (ex) { teamMap.set(t.id, ex.id); continue; }
+      const orgName = orgNameById.get(exOrgId);
+      if (tombstoneSet.has(`team::${tombstoneKeyForTeam(orgName, t)}`)) continue;
       const { id: _, org_id: __, ...rest } = t;
       const newId = await db.teams.add({ ...rest, org_id: exOrgId });
       teamMap.set(t.id, newId);
+      teamById.set(newId, { ...rest, id: newId, org_id: exOrgId });
       exTeamByKey.set(`${exOrgId}|${nkTeam({ ...rest, id: newId })}`, { ...rest, id: newId, org_id: exOrgId });
     }
 
@@ -218,6 +283,7 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
       const { id: _, team_id: __, ...rest } = s;
       const newId = await db.seasons.add({ ...rest, team_id: exTeamId });
       seasonMap.set(s.id, newId);
+      seasonById.set(newId, { ...rest, id: newId, team_id: exTeamId });
     }
 
     // ── 4. Players ─────────────────────────────────────────────────────────
@@ -242,13 +308,64 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
       exOppByKey.set(nkOpp({ ...rest, id: newId }), { ...rest, id: newId });
     }
 
+    // Cascade-delete a locally-existing match row (same steps as deleteMatch()
+    // in queries.js) — shared by the "replace with imported" and "propagate a
+    // remote delete" cases below.
+    async function cascadeDeleteMatchRow(matchId) {
+      const exSets   = await db.sets.where('match_id').equals(matchId).toArray();
+      const exSetIds = exSets.map(s => s.id);
+      await db.contacts.where('match_id').equals(matchId).delete();
+      if (exSetIds.length) {
+        await db.rallies.where('set_id').anyOf(exSetIds).delete();
+        await db.lineups.where('set_id').anyOf(exSetIds).delete();
+        await db.substitutions.where('set_id').anyOf(exSetIds).delete();
+      }
+      await db.sets.where('match_id').equals(matchId).delete();
+      await db.matches.delete(matchId);
+    }
+
+    // ── 5b. Propagate remote deletions ────────────────────────────────────
+    // A device that deletes a match also removes it from its own `matches`
+    // table, so only its tombstone travels in the payload it uploads — the
+    // match row itself is simply absent from data.matches, never "in conflict"
+    // with anything. A device that never deleted it still has its own copy, so
+    // without this pass it always "wins" its own keep-local default on every
+    // sync and the deletion can never actually reach it. Check every match we
+    // still have locally against the (now-unioned) tombstone set directly,
+    // independent of whatever the incoming payload's matches array contains.
+    for (const m of exMatches) {
+      const season  = seasonById.get(m.season_id);
+      const team    = season ? teamById.get(season.team_id) : null;
+      const orgName = team ? orgNameById.get(team.org_id) : null;
+      if (!season || !team || orgName == null) continue;
+      const key = tombstoneKeyForMatch(orgName, team, season.year, m);
+      if (tombstoneSet.has(`match::${key}`)) {
+        await cascadeDeleteMatchRow(m.id);
+        exMatchByKey.delete(`${m.season_id}|${nkMatch(m)}`);
+        matchesTombstoned++;
+      }
+    }
+
     // ── 6. Matches ─────────────────────────────────────────────────────────
     for (const impMatch of data.matches) {
       const decision   = decisions[impMatch.id]; // 'keep' | 'replace' | undefined = new
       const exSeasonId = seasonMap.get(impMatch.season_id);
       if (exSeasonId == null) continue;
 
+      const exMatch = exMatchByKey.get(`${exSeasonId}|${nkMatch(impMatch)}`);
+
       if (decision === 'keep') continue;
+
+      // Don't resurrect a match the user deliberately deleted on this device.
+      if (decision == null) {
+        const season = seasonById.get(exSeasonId);
+        const team   = season ? teamById.get(season.team_id) : null;
+        const orgName = team ? orgNameById.get(team.org_id) : null;
+        if (season && team && orgName != null) {
+          const key = tombstoneKeyForMatch(orgName, team, season.year, impMatch);
+          if (tombstoneSet.has(`match::${key}`)) { matchesTombstoned++; continue; }
+        }
+      }
 
       // Net-new matches are subject to the per-season match limit
       if (decision == null && !isMaster) {
@@ -259,21 +376,9 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
         }
       }
 
-      if (decision === 'replace') {
-        const ex = exMatchByKey.get(`${exSeasonId}|${nkMatch(impMatch)}`);
-        if (ex) {
-          const exSets   = await db.sets.where('match_id').equals(ex.id).toArray();
-          const exSetIds = exSets.map(s => s.id);
-          await db.contacts.where('match_id').equals(ex.id).delete();
-          if (exSetIds.length) {
-            await db.rallies.where('set_id').anyOf(exSetIds).delete();
-            await db.lineups.where('set_id').anyOf(exSetIds).delete();
-            await db.substitutions.where('set_id').anyOf(exSetIds).delete();
-          }
-          await db.sets.where('match_id').equals(ex.id).delete();
-          await db.matches.delete(ex.id);
-          matchesReplaced++;
-        }
+      if (decision === 'replace' && exMatch) {
+        await cascadeDeleteMatchRow(exMatch.id);
+        matchesReplaced++;
       }
 
       // Insert match
@@ -494,5 +599,5 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
 
   });
 
-  return { matchesAdded, matchesReplaced, matchesSkipped };
+  return { matchesAdded, matchesReplaced, matchesSkipped, matchesTombstoned };
 }

@@ -268,6 +268,11 @@ export function MergeBackupModal({ onClose, onSuccess }) {
                   <span className="font-bold text-amber-400">{result.matchesSkipped}</span> {result.matchesSkipped === 1 ? 'match' : 'matches'} skipped — season match limit reached
                 </p>
               )}
+              {result.matchesTombstoned > 0 && (
+                <p className="text-sm text-slate-300">
+                  <span className="font-bold text-slate-400">{result.matchesTombstoned}</span> {result.matchesTombstoned === 1 ? 'match' : 'matches'} skipped — previously deleted, not re-added
+                </p>
+              )}
               {result.matchesAdded === 0 && result.matchesReplaced === 0 && (
                 <p className="text-sm text-slate-400">No changes were made.</p>
               )}

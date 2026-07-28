@@ -1,4 +1,5 @@
 import { db } from '../db/schema';
+import { addTombstone, tombstoneKeyForMatch } from './merge';
 
 // ── Single-match queries ────────────────────────────────────────────────────
 
@@ -142,6 +143,13 @@ export async function deleteMatch(matchId) {
   const match  = await db.matches.get(matchId);
   const sets   = await db.sets.where('match_id').equals(matchId).toArray();
   const setIds = sets.map((s) => s.id);
+
+  // Resolve the natural-key path before the row is gone, so cloud sync knows
+  // never to bring this specific match back from an older cloud backup.
+  const season = match ? await db.seasons.get(match.season_id) : null;
+  const team   = season ? await db.teams.get(season.team_id) : null;
+  const org    = team ? await db.organizations.get(team.org_id) : null;
+
   await Promise.all([
     db.contacts.where('match_id').equals(matchId).delete(),
     db.rallies.where('set_id').anyOf(setIds).delete(),
@@ -150,6 +158,10 @@ export async function deleteMatch(matchId) {
   ]);
   await db.sets.where('match_id').equals(matchId).delete();
   await db.matches.delete(matchId);
+
+  if (match && season && team && org) {
+    await addTombstone('match', tombstoneKeyForMatch(org.name, team, season.year, match));
+  }
 
   // Clean up orphaned opponent created solely for this match
   if (match?.opponent_id) {
