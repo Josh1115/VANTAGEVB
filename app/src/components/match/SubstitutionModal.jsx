@@ -169,6 +169,9 @@ export function SubstitutionModal({ onClose }) {
   const [inPlayerId2,    setInPlayerId2]    = useState(null);
   const [roleOverride2,  setRoleOverride2]  = useState('');
 
+  // Correction — fixes a lineup mistake without spending a real substitution
+  const [isCorrection, setIsCorrection] = useState(false);
+
   const [error, setError] = useState('');
 
   const roster = useLiveQuery(
@@ -177,7 +180,7 @@ export function SubstitutionModal({ onClose }) {
   );
 
   const subsLeft = maxSubsPerSet - subsUsed;
-  const atMax    = subsLeft <= 0;
+  const atMax    = !isCorrection && subsLeft <= 0;
 
   const onCourtIds = new Set(lineup.map((sl) => sl.playerId).filter(Boolean));
 
@@ -214,16 +217,18 @@ export function SubstitutionModal({ onClose }) {
     if (!pair1Ready || confirmingRef.current) return;
     confirmingRef.current = true;
     try {
+      const correctionOpts = isCorrection ? { isCorrection: true } : undefined;
+
       const inPlayer1 = bench1.find((p) => p.id === inPlayerId);
       if (!inPlayer1) return;
 
-      const ok1 = await substitutePlayer(outPlayerId, inPlayer1, roleOverride || undefined);
+      const ok1 = await substitutePlayer(outPlayerId, inPlayer1, roleOverride || undefined, correctionOpts);
       if (!ok1) { setError('First substitution failed. Check sub limits.'); return; }
 
       if (showSecondSub && pair2Ready) {
         const inPlayer2 = bench2.find((p) => p.id === inPlayerId2);
         if (!inPlayer2) { setError('Second substitution failed.'); return; }
-        const ok2 = await substitutePlayer(outPlayerId2, inPlayer2, roleOverride2 || undefined);
+        const ok2 = await substitutePlayer(outPlayerId2, inPlayer2, roleOverride2 || undefined, correctionOpts);
         if (!ok2) { setError('Second substitution failed. Check sub limits.'); return; }
       }
 
@@ -233,9 +238,11 @@ export function SubstitutionModal({ onClose }) {
     }
   };
 
-  const confirmLabel = showSecondSub && pair2Ready
-    ? `Confirm (2 subs, ${subsLeft - 2} left)`
-    : `Confirm Sub (${subsLeft - 1} left)`;
+  const confirmLabel = isCorrection
+    ? `Confirm Override${showSecondSub && pair2Ready ? ' (2 subs)' : ''} — doesn't count`
+    : showSecondSub && pair2Ready
+      ? `Confirm (2 subs, ${subsLeft - 2} left)`
+      : `Confirm Sub (${subsLeft - 1} left)`;
 
   return (
     <Modal
@@ -255,9 +262,45 @@ export function SubstitutionModal({ onClose }) {
         {atMax && (
           <div className="px-3 py-2 rounded-lg bg-red-950 border border-red-700 text-red-300 text-xs font-semibold text-center">
             Substitution limit reached ({maxSubsPerSet}/{maxSubsPerSet})
+            <span className="block font-normal text-red-400/80 mt-0.5">
+              Fixing a lineup mistake? Turn on Override Sub below.
+            </span>
           </div>
         )}
         {error && <p className="text-red-400 text-xs text-center">{error}</p>}
+
+        {/* ── Override Sub (correction) mode ── */}
+        <div className={`rounded-lg border p-3 space-y-2 transition-colors
+          ${isCorrection ? 'bg-violet-950/40 border-violet-600/60' : 'bg-slate-800/60 border-slate-700'}`}>
+          <button
+            onPointerDown={(e) => {
+              e.preventDefault();
+              setIsCorrection((v) => !v);
+            }}
+            className="w-full flex items-center gap-2.5 text-left"
+          >
+            <span className={`w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center
+              ${isCorrection ? 'bg-violet-500 border-violet-500' : 'border-slate-500'}`}>
+              {isCorrection && (
+                <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+            </span>
+            <span>
+              <span className={`block text-xs font-bold ${isCorrection ? 'text-violet-300' : 'text-slate-300'}`}>
+                Override Sub
+              </span>
+              <span className="block text-[10px] text-slate-500">
+                Won't count toward sub limit
+              </span>
+            </span>
+          </button>
+
+          <p className="text-[11px] text-slate-500 pt-1">
+            Click the pencil icon to adjust the player's position.
+          </p>
+        </div>
 
         {/* ══ SUB 1 ══ */}
         <div className="space-y-3">
@@ -308,7 +351,7 @@ export function SubstitutionModal({ onClose }) {
         </div>
 
         {/* ── Add 2nd Sub button ── */}
-        {!showSecondSub && !atMax && subsLeft >= 2 && (
+        {!showSecondSub && !atMax && (isCorrection || subsLeft >= 2) && (
           <button
             onPointerDown={(e) => { e.preventDefault(); setShowSecondSub(true); }}
             className="w-full py-2 rounded-lg border border-dashed border-amber-600/60 text-amber-500

@@ -325,3 +325,59 @@ describe('swapLibero', () => {
     );
   });
 });
+
+describe('substitutePlayer — correction mode', () => {
+  const benchPlayer = { id: 20, name: 'Bench Player', jersey_number: '9', position: 'OH' };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    await initMatch();
+    loadLineup();
+  });
+
+  it('normal sub is blocked once the set limit is reached', async () => {
+    useMatchStore.setState({ subsUsed: useMatchStore.getState().maxSubsPerSet });
+    const ok = await useMatchStore.getState().substitutePlayer(10, benchPlayer);
+    expect(ok).toBe(false);
+    expect(db.substitutions.add).not.toHaveBeenCalled();
+  });
+
+  it('correction sub is allowed even at the set limit', async () => {
+    useMatchStore.setState({ subsUsed: useMatchStore.getState().maxSubsPerSet });
+    const ok = await useMatchStore.getState().substitutePlayer(10, benchPlayer, undefined, {
+      isCorrection: true,
+    });
+    expect(ok).toBe(true);
+    expect(useMatchStore.getState().lineup[0].playerId).toBe(20);
+  });
+
+  it('correction sub does not increment subsUsed', async () => {
+    const before = useMatchStore.getState().subsUsed;
+    await useMatchStore.getState().substitutePlayer(10, benchPlayer, undefined, {
+      isCorrection: true,
+    });
+    expect(useMatchStore.getState().subsUsed).toBe(before);
+  });
+
+  it('a normal sub still increments subsUsed as before', async () => {
+    const before = useMatchStore.getState().subsUsed;
+    await useMatchStore.getState().substitutePlayer(10, benchPlayer);
+    expect(useMatchStore.getState().subsUsed).toBe(before + 1);
+  });
+
+  it('writes is_correction on the DB row', async () => {
+    await useMatchStore.getState().substitutePlayer(10, benchPlayer, undefined, {
+      isCorrection: true,
+    });
+    expect(db.substitutions.add).toHaveBeenCalledWith(
+      expect.objectContaining({ is_correction: true })
+    );
+  });
+
+  it('a normal sub writes is_correction: false', async () => {
+    await useMatchStore.getState().substitutePlayer(10, benchPlayer);
+    expect(db.substitutions.add).toHaveBeenCalledWith(
+      expect.objectContaining({ is_correction: false })
+    );
+  });
+});

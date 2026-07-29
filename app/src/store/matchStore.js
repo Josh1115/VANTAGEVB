@@ -161,12 +161,14 @@ export function reconstructSetState({
 
   // Replay substitutions AND libero swaps together, oldest-first by
   // timestamp (rotation-independent), so the lineup reflects whoever is
-  // actually on court after a reload. Libero swaps affect the lineup and
-  // the libero-tracking fields below but don't count against the per-set
-  // sub limit, so they're excluded from subPairs/exhaustedPlayerIds/subsUsed.
+  // actually on court after a reload. Libero swaps and correction subs (fixing
+  // a lineup mistake — see substitutePlayer's isCorrection option) affect the
+  // lineup and, for libero swaps, the libero-tracking fields below, but don't
+  // count against the per-set sub limit, so both are excluded from
+  // subPairs/exhaustedPlayerIds/subsUsed.
   let lineup = baseLineup;
   const allSubsOrdered = [...(subRows ?? [])].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
-  const subsOrdered = allSubsOrdered.filter((r) => !r.libero_swap);
+  const subsOrdered = allSubsOrdered.filter((r) => !r.libero_swap && !r.is_correction);
   const subPairs = {};
   const exhaustedPlayerIds = [];
   let liberoOnCourt               = false;
@@ -200,6 +202,7 @@ export function reconstructSetState({
       }
       continue;
     }
+    if (row.is_correction) continue;
     const slotIdx = (row.position ?? 1) - 1;
     if (subPairs[row.player_in] === slotIdx) exhaustedPlayerIds.push(row.player_out, row.player_in);
     subPairs[row.player_out] = slotIdx;
@@ -1038,9 +1041,9 @@ export const useMatchStore = create((set, get) => ({
     }
   },
 
-  substitutePlayer: async (outPlayerId, inPlayer, positionOverride) => {
+  substitutePlayer: async (outPlayerId, inPlayer, positionOverride, { isCorrection = false } = {}) => {
     const s = get();
-    if (s.subsUsed >= s.maxSubsPerSet) return false;
+    if (!isCorrection && s.subsUsed >= s.maxSubsPerSet) return false;
     if (!inPlayer?.id) return false;
 
     const slotIdx = s.lineup.findIndex((sl) => sl.playerId === outPlayerId);
@@ -1077,6 +1080,7 @@ export const useMatchStore = create((set, get) => ({
         libero_swap:       false,
         in_position_label: inPositionLabel,
         timestamp:         Date.now(),
+        is_correction:     isCorrection,
       });
     } catch {
       useUiStore.getState().showToast('Sub failed. Check device storage.', 'error');
@@ -1090,7 +1094,7 @@ export const useMatchStore = create((set, get) => ({
           : sl
       ),
       playerNicknames:    { ...s.playerNicknames, [inPlayer.id]: inPlayer.nickname ?? '' },
-      subsUsed:           s.subsUsed + 1,
+      subsUsed:           isCorrection ? s.subsUsed : s.subsUsed + 1,
       subPairs:           newSubPairs,
       exhaustedPlayerIds: newExhausted,
       ...(liberoGoingOut && { liberoOnCourt: false }),

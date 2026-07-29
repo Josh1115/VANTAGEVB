@@ -162,6 +162,28 @@ describe('reconstructSetState', () => {
     expect(out.lineup.map(sl => sl.playerId)).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
+  it('replays a correction sub into the lineup but does not count it toward subsUsed', () => {
+    const out = reconstructSetState(base({
+      subRows: [
+        { player_out: 3, player_in: 9, position: 3, libero_swap: false, is_correction: true, timestamp: 100 },
+      ],
+    }));
+    expect(out.lineup.find(sl => sl.playerId === 9)).toBeTruthy();
+    expect(out.subsUsed).toBe(0);
+    expect(out.subPairs).toEqual({});
+    expect(out.exhaustedPlayerIds).toEqual([]);
+  });
+
+  it('a correction sub does not consume the real substitution count alongside normal subs', () => {
+    const out = reconstructSetState(base({
+      subRows: [
+        { player_out: 3, player_in: 9, position: 3, libero_swap: false, timestamp: 100 },
+        { player_out: 4, player_in: 7, position: 4, libero_swap: false, is_correction: true, timestamp: 200 },
+      ],
+    }));
+    expect(out.subsUsed).toBe(1);
+  });
+
   it('counts timeouts per side', () => {
     const out = reconstructSetState(base({
       timeoutRows: [{ side: 'us' }, { side: 'them' }, { side: 'us' }],
