@@ -5,11 +5,11 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMatchStore } from '../../store/matchStore';
 import { useMatchStats } from '../../hooks/useMatchStats';
 import { db } from '../../db/schema';
-import { computeTeamStats, computeOppDisplayStats, computeRotationStats, computeRotationContactStats, computeISvsOOS, computeFreeDigWin, computeTransitionAttack, computePlayerStats, computeXKByPassRating, computePointQuality, computeServingPoints, computeWinCorrelation } from '../../stats/engine';
+import { computeTeamStats, computeOppDisplayStats, computeRotationStats, computeRotationContactStats, computeISvsOOS, computeFreeDigWin, computeTransitionAttack, computePlayerStats, computeXKByPassRating, computePointQuality, computeServingPoints, computeWinCorrelation, computeDigToKill, computePlayerRotationPassing } from '../../stats/engine';
 import { StatTable } from './StatTable';
 import { PointQualityPanel } from './PointQualityPanel';
-import { fmtCount, fmtPct, fmtHitting, fmtPassRating, fmtVER } from '../../stats/formatters';
-import { SERVING_COLS as _SERVING_COLS } from '../../stats/columns';
+import { fmtCount, fmtPct, fmtHitting, fmtVER } from '../../stats/formatters';
+import { SERVING_COLS as _SERVING_COLS, TAB_COLUMNS } from '../../stats/columns';
 import { VERBadge } from './VERBadge';
 import { SetScoresStrip } from './panels/SetScoresStrip';
 import { BoxSparkline } from './panels/BoxSparkline';
@@ -33,38 +33,10 @@ const SERVING_COLS = {
 };
 
 const COLUMNS = {
-  PASSING: [
-    { key: 'name',   label: 'Player' },
-    { key: 'pa',     label: 'REC', fmt: fmtCount },
-    { key: 'p0',     label: 'P0',  fmt: fmtCount },
-    { key: 'p1',     label: 'P1',  fmt: fmtCount },
-    { key: 'p2',     label: 'P2',  fmt: fmtCount },
-    { key: 'p3',     label: 'P3',  fmt: fmtCount },
-    { key: 'apr',    label: 'APR', fmt: fmtPassRating },
-    { key: 'pp_pct', label: '3OPT%', fmt: fmtPct },
-  ],
-  ATTACKING: [
-    { key: 'name',    label: 'Player' },
-    { key: 'ta',      label: 'TA',   fmt: fmtCount },
-    { key: 'k',       label: 'K',    fmt: fmtCount },
-    { key: 'ae',      label: 'AE',   fmt: fmtCount },
-    { key: 'hit_pct', label: 'HIT%', fmt: fmtHitting },
-    { key: 'k_pct',   label: 'K%',   fmt: fmtPct },
-  ],
-  BLOCKING: [
-    { key: 'name', label: 'Player' },
-    { key: 'bs',   label: 'BS',  fmt: fmtCount },
-    { key: 'ba',   label: 'BA',  fmt: fmtCount },
-    { key: 'be',   label: 'BE',  fmt: fmtCount },
-    { key: 'bps',  label: 'BPS', fmt: fmtPassRating },
-  ],
-  DEFENSE: [
-    { key: 'name',   label: 'Player' },
-    { key: 'dig',    label: 'DIG',  fmt: fmtCount },
-    { key: 'fb_dig', label: 'FB',   fmt: fmtCount },
-    { key: 'de',     label: 'DE',   fmt: fmtCount },
-    { key: 'dips',   label: 'DiPS', fmt: fmtPassRating },
-  ],
+  PASSING:   _live(TAB_COLUMNS.passing),
+  ATTACKING: _live(TAB_COLUMNS.attacking),
+  BLOCKING:  _live(TAB_COLUMNS.blocking),
+  DEFENSE:   _live(TAB_COLUMNS.defense),
   VER: [
     { key: 'name', label: 'Player' },
     { key: 'ver',  label: 'VER',  fmt: fmtVER,  render: (v) => <VERBadge ver={v} /> },
@@ -243,6 +215,10 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
     () => computePointQuality(scopedContacts),
     [scopedContacts]
   );
+  const scopedDigToKill = useMemo(
+    () => computeDigToKill(scopedContacts, scopedRallies),
+    [scopedContacts, scopedRallies]
+  );
 
   function buildRotPts(rallies) {
     const raw = computeRotationStats(rallies ?? []);
@@ -362,6 +338,7 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
       lineup.filter(sl => sl.playerId).map(sl => [sl.playerId, sl.playerName])
     );
     const allIds = new Set([
+      ...(roster ?? []).map(p => p.id),
       ...Object.keys(lineupMap).map(Number),
       ...Object.keys(scopedPlayerStats).map(Number),
     ]);
@@ -370,6 +347,8 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
         id:     pid,
         name:   lineupMap[pid] ?? nameMap[String(pid)] ?? `#${pid}`,
         ...(scopedPlayerStats[pid] ?? {}),
+        ...(scopedDigToKill.byPlayer[String(pid)] ?? {}),
+        ...computePlayerRotationPassing(scopedContacts, pid),
         srv_pt: scopedServingPoints[pid] ?? 0,
       }))
       .sort((a, b) => {
@@ -378,7 +357,7 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
         if (aActive !== bActive) return aActive ? -1 : 1;
         return (a.name ?? '').localeCompare(b.name ?? '');
       });
-  }, [lineup, scopedPlayerStats, scopedServingPoints, nameMap]);
+  }, [lineup, roster, scopedPlayerStats, scopedDigToKill, scopedContacts, scopedServingPoints, nameMap]);
 
   if (!open) return null;
 
@@ -431,7 +410,7 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
 
       {/* Top-level tab bar */}
       <div className="flex border-b border-slate-700 flex-shrink-0">
-        {[['box', 'BOX SCORE'], ['insights', 'INSIGHTS'], ['stats', 'STATS']].map(([key, label]) => (
+        {[['box', 'BOX SCORE'], ['insights', 'INSIGHTS'], ['stats', 'PLAYER STATS']].map(([key, label]) => (
           <button
             key={key}
             onPointerDown={(e) => { e.preventDefault(); setActiveView(key); }}

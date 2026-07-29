@@ -204,6 +204,20 @@ export function TeamDetailPage() {
     }
   };
 
+  const [reactivating, setReactivating] = useState(false);
+  const archivedCount = activePlayers.filter(p => !p.is_active).length;
+  const reactivateRoster = async () => {
+    setReactivating(true);
+    try {
+      const inactive = await db.players.where('team_id').equals(id).filter(p => !p.is_active).toArray();
+      await Promise.all(inactive.map(p => db.players.update(p.id, { is_active: true })));
+    } catch (err) {
+      showToast(`Reactivate failed: ${err.message}`, 'error');
+    } finally {
+      setReactivating(false);
+    }
+  };
+
 
   return (
     <div>
@@ -294,6 +308,11 @@ export function TeamDetailPage() {
               <div className="flex justify-between items-center mb-3">
                 <span className="text-sm text-slate-400">{activePlayers.length} players</span>
                 <div className="flex gap-2">
+                  {archivedCount > 0 && (
+                    <Button size="sm" variant="ghost" onClick={reactivateRoster} disabled={reactivating}>
+                      {reactivating ? 'Reactivating…' : `↺ Reactivate Team (${archivedCount})`}
+                    </Button>
+                  )}
                   <Button size="sm" variant="ghost" onClick={() => setShowImportModal(true)}>↑ Import</Button>
                   <Button size="sm" onClick={() => setShowPlayerModal(true)}>+ Player</Button>
                 </div>
