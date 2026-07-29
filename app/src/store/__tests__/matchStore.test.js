@@ -278,6 +278,30 @@ describe('recordContact', () => {
   });
 });
 
+// ── setDigRating (DigRTG/FreeRTG tag) ───────────────────────────────────────
+
+describe('setDigRating', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    await initMatch();
+  });
+
+  it('writes dig_rating to the existing contact row', async () => {
+    const id = await useMatchStore.getState().recordContact({ player_id: 5, action: 'dig', result: 'success' });
+    await useMatchStore.getState().setDigRating(id, 3);
+    expect(db.contacts.update).toHaveBeenCalledWith(id, { dig_rating: 3 });
+  });
+
+  it('updates the matching row in committedContacts in place', async () => {
+    const id = await useMatchStore.getState().recordContact({ player_id: 5, action: 'dig', result: 'freeball' });
+    await useMatchStore.getState().setDigRating(id, 2);
+    const { committedContacts } = useMatchStore.getState();
+    expect(committedContacts).toHaveLength(1);
+    expect(committedContacts[0].dig_rating).toBe(2);
+    expect(committedContacts[0].result).toBe('freeball'); // untouched
+  });
+});
+
 // ── swapLibero ────────────────────────────────────────────────────────────────
 
 describe('swapLibero', () => {

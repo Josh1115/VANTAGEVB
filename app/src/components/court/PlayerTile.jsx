@@ -80,7 +80,7 @@ const LIGHT_JERSEYS = new Set(['white', 'gray', 'yellow']);
 
 export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, heat, stats, zoneHints, isSubIn = false, isDimmed = false }) {
   const {
-    recordContact, addPoint, tapHblk, recordOppBlock, recordAssistForKill,
+    recordContact, addPoint, tapHblk, recordOppBlock, recordAssistForKill, setDigRating,
     pendingHblk, serveSide, rallyPhase,
     liberoId, playerNicknames, teamJerseyColor, liberoJerseyColor,
     rallyCount, rotationNum, lineup,
@@ -90,6 +90,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
     tapHblk:             s.tapHblk,
     recordOppBlock:      s.recordOppBlock,
     recordAssistForKill: s.recordAssistForKill,
+    setDigRating:        s.setDigRating,
     pendingHblk:         s.pendingHblk,
     serveSide:           s.serveSide,
     rallyPhase:          s.rallyPhase,
@@ -117,6 +118,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   const [kPending,           setKPending]           = useState(false);
   const [assistPickerOpen,   setAssistPickerOpen]   = useState(false);
   const [pendingKillId,      setPendingKillId]      = useState(null);
+  const [pendingRating,      setPendingRating]      = useState(null); // null | { contactId, isFree } — dig/free contact awaiting an optional DigRTG/FreeRTG tap
   const [passRing,           setPassRing]           = useState(null); // null | 0|1|2|3
   const [passBadge,          setPassBadge]          = useState(null); // null | { rating, key }
   const passRingTimer  = useRef(null);
@@ -132,6 +134,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
     setAePending(false);
     setAssistPickerOpen(false);
     setPendingKillId(null);
+    setPendingRating(null);
   }, [rallyCount, serveSide]);
 
   // When UNDO reverses a serve contact, rallyPhase returns to 'pre_serve' but
@@ -146,6 +149,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
       setAePending(false);
       setAssistPickerOpen(false);
       setPendingKillId(null);
+      setPendingRating(null);
     }
   }, [rallyPhase]);
 
@@ -156,10 +160,13 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
 
   const vibrate = (pattern) => navigator.vibrate?.(pattern);
 
-  const tap = (action, result, extra = {}) => {
+  const tap = async (action, result, extra = {}) => {
     flashJersey();
-    recordContact({ player_id: slot.playerId, action, result, ...extra })
-      .catch((err) => { showToast(`Recording error: ${err?.message ?? err}`, 'error'); });
+    try {
+      return await recordContact({ player_id: slot.playerId, action, result, ...extra });
+    } catch (err) {
+      showToast(`Recording error: ${err?.message ?? err}`, 'error');
+    }
   };
 
   const tapAndScore = async (action, result, extra = {}) => {
@@ -549,14 +556,39 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
           </div>
         )}
 
-        {/* Row 3 — Defense: DIG FREE SBLK HBLK */}
-        <div className="px-[7.5%]"><span className="text-[1.3vmin] font-bold uppercase tracking-wide text-slate-500 leading-none">Defense</span></div>
+        {/* Row 3 — Defense: DIG FREE SBLK HBLK (or DigRTG/FreeRTG rating sub-panel) */}
+        <div className="px-[7.5%]">
+          <span className={`text-[1.3vmin] font-bold uppercase tracking-wide leading-none ${pendingRating ? 'text-sky-300' : 'text-slate-500'}`}>
+            {pendingRating ? (pendingRating.isFree ? 'Rate Free — Offensive Options' : 'Rate Dig — Offensive Options') : 'Defense'}
+          </span>
+        </div>
+        {pendingRating ? (
+          <div className="flex flex-none h-[3.837vmin] py-0 px-[7.5%] gap-[0.5vmin] border-b border-black/30">
+            <Btn label="X"
+              onTap={() => setPendingRating(null)}
+              cls="bg-slate-700 text-slate-300 hover:bg-slate-600" />
+            {pendingRating.isFree && (
+              <Btn label="0"
+                onTap={() => { addPoint(SIDE.THEM); setDigRating(pendingRating.contactId, 0); setPendingRating(null); }}
+                cls="bg-red-900/80 text-red-200 hover:bg-red-800/90" />
+            )}
+            <Btn label="1"
+              onTap={() => { setDigRating(pendingRating.contactId, 1); setPendingRating(null); }}
+              cls="bg-orange-950/80 text-orange-300 hover:bg-orange-900/80" />
+            <Btn label="2"
+              onTap={() => { setDigRating(pendingRating.contactId, 2); setPendingRating(null); }}
+              cls="bg-yellow-950/80 text-yellow-300 hover:bg-yellow-900/80" />
+            <Btn label="3"
+              onTap={() => { setDigRating(pendingRating.contactId, 3); setPendingRating(null); }}
+              cls="bg-teal-900/80 text-teal-200 hover:bg-teal-800/90" />
+          </div>
+        ) : (
         <div className="flex flex-none h-[3.837vmin] py-0 px-[7.5%] gap-[0.5vmin] border-b border-black/30">
           <Btn label="DIG"
-            onTap={() => tap(ACTION.DIG, RESULT.SUCCESS)}
+            onTap={async () => { const id = await tap(ACTION.DIG, RESULT.SUCCESS); if (id) setPendingRating({ contactId: id, isFree: false }); }}
             cls="bg-sky-950/80 text-sky-300 hover:bg-sky-900/80" />
           <Btn label="FREE"
-            onTap={() => tap(ACTION.DIG, RESULT.FREEBALL)}
+            onTap={async () => { const id = await tap(ACTION.DIG, RESULT.FREEBALL); if (id) setPendingRating({ contactId: id, isFree: true }); }}
             cls="bg-cyan-950/80 text-cyan-300 hover:bg-cyan-900/80" />
           <Btn label="SBLK"
             onTap={() => tapAndScore(ACTION.BLOCK, RESULT.SOLO)}
@@ -573,6 +605,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
             }
           />
         </div>
+        )}
 
         {/* Row 4 — S/R label */}
         <div className="px-[7.5%]"><span className="text-[1.3vmin] font-bold uppercase tracking-wide text-slate-500 leading-none">S/R</span></div>

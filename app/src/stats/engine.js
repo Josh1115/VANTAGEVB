@@ -38,13 +38,17 @@ function mkAccum() {
     bs: 0, ba: 0, be: 0,
     // dig
     dig: 0, fb_dig: 0, de: 0,
+    // DigRTG/FreeRTG — offensive-options rating optionally tagged after a dig
+    // or freeball dig; sum/n kept separate from dig/fb_dig above since an
+    // untagged dig still counts toward DIG/FREE but not toward either average.
+    dig_rtg_sum: 0, dig_rtg_n: 0, free_rtg_sum: 0, free_rtg_n: 0,
     // freeball
     fbr: 0, fbs: 0, fbe: 0,
   };
 }
 
 // count > 1 is used by synthetic box-score contacts to represent aggregate totals
-function accumContact(p, { action, result, serve_type, receive_type, error_type, kill_type, count = 1 }) {
+function accumContact(p, { action, result, serve_type, receive_type, error_type, kill_type, dig_rating, count = 1 }) {
   const n = count;
   if (action === 'serve') {
     p.sa += n;
@@ -112,6 +116,10 @@ function accumContact(p, { action, result, serve_type, receive_type, error_type,
     if (result === 'success')  p.dig    += n;
     if (result === 'freeball') p.fb_dig += n;
     if (result === 'error')    p.de     += n;
+    if (dig_rating != null) {
+      if (result === 'success')       { p.dig_rtg_sum  += dig_rating * n; p.dig_rtg_n  += n; }
+      else if (result === 'freeball') { p.free_rtg_sum += dig_rating * n; p.free_rtg_n += n; }
+    }
   } else if (action === 'freeball_receive') {
     if (result === 'free_ball_error') p.fbe += n;
     else                              p.fbr += n;
@@ -214,6 +222,8 @@ function deriveStats(p, sp, posLabel = null) {
     dig: p.dig, fb_dig: p.fb_dig, de: p.de,
     dips: div(p.dig, sp),
     recs: div(p.pa,  sp),
+    dig_rtg:  div(p.dig_rtg_sum,  p.dig_rtg_n),
+    free_rtg: div(p.free_rtg_sum, p.free_rtg_n),
 
     // Freeball
     fbr: p.fbr, fbs: p.fbs, fbe: p.fbe,

@@ -108,8 +108,10 @@ export const STAT_GLOSSARY = {
 
   // ── Defense ───────────────────────────────────────────────────────────────
   dig:          { abbr: 'DIG',      full: 'Digs',                       def: 'Successful defensive contacts keeping the ball in play (not freeballs).' },
+  dig_rtg:      { abbr: 'DIG RTG',  full: 'Dig Rating',                 def: '(1·1 + 2·2 + 3·3) ÷ number of rated digs. Scale: 1–3, tagged optionally right after a DIG.\n\nRating scale:\n  3 — All offensive options open\n  2 — Some offensive options open\n  1 — Only one offensive option open\n\nDigs left untagged (no rating tapped) still count toward DIG but are not included in this average. Does not feed into VER.' },
   fbs:          { abbr: 'FBS',      full: 'Freeball Sent',              def: 'Balls sent over as a freeball instead of an attack — gives the opponent an easy offensive opportunity.' },
   fb_dig:       { abbr: 'FREE',     full: 'Freeball Digs',              def: 'Successful defensive contacts on an opponent freeball. Counts equally with DIG in VER (+0.50 per dig/free dig per set).' },
+  free_rtg:     { abbr: 'FREE RTG', full: 'Freeball Dig Rating',        def: 'Same scale and calculation as DIG RTG, tracked separately for freeball digs tagged after a FREE instead of a DIG. Scale: 0–3.\n\n0 is FREE-only: an unplayable freeball dig, scored as an unearned point for the opponent right when it\'s tapped (same as Pass Rating 0). Counts in the FreeRTG average like any other rating. Does not feed into VER.' },
   de:           { abbr: 'DE',       full: 'Dig Errors',                 def: 'Defensive contacts resulting in a dead ball or opponent point.' },
   dips:         { abbr: 'DiPS',     full: 'Digs Per Set',               def: 'DIG ÷ SP. Does not include freeball digs.' },
   fbr:          { abbr: 'FBR',      full: 'Freeball Receives',          def: 'Controlled passes of an opponent freeball.' },

@@ -1377,6 +1377,15 @@ export const useMatchStore = create((set, get) => ({
     });
   },
 
+  // Tags a DigRTG/FreeRTG rating onto an already-recorded dig/freeball contact
+  // (PlayerTile's X/1/2/3 row, shown after tapping DIG or FREE). Which stat it
+  // counts toward is determined at read time by the contact's own result
+  // ('success' = dig, 'freeball' = free) — see accumContact in stats/engine.js.
+  setDigRating: async (contactId, rating) => {
+    await db.contacts.update(contactId, { dig_rating: rating });
+    set(s => ({ committedContacts: replaceOneContact(s.committedContacts, contactId, { dig_rating: rating }) }));
+  },
+
   dismissServeZoneModal: () => set({ pendingServeContact: null }),
 
   loadSetFormationData: (setRecord) => {

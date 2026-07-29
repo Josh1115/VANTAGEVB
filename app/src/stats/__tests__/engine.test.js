@@ -181,6 +181,54 @@ describe('computePlayerStats', () => {
     expect(p1.dips).toBeCloseTo(1.0);
   });
 
+  it('computes DigRTG only from rated digs, ignoring untagged ones', () => {
+    const contacts = [
+      contact({ action: 'dig', result: 'success', dig_rating: 3 }),
+      contact({ action: 'dig', result: 'success', dig_rating: 1 }),
+      contact({ action: 'dig', result: 'success' }), // untagged — counts toward dig, not dig_rtg
+    ];
+    const { p1 } = computePlayerStats(contacts, 1);
+    expect(p1.dig).toBe(3);
+    // DigRTG = (3 + 1) / 2 rated digs = 2.0 — the untagged dig isn't in the denominator
+    expect(p1.dig_rtg).toBeCloseTo(2.0);
+  });
+
+  it('DigRTG is null when no digs were rated', () => {
+    const contacts = [contact({ action: 'dig', result: 'success' })];
+    const { p1 } = computePlayerStats(contacts, 1);
+    expect(p1.dig_rtg).toBeNull();
+  });
+
+  it('tracks FreeRTG separately from DigRTG', () => {
+    const contacts = [
+      contact({ action: 'dig', result: 'success',  dig_rating: 3 }),
+      contact({ action: 'dig', result: 'freeball',  dig_rating: 1 }),
+      contact({ action: 'dig', result: 'freeball',  dig_rating: 2 }),
+    ];
+    const { p1 } = computePlayerStats(contacts, 1);
+    expect(p1.dig_rtg).toBeCloseTo(3.0);
+    // FreeRTG = (1 + 2) / 2 = 1.5, unaffected by the DIG-sourced rating
+    expect(p1.free_rtg).toBeCloseTo(1.5);
+  });
+
+  it('a dig error does not contribute to either DigRTG or FreeRTG even if rated', () => {
+    const contacts = [contact({ action: 'dig', result: 'error', dig_rating: 2 })];
+    const { p1 } = computePlayerStats(contacts, 1);
+    expect(p1.dig_rtg).toBeNull();
+    expect(p1.free_rtg).toBeNull();
+  });
+
+  it('a FreeRTG rating of 0 (unplayable freeball, FREE-only) counts in the average, not treated as untagged', () => {
+    const contacts = [
+      contact({ action: 'dig', result: 'freeball', dig_rating: 0 }),
+      contact({ action: 'dig', result: 'freeball', dig_rating: 3 }),
+    ];
+    const { p1 } = computePlayerStats(contacts, 1);
+    // FreeRTG = (0 + 3) / 2 rated frees = 1.5 — the 0 pulls the average down,
+    // it does not get excluded from the denominator the way an untagged dig would.
+    expect(p1.free_rtg).toBeCloseTo(1.5);
+  });
+
   it('accumulates set stats', () => {
     const contacts = [
       contact({ action: 'set', result: 'assist',             set_id: 1 }),
@@ -231,6 +279,17 @@ describe('computeTeamStats', () => {
     const stats = computeTeamStats(contacts, 1);
     expect(stats.k).toBe(2);
     expect(stats.ta).toBe(2);
+  });
+
+  it('aggregates DigRTG/FreeRTG across players the same way as APR', () => {
+    const contacts = [
+      contact({ player_id: 'p1', action: 'dig', result: 'success', dig_rating: 3 }),
+      contact({ player_id: 'p2', action: 'dig', result: 'success', dig_rating: 1 }),
+      contact({ player_id: 'p3', action: 'dig', result: 'freeball', dig_rating: 2 }),
+    ];
+    const stats = computeTeamStats(contacts, 1);
+    expect(stats.dig_rtg).toBeCloseTo(2.0);
+    expect(stats.free_rtg).toBeCloseTo(2.0);
   });
 });
 
