@@ -42,6 +42,8 @@ function mkAccum() {
     // or freeball dig; sum/n kept separate from dig/fb_dig above since an
     // untagged dig still counts toward DIG/FREE but not toward either average.
     dig_rtg_sum: 0, dig_rtg_n: 0, free_rtg_sum: 0, free_rtg_n: 0,
+    // Perfect (3-rated) dig/freeball counts — feeds Ball Control Rater (bcr)
+    dig_rtg3: 0, free_rtg3: 0,
     // freeball
     fbr: 0, fbs: 0, fbe: 0,
   };
@@ -117,8 +119,8 @@ function accumContact(p, { action, result, serve_type, receive_type, error_type,
     if (result === 'freeball') p.fb_dig += n;
     if (result === 'error')    p.de     += n;
     if (dig_rating != null) {
-      if (result === 'success')       { p.dig_rtg_sum  += dig_rating * n; p.dig_rtg_n  += n; }
-      else if (result === 'freeball') { p.free_rtg_sum += dig_rating * n; p.free_rtg_n += n; }
+      if (result === 'success')       { p.dig_rtg_sum  += dig_rating * n; p.dig_rtg_n  += n; if (dig_rating === 3) p.dig_rtg3  += n; }
+      else if (result === 'freeball') { p.free_rtg_sum += dig_rating * n; p.free_rtg_n += n; if (dig_rating === 3) p.free_rtg3 += n; }
     }
   } else if (action === 'freeball_receive') {
     if (result === 'free_ball_error') p.fbe += n;
@@ -224,6 +226,11 @@ function deriveStats(p, sp, posLabel = null) {
     recs: div(p.pa,  sp),
     dig_rtg:  div(p.dig_rtg_sum,  p.dig_rtg_n),
     free_rtg: div(p.free_rtg_sum, p.free_rtg_n),
+    // Ball Control Rater — see STAT_GLOSSARY.bcr for the formula and source.
+    bcr: div(
+      p.p3 * 1.45 + p.free_rtg3 * 0.16 + p.dig_rtg3 * 0.03,
+      p.pa * 1.45 + p.fb_dig    * 0.16 + p.dig      * 0.03,
+    ),
 
     // Freeball
     fbr: p.fbr, fbs: p.fbs, fbe: p.fbe,

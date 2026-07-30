@@ -155,7 +155,7 @@ export const TAB_COLUMNS = {
     { key: 'free_rtg', label: 'FREE RTG', fmt: fmtPassRating },
     { key: 'de',       label: 'DE',     fmt: fmtCount },
     { key: 'dips',     label: 'DiPS',   fmt: fmtRate },
-    { key: 'fbr',      label: 'FBR',    fmt: fmtCount },
+    { key: 'bcr',      label: 'BCR',    fmt: fmtRate },
     { key: 'fbe',      label: 'DROP',    fmt: fmtCount },
     { key: 'dg_k_pct', label: 'DG K%',  fmt: (v) => v != null ? `${Math.round(v * 100)}%` : '—' },
   ],

@@ -583,7 +583,6 @@ export const CourtGrid = memo(function CourtGrid({ aceZoneHints = {} }) {
                       : aceZoneHints[slot.playerId])
                   : undefined}
                 isSubIn={sub.flashIds.has(slot?.playerId)}
-                isDimmed={inServeReceive && gridIdx < 3}
               />
               </div>
               {/* Sub swap slide — outgoing name falls down-and-blurs (#9) */}
