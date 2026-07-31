@@ -80,7 +80,7 @@ export function MatchSetupPage() {
 
   const seasonMatchCount = useLiveQuery(async () => {
     if (!selectedSeason?.id) return undefined;
-    if (isFinite(matchLimit)) {
+    if (plan === 'trial') {
       return db.matches.count(); // trial: enforce against total across all seasons
     }
     const [liveCount, season] = await Promise.all([
@@ -233,9 +233,9 @@ export function MatchSetupPage() {
         const [liveCount, season, totalCount] = await Promise.all([
           db.matches.where('season_id').equals(Number(seasonId)).count(),
           db.seasons.get(Number(seasonId)),
-          isFinite(matchLimit) ? db.matches.count() : Promise.resolve(0),
+          plan === 'trial' ? db.matches.count() : Promise.resolve(0),
         ]);
-        const effective = isFinite(matchLimit)
+        const effective = plan === 'trial'
           ? totalCount
           : Math.max(liveCount, season?.peak_match_count ?? 0);
         if (!isMaster && effective >= matchLimit) {
@@ -372,9 +372,9 @@ export function MatchSetupPage() {
           const [liveCount, season, totalCount] = await Promise.all([
             db.matches.where('season_id').equals(Number(seasonId)).count(),
             db.seasons.get(Number(seasonId)),
-            isFinite(matchLimit) ? db.matches.count() : Promise.resolve(0),
+            plan === 'trial' ? db.matches.count() : Promise.resolve(0),
           ]);
-          const effective = isFinite(matchLimit)
+          const effective = plan === 'trial'
             ? totalCount
             : Math.max(liveCount, season?.peak_match_count ?? 0);
           if (!isMaster && effective >= matchLimit) {
