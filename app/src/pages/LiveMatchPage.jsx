@@ -179,7 +179,7 @@ export function LiveMatchPage() {
       if (s.broadcastEnabled) return;
       const match = await db.matches.get(matchId).catch(() => null);
       if (!match?.pv_token) return;
-      startBroadcast(match.pv_token);
+      startBroadcast(match.pv_token, session?.access_token);
     };
     const handleOffline = () => stopBroadcast();
     window.addEventListener('online', handleOnline);
@@ -188,7 +188,7 @@ export function LiveMatchPage() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [ready, matchId, startBroadcast, stopBroadcast]);
+  }, [ready, matchId, startBroadcast, stopBroadcast, session]);
 
   // Haptic feedback on score change
   const prevScoreRef = useRef({ our: ourScore, opp: oppScore });
@@ -389,12 +389,12 @@ export function LiveMatchPage() {
         try {
           const snapshot = await computeMatchSnapshot(matchId);
           if (snapshot) {
-            await publishPvStats(match.pv_token, team?.name ?? '', snapshot);
+            await publishPvStats(match.pv_token, team?.name ?? '', snapshot, session?.access_token);
           }
         } catch {
           // non-critical — silent fail
         }
-        startBroadcast(match.pv_token);
+        startBroadcast(match.pv_token, session?.access_token);
       }
 
       // Load ace zone hints + season rotation baseline (non-critical, fires after UI is ready)

@@ -7,9 +7,11 @@ import { publishPvStats } from '../utils/supabase';
 import { computeSnapshotPayload } from '../utils/pvSnapshot';
 import { useMatchStore } from '../store/matchStore';
 import { useUiStore } from '../store/uiStore';
+import { useAuth } from '../contexts/AuthContext';
 
 function HubContent() {
   const navigate = useNavigate();
+  const { session } = useAuth();
   const [teams, setTeams] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState(null);
   const [shareToken, setShareToken] = useState(null);
@@ -67,7 +69,7 @@ function HubContent() {
     try {
       const team = await db.teams.get(selectedTeamId);
       const payload = await computeSnapshotPayload(selectedTeamId);
-      await publishPvStats(shareToken, team?.name ?? '', payload);
+      await publishPvStats(shareToken, team?.name ?? '', payload, session?.access_token);
       const now = new Date().toISOString();
       await db.teams.update(selectedTeamId, { pv_last_published: now });
       setLastPublished(now);
@@ -86,7 +88,7 @@ function HubContent() {
       stopBroadcast();
       showToast('Live broadcast stopped', 'info');
     } else {
-      startBroadcast(shareToken);
+      startBroadcast(shareToken, session?.access_token);
       showToast('Live broadcast started', 'success');
     }
   };

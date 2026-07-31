@@ -18,11 +18,32 @@ function pvChannel(token) {
   return supabase.channel(`pv-changes-${token}`);
 }
 
-export async function publishPvStats(token, teamName, payload) {
-  const { error } = await supabase
-    .from('pv_stats')
-    .upsert({ token, team_name: teamName, payload, updated_at: new Date().toISOString() });
-  if (error) throw error;
+// Raw REST call (not supabase-js) using an access token already held in React
+// state, so this never triggers supabase-js's getSession()/__loadSession()
+// chain — which can spuriously fire SIGNED_OUT on iOS Safari and cause these
+// writes to be rejected by the "authenticated only" RLS policy on pv_stats.
+async function pvStatsRequest(method, query, body, accessToken) {
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/pv_stats${query}`;
+  const res = await fetch(url, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      Prefer: method === 'POST' ? 'resolution=merge-duplicates,return=minimal' : 'return=minimal',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`pv_stats ${method} failed: ${res.status}`);
+}
+
+export async function publishPvStats(token, teamName, payload, accessToken) {
+  await pvStatsRequest(
+    'POST',
+    '?on_conflict=token',
+    { token, team_name: teamName, payload, updated_at: new Date().toISOString() },
+    accessToken
+  );
   pvChannel(token).httpSend('update', { payload }).catch(() => {});
 }
 
@@ -34,11 +55,13 @@ export async function fetchPvStats(token) {
 
 // Writes lightweight live score state to the DB after each point.
 // Authenticated coach only — RLS rejects anon/wrong-owner writes.
-export async function updatePvLiveScore(token, liveState) {
-  await supabase
-    .from('pv_stats')
-    .update({ live_score: liveState, updated_at: new Date().toISOString() })
-    .eq('token', token);
+export async function updatePvLiveScore(token, liveState, accessToken) {
+  await pvStatsRequest(
+    'PATCH',
+    `?token=eq.${encodeURIComponent(token)}`,
+    { live_score: liveState, updated_at: new Date().toISOString() },
+    accessToken
+  );
   pvChannel(token).httpSend('update', { live_score: liveState }).catch(() => {});
 }
 
