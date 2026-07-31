@@ -870,8 +870,12 @@ const FAQ_TOPICS = [
         body: 'Merge from Backup brings data from a backup file into your existing data without overwriting. Useful when two coaches have been recording on separate devices and want to combine records.',
       },
       {
-        heading: 'Sharing Between Devices',
-        body: 'Export on device A → send the file → import or merge on device B. There is no cloud sync. Both devices will have the same data after the merge, but future changes don\'t sync automatically.',
+        heading: 'Sharing Between Devices (File-Based)',
+        body: 'Export on device A → send the file → import or merge on device B. This method has no automatic sync — both devices will match right after the merge, but future changes don\'t carry over on their own. For that, use Save to Cloud instead (see below).',
+      },
+      {
+        heading: 'Save to Cloud & Restore from Cloud',
+        body: 'Settings → Data Management → Save to Cloud uploads your data and automatically merges it with whatever is already saved there first — it never erases the other coach\'s games. This is how a JV coach and a Varsity coach can share one login: each records their own team, and every tap of Save to Cloud folds the other coach\'s games in too, so both devices build up to having both teams\' data. Restore from Cloud is different — it fully replaces your device\'s data with the cloud copy, no merging. Only use Restore when setting up a brand-new device; using it instead of Save to Cloud on a device with unsaved changes will wipe them.',
       },
       {
         heading: 'MaxPreps Export',

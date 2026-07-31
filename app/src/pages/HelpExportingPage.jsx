@@ -173,6 +173,9 @@ export function HelpExportingPage() {
         <Step number={7} title="Merge backup — combine two devices"
           note="If you track stats on two devices (e.g., a phone during the match and a tablet for scouting), use Merge Backup to combine them. Open Settings → Data Management → Merge Backup. Browse to the backup from the second device. The app adds any records that don't already exist without overwriting your current data." />
 
+        <Step number={8} title="Save to Cloud — for a JV coach and Varsity coach sharing one login"
+          note="Settings → Data Management also has Save to Cloud and Restore from Cloud buttons. Save to Cloud is smart: it downloads whatever's already saved in the cloud, merges it with what's on your device (matching games by team/season/opponent/date, so two different games are always kept as two — never overwritten), then re-uploads the combined result. This is exactly how a JV coach and Varsity coach can share one account: each records their own team's games, and every time either one taps Save to Cloud, the other coach's games get folded in too. Over time both of their devices end up holding both teams' data. Restore from Cloud works differently — it fully replaces your device's data with the cloud copy, with no merging. Save that one for setting up a brand-new device only; tapping Restore instead of Save on a device with unsaved changes will wipe them." />
+
         <div className="space-y-3">
           <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider pl-10">Tips & notes</p>
           {[
@@ -180,6 +183,7 @@ export function HelpExportingPage() {
             ['PDF includes team totals row', 'The PDF stat sheet has a Totals row at the bottom summing every column. This is the row most athletic directors and parents look at first — it gives the quick summary without needing to scan individual players.'],
             ['MaxPreps requires a free account', 'You need a free MaxPreps coach account to import box scores. If you don\'t have one, create it at maxpreps.com/coaches — it takes two minutes and unlocks the import feature.'],
             ['Share Card opens natively', 'On iOS, Share Card triggers the native iOS share sheet, so you can AirDrop it, save to Photos, or send via Messages directly. On Android it uses the native share intent with the same options.'],
+            ['Save to Cloud, not Restore, for routine syncing', 'Save to Cloud always merges before uploading, so it\'s safe to tap anytime — even with two coaches sharing one login. Restore from Cloud fully replaces your device\'s data, so save that one for new-device setup only.'],
           ].map(([title, body]) => (
             <div key={title} className="pl-10 flex gap-3">
               <span className="mt-0.5 shrink-0" style={{ color: PRIMARY }}>›</span>
