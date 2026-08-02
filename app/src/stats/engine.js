@@ -621,20 +621,27 @@ export function computeTransitionAttack(contacts, rallies, rallyMap = buildRally
  * Scoring run breakdown by rotation.
  * A run = 2+ consecutive rallies won by us. Runs reset at set boundaries.
  * "Belongs to" the rotation where the run started.
+ * A stint = 1+ consecutive rallies won by us (includes single-point runs
+ * that don't otherwise qualify as a "run") — used for avg_stint, the true
+ * average number of points scored each time this rotation comes up.
  *
- * Returns { byRotation: { 1..6: { max_run, avg_run, runs_3plus, runs_5plus, total_runs } }, total: same }
+ * Returns { byRotation: { 1..6: { max_run, avg_run, avg_stint, runs_3plus, runs_5plus, total_runs } }, total: same }
  */
 export function computeRunsByRotation(rallies) {
   const sorted = [...rallies].sort((a, b) =>
     a.set_id !== b.set_id ? a.set_id - b.set_id : a.rally_number - b.rally_number
   );
 
-  const mkSlot = () => ({ max_run: 0, total_runs: 0, run_pts: 0, runs_3plus: 0, runs_5plus: 0, runs_7plus: 0, runs_9plus: 0 });
+  const mkSlot = () => ({ max_run: 0, total_runs: 0, run_pts: 0, runs_3plus: 0, runs_5plus: 0, runs_7plus: 0, runs_9plus: 0, total_stints: 0, stint_pts: 0 });
   const byRotation = {};
   for (let r = 1; r <= 6; r++) byRotation[r] = mkSlot();
   const tot = mkSlot();
 
   const record = (len, rot) => {
+    if (len < 1) return;
+    const addStint = (s) => { s.total_stints++; s.stint_pts += len; };
+    if (rot >= 1 && rot <= 6) addStint(byRotation[rot]);
+    addStint(tot);
     if (len < 2) return;
     const add = (s) => {
       s.max_run = Math.max(s.max_run, len);
@@ -658,7 +665,11 @@ export function computeRunsByRotation(rallies) {
   }
   record(len, startRot);
 
-  const derive = (s) => ({ ...s, avg_run: s.total_runs > 0 ? s.run_pts / s.total_runs : null });
+  const derive = (s) => ({
+    ...s,
+    avg_run:   s.total_runs > 0 ? s.run_pts / s.total_runs : null,
+    avg_stint: s.total_stints > 0 ? s.stint_pts / s.total_stints : null,
+  });
   return {
     byRotation: Object.fromEntries(Object.entries(byRotation).map(([r, s]) => [r, derive(s)])),
     total: derive(tot),

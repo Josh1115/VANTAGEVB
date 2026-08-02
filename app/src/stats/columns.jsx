@@ -1,16 +1,21 @@
 import { fmtPct, fmtCount, fmtBlocks, fmtRate, fmtPassRating, fmtHitting, fmtVER } from './formatters';
 import { VERBadge, WVERBadge } from '../components/stats/VERBadge';
 
-function soColor(v, row) {
-  if (row?._minSo) return 'text-red-400 font-bold';
-  if (row?._maxSo) return 'text-emerald-400 font-bold';
-  return 'text-slate-300';
-}
-
-function bpColor(v, row) {
-  if (row?._minBp) return 'text-red-400 font-bold';
-  if (row?._maxBp) return 'text-emerald-400 font-bold';
-  return 'text-slate-300';
+// Flags the highest and lowest value in each of the given columns across
+// `rows` (as `_min_<key>` / `_max_<key>`), for use with minMaxColor cellClass.
+export function withMinMax(rows, keys) {
+  for (const key of keys) {
+    const vals = rows.map(r => r[key]).filter(v => v != null);
+    if (!vals.length) continue;
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    let maxDone = false;
+    rows.forEach(r => {
+      if (r[key] === min) r[`_min_${key}`] = true;
+      if (!maxDone && r[key] === max) { r[`_max_${key}`] = true; maxDone = true; }
+    });
+  }
+  return rows;
 }
 
 const SP_MP_COLS = [
@@ -178,26 +183,30 @@ const minMaxColor = (key) => (v, row) => {
 };
 
 // IS/OOS per-rotation table columns (used in ReportsPage rotation analysis)
+export const ISOOS_STAT_KEYS = ['is_ta', 'is_k_pct', 'is_hit_pct', 'is_win_pct', 'oos_ta', 'oos_k_pct', 'oos_hit_pct', 'oos_win_pct'];
+
 export const ISOOS_COLS = [
   { key: 'name',        label: 'Rot'       },
-  { key: 'is_ta',       label: 'IS',        fmt: fmtCount   },
+  { key: 'is_ta',       label: 'IS',        fmt: fmtCount,   cellClass: minMaxColor('is_ta')       },
   { key: 'is_k_pct',    label: 'IS K%',     fmt: fmtPct,     cellClass: minMaxColor('is_k_pct')    },
   { key: 'is_hit_pct',  label: 'IS HIT%',   fmt: fmtHitting, cellClass: minMaxColor('is_hit_pct')  },
   { key: 'is_win_pct',  label: 'IS Win%',   fmt: fmtPct,     cellClass: minMaxColor('is_win_pct')  },
-  { key: 'oos_ta',      label: 'OOS',       fmt: fmtCount   },
+  { key: 'oos_ta',      label: 'OOS',       fmt: fmtCount,   cellClass: minMaxColor('oos_ta')      },
   { key: 'oos_k_pct',   label: 'OOS K%',    fmt: fmtPct,     cellClass: minMaxColor('oos_k_pct')   },
   { key: 'oos_hit_pct', label: 'OOS HIT%',  fmt: fmtHitting, cellClass: minMaxColor('oos_hit_pct') },
   { key: 'oos_win_pct', label: 'OOS Win%',  fmt: fmtPct,     cellClass: minMaxColor('oos_win_pct') },
 ];
 
 // Transition/free-ball per-rotation table columns
+export const TRANS_STAT_KEYS = ['free_ta', 'free_k_pct', 'free_hit_pct', 'free_win_pct', 'trans_ta', 'trans_k_pct', 'trans_hit_pct', 'trans_win_pct'];
+
 export const TRANS_COLS = [
   { key: 'name',          label: 'Rot'       },
-  { key: 'free_ta',       label: 'FB ATK',   fmt: fmtCount   },
+  { key: 'free_ta',       label: 'FB ATK',   fmt: fmtCount,   cellClass: minMaxColor('free_ta')       },
   { key: 'free_k_pct',    label: 'FB K%',    fmt: fmtPct,     cellClass: minMaxColor('free_k_pct')    },
   { key: 'free_hit_pct',  label: 'FB HIT%',  fmt: fmtHitting, cellClass: minMaxColor('free_hit_pct')  },
   { key: 'free_win_pct',  label: 'FB Win%',  fmt: fmtPct,     cellClass: minMaxColor('free_win_pct')  },
-  { key: 'trans_ta',      label: 'TR ATK',   fmt: fmtCount   },
+  { key: 'trans_ta',      label: 'TR ATK',   fmt: fmtCount,   cellClass: minMaxColor('trans_ta')      },
   { key: 'trans_k_pct',   label: 'TR K%',    fmt: fmtPct,     cellClass: minMaxColor('trans_k_pct')   },
   { key: 'trans_hit_pct', label: 'TR HIT%',  fmt: fmtHitting, cellClass: minMaxColor('trans_hit_pct') },
   { key: 'trans_win_pct', label: 'TR Win%',  fmt: fmtPct,     cellClass: minMaxColor('trans_win_pct') },
@@ -205,10 +214,13 @@ export const TRANS_COLS = [
 
 // Run-streak per-rotation table columns
 const fmtAvg = (val) => val == null ? '—' : val.toFixed(1);
+export const RUN_STAT_KEYS = ['max_run', 'avg_run', 'avg_stint', 'total_runs', 'runs_3plus', 'runs_5plus', 'runs_7plus', 'runs_9plus'];
+
 export const RUN_COLS = [
   { key: 'name',       label: 'Rot'  },
   { key: 'max_run',    label: 'Best', fmt: fmtCount, cellClass: minMaxColor('max_run')    },
-  { key: 'avg_run',    label: 'Avg',  fmt: fmtAvg,   cellClass: minMaxColor('avg_run')    },
+  { key: 'avg_run',    label: 'Avg Run',     fmt: fmtAvg,   cellClass: minMaxColor('avg_run')    },
+  { key: 'avg_stint',  label: 'Avg Pts/ROT', fmt: fmtAvg,   cellClass: minMaxColor('avg_stint')  },
   { key: 'total_runs', label: '2+',   fmt: fmtCount, cellClass: minMaxColor('total_runs') },
   { key: 'runs_3plus', label: '3+',   fmt: fmtCount, cellClass: minMaxColor('runs_3plus') },
   { key: 'runs_5plus', label: '5+',   fmt: fmtCount, cellClass: minMaxColor('runs_5plus') },
@@ -216,12 +228,14 @@ export const RUN_COLS = [
   { key: 'runs_9plus', label: '9+',   fmt: fmtCount, cellClass: minMaxColor('runs_9plus') },
 ];
 
+export const ROTATION_STAT_KEYS = ['so_pct', 'so_opp', 'so_win', 'bp_pct', 'bp_opp', 'bp_win'];
+
 export const ROTATION_COLS = [
   { key: 'name',    label: 'Rotation' },
-  { key: 'so_pct',  label: 'SO%',    fmt: fmtPct,   cellClass: soColor },
-  { key: 'so_opp',  label: 'SO Opp', fmt: fmtCount },
-  { key: 'so_win',  label: 'SO Win', fmt: fmtCount },
-  { key: 'bp_pct',  label: 'SP%',    fmt: fmtPct,   cellClass: bpColor },
-  { key: 'bp_opp',  label: 'SP Opp', fmt: fmtCount },
-  { key: 'bp_win',  label: 'SP Win', fmt: fmtCount },
+  { key: 'so_pct',  label: 'SO%',    fmt: fmtPct,   cellClass: minMaxColor('so_pct') },
+  { key: 'so_opp',  label: 'SO Opp', fmt: fmtCount, cellClass: minMaxColor('so_opp') },
+  { key: 'so_win',  label: 'SO Win', fmt: fmtCount, cellClass: minMaxColor('so_win') },
+  { key: 'bp_pct',  label: 'SP%',    fmt: fmtPct,   cellClass: minMaxColor('bp_pct') },
+  { key: 'bp_opp',  label: 'SP Opp', fmt: fmtCount, cellClass: minMaxColor('bp_opp') },
+  { key: 'bp_win',  label: 'SP Win', fmt: fmtCount, cellClass: minMaxColor('bp_win') },
 ];

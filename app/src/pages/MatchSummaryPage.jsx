@@ -13,7 +13,7 @@ import { computeMatchStats,
 import { getRalliesForMatch, getRalliesForMatches } from '../stats/queries';
 import { exportMatchCSV, exportMatchPDF, exportMaxPrepsCSV } from '../stats/export';
 import { fmtHitting, fmtPassRating, fmtPct, fmtCount, fmtDate } from '../stats/formatters';
-import { ROTATION_COLS, SERVING_COLS, TAB_COLUMNS, ISOOS_COLS, TRANS_COLS, RUN_COLS } from '../stats/columns';
+import { ROTATION_COLS, ROTATION_STAT_KEYS, withMinMax, SERVING_COLS, TAB_COLUMNS, ISOOS_COLS, ISOOS_STAT_KEYS, TRANS_COLS, TRANS_STAT_KEYS, RUN_COLS, RUN_STAT_KEYS } from '../stats/columns';
 import { PageHeader } from '../components/layout/PageHeader';
 import { TabBar } from '../components/ui/Tab';
 import { Button } from '../components/ui/Button';
@@ -1234,16 +1234,15 @@ export function MatchSummaryPage() {
     ];
   }, [playerRows, playerNames, playerJerseys]);
 
-  const rotationRows = useMemo(() =>
-    displayStats
-      ? Object.entries(displayStats.rotation.rotations).map(([n, r]) => ({
-          id: n,
-          name: `R${n}`,
-          ...r,
-        }))
-      : [],
-    [displayStats]
-  );
+  const rotationRows = useMemo(() => {
+    if (!displayStats) return [];
+    const rows = Object.entries(displayStats.rotation.rotations).map(([n, r]) => ({
+      id: n,
+      name: `R${n}`,
+      ...r,
+    }));
+    return withMinMax(rows, ROTATION_STAT_KEYS);
+  }, [displayStats]);
 
   const isOosRows = useMemo(() => {
     if (!displayStats?.isOos) return [];
@@ -1253,10 +1252,12 @@ export function MatchSummaryPage() {
       is_ta: d.is.ta, is_k_pct: d.is.k_pct, is_hit_pct: d.is.hit_pct, is_win_pct: d.is.win_pct,
       oos_ta: d.oos.ta, oos_k_pct: d.oos.k_pct, oos_hit_pct: d.oos.hit_pct, oos_win_pct: d.oos.win_pct,
     });
-    return [
+    const rows = [
       ...Object.entries(byRotation).map(([r, d]) => toRow(r, `R${r}`, d)),
       { ...toRow('total', 'Total', total), isTotal: true },
     ];
+    withMinMax(rows.filter(r => !r.isTotal), ISOOS_STAT_KEYS);
+    return rows;
   }, [displayStats]);
 
   const transRows = useMemo(() => {
@@ -1272,6 +1273,7 @@ export function MatchSummaryPage() {
       rows.push(toRow(String(r), `R${r}`, free.byRotation[r], transition.byRotation[r]));
     }
     rows.push({ ...toRow('total', 'Total', free.total, transition.total), isTotal: true });
+    withMinMax(rows.filter(r => !r.isTotal), TRANS_STAT_KEYS);
     return rows;
   }, [displayStats]);
 
@@ -1282,16 +1284,19 @@ export function MatchSummaryPage() {
       rot, name: label,
       max_run:    d.max_run > 0 ? d.max_run : null,
       avg_run:    d.avg_run,
+      avg_stint:  d.avg_stint,
       total_runs: d.total_runs,
       runs_3plus: d.runs_3plus,
       runs_5plus: d.runs_5plus,
       runs_7plus: d.runs_7plus,
       runs_9plus: d.runs_9plus,
     });
-    return [
+    const rows = [
       ...Object.entries(byRotation).map(([r, d]) => toRow(r, `R${r}`, d)),
       { ...toRow('total', 'Total', total), isTotal: true },
     ];
+    withMinMax(rows.filter(r => !r.isTotal), RUN_STAT_KEYS);
+    return rows;
   }, [displayStats]);
 
   const matchMeta = match ? { ...match, sets: sets ?? [] } : {};
@@ -1849,12 +1854,12 @@ export function MatchSummaryPage() {
             )}
 
             {tab === 'passing' && (
-              <StatTable columns={TAB_COLUMNS['passing']} rows={playerRows} totalsRow={statTotals?.passing} onNameClick={handlePlayerClick} />
+              <StatTable columns={TAB_COLUMNS['passing']} rows={playerRows} totalsRow={statTotals?.passing} onNameClick={handlePlayerClick} showGlossary />
             )}
 
             {tab === 'attacking' && (
               <div className="space-y-4">
-                <StatTable columns={TAB_COLUMNS['attacking']} rows={playerRows} totalsRow={statTotals?.attacking} onNameClick={handlePlayerClick} />
+                <StatTable columns={TAB_COLUMNS['attacking']} rows={playerRows} totalsRow={statTotals?.attacking} onNameClick={handlePlayerClick} showGlossary />
 
                 {/* Set Distribution by Position */}
                 {(() => {
@@ -2042,15 +2047,15 @@ export function MatchSummaryPage() {
             )}
 
             {tab === 'setting' && (
-              <StatTable columns={TAB_COLUMNS['setting']} rows={playerRows} totalsRow={statTotals?.setting} onNameClick={handlePlayerClick} />
+              <StatTable columns={TAB_COLUMNS['setting']} rows={playerRows} totalsRow={statTotals?.setting} onNameClick={handlePlayerClick} showGlossary />
             )}
 
             {tab === 'blocking' && (
-              <StatTable columns={TAB_COLUMNS['blocking']} rows={playerRows} totalsRow={statTotals?.blocking} onNameClick={handlePlayerClick} />
+              <StatTable columns={TAB_COLUMNS['blocking']} rows={playerRows} totalsRow={statTotals?.blocking} onNameClick={handlePlayerClick} showGlossary />
             )}
 
             {tab === 'defense' && (
-              <StatTable columns={TAB_COLUMNS['defense']} rows={playerRows} totalsRow={statTotals?.defense} onNameClick={handlePlayerClick} />
+              <StatTable columns={TAB_COLUMNS['defense']} rows={playerRows} totalsRow={statTotals?.defense} onNameClick={handlePlayerClick} showGlossary />
             )}
 
             {tab === 'ver' && (

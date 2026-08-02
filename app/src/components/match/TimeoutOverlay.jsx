@@ -15,7 +15,7 @@ import {
 } from '../../stats/engine';
 import { FORMAT } from '../../constants';
 import { fmtWinProb } from '../../stats/formatters';
-import { TAB_COLUMNS, SERVING_COLS, ROTATION_COLS } from '../../stats/columns';
+import { TAB_COLUMNS, SERVING_COLS, ROTATION_COLS, ROTATION_STAT_KEYS, withMinMax } from '../../stats/columns';
 import { StatTable } from '../stats/StatTable';
 import { SubToggle } from '../stats/SubToggle';
 import { SetTrendsChart } from '../stats/SetTrendsChart';
@@ -280,7 +280,7 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
 
   const rotationRows = useMemo(() => {
     if (!rotationStats?.rotations) return [];
-    return Object.entries(rotationStats.rotations).map(([n, r]) => ({
+    const rows = Object.entries(rotationStats.rotations).map(([n, r]) => ({
       id:     Number(n),
       name:   `Rotation ${n}`,
       so_pct: r.so_pct ?? null,
@@ -290,6 +290,7 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
       bp_opp: r.bp_opp,
       bp_win: r.bp_win,
     }));
+    return withMinMax(rows, ROTATION_STAT_KEYS);
   }, [rotationStats]);
 
   const currentRotStat = rotationStats.rotations?.[rotationNum] ?? null;

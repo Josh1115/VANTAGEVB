@@ -150,7 +150,8 @@ export const STAT_GLOSSARY = {
 
   // ── Run streaks ───────────────────────────────────────────────────────────
   max_run:      { abbr: 'Best',     full: 'Best Run',                   def: 'Longest consecutive scoring run from this rotation.' },
-  avg_run:      { abbr: 'Avg',      full: 'Average Run',                def: 'Average length of scoring runs from this rotation.' },
+  avg_run:      { abbr: 'Avg Run',     full: 'Average Run',                def: 'Average length of scoring runs (2+ consecutive points) from this rotation. Single-point stints are not counted as runs, so they\'re excluded here.' },
+  avg_stint:    { abbr: 'Avg Pts/ROT', full: 'Average Points Per Rotation', def: 'Average number of consecutive points your team scores every time this rotation comes up — includes single-point stints, unlike Avg Run which only counts streaks of 2 or more.' },
   runs_3plus:   { abbr: '3+',       full: 'Runs of 3+',                 def: 'Number of times your team scored 3 or more consecutive points from this rotation.' },
   runs_5plus:   { abbr: '5+',       full: 'Runs of 5+',                 def: 'Number of times your team scored 5 or more consecutive points from this rotation.' },
 };

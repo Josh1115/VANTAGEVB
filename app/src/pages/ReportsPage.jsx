@@ -9,7 +9,7 @@ import { computeSeasonStats, computePQ, computeSetWinProb, computeExpectedPts, a
 import { InsightsPanel } from '../components/stats/InsightsPanel';
 import { fmtHitting, fmtPassRating, fmtPct, fmtCount } from '../stats/formatters';
 import { VERBadge, VER_TIERS, WVER_TIERS } from '../components/stats/VERBadge';
-import { ROTATION_COLS, SERVING_COLS, TAB_COLUMNS, ISOOS_COLS, TRANS_COLS, RUN_COLS } from '../stats/columns';
+import { ROTATION_COLS, ROTATION_STAT_KEYS, withMinMax, SERVING_COLS, TAB_COLUMNS, ISOOS_COLS, ISOOS_STAT_KEYS, TRANS_COLS, TRANS_STAT_KEYS, RUN_COLS, RUN_STAT_KEYS } from '../stats/columns';
 import { PageHeader } from '../components/layout/PageHeader';
 import { TabBar } from '../components/ui/Tab';
 import { Spinner } from '../components/ui/Spinner';
@@ -535,27 +535,7 @@ export function ReportsPage() {
       name: `R${n}`,
       ...r,
     }));
-    const withSo = rows.filter(r => r.so_pct != null);
-    if (withSo.length) {
-      const minSo = Math.min(...withSo.map(r => r.so_pct));
-      const maxSo = Math.max(...withSo.map(r => r.so_pct));
-      let soMaxDone = false;
-      rows.forEach(r => {
-        r._minSo = r.so_pct === minSo;
-        if (!soMaxDone && r.so_pct === maxSo) { r._maxSo = true; soMaxDone = true; }
-      });
-    }
-    const withBp = rows.filter(r => r.bp_pct != null);
-    if (withBp.length) {
-      const minBp = Math.min(...withBp.map(r => r.bp_pct));
-      const maxBp = Math.max(...withBp.map(r => r.bp_pct));
-      let bpMaxDone = false;
-      rows.forEach(r => {
-        r._minBp = r.bp_pct === minBp;
-        if (!bpMaxDone && r.bp_pct === maxBp) { r._maxBp = true; bpMaxDone = true; }
-      });
-    }
-    return rows;
+    return withMinMax(rows, ROTATION_STAT_KEYS);
   }, [stats]);
 
   const rotationContactStats = useMemo(
@@ -583,18 +563,7 @@ export function ReportsPage() {
       ...Object.entries(byRotation).map(([r, d]) => toRow(r, `R${r}`, d)),
       { ...toRow('total', 'Total', total), isTotal: true },
     ];
-    const dataRows = rows.filter(r => !r.isTotal);
-    for (const key of ['is_k_pct', 'is_hit_pct', 'is_win_pct', 'oos_k_pct', 'oos_hit_pct', 'oos_win_pct']) {
-      const vals = dataRows.map(r => r[key]).filter(v => v != null);
-      if (!vals.length) continue;
-      const min = Math.min(...vals);
-      const max = Math.max(...vals);
-      let maxDone = false;
-      dataRows.forEach(r => {
-        if (r[key] === min) r[`_min_${key}`] = true;
-        if (!maxDone && r[key] === max) { r[`_max_${key}`] = true; maxDone = true; }
-      });
-    }
+    withMinMax(rows.filter(r => !r.isTotal), ISOOS_STAT_KEYS);
     return rows;
   }, [stats]);
 
@@ -620,18 +589,7 @@ export function ReportsPage() {
       rows.push(toRow(String(r), `R${r}`, free.byRotation[r] ?? emptyRot, transition.byRotation[r] ?? emptyRot));
     }
     rows.push({ ...toRow('total', 'Total', free.total, transition.total), isTotal: true });
-    const dataRows = rows.filter(r => !r.isTotal);
-    for (const key of ['free_k_pct', 'free_hit_pct', 'free_win_pct', 'trans_k_pct', 'trans_hit_pct', 'trans_win_pct']) {
-      const vals = dataRows.map(r => r[key]).filter(v => v != null);
-      if (!vals.length) continue;
-      const min = Math.min(...vals);
-      const max = Math.max(...vals);
-      let maxDone = false;
-      dataRows.forEach(r => {
-        if (r[key] === min) r[`_min_${key}`] = true;
-        if (!maxDone && r[key] === max) { r[`_max_${key}`] = true; maxDone = true; }
-      });
-    }
+    withMinMax(rows.filter(r => !r.isTotal), TRANS_STAT_KEYS);
     return rows;
   }, [stats]);
 
@@ -644,6 +602,7 @@ export function ReportsPage() {
       name:       label,
       max_run:    d.max_run > 0 ? d.max_run : null,
       avg_run:    d.avg_run,
+      avg_stint:  d.avg_stint,
       total_runs: d.total_runs,
       runs_3plus: d.runs_3plus,
       runs_5plus: d.runs_5plus,
@@ -654,18 +613,7 @@ export function ReportsPage() {
       ...Object.entries(byRotation).map(([r, d]) => toRow(r, `R${r}`, d)),
       { ...toRow('total', 'Total', total), isTotal: true },
     ];
-    const dataRows = rows.filter(r => !r.isTotal);
-    for (const key of ['max_run', 'avg_run', 'total_runs', 'runs_3plus', 'runs_5plus', 'runs_7plus', 'runs_9plus']) {
-      const vals = dataRows.map(r => r[key]).filter(v => v != null);
-      if (!vals.length) continue;
-      const min = Math.min(...vals);
-      const max = Math.max(...vals);
-      let maxDone = false;
-      dataRows.forEach(r => {
-        if (r[key] === min) r[`_min_${key}`] = true;
-        if (!maxDone && r[key] === max) { r[`_max_${key}`] = true; maxDone = true; }
-      });
-    }
+    withMinMax(rows.filter(r => !r.isTotal), RUN_STAT_KEYS);
     return rows;
   }, [stats]);
 
@@ -1386,14 +1334,14 @@ export function ReportsPage() {
                 )}
                 {playerStatView === 'passing' && (
                   <>
-                    <StatTable columns={TAB_COLUMNS.passing} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} />
+                    <StatTable columns={TAB_COLUMNS.passing} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} showGlossary />
                     <AprByRotationChart rotationContactStats={rotationContactStats} />
                     <PassDistributionChart totals={playerTotalsRow} />
                   </>
                 )}
                 {playerStatView === 'attacking' && (
                   <>
-                    <StatTable columns={TAB_COLUMNS.attacking} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} />
+                    <StatTable columns={TAB_COLUMNS.attacking} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} showGlossary />
                     {(() => {
                       const POS_ORDER  = ['OH', 'MB', 'OPP', 'S'];
                       const POS_LABELS = { OH: 'Outside', MB: 'Middle', OPP: 'Opposite/RS', S: 'Setter' };
@@ -1517,13 +1465,13 @@ export function ReportsPage() {
                   </>
                 )}
                 {playerStatView === 'setting' && (
-                  <StatTable columns={TAB_COLUMNS.setting} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} />
+                  <StatTable columns={TAB_COLUMNS.setting} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} showGlossary />
                 )}
                 {playerStatView === 'blocking' && (
-                  <StatTable columns={TAB_COLUMNS.blocking} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} />
+                  <StatTable columns={TAB_COLUMNS.blocking} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} showGlossary />
                 )}
                 {playerStatView === 'defense' && (
-                  <StatTable columns={TAB_COLUMNS.defense} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} />
+                  <StatTable columns={TAB_COLUMNS.defense} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} showGlossary />
                 )}
                 {playerStatView === 'ver' && (
                   <>

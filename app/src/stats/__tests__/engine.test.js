@@ -1270,6 +1270,24 @@ describe('computeRunsByRotation', () => {
     // runs of 2 and 4 → avg = (2+4)/2 = 3
     expect(result.total.avg_run).toBeCloseTo(3);
   });
+
+  it('computes avg_stint including single-point stints', () => {
+    const rallies = [
+      // single-point stint in rotation 1 (not a "run", but is a stint)
+      rally({ set_id: 1, rally_number: 1, point_winner: 'us',   our_rotation: 1 }),
+      rally({ set_id: 1, rally_number: 2, point_winner: 'them', our_rotation: 1 }),
+      // 3-point stint in rotation 1
+      rally({ set_id: 1, rally_number: 3, point_winner: 'us',   our_rotation: 1 }),
+      rally({ set_id: 1, rally_number: 4, point_winner: 'us',   our_rotation: 1 }),
+      rally({ set_id: 1, rally_number: 5, point_winner: 'us',   our_rotation: 1 }),
+      rally({ set_id: 1, rally_number: 6, point_winner: 'them', our_rotation: 1 }),
+    ];
+    const result = computeRunsByRotation(rallies);
+    // stints of 1 and 3 → avg_stint = (1+3)/2 = 2; avg_run only counts the run of 3
+    expect(result.total.avg_stint).toBeCloseTo(2);
+    expect(result.total.avg_run).toBeCloseTo(3);
+    expect(result.byRotation[1].avg_stint).toBeCloseTo(2);
+  });
 });
 
 // ── VER position multiplier application ───────────────────────────────────────

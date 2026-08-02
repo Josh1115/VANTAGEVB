@@ -1252,6 +1252,7 @@ const SETTINGS_TABS = [
   { value: 'live-match',      label: 'Live Match'      },
   { value: 'match-rules',     label: 'Match Rules'     },
   { value: 'data',            label: 'Data Management' },
+  { value: 'legal',           label: 'Legal'           },
 ];
 
 export function SettingsPage() {
@@ -1554,7 +1555,6 @@ export function SettingsPage() {
               style={{ width: 'min(72vw, 340px)', transform: 'translateX(-3%)' }}
             />
             <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-400 mt-1">Immediate Impact Analytics</p>
-            <p className="text-[10px] text-slate-600 mt-1 font-mono">v{__APP_VERSION__}</p>
           </div>
           <div className="border-t border-slate-700 mb-4" />
           <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-slate-500 mb-2 text-center">Mission Statement</p>
@@ -1777,19 +1777,6 @@ export function SettingsPage() {
             {/* Pricing table */}
             <div className="space-y-2">
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Plan Options</p>
-              <div className="bg-slate-800/60 rounded-xl p-4">
-                <div className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">
-                  Everything included
-                </div>
-                <ul className="flex flex-col gap-1.5">
-                  {ALL_FEATURES.map(f => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
-                      <span className="text-emerald-400 mt-px leading-none shrink-0">✓</span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-              </div>
               <div className="rounded-xl overflow-hidden border border-slate-700 divide-y divide-slate-700">
                 {isMaster && (
                   <div className="flex items-center justify-between px-3 py-2.5 bg-yellow-400/10">
@@ -1801,6 +1788,14 @@ export function SettingsPage() {
                     <span className="text-sm font-bold text-yellow-400">Unlimited</span>
                   </div>
                 )}
+                <div className={`flex items-center justify-between px-3 py-2.5 ${plan === 'trial' && !isMaster ? 'bg-primary/10' : 'bg-slate-800/40'}`}>
+                  <div className="flex items-center gap-2">
+                    {plan === 'trial' && !isMaster && <span className="text-primary text-xs font-black">✓</span>}
+                    <span className={`text-sm font-semibold ${plan === 'trial' && !isMaster ? 'text-primary' : 'text-slate-300'}`}>Trial</span>
+                    <span className="text-xs text-slate-500">- 1 Team max, 5 match max</span>
+                  </div>
+                  <span className={`text-sm font-bold ${plan === 'trial' && !isMaster ? 'text-primary' : 'text-slate-300'}`}>FREE</span>
+                </div>
                 {Object.entries(PLAN_LABELS).filter(([key]) => key !== 'trial').map(([key, label]) => {
                   const isCurrent = plan === key && !isMaster;
                   const isLoading = checkoutPlan === key;
@@ -1833,6 +1828,19 @@ export function SettingsPage() {
                     </button>
                   );
                 })}
+              </div>
+              <div className="bg-slate-800/60 rounded-xl p-4">
+                <div className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">
+                  Everything included
+                </div>
+                <ul className="flex flex-col gap-1.5">
+                  {ALL_FEATURES.map(f => (
+                    <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
+                      <span className="text-emerald-400 mt-px leading-none shrink-0">✓</span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
 
@@ -2492,15 +2500,10 @@ export function SettingsPage() {
             </Button>
           </div>
           )}
-        </section>
 
-        {/* Legal */}
-        <section className="bg-surface rounded-xl p-4">
-          <h2
-            className="text-[18.4px] font-black uppercase leading-none mb-3 section-twinkle"
-            style={{ color: '#ffffff', letterSpacing: '0.15em' }}
-          >Legal</h2>
-          <div className="flex flex-col gap-2">
+          {/* Legal */}
+          {settingsTab === 'legal' && (
+          <div className="p-4 flex flex-col gap-2">
             <Link
               to="/terms"
               className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-700/50 hover:bg-slate-700 active:scale-95 border border-slate-600/50 text-slate-200 font-semibold text-sm transition-all duration-150"
@@ -2543,6 +2546,7 @@ export function SettingsPage() {
               <span className="text-slate-500 text-xs">›</span>
             </Link>
           </div>
+          )}
         </section>
 
         {/* Account */}
