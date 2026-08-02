@@ -120,6 +120,12 @@ export function LoginPage({ onSignup }) {
               </span>
             ))}
           </p>
+          <p
+            className="italic text-sm text-slate-400 text-center"
+            style={{ opacity: phase >= 2 ? 1 : 0, transition: 'opacity 0.8s ease' }}
+          >
+            Vantage works both on and offline!
+          </p>
           {/* Buttons */}
           <div
             className="w-full flex flex-col gap-4 mt-6"
@@ -199,10 +205,13 @@ export function LoginPage({ onSignup }) {
                 )}
               </div>
 
-              <p className="text-center text-sm rounded-xl px-4 py-2" style={{ color: '#fbbf24', border: '1px solid rgba(232,83,11,0.5)', background: 'rgba(232,83,11,0.1)' }}>
-                Experiencing technical difficulties?{' '}
-                <a href="mailto:vantagevb@gmail.com" className="underline font-bold">vantagevb@gmail.com</a>
-              </p>
+              <button
+                onClick={() => document.getElementById('faq-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                className="w-full rounded-2xl border border-slate-700 bg-slate-800/60 py-3 text-sm font-bold text-white tracking-wide hover:bg-slate-800 active:scale-[0.98] transition-transform"
+              >
+                View FAQs!
+              </button>
+
               <a
                 href="https://www.instagram.com/vantagestats/"
                 target="_blank"
@@ -655,6 +664,27 @@ export function LoginPage({ onSignup }) {
                 </p>
               </div>
 
+              {/* ── FAQ ── */}
+              <div className="w-full mt-8" id="faq-section">
+                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
+                  FREQUENTLY ASKED QUESTIONS
+                </p>
+                <div className="space-y-2.5">
+                  {[
+                    { q: 'Does it work at an away gym with no WiFi or cell signal?', a: 'Yes — Vantage is fully offline-first. Every stat is saved directly on your device, no internet needed to record a match.' },
+                    { q: 'Can a JV coach and Varsity coach share one account?', a: 'Yes — with a 2-Team plan, one login can hold both teams. Each coach records their own team, and data merges automatically each time they log in with internet on (or anytime either one taps "Save to Cloud"). A 2-Team plan ($139.99/yr) also runs cheaper than buying two separate 1-Team plans ($79.99 each).' },
+                    { q: 'What happens if I lose my phone or switch devices?', a: 'Your data isn\'t lost as long as you\'ve backed up — either a manual export file or "Save to Cloud," both available in Settings.' },
+                    { q: 'Is there a trial?', a: 'Yes — a trial account can start 1 team and utilize five matches (whether exhibition or regular season), with all Vantage features accessible. No credit card required for sign up.' },
+                    { q: 'Can I export my stats to MaxPreps or a spreadsheet?', a: 'Yes — one-tap MaxPreps CSV upload, plus PDF and CSV export after every match.' },
+                  ].map(({ q, a }) => (
+                    <div key={q} className="rounded-xl border border-slate-700 bg-slate-800/40 px-4 py-3">
+                      <p className="text-sm font-bold text-white">{q}</p>
+                      <p className="text-sm text-slate-400 mt-1">{a}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <h2
                 className="text-[36.8px] font-black uppercase leading-none tracking-[0.15em] text-center mt-8"
                 style={{ color: '#ffffff' }}
@@ -676,6 +706,10 @@ export function LoginPage({ onSignup }) {
               >
                 Already have an account? Log in
               </button>
+              <p className="text-center text-sm rounded-xl px-4 py-2" style={{ color: '#fbbf24', border: '1px solid rgba(232,83,11,0.5)', background: 'rgba(232,83,11,0.1)' }}>
+                Experiencing technical difficulties?{' '}
+                <a href="mailto:vantagevb@gmail.com" className="underline font-bold">vantagevb@gmail.com</a>
+              </p>
             </>
           ) : (
             <div className="w-full flex flex-col gap-4 animate-slide-up-fade">

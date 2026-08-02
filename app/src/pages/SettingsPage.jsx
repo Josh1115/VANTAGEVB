@@ -5,6 +5,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { Modal } from '../components/ui/Modal';
+import { TabBar } from '../components/ui/Tab';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { exportBackup, importBackup, restoreAutoBackup, saveToCloud, restoreFromCloud, syncWithCloud } from '../stats/backup';
 import { supabase } from '../utils/supabase';
@@ -25,18 +26,6 @@ import {
   getBoolStorageDefaultTrue,
   getIntStorage, STORAGE_KEYS,
 } from '../utils/storage';
-
-// ─── Release notes shown in the About section ────────────────────────────────
-// Keyed by version so a forgotten update fails safe (section just doesn't
-// render) instead of showing a stale list under the new version number.
-const CHANGELOG = {
-  '1.0.0': [
-    'Season sparklines & PDF export in History',
-    'Season search and count badges',
-    'Sound effect preview in Settings',
-    'Storage usage bar & auto-save badges',
-  ],
-};
 
 // ─── Help illustrations (inline SVG mockups) ─────────────────────────────────
 
@@ -1121,11 +1110,6 @@ function useDefaultFormat() {
 }
 
 
-const SECTION_KEY_PREFIX = 'settings_section_';
-function clearSectionStates() {
-  Object.keys(localStorage).filter(k => k.startsWith(SECTION_KEY_PREFIX)).forEach(k => localStorage.removeItem(k));
-}
-
 function VantageChevron({ open }) {
   return (
     <svg
@@ -1137,47 +1121,6 @@ function VantageChevron({ open }) {
       <polygon points="0,0 20,0 10,16" fill="#e8530b" />
       <polygon points="3.5,0 16.5,0 10,11" fill="#fef3ee" />
     </svg>
-  );
-}
-
-function CollapsibleSection({ id, title, subtitle, children, defaultOpen = true, isCustomized = false }) {
-  const storageKey = id ? `${SECTION_KEY_PREFIX}${id}` : null;
-  const [open, setOpen] = useState(() => {
-    if (!storageKey) return defaultOpen;
-    try {
-      const stored = localStorage.getItem(storageKey);
-      return stored === null ? defaultOpen : stored === 'true';
-    } catch { return defaultOpen; }
-  });
-
-  function toggle() {
-    const next = !open;
-    try { if (storageKey) localStorage.setItem(storageKey, String(next)); } catch { /* storage full */ }
-    setOpen(next);
-  }
-
-  return (
-    <section className="bg-surface rounded-xl overflow-hidden">
-      <button
-        onClick={toggle}
-        className="w-full flex items-center justify-between px-4 py-3 border-b border-slate-700 text-left"
-      >
-        <div>
-          <div className="flex items-center gap-2">
-            <h2
-              className="text-[18.4px] font-black uppercase leading-none section-twinkle"
-              style={{ color: '#ffffff', letterSpacing: '0.15em' }}
-            >{title}</h2>
-            {isCustomized && (
-              <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" title="Customized" />
-            )}
-          </div>
-          {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
-        </div>
-        <VantageChevron open={open} />
-      </button>
-      {open && children}
-    </section>
   );
 }
 
@@ -1302,6 +1245,14 @@ function useLastSetScore() {
   return [val, save];
 }
 
+const SETTINGS_TABS = [
+  { value: 'pricing',         label: 'Pricing'         },
+  { value: 'help',            label: 'Help & Guides'   },
+  { value: 'personalization', label: 'Personalization' },
+  { value: 'live-match',      label: 'Live Match'      },
+  { value: 'match-rules',     label: 'Match Rules'     },
+  { value: 'data',            label: 'Data Management' },
+];
 
 export function SettingsPage() {
   const showToast    = useUiStore((s) => s.showToast);
@@ -1368,6 +1319,7 @@ export function SettingsPage() {
   const [storageRefreshKey,   setStorageRefreshKey]   = useState(0);
   const [helpTopic,           setHelpTopic]           = useState(null);
   const [helpSearch,          setHelpSearch]          = useState('');
+  const [settingsTab,         setSettingsTab]         = useState('pricing');
   const [cloudSaving,         setCloudSaving]         = useState(false);
   const [cloudRestoring,      setCloudRestoring]      = useState(false);
   const [lastCloudSave,       setLastCloudSave]       = useState(null);
@@ -1490,7 +1442,6 @@ export function SettingsPage() {
       });
       setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, null);
       setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, null);
-      clearSectionStates();
       // Push an empty backup to the cloud so autoSync doesn't restore the old
       // data on the next page load, and reset the server-side match counter.
       if (session) {
@@ -1614,37 +1565,6 @@ export function SettingsPage() {
           <p className="text-sm text-slate-200 leading-relaxed text-center">
             Vantage is a comprehensive volleyball statistics platform built for coaches who want a competitive edge. Record every contact live during a match — serves, passes, attacks, blocks, and digs — and instantly access deep analytics: rotation efficiency, player VER ratings, win correlation insights, and real-time performance alerts. All data lives on your device and works offline. From pre-match lineup prep to gametime decisions, Vantage gives your program the same data-driven tools used at the highest levels of the sport.
           </p>
-          {CHANGELOG[__APP_VERSION__]?.length > 0 && (
-            <div className="border-t border-slate-700 mt-4 pt-4">
-              <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-slate-500 mb-2">What's New in v{__APP_VERSION__}</p>
-              <ul className="space-y-1.5">
-                {CHANGELOG[__APP_VERSION__].map(note => (
-                  <li key={note} className="flex items-start gap-1.5 text-xs text-slate-400">
-                    <span className="text-primary mt-px shrink-0">▸</span>
-                    {note}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="flex items-baseline gap-2 mt-4 flex-wrap">
-            <Link to="/terms" className="text-xs text-primary hover:text-orange-300 transition-colors underline underline-offset-2">
-              Terms &amp; Conditions
-            </Link>
-            {(() => {
-              try {
-                const raw = localStorage.getItem(TERMS_STORAGE_KEY);
-                if (!raw) return null;
-                let acceptedAt = null;
-                try { acceptedAt = JSON.parse(raw).acceptedAt ?? null; } catch { /* old plain-string format */ }
-                if (!acceptedAt) return <span className="text-xs text-slate-500">Agreed (date not recorded)</span>;
-                const fmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-                return <span className="text-xs text-slate-500">Agreed {fmt.format(new Date(acceptedAt))}</span>;
-              } catch { return null; }
-            })()}
-          </div>
-
           <button
             onClick={handleExport}
             className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-700/60 hover:bg-slate-700 active:scale-95 border border-slate-600/50 text-slate-300 hover:text-white font-semibold text-sm transition-all duration-150"
@@ -1658,14 +1578,148 @@ export function SettingsPage() {
           </button>
         </section>
 
-        {/* Plans */}
-        <section className="bg-surface rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
-            <h2
-              className="text-[18.4px] font-black uppercase leading-none section-twinkle"
-              style={{ color: '#ffffff', letterSpacing: '0.15em' }}
-            >Pricing</h2>
+        {/* Install banner */}
+        {!isInstalled && (canInstall || isIOS) && (
+          <section className="bg-surface rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-700">
+              <h2
+                className="text-[18.4px] font-black uppercase leading-none"
+                style={{ color: '#ffffff', letterSpacing: '0.15em' }}
+              >Install App</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Add VANTAGE to your home screen for the best experience</p>
+            </div>
+            <div className="p-4">
+              {canInstall && (
+                <Button className="w-full" onClick={promptInstall}>
+                  Add to Home Screen
+                </Button>
+              )}
+              {isIOS && !canInstall && (
+                <div className="text-sm text-slate-300 space-y-1">
+                  <p>To install on iOS:</p>
+                  <ol className="list-decimal list-inside text-slate-400 space-y-1 ml-1">
+                    <li>Tap the <span className="text-white font-medium">Share</span> button in Safari</li>
+                    <li>Tap <span className="text-white font-medium">Add to Home Screen</span></li>
+                    <li>Tap <span className="text-white font-medium">Add</span></li>
+                  </ol>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* Account level */}
+        <div className={`w-fit mx-auto relative overflow-hidden btn-shimmer flex items-center gap-2 rounded-full px-3 py-1.5 border ${
+          isMaster ? 'bg-yellow-400/10 border-yellow-400/30'
+          : !isActive ? 'bg-red-400/10 border-red-400/30'
+          : plan === 'trial' ? 'bg-slate-700/50 border-slate-600'
+          : 'bg-primary/10 border-primary/30'
+        }`}>
+          <span className="text-lg font-bold text-slate-400 uppercase tracking-wider">Account Level</span>
+          <span className={`text-lg font-bold ${
+            isMaster ? 'text-yellow-400'
+            : !isActive ? 'text-red-400'
+            : plan === 'trial' ? 'text-slate-300'
+            : 'text-primary'
+          }`}>
+            {isMaster ? 'Master' : isActive ? PLAN_LABELS[plan] : 'Expired'}
+          </span>
+        </div>
+
+        {/* Credit usage */}
+        {(() => {
+          const teamsUsed = activeSeasonTeamCount ?? 0;
+          const teamsAllowedDisplay = isMaster ? 'Unlimited' : teamsAllowed === 99 ? '5+' : String(teamsAllowed);
+          const teamsRemaining = isMaster ? 'Unlimited' : teamsAllowed === 99 ? 'Unlimited' : String(Math.max(0, teamsAllowed - teamsUsed));
+          return (
+            <div className="bg-slate-800/60 rounded-xl p-3 space-y-3">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Your Credits</p>
+
+              {/* Team credits */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-300">Team Credits</span>
+                <span className="text-sm font-bold text-white">
+                  {isMaster ? (
+                    <span className="text-emerald-400">Unlimited</span>
+                  ) : (
+                    <>{teamsUsed} used / {teamsAllowedDisplay} · <span className="text-emerald-400">{teamsRemaining} remaining</span></>
+                  )}
+                </span>
+              </div>
+
+              {/* Per-team match counters */}
+              <div className="space-y-1.5">
+                <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">Season Match Credits (current season)</p>
+                {!teams?.length ? (
+                  <p className="text-xs text-slate-500 italic">No teams yet</p>
+                ) : teams.map((team) => {
+                  const info = teamMatchCounts?.[team.id];
+                  const used = info?.matchCount ?? 0;
+                  const isTrialPlan = plan === 'trial';
+                  const remaining = isTrialPlan ? Math.max(0, TRIAL_MATCH_LIMIT - used) : null;
+                  const pct = isTrialPlan ? Math.min(100, (used / TRIAL_MATCH_LIMIT) * 100) : 0;
+                  return (
+                    <div key={team.id} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-300 font-medium truncate max-w-[55%]">{team.name}{info?.seasonYear ? ` · ${info.seasonYear}` : ''}</span>
+                        <span className="text-xs font-bold text-white">
+                          {!isTrialPlan ? (
+                            <span className="text-emerald-400">Unlimited</span>
+                          ) : (
+                            <>{used} / {TRIAL_MATCH_LIMIT} · <span className={remaining === 0 ? 'text-red-400' : 'text-emerald-400'}>{remaining} left</span></>
+                          )}
+                        </span>
+                      </div>
+                      {isTrialPlan && (
+                        <div className="h-1 rounded-full bg-slate-700 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{ width: `${pct}%`, background: pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#22c55e' }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Storage warning */}
+        {showStorageWarning && (
+          <div className="bg-red-900/40 border border-red-700 rounded-xl px-4 py-3 text-sm">
+            <p className="font-semibold text-red-300">Storage almost full</p>
+            <p className="text-red-400 mt-0.5">
+              {fmtMB(storage.usage)} MB used of {fmtMB(storage.quota)} MB —
+              export a backup and consider clearing old data.
+            </p>
           </div>
+        )}
+
+        {/* Storage info */}
+        {storage && !showStorageWarning && (
+          <div className="px-1 space-y-1">
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span>Storage</span>
+              <span>{fmtMB(storage.usage)} MB / {fmtMB(storage.quota)} MB ({(usagePct * 100).toFixed(1)}%)</span>
+            </div>
+            <div className="h-1 rounded-full bg-slate-700 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${Math.min(100, usagePct * 100).toFixed(1)}%`,
+                  background: usagePct >= 0.8 ? '#ef4444' : usagePct >= 0.5 ? '#f59e0b' : '#22c55e',
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Settings */}
+        <section className="bg-surface rounded-xl overflow-hidden">
+          <TabBar tabs={SETTINGS_TABS} active={settingsTab} onChange={setSettingsTab} />
+          {settingsTab === 'pricing' && (
           <div className="p-4 flex flex-col gap-3">
             <p className="text-sm text-slate-400 leading-relaxed text-center">
               Every account starts with a free 5-match trial with full platform access — 1 team, up to 5 matches, no import features. Plans below are one-time, per-season purchases — Vantage does not offer subscriptions.
@@ -1719,82 +1773,6 @@ export function SettingsPage() {
                 )}
               </>
             )}
-            {/* Account level */}
-            <div className={`self-center relative overflow-hidden btn-shimmer flex items-center gap-2 rounded-full px-3 py-1.5 border ${
-              isMaster ? 'bg-yellow-400/10 border-yellow-400/30'
-              : !isActive ? 'bg-red-400/10 border-red-400/30'
-              : plan === 'trial' ? 'bg-slate-700/50 border-slate-600'
-              : 'bg-primary/10 border-primary/30'
-            }`}>
-              <span className="text-lg font-bold text-slate-400 uppercase tracking-wider">Account Level</span>
-              <span className={`text-lg font-bold ${
-                isMaster ? 'text-yellow-400'
-                : !isActive ? 'text-red-400'
-                : plan === 'trial' ? 'text-slate-300'
-                : 'text-primary'
-              }`}>
-                {isMaster ? 'Master' : isActive ? PLAN_LABELS[plan] : 'Expired'}
-              </span>
-            </div>
-            {/* Credit usage */}
-            {(() => {
-              const teamsUsed = activeSeasonTeamCount ?? 0;
-              const teamsAllowedDisplay = isMaster ? 'Unlimited' : teamsAllowed === 99 ? '5+' : String(teamsAllowed);
-              const teamsRemaining = isMaster ? 'Unlimited' : teamsAllowed === 99 ? 'Unlimited' : String(Math.max(0, teamsAllowed - teamsUsed));
-              return (
-                <div className="bg-slate-800/60 rounded-xl p-3 space-y-3">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Your Credits</p>
-
-                  {/* Team credits */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-300">Team Credits</span>
-                    <span className="text-sm font-bold text-white">
-                      {isMaster ? (
-                        <span className="text-emerald-400">Unlimited</span>
-                      ) : (
-                        <>{teamsUsed} used / {teamsAllowedDisplay} · <span className="text-emerald-400">{teamsRemaining} remaining</span></>
-                      )}
-                    </span>
-                  </div>
-
-                  {/* Per-team match counters */}
-                  <div className="space-y-1.5">
-                    <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">Season Match Credits (current season)</p>
-                    {!teams?.length ? (
-                      <p className="text-xs text-slate-500 italic">No teams yet</p>
-                    ) : teams.map((team) => {
-                      const info = teamMatchCounts?.[team.id];
-                      const used = info?.matchCount ?? 0;
-                      const isTrialPlan = plan === 'trial';
-                      const remaining = isTrialPlan ? Math.max(0, TRIAL_MATCH_LIMIT - used) : null;
-                      const pct = isTrialPlan ? Math.min(100, (used / TRIAL_MATCH_LIMIT) * 100) : 0;
-                      return (
-                        <div key={team.id} className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-slate-300 font-medium truncate max-w-[55%]">{team.name}{info?.seasonYear ? ` · ${info.seasonYear}` : ''}</span>
-                            <span className="text-xs font-bold text-white">
-                              {!isTrialPlan ? (
-                                <span className="text-emerald-400">Unlimited</span>
-                              ) : (
-                                <>{used} / {TRIAL_MATCH_LIMIT} · <span className={remaining === 0 ? 'text-red-400' : 'text-emerald-400'}>{remaining} left</span></>
-                              )}
-                            </span>
-                          </div>
-                          {isTrialPlan && (
-                            <div className="h-1 rounded-full bg-slate-700 overflow-hidden">
-                              <div
-                                className="h-full rounded-full transition-all"
-                                style={{ width: `${pct}%`, background: pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#22c55e' }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
 
             {/* Pricing table */}
             <div className="space-y-2">
@@ -1880,104 +1858,36 @@ export function SettingsPage() {
                 {portalLoading ? 'Opening…' : 'Manage Billing'}
               </button>
             )}
-          </div>
-        </section>
 
-        {/* Redeem promo code */}
-        {session && !isMaster && (
-          <section className="bg-surface rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-700">
-              <h2
-                className="text-[18.4px] font-black uppercase leading-none"
-                style={{ color: '#ffffff', letterSpacing: '0.15em' }}
-              >Redeem Code</h2>
-            </div>
-            <div className="p-4">
-              <p className="text-xs text-slate-400 mb-3">Have a promo code? Enter it below to activate your plan.</p>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                  onKeyDown={(e) => e.key === 'Enter' && handleRedeemPromo()}
-                  placeholder="ENTER CODE"
-                  className="flex-1 bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm font-mono tracking-widest uppercase placeholder:text-slate-600 focus:outline-none focus:border-primary"
-                  maxLength={32}
-                />
-                <button
-                  onClick={handleRedeemPromo}
-                  disabled={promoLoading || !promoCode.trim()}
-                  className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-bold disabled:opacity-40 active:scale-95 transition-transform"
-                >
-                  {promoLoading ? '…' : 'Apply'}
-                </button>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Storage warning */}
-        {showStorageWarning && (
-          <div className="bg-red-900/40 border border-red-700 rounded-xl px-4 py-3 text-sm">
-            <p className="font-semibold text-red-300">Storage almost full</p>
-            <p className="text-red-400 mt-0.5">
-              {fmtMB(storage.usage)} MB used of {fmtMB(storage.quota)} MB —
-              export a backup and consider clearing old data.
-            </p>
-          </div>
-        )}
-
-        {/* Install banner */}
-        {!isInstalled && (canInstall || isIOS) && (
-          <section className="bg-surface rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-700">
-              <h2
-                className="text-[18.4px] font-black uppercase leading-none"
-                style={{ color: '#ffffff', letterSpacing: '0.15em' }}
-              >Install App</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Add VANTAGE to your home screen for the best experience</p>
-            </div>
-            <div className="p-4">
-              {canInstall && (
-                <Button className="w-full" onClick={promptInstall}>
-                  Add to Home Screen
-                </Button>
-              )}
-              {isIOS && !canInstall && (
-                <div className="text-sm text-slate-300 space-y-1">
-                  <p>To install on iOS:</p>
-                  <ol className="list-decimal list-inside text-slate-400 space-y-1 ml-1">
-                    <li>Tap the <span className="text-white font-medium">Share</span> button in Safari</li>
-                    <li>Tap <span className="text-white font-medium">Add to Home Screen</span></li>
-                    <li>Tap <span className="text-white font-medium">Add</span></li>
-                  </ol>
+            {session && !isMaster && (
+              <div className="border-t border-slate-700 pt-3 mt-1">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Redeem Code</p>
+                <p className="text-xs text-slate-400 mb-3">Have a promo code? Enter it below to activate your plan.</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => e.key === 'Enter' && handleRedeemPromo()}
+                    placeholder="ENTER CODE"
+                    className="flex-1 bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm font-mono tracking-widest uppercase placeholder:text-slate-600 focus:outline-none focus:border-primary"
+                    maxLength={32}
+                  />
+                  <button
+                    onClick={handleRedeemPromo}
+                    disabled={promoLoading || !promoCode.trim()}
+                    className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-bold disabled:opacity-40 active:scale-95 transition-transform"
+                  >
+                    {promoLoading ? '…' : 'Apply'}
+                  </button>
                 </div>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* Storage info */}
-        {storage && !showStorageWarning && (
-          <div className="px-1 space-y-1">
-            <div className="flex items-center justify-between text-xs text-slate-500">
-              <span>Storage</span>
-              <span>{fmtMB(storage.usage)} MB / {fmtMB(storage.quota)} MB ({(usagePct * 100).toFixed(1)}%)</span>
-            </div>
-            <div className="h-1 rounded-full bg-slate-700 overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{
-                  width: `${Math.min(100, usagePct * 100).toFixed(1)}%`,
-                  background: usagePct >= 0.8 ? '#ef4444' : usagePct >= 0.5 ? '#f59e0b' : '#22c55e',
-                }}
-              />
-            </div>
+              </div>
+            )}
           </div>
-        )}
+          )}
 
-        {/* Help & Guides */}
-        <CollapsibleSection id="help-guides" title="Help & Guides" isCustomized={!!helpSearch}>
+          {/* Help & Guides */}
+          {settingsTab === 'help' && (
           <div className="p-4">
 
             <p className="text-center text-sm rounded-xl px-4 py-2 mb-4" style={{ color: '#fbbf24', border: '1px solid rgba(232,83,11,0.5)', background: 'rgba(232,83,11,0.1)' }}>
@@ -2124,10 +2034,10 @@ export function SettingsPage() {
             </div>
             )}
           </div>
-        </CollapsibleSection>
+          )}
 
-        {/* Personalization */}
-        <CollapsibleSection id="personalization" title="Personalization" isCustomized={!!(programName || coachName || playoffOrg || winMessage || scoreDetail !== 'sets' || sidelineMode || accent !== 'orange' || defaultTeamId)}>
+          {/* Personalization */}
+          {settingsTab === 'personalization' && (
           <div className="p-4 space-y-5">
 
             {/* Program name */}
@@ -2326,11 +2236,12 @@ export function SettingsPage() {
             </button>
 
           </div>
-        </CollapsibleSection>
+          )}
 
-        {/* Live Match */}
-        <CollapsibleSection id="live-match" title="Live Match" subtitle="Applied during active stat recording" isCustomized={!!(wakeLock || hapticOn || soundsOn || flipLayout || !assumeSetterRot1 || playerNameFormat !== 'initial_last' || rosterSort !== 'jersey')}>
+          {/* Live Match */}
+          {settingsTab === 'live-match' && (
           <div className="p-4 divide-y divide-slate-700/60 space-y-0">
+            <p className="text-xs text-slate-400 pb-3">Applied during active stat recording</p>
 
             <ToggleRow label="Keep Screen Awake" description="Prevent the screen from sleeping during a match" checked={wakeLock} onChange={saveWakeLock} />
 
@@ -2396,11 +2307,12 @@ export function SettingsPage() {
             <ToggleRow label="Assume Setter is Rotation 1" description="Auto-fill the starting rotation so the setter is always considered ROT 1 during match setup" checked={assumeSetterRot1} onChange={saveAssumeSetterRot1} />
 
           </div>
-        </CollapsibleSection>
+          )}
 
-        {/* Match Rules */}
-        <CollapsibleSection id="match-rules" title="Match Rules" subtitle="Applied to all future matches" isCustomized={defaultFormat !== FORMAT.BEST_OF_3 || lastSetScore !== 15 || maxSubs !== DEFAULT_MAX_SUBS}>
+          {/* Match Rules */}
+          {settingsTab === 'match-rules' && (
           <div className="p-4 space-y-4">
+            <p className="text-xs text-slate-400">Applied to all future matches</p>
             <div>
               <label className="block text-sm text-slate-400 mb-2">Best of Sets</label>
               <div className="flex gap-2">
@@ -2461,10 +2373,10 @@ export function SettingsPage() {
               </div>
             </div>
           </div>
-        </CollapsibleSection>
+          )}
 
-        {/* Data Management */}
-        <CollapsibleSection id="data-management" title="Data Management" isCustomized={!!maxPrepsId}>
+          {/* Data Management */}
+          {settingsTab === 'data' && (
           <div className="p-4 space-y-3">
             <div>
               <label className="block text-sm font-medium mb-1">MaxPreps Team ID</label>
@@ -2579,7 +2491,8 @@ export function SettingsPage() {
               Clear All Data
             </Button>
           </div>
-        </CollapsibleSection>
+          )}
+        </section>
 
         {/* Legal */}
         <section className="bg-surface rounded-xl p-4">
@@ -2600,7 +2513,20 @@ export function SettingsPage() {
                   <line x1="16" y1="17" x2="8" y2="17" />
                   <polyline points="10 9 9 9 8 9" />
                 </svg>
-                Terms &amp; Conditions
+                <span className="flex flex-col items-start">
+                  Terms &amp; Conditions
+                  {(() => {
+                    try {
+                      const raw = localStorage.getItem(TERMS_STORAGE_KEY);
+                      if (!raw) return null;
+                      let acceptedAt = null;
+                      try { acceptedAt = JSON.parse(raw).acceptedAt ?? null; } catch { /* old plain-string format */ }
+                      if (!acceptedAt) return <span className="text-xs font-normal text-slate-500">Agreed (date not recorded)</span>;
+                      const fmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+                      return <span className="text-xs font-normal text-slate-500">Agreed {fmt.format(new Date(acceptedAt))}</span>;
+                    } catch { return null; }
+                  })()}
+                </span>
               </span>
               <span className="text-slate-500 text-xs">›</span>
             </Link>
@@ -2781,7 +2707,6 @@ export function SettingsPage() {
           confirmLabel="Sign Out"
           danger
           onConfirm={async () => {
-            clearSectionStates();
             try {
               const { error } = await supabase.auth.signOut();
               if (error) showToast('Sign out failed. Try again.', 'error');
