@@ -463,13 +463,6 @@ export function HomePage() {
     return enriched;
   }, [matchView, defaultSeasonId]);
 
-  const allTimeRecord = useLiveQuery(async () => {
-    const all = await db.matches.where('status').equals(MATCH_STATUS.COMPLETE)
-      .filter(m => m.match_type !== 'exhibition').toArray();
-    const wins = all.filter((m) => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
-    return { wins, losses: all.length - wins, total: all.length };
-  }, []);
-
   const seasonRecord = useLiveQuery(async () => {
     if (!defaultTeamId || !defaultSeasonId) return null;
     const [team, season, allSeasonMatches] = await Promise.all([
@@ -707,29 +700,6 @@ export function HomePage() {
     setNetRippling(true);
     setTimeout(() => setNetRippling(false), 450);
   }
-
-  // ── W–L count-up on load ──────────────────────────────────────────────────
-  const [displayRecord, setDisplayRecord] = useState({ wins: 0, losses: 0 });
-  const recordAnimated = useRef(false);
-
-  useEffect(() => {
-    if (!allTimeRecord || allTimeRecord.total === 0) return;
-    if (recordAnimated.current) {
-      setDisplayRecord({ wins: allTimeRecord.wins, losses: allTimeRecord.losses });
-      return;
-    }
-    recordAnimated.current = true;
-    const { wins, losses } = allTimeRecord;
-    const steps = 20;
-    let step = 0;
-    const timer = setInterval(() => {
-      step++;
-      const t = step / steps;
-      setDisplayRecord({ wins: Math.round(wins * t), losses: Math.round(losses * t) });
-      if (step >= steps) { clearInterval(timer); setDisplayRecord({ wins, losses }); }
-    }, 600 / steps);
-    return () => clearInterval(timer);
-  }, [allTimeRecord]);
 
   const [displaySeasonRecord, setDisplaySeasonRecord] = useState({ wins: 0, losses: 0 });
   const seasonRecordAnimated = useRef(false);
@@ -1174,17 +1144,6 @@ export function HomePage() {
           </div>
         )}
 
-        {/* ── W–L record strip (fallback when no default season set) ── */}
-        {!seasonRecord && allTimeRecord && allTimeRecord.total > 0 && (
-          <div className="flex items-center gap-4 px-1 animate-slide-up-fade" style={{ animationDelay: '200ms' }}>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-black px-2 py-0.5 rounded bg-emerald-900/60 text-emerald-400">{displayRecord.wins}W</span>
-              <span className="text-xs font-black px-2 py-0.5 rounded bg-red-900/60 text-red-400">{displayRecord.losses}L</span>
-            </div>
-            <span className="text-xs text-slate-500">{allTimeRecord.total} match{allTimeRecord.total !== 1 ? 'es' : ''} all time</span>
-          </div>
-        )}
-
         {/* ── Season Leaders ── */}
         {(seasonRecord || seasonLeaders) && (() => {
           const LEADERS = [
@@ -1400,7 +1359,7 @@ export function HomePage() {
                   onClick={() => { setMatchView('schedule'); setStorageItem(STORAGE_KEYS.MATCH_VIEW_DEFAULT, 'schedule'); }}
                   className={`text-[10px] font-semibold px-2 py-1 rounded-md transition-colors ${matchView === 'schedule' ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                  Schedule
+                  Calendar
                 </button>
               </div>
               {displayMatches.length > 0 && (
