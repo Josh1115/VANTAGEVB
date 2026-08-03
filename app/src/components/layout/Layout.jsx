@@ -144,7 +144,7 @@ class ErrorBoundary extends Component {
 }
 
 // Hide NavBar on live match screen (full-screen immersive)
-const HIDE_NAV = ['/live', '/set-lineup'];
+const HIDE_NAV = ['/live', '/set-lineup', '/tools/setter-reads'];
 
 function ExpiryBanner() {
   const { daysUntilExpiry } = usePlan();

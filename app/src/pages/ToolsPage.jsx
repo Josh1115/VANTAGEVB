@@ -20,6 +20,12 @@ const TOOLS = [
     label:       'Serve Tracker',
     description: 'Log serves by zone with net & out errors',
   },
+  {
+    to:          '/tools/setter-reads',
+    icon:        '🖐️',
+    label:       'Setter Reads',
+    description: 'Randomize set calls for setter block-reading drills',
+  },
 ];
 
 export function ToolsPage() {

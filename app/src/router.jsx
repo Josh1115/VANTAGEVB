@@ -32,6 +32,7 @@ const ToolsPage        = lazy(() => import('./pages/ToolsPage').then(m => ({ def
 const ServeReceivePage = lazy(() => import('./pages/tools/ServeReceivePage').then(m => ({ default: m.ServeReceivePage })));
 const ServeTrackerPage = lazy(() => import('./pages/tools/ServeTrackerPage').then(m => ({ default: m.ServeTrackerPage })));
 const PracticeGamePage = lazy(() => import('./pages/tools/PracticeGamePage').then(m => ({ default: m.PracticeGamePage })));
+const SetterReadsPage  = lazy(() => import('./pages/tools/SetterReadsPage').then(m => ({ default: m.SetterReadsPage })));
 const FamilyScopeViewPage  = lazy(() => import('./pages/ParentViewPage').then(m => ({ default: m.FamilyScopeViewPage })));
 const TermsPage                = lazy(() => import('./pages/TermsPage').then(m => ({ default: m.TermsPage })));
 const PrivacyPolicyPage        = lazy(() => import('./pages/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
@@ -98,6 +99,7 @@ export const router = createBrowserRouter([
       { path: 'tools/serve-receive',         element: <PlanGate feature="Practice tools"><S><ServeReceivePage /></S></PlanGate> },
       { path: 'tools/serve-tracker',         element: <PlanGate feature="Practice tools"><S><ServeTrackerPage /></S></PlanGate> },
       { path: 'tools/practice-game',         element: <PlanGate feature="Practice tools"><S><PracticeGamePage /></S></PlanGate> },
+      { path: 'tools/setter-reads',          element: <PlanGate feature="Practice tools"><S><SetterReadsPage /></S></PlanGate> },
       { path: 'terms',                       element: <S><TermsPage /></S> },
       { path: 'privacy',                     element: <S><PrivacyPolicyPage /></S> },
       { path: 'help/serve-receive',          element: <S><HelpServeReceivePage /></S> },
