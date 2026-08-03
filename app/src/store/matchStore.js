@@ -1310,15 +1310,46 @@ export const useMatchStore = create((set, get) => ({
     pushAction(get, set, { type: 'timeout', side, timeoutId });
   },
 
+  // Restores the set's true starting rotation, lineup, and serving side (not
+  // hardcoded rot-1/US/whatever's-currently-on-court) by re-reading the same
+  // db.sets/db.lineups rows the initial LiveMatchPage load uses.
   resetCurrentSet: async () => {
     const s = get();
+    const [setRow, lineupRows] = await Promise.all([
+      db.sets.get(s.currentSetId),
+      db.lineups.where('set_id').equals(s.currentSetId).toArray(),
+    ]);
     await db.contacts.where('set_id').equals(s.currentSetId).delete();
     await db.rallies.where('set_id').equals(s.currentSetId).delete();
     await db.substitutions.where('set_id').equals(s.currentSetId).delete();
     await db.sets.update(s.currentSetId, { our_fudge: 0, opp_fudge: 0 });
+
+    const so1Row      = lineupRows.find((r) => r.serve_order === 1);
+    const sz          = so1Row?.position ?? 1;
+    const zoneRotNum  = ((1 - sz + 6) % 6) + 1;
+    const rotationNum = setRow?.start_rotation ?? zoneRotNum;
+
+    let lineup = s.lineup;
+    if (lineupRows.length > 0) {
+      const players = await db.players.bulkGet(lineupRows.map((r) => r.player_id));
+      lineup = lineupRows
+        .map((row, i) => ({
+          position:      row.position,
+          serveOrder:    row.serve_order ?? row.position,
+          playerId:      row.player_id,
+          playerName:    players[i]?.name ?? '',
+          jersey:        players[i]?.jersey_number ?? '',
+          positionLabel: row.position_label || players[i]?.position || '',
+          year:          players[i]?.year ?? '',
+        }))
+        .sort((a, b) => a.position - b.position);
+    }
+
     set({
       ...makeSetResetState(),
-      serveSide:              SIDE.US,
+      lineup,
+      rotationNum,
+      serveSide:              setRow?.serving_first ?? SIDE.US,
       pendingSetWin:          null,
       liberoOnCourt:          false,
       liberoReplacedPlayerId: null,

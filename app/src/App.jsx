@@ -25,7 +25,7 @@ function AppShell() {
   // so the router doesn't land on whatever page was open before login.
   if (!loading && session && wasLoggedOut.current) {
     wasLoggedOut.current = false;
-    window.history.replaceState(null, '', '/');
+    router.navigate('/', { replace: true });
   }
 
   if (loading) {
