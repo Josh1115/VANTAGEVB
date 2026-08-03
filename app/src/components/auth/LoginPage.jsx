@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { NetDivider } from '../ui/NetDivider';
-import { supabase, trackPageView } from '../../utils/supabase';
+import { supabase, trackPageView, fetchProgramCount } from '../../utils/supabase';
 import { router } from '../../router';
 import { TurnstileWidget, CAPTCHA_REQUIRED } from './TurnstileWidget';
 import { PENDING_PLAN_KEY } from '../../utils/checkout';
+
+const PROGRAM_COUNT_CACHE_KEY = 'vantage_program_count_il';
+const PROGRAM_COUNT_CACHE_MS = 24 * 60 * 60 * 1000;
 
 function friendlyAuthError(msg) {
   if (!msg) return 'Something went wrong. Please try again.';
@@ -28,6 +31,7 @@ export function LoginPage({ onSignup }) {
   const [forgotSent,   setForgotSent]   = useState(false);
   const [pricingOpen,  setPricingOpen]  = useState(true);
   const [captchaToken, setCaptchaToken] = useState(null);
+  const [programCount, setProgramCount] = useState(null);
   const passRef = useRef(null);
   const turnstileRef = useRef(null);
 
@@ -35,6 +39,19 @@ export function LoginPage({ onSignup }) {
     window.scrollTo({ top: 0, behavior: 'instant' });
     document.title = 'Vantage: Immediate Impact Analytics';
     trackPageView('login');
+  }, []);
+
+  useEffect(() => {
+    const cached = JSON.parse(localStorage.getItem(PROGRAM_COUNT_CACHE_KEY) || 'null');
+    if (cached && Date.now() - cached.ts < PROGRAM_COUNT_CACHE_MS) {
+      setProgramCount(cached.count);
+      return;
+    }
+    fetchProgramCount('IL').then(count => {
+      if (count == null) return;
+      setProgramCount(count);
+      localStorage.setItem(PROGRAM_COUNT_CACHE_KEY, JSON.stringify({ count, ts: Date.now() }));
+    });
   }, []);
 
   useEffect(() => {
@@ -128,11 +145,20 @@ export function LoginPage({ onSignup }) {
           </p>
           {/* Buttons */}
           <div
-            className="w-full flex flex-col gap-4 mt-6"
+            className="w-full flex flex-col gap-4 mt-[0.421875rem]"
             style={{ opacity: phase >= 2 ? 1 : 0, transition: 'opacity 0.8s ease' }}
           >
           {!showForm ? (
             <>
+              {programCount != null && programCount > 0 && (
+                <p className="text-center text-lg font-bold uppercase tracking-wide text-slate-400">
+                  Currently tracking stats for
+                  <br />
+                  <span className="brand-glow-pulse">{programCount}</span>
+                  <br />
+                  program{programCount === 1 ? '' : 's'} in Illinois
+                </p>
+              )}
               <button
                 onClick={() => setShowForm(true)}
                 className="relative overflow-hidden w-full rounded-2xl bg-primary py-3 text-[18.4px] leading-none font-black text-white tracking-wide active:scale-[0.97] transition-transform btn-shimmer"

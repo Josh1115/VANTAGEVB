@@ -209,6 +209,16 @@
   animation: flame-pulse-intense 0.8s ease-in-out infinite;
 }
 
+@keyframes brand-glow-pulse {
+  0%, 100% { text-shadow: 0 0 6px rgba(232,83,11,0.6), 0 0 14px rgba(232,83,11,0.35); }
+  50%      { text-shadow: 0 0 12px rgba(232,83,11,0.9), 0 0 26px rgba(232,83,11,0.55); }
+}
+
+.brand-glow-pulse {
+  color: #e8530b;
+  animation: brand-glow-pulse 1.8s ease-in-out infinite;
+}
+
 @keyframes section-twinkle {
   0%, 100% { text-shadow: 0 0 6px rgba(232,83,11,0.55), 0 0 14px rgba(232,83,11,0.2); }
   18%       { text-shadow: 0 0 12px #e8530b, 0 0 24px rgba(232,83,11,0.55), 0 0 38px rgba(232,83,11,0.2); }

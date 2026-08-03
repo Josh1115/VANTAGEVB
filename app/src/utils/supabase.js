@@ -53,6 +53,14 @@ export async function fetchPvStats(token) {
   return data;
 }
 
+// ── Marketing program counter ─────────────────────────────────────────────────
+
+export async function fetchProgramCount(state = 'IL') {
+  const { data, error } = await supabase.rpc('get_program_count', { p_state: state });
+  if (error) return null;
+  return data;
+}
+
 // Writes lightweight live score state to the DB after each point.
 // Authenticated coach only — RLS rejects anon/wrong-owner writes.
 export async function updatePvLiveScore(token, liveState, accessToken) {
