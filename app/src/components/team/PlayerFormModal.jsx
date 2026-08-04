@@ -20,7 +20,7 @@ function initBaseline(player) {
   );
 }
 
-export function PlayerFormModal({ onClose, teamId, player }) {
+export function PlayerFormModal({ onClose, teamId, player, onDelete }) {
   const [name, setName]       = useState(player?.name ?? '');
   const [nickname, setNickname] = useState(player?.nickname ?? '');
   const [jersey, setJersey]   = useState(player?.jersey_number ?? '');
@@ -82,6 +82,11 @@ export function PlayerFormModal({ onClose, teamId, player }) {
       onClose={onClose}
       footer={
         <>
+          {player && onDelete && (
+            <Button variant="danger" onClick={onDelete} className="hidden sm:inline-flex mr-auto">
+              Delete Player
+            </Button>
+          )}
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           {!player && (
             <Button variant="secondary" onClick={saveAndAddAnother}>Save &amp; Add Another</Button>

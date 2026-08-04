@@ -243,12 +243,13 @@ export function TeamDetailPage() {
               </option>
             ))}
           </select>
-          <button
+          <Button
+            size="sm"
             onClick={() => setShowSeasonModal(true)}
-            className="text-xs text-primary font-semibold px-2 py-1.5 rounded-lg border border-blue-500 season-btn-pulse hover:bg-slate-700/50 transition-colors shrink-0"
+            className="text-xs season-btn-pulse shrink-0"
           >
             + Season
-          </button>
+          </Button>
         </div>
       )}
 
@@ -798,6 +799,7 @@ export function TeamDetailPage() {
           teamId={id}
           player={editPlayer}
           onClose={() => { setShowPlayerModal(false); setEditPlayer(null); }}
+          onDelete={editPlayer ? () => { setDeletePlayer(editPlayer); setEditPlayer(null); } : undefined}
         />
       )}
 
