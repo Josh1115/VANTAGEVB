@@ -945,16 +945,16 @@ export function HomePage() {
             </div>
           </button>
 
-          {/* New Season */}
+          {/* Tools */}
           <button
-            onClick={() => navigate('/seasons')}
-            className="group flex-1 bg-blue-900/80 hover:bg-blue-900 border border-blue-800/60 hover:border-blue-700 rounded-xl p-4 text-left flex items-center gap-3 transition-[transform,background-color,border-color] duration-75 active:scale-[0.97] animate-slide-up-fade"
+            onClick={() => navigate('/tools')}
+            className="group flex-1 bg-primary/90 hover:bg-primary rounded-xl p-4 text-left flex items-center gap-3 transition-[transform,background-color] duration-75 active:scale-[0.97] animate-slide-up-fade"
             style={{ animationDelay: '60ms' }}
           >
-            <span className="text-4xl inline-block">📅</span>
+            <span className="text-4xl inline-block">🛠️</span>
             <div>
-              <div className="font-bold text-base text-white">New Season</div>
-              <div className="text-xs text-blue-200/70">Set up a new season</div>
+              <div className="font-bold text-base text-white">Tools</div>
+              <div className="text-xs text-orange-100/80">Practice utilities</div>
             </div>
           </button>
         </div>
@@ -1242,14 +1242,14 @@ export function HomePage() {
         <div className="flex gap-2 animate-slide-up-fade" style={{ animationDelay: '180ms' }}>
           <button
             onClick={() => navigate('/opponents')}
-            className={`group card-top-glow bg-blue-800/60 hover:bg-blue-800/80 border border-blue-700/40 hover:border-blue-600/60 rounded-xl p-3 text-left flex items-center gap-2.5 active:scale-[0.97] transition-[transform,background-color,border-color] duration-75 ${nextMatch ? 'flex-1' : 'w-full'}`}
+            className={`group card-top-glow bg-primary/90 hover:bg-primary rounded-xl p-3 text-left flex items-center gap-2.5 active:scale-[0.97] transition-[transform,background-color] duration-75 ${nextMatch ? 'flex-1' : 'w-full'}`}
           >
             <span className="text-2xl inline-block transition-transform duration-75 group-active:-translate-y-1 group-active:scale-125">🔭</span>
             <div className="min-w-0">
-              <div className="font-semibold text-sm">Opponents</div>
-              <div className="text-[11px] text-blue-200/60 truncate">Scouting & history</div>
+              <div className="font-semibold text-sm text-white">Opponents</div>
+              <div className="text-[11px] text-orange-100/80 truncate">Scouting & history</div>
             </div>
-            <span className="text-blue-400/60 ml-auto">›</span>
+            <span className="text-orange-100/70 ml-auto">›</span>
           </button>
 
           {nextMatch ? (
@@ -1623,30 +1623,18 @@ export function HomePage() {
 
         <NetDivider />
 
-        {/* ── Tools + Whiteboard (side by side) ── */}
+        {/* ── Whiteboard ── */}
         <div className="flex gap-2 animate-slide-up-fade" style={{ animationDelay: '200ms' }}>
           <button
-            onClick={() => navigate('/tools')}
-            className="group flex-1 card-top-glow bg-surface rounded-xl p-3 text-left flex items-center gap-2.5 hover:bg-slate-700 active:scale-[0.97] transition-[transform,background-color] duration-75"
-          >
-            <span className="text-2xl inline-block transition-transform duration-75 group-active:-translate-y-1 group-active:scale-125">🛠️</span>
-            <div className="min-w-0">
-              <div className="font-semibold text-sm">Tools</div>
-              <div className="text-[11px] text-slate-400 truncate">Practice utilities</div>
-            </div>
-            <span className="text-slate-500 ml-auto">›</span>
-          </button>
-
-          <button
             onClick={() => setShowWhiteboard(true)}
-            className="group flex-1 card-top-glow bg-surface rounded-xl p-3 text-left flex items-center gap-2.5 hover:bg-slate-700 active:scale-[0.97] transition-[transform,background-color] duration-75"
+            className="group flex-1 card-top-glow bg-primary/90 hover:bg-primary rounded-xl p-3 text-left flex items-center gap-2.5 active:scale-[0.97] transition-[transform,background-color] duration-75"
           >
             <span className="text-2xl inline-block transition-transform duration-75 group-active:-translate-y-1 group-active:scale-125">📋</span>
             <div className="min-w-0">
-              <div className="font-semibold text-sm">Whiteboard</div>
-              <div className="text-[11px] text-slate-400 truncate">Timeout draw & diagram</div>
+              <div className="font-semibold text-sm text-white">Whiteboard</div>
+              <div className="text-[11px] text-orange-100/80 truncate">Timeout draw & diagram</div>
             </div>
-            <span className="text-slate-500 ml-auto">›</span>
+            <span className="text-orange-100/70 ml-auto">›</span>
           </button>
         </div>
 
