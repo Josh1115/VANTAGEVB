@@ -78,6 +78,7 @@ export const RESULT = {
   // block — note: stored value 'assist' is disambiguated at query time via action='block'
   SOLO:                'solo',
   BLOCK_ASSIST:        'assist',
+  BLOCK_TOUCH:         'touch',
   // dig
   SUCCESS:             'success',
   FREEBALL:            'freeball',

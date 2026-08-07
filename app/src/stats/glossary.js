@@ -94,6 +94,7 @@ export const STAT_GLOSSARY = {
   blk:          { abbr: 'BLK',      full: 'Blocks',                     def: 'Composite block total: BS + 0.5·BA. Block assists are split equally between all participating players.' },
   bs:           { abbr: 'BS',       full: 'Block Solos',                def: 'Blocks where only one player contacts the ball.' },
   ba:           { abbr: 'BA',       full: 'Block Assists',              def: 'Blocks where 2+ players contact the ball. Each participant shares 0.5 in the BLK composite.' },
+  bt:           { abbr: 'TOUCH',    full: 'Block Touches',             def: 'Times a player got a hand on an opponent\'s attack at the net and slowed it down, without ending the rally. Doesn\'t score a point or count toward BLK.' },
   be:           { abbr: 'BE',       full: 'Block Errors',               def: 'Blocking attempts that give a point to the opponent. Penalized at −0.75 per set in VER, same as the other error types.' },
   bps:          { abbr: 'BPS',      full: 'Blocks Per Set',             def: '(BS + 0.5·BA) ÷ SP.' },
 

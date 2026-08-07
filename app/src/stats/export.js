@@ -38,7 +38,7 @@ export function exportMatchCSV(playerStats, playerNames, filename = 'match-stats
     // Setting
     AST: s.ast,  BHE: s.bhe,  APS: fmtRate(s.aps),
     // Blocking
-    BS: s.bs,  BA: s.ba,  BE: s.be,  BPS: fmtRate(s.bps),
+    BS: s.bs,  BA: s.ba,  TOUCH: s.bt,  BE: s.be,  BPS: fmtRate(s.bps),
     // Defense
     DIG: s.dig,  DE: s.de,  DiPS: fmtRate(s.dips),
   }));

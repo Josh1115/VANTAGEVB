@@ -478,7 +478,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
 
         {/* Row 2 — Attack: ATT FREE K AE (or kill-type sub-panel, or AE reason sub-panel) */}
         <div className="px-[7.5%]">
-          <span className={`text-[1.3vmin] font-bold uppercase tracking-wide leading-none ${aePending ? 'text-red-300' : kPending ? 'text-orange-300' : 'text-slate-500'}`}>
+          <span className={`text-[1.3vmin] font-bold uppercase tracking-wide leading-none ${aePending ? 'text-red-300' : kPending ? 'text-orange-300' : 'text-white'}`}>
             {aePending ? 'Attack Error — OB, NET, BLK, or BRA?' : kPending ? 'Kill Type' : 'Hitting'}
           </span>
         </div>
@@ -504,11 +504,11 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
               <Btn label="TIP/ROLL"
                 onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'tip' }); if (id) { setPendingKillId(id); setAssistPickerOpen(true); } }}
                 cls="bg-lime-900/80 text-lime-300 hover:bg-lime-800/90 serve-unlock-btn !text-[2.2vmin]" />
-              <Btn label="BK ROW"
+              <Btn label="BACK ROW"
                 onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'bk' }); if (id) { setPendingKillId(id); setAssistPickerOpen(true); } }}
                 cls="bg-orange-900/80 text-orange-300 hover:bg-orange-800/90 serve-unlock-btn !text-[2.2vmin]"
                 style={DELAY_50} />
-              <Btn label="OVER"
+              <Btn label="OVER PASS"
                 onTap={() => { tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'over' }); setKPending(false); }}
                 cls="bg-yellow-800/80 text-yellow-200 hover:bg-yellow-700/90 serve-unlock-btn !text-[2.2vmin]"
                 style={DELAY_100} />
@@ -558,7 +558,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
 
         {/* Row 3 — Defense: DIG FREE SBLK HBLK (or DigRTG/FreeRTG rating sub-panel) */}
         <div className="px-[7.5%]">
-          <span className={`text-[1.3vmin] font-bold uppercase tracking-wide leading-none ${pendingRating ? 'text-sky-300' : 'text-slate-500'}`}>
+          <span className={`text-[1.3vmin] font-bold uppercase tracking-wide leading-none ${pendingRating ? 'text-sky-300' : 'text-white'}`}>
             {pendingRating ? (pendingRating.isFree ? 'Rate Free — Offensive Options' : 'Rate Dig — Offensive Options') : 'Defense'}
           </span>
         </div>
@@ -590,6 +590,9 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
           <Btn label="FREE"
             onTap={async () => { const id = await tap(ACTION.DIG, RESULT.FREEBALL); if (id) setPendingRating({ contactId: id, isFree: true }); }}
             cls="bg-cyan-950/80 text-cyan-300 hover:bg-cyan-900/80" />
+          <Btn label="TOUCH"
+            onTap={() => tap(ACTION.BLOCK, RESULT.BLOCK_TOUCH)}
+            cls="bg-violet-950/80 text-violet-300 hover:bg-violet-900/80" />
           <Btn label="SBLK"
             onTap={() => tapAndScore(ACTION.BLOCK, RESULT.SOLO)}
             cls="bg-blue-950/80 text-blue-300 hover:bg-blue-900/80" />
@@ -608,7 +611,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
         )}
 
         {/* Row 4 — S/R label */}
-        <div className="px-[7.5%]"><span className="text-[1.3vmin] font-bold uppercase tracking-wide text-slate-500 leading-none">S/R</span></div>
+        <div className="px-[7.5%]"><span className="text-[1.3vmin] font-bold uppercase tracking-wide text-white leading-none">S/R</span></div>
 
         {/* Row 5 — Receive type: FL / TP toggle */}
         <div className="flex flex-none h-[2.8vmin] py-0 px-[7.5%] gap-[0.5vmin]">
@@ -631,7 +634,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
         </div>
 
         {/* Row 6 — Penalty errors: L DBL NET BHE (opponent scores) */}
-        <div className="px-[7.5%]"><span className="text-[1.3vmin] font-bold uppercase tracking-wide text-slate-500 leading-none">Errors</span></div>
+        <div className="px-[7.5%]"><span className="text-[1.3vmin] font-bold uppercase tracking-wide text-white leading-none">Errors</span></div>
         <div className="flex flex-none h-[3.837vmin] py-0 px-[7.5%] gap-[0.5vmin]">
           <Btn label="L"   onTap={() => tapAndScoreThem(ACTION.ERROR, RESULT.LIFT)}                    cls="bg-rose-950/60 text-rose-300 border border-rose-800/50 hover:bg-rose-900/70" />
           <Btn label="DBL" onTap={() => tapAndScoreThem(ACTION.ERROR, RESULT.DOUBLE)}                  cls="bg-rose-950/60 text-rose-300 border border-rose-800/50 hover:bg-rose-900/70" />

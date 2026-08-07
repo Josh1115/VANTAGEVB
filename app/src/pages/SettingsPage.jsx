@@ -1558,11 +1558,11 @@ export function SettingsPage() {
           </div>
           <div className="border-t border-slate-700 mb-4" />
           <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-slate-500 mb-2 text-center">Mission Statement</p>
-          <p className="text-sm text-white font-semibold leading-relaxed text-center">
+          <p className="text-[15.75px] text-white font-semibold leading-relaxed text-center">
             Vantage was built on a simple belief: the best decisions happen in the moment, not after the fact. By putting real-time, in-game data directly in coaches' hands, we empower coaches and players to become their best — and make the game better, one decision at a time.
           </p>
           <div className="border-t border-slate-700 my-4" />
-          <p className="text-sm text-slate-200 leading-relaxed text-center">
+          <p className="text-[15.75px] text-slate-200 leading-relaxed text-center">
             Vantage is a comprehensive volleyball statistics platform built for coaches who want a competitive edge. Record every contact live during a match — serves, passes, attacks, blocks, and digs — and instantly access deep analytics: rotation efficiency, player VER ratings, win correlation insights, and real-time performance alerts. All data lives on your device and works offline. From pre-match lineup prep to gametime decisions, Vantage gives your program the same data-driven tools used at the highest levels of the sport.
           </p>
           <button

@@ -148,6 +148,7 @@ export const TAB_COLUMNS = {
     { key: 'blk',   label: 'BLK',   fmt: fmtBlocks },
     { key: 'bs',    label: 'BS',    fmt: fmtCount },
     { key: 'ba',    label: 'BA',    fmt: fmtCount },
+    { key: 'bt',    label: 'TOUCH', fmt: fmtCount },
     { key: 'be',    label: 'BE',    fmt: fmtCount },
     { key: 'bps',   label: 'BPS',   fmt: fmtRate },
   ],

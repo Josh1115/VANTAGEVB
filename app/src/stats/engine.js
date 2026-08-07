@@ -35,7 +35,7 @@ function mkAccum() {
     // error actions (L/DBL/NET tap on PlayerTile)
     lift: 0, dbl: 0, net: 0,
     // block
-    bs: 0, ba: 0, be: 0,
+    bs: 0, ba: 0, be: 0, bt: 0,
     // dig
     dig: 0, fb_dig: 0, de: 0,
     // DigRTG/FreeRTG — offensive-options rating optionally tagged after a dig
@@ -114,6 +114,7 @@ function accumContact(p, { action, result, serve_type, receive_type, error_type,
     if (result === 'solo')   p.bs += n;
     if (result === 'assist') p.ba += n;
     if (result === 'error')  p.be += n;
+    if (result === 'touch')  p.bt += n;
   } else if (action === 'dig') {
     if (result === 'success')  p.dig    += n;
     if (result === 'freeball') p.fb_dig += n;
@@ -216,7 +217,7 @@ function deriveStats(p, sp, posLabel = null) {
     aps: div(p.ast, sp),
 
     // Blocking
-    bs: p.bs, ba: p.ba, be: p.be,
+    bs: p.bs, ba: p.ba, be: p.be, bt: p.bt,
     blk: p.bs + p.ba * 0.5,
     bps: div(p.bs + p.ba * 0.5, sp),
 
