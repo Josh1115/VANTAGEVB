@@ -112,7 +112,12 @@ export function AuthProvider({ children }) {
   function switchToUser(uid) {
     if (reloading.current) return;
     reloading.current = true;
-    clearUserSettings();
+    // Only wipe personalized settings when a DIFFERENT account was previously
+    // active on this device — not on first-ever login, and not when the same
+    // coach signs back in after a sign-out (clearUser() below now leaves this
+    // marker in place specifically so this comparison can tell them apart).
+    const priorUid = localStorage.getItem(USER_ID_KEY);
+    if (priorUid && priorUid !== uid) clearUserSettings();
     try { localStorage.setItem(USER_ID_KEY, uid); } catch { /* best-effort */ }
     window.location.reload();
   }
@@ -120,8 +125,11 @@ export function AuthProvider({ children }) {
   function clearUser() {
     if (reloading.current) return;
     reloading.current = true;
-    clearUserSettings();
-    try { localStorage.removeItem(USER_ID_KEY); } catch { /* best-effort */ }
+    // Deliberately keep vbstat_user_id and personalized settings on sign-out —
+    // wiping them here meant every ordinary sign-out/sign-in cycle looked
+    // identical to a genuine account switch and reset all settings for the
+    // same coach. The shared-device protection still applies: switchToUser()
+    // wipes settings when a *different* account's uid shows up later.
     window.location.reload();
   }
 

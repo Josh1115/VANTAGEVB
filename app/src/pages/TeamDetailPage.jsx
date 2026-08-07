@@ -102,9 +102,10 @@ export function TeamDetailPage() {
   const players = usePlayers(id);
   const seasons = useSeasons(id);
 
-  // Show all players for the current season — active/inactive is internal only
+  // Current-season roster shows only active players; removed players are
+  // hidden here (but still counted below so "Reactivate Team" can bring them back).
   const activePlayers = useMemo(
-    () => (players ?? []).sort((a, b) => Number(a.jersey_number) - Number(b.jersey_number)),
+    () => (players ?? []).filter(p => p.is_active !== false).sort((a, b) => Number(a.jersey_number) - Number(b.jersey_number)),
     [players]
   );
 
@@ -205,7 +206,7 @@ export function TeamDetailPage() {
   };
 
   const [reactivating, setReactivating] = useState(false);
-  const archivedCount = activePlayers.filter(p => !p.is_active).length;
+  const archivedCount = (players ?? []).filter(p => !p.is_active).length;
   const reactivateRoster = async () => {
     setReactivating(true);
     try {

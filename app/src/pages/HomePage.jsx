@@ -567,13 +567,25 @@ export function HomePage() {
       db.players.count(),
       db.matches.count(),
     ]);
-    // Auto-set defaults when exactly one team/season exists and no default is saved yet
-    if (allTeams.length === 1 && !getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID)) {
-      setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, allTeams[0].id);
+
+    // Self-heal Default Team/Season whenever the stored value is missing or
+    // points at something that no longer exists — covers cloud restores,
+    // imports, and settings resets, not just manual team/season creation.
+    // Never leaves a default unset unless there's truly nothing to pick.
+    let teamId = getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID);
+    if (!allTeams.some(t => t.id === teamId)) {
+      teamId = allTeams.length ? allTeams.reduce((a, b) => (b.id > a.id ? b : a)).id : null;
+      setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, teamId);
     }
-    if (allSeasons.length === 1 && !getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID)) {
-      setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, allSeasons[0].id);
+    let seasonId = getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID);
+    const teamSeasons = allSeasons.filter(s => s.team_id === teamId);
+    if (!teamSeasons.some(s => s.id === seasonId)) {
+      seasonId = teamSeasons.length
+        ? teamSeasons.reduce((a, b) => (Number(b.year) > Number(a.year) ? b : a)).id
+        : null;
+      setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, seasonId);
     }
+
     return {
       hasTeam:     allTeams.length > 0,
       hasSeason:   allSeasons.length > 0,

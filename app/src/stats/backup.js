@@ -22,10 +22,9 @@ const OPTIONAL_TABLES = [
 
 const ALL_TABLES = [...REQUIRED_TABLES, ...OPTIONAL_TABLES];
 
-// localStorage keys included in the backup. LAST_SET_SCORE is transient; account credentials are
-// never exported so a shared backup file can't be used to hijack another coach's account.
+// localStorage keys included in the backup. Account credentials are never
+// exported so a shared backup file can't be used to hijack another coach's account.
 const BLOCKED_SETTINGS_KEYS = new Set([
-  STORAGE_KEYS.LAST_SET_SCORE,
   STORAGE_KEYS.ACCOUNT_TOKEN,
   STORAGE_KEYS.ACCOUNT_EMAIL,
 ]);

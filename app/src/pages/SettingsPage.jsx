@@ -2126,13 +2126,21 @@ export function SettingsPage() {
               <div className="text-xs text-slate-400 mb-2">Pre-selected in tool pages and session setup</div>
               <select
                 value={defaultTeamId ?? ''}
-                onChange={(e) => {
-                  saveDefaultTeam(Number(e.target.value) || null);
-                  saveDefaultSeason(null);
+                onChange={async (e) => {
+                  const newTeamId = Number(e.target.value) || null;
+                  saveDefaultTeam(newTeamId);
+                  // Immediately resolve to that team's most recent season rather
+                  // than leaving Default Season blank — a default should only
+                  // ever be unset when there's truly nothing to pick.
+                  const newTeamSeasons = newTeamId ? await db.seasons.where('team_id').equals(newTeamId).toArray() : [];
+                  const latest = newTeamSeasons.length
+                    ? newTeamSeasons.reduce((a, b) => (Number(b.year) > Number(a.year) ? b : a))
+                    : null;
+                  saveDefaultSeason(latest?.id ?? null);
                 }}
                 className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
               >
-                <option value="">No default</option>
+                {(teams ?? []).length === 0 && <option value="">No default</option>}
                 {(teams ?? []).map((t) => {
                   const genderLabel = t.gender === 'F' ? 'Girls' : t.gender === 'M' ? 'Boys' : t.gender === 'Mixed' ? 'Mixed' : null;
                   return <option key={t.id} value={t.id}>{genderLabel ? `${genderLabel} - ${t.name}` : t.name}</option>;
@@ -2150,7 +2158,7 @@ export function SettingsPage() {
                   onChange={(e) => saveDefaultSeason(Number(e.target.value) || null)}
                   className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
                 >
-                  <option value="">No default</option>
+                  {(defaultTeamSeasons ?? []).length === 0 && <option value="">No default</option>}
                   {(defaultTeamSeasons ?? []).map((s) => (
                     <option key={s.id} value={s.id}>{s.name ?? s.year}</option>
                   ))}
@@ -2637,13 +2645,26 @@ export function SettingsPage() {
           title="Restore Defaults"
           message="This will reset your program name, coach name, accent color, theme, and all other personalization settings back to their defaults."
           confirmLabel="Restore Defaults"
-          onConfirm={() => {
+          onConfirm={async () => {
             saveProgramName('');
             saveCoachName('');
             savePlayoffOrg('');
             saveWinMessage('');
-            saveDefaultTeam(null);
-            saveDefaultSeason(null);
+            // Re-derive Default Team/Season (most recent team, its most recent
+            // season) instead of clearing them outright — the app should only
+            // ever have no default when there's truly no team/season to pick.
+            const newestTeam = await db.teams.orderBy('id').last();
+            if (newestTeam) {
+              saveDefaultTeam(newestTeam.id);
+              const teamSeasons = await db.seasons.where('team_id').equals(newestTeam.id).toArray();
+              const latestSeason = teamSeasons.length
+                ? teamSeasons.reduce((a, b) => (Number(b.year) > Number(a.year) ? b : a))
+                : null;
+              saveDefaultSeason(latestSeason?.id ?? null);
+            } else {
+              saveDefaultTeam(null);
+              saveDefaultSeason(null);
+            }
             saveScoreDetail('sets');
             saveSidelineMode(false);
             saveAccent('orange');
