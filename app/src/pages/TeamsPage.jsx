@@ -389,6 +389,9 @@ function TeamFormModal({ onClose, orgId, team, orgType }) {
         onClose();
       } else {
         const newTeamId = await db.teams.add({ org_id: orgId, ...fields });
+        // A newly added team is assumed to be what the user wants to work in next.
+        setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, newTeamId);
+        setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, null);
         showToast('Team added', 'success');
         onClose(newTeamId);
       }
@@ -534,13 +537,32 @@ export function TeamsPage() {
   const activeTeamCount = useLiveQuery(countActiveSeasonTeams, []);
   const atTeamLimit = !isMaster && (activeTeamCount ?? 0) >= (Number.isFinite(teamsAllowed) ? teamsAllowed : 0);
 
-  // Deleting the default team would leave every page auto-selecting a ghost
-  function clearStaleDefaults(deletedTeamIds, deletedSeasonIds) {
-    if (deletedTeamIds.includes(getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID))) {
-      setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, null);
-      setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, null);
+  // Deleting the default team/season would leave every page auto-selecting a ghost.
+  // Fall back to the next-most-recent team (highest id) and, within it, the
+  // next-most-recent season (highest year) — same "most recent" rule used to
+  // auto-assign defaults when a team/season is created.
+  async function applyDefaultFallback(deletedTeamIds, deletedSeasonIds) {
+    const currentTeamId = getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID);
+
+    if (deletedTeamIds.includes(currentTeamId)) {
+      const nextTeam = await db.teams.orderBy('id').last();
+      if (!nextTeam) {
+        setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, null);
+        setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, null);
+        return;
+      }
+      setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, nextTeam.id);
+      const teamSeasons = await db.seasons.where('team_id').equals(nextTeam.id).toArray();
+      const latest = teamSeasons.length
+        ? teamSeasons.reduce((a, b) => (Number(b.year) > Number(a.year) ? b : a))
+        : null;
+      setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, latest?.id ?? null);
     } else if (deletedSeasonIds.includes(getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID))) {
-      setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, null);
+      const teamSeasons = await db.seasons.where('team_id').equals(currentTeamId).toArray();
+      const latest = teamSeasons.length
+        ? teamSeasons.reduce((a, b) => (Number(b.year) > Number(a.year) ? b : a))
+        : null;
+      setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, latest?.id ?? null);
     }
   }
 
@@ -593,7 +615,7 @@ export function TeamsPage() {
         await db.organizations.delete(deleteOrg.id);
         await addTombstone('organization', tombstoneKeyForOrg(deleteOrg.name));
       });
-      clearStaleDefaults(teamIds, seasonIds);
+      await applyDefaultFallback(teamIds, seasonIds);
       setDeleteOrg(null);
     } catch (err) {
       setDeleteOrg(null);
@@ -646,7 +668,7 @@ export function TeamsPage() {
         await db.teams.delete(deleteTeam.id);
         if (org) await addTombstone('team', tombstoneKeyForTeam(org.name, deleteTeam));
       });
-      clearStaleDefaults([deleteTeam.id], seasonIds);
+      await applyDefaultFallback([deleteTeam.id], seasonIds);
       setDeleteTeam(null);
     } catch (err) {
       setDeleteTeam(null);

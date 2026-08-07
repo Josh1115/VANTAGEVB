@@ -6,8 +6,10 @@ import { MATCH_STATUS, JERSEY_COLORS } from '../constants';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useUiStore, selectShowToast } from '../store/uiStore';
+import { STORAGE_KEYS, getIntStorage, setStorageItem } from '../utils/storage';
 
 const JERSEY_HEX = Object.fromEntries(JERSEY_COLORS.map(c => [c.id, c.bg]));
 const DEFAULT_ACCENT = '#e8530b'; // app orange
@@ -51,7 +53,14 @@ function NewSeasonModal({ onClose }) {
     if (!teamId) { showToast('Select a team', 'error'); return; }
     if (!name.trim()) { showToast('Enter a season name', 'error'); return; }
     try {
-      const id = await db.seasons.add({ team_id: Number(teamId), name: name.trim(), year: Number(year) });
+      const tid = Number(teamId);
+      const id = await db.seasons.add({ team_id: tid, name: name.trim(), year: Number(year) });
+      // Keep Default Season pointed at the default team's most recent season by year.
+      if (getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID) === tid) {
+        const teamSeasons = await db.seasons.where('team_id').equals(tid).toArray();
+        const latest = teamSeasons.reduce((a, b) => (Number(b.year) > Number(a.year) ? b : a));
+        setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, latest.id);
+      }
       onClose();
       navigate(`/seasons/${id}`);
     } catch (err) {
@@ -111,9 +120,23 @@ function NewSeasonModal({ onClose }) {
   );
 }
 
+// Trash icon — matches the delete-team icon on the Teams page
+function IconTrash() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </svg>
+  );
+}
+
 export function SeasonsPage() {
   const navigate = useNavigate();
+  const showToast = useUiStore(selectShowToast);
   const [showModal, setShowModal] = useState(false);
+  const [deleteSeason, setDeleteSeason] = useState(null); // season object to delete
 
   const seasons = useLiveQuery(async () => {
     const allSeasons = await db.seasons.orderBy('year').reverse().toArray();
@@ -151,6 +174,48 @@ export function SeasonsPage() {
     });
   }, []);
 
+  const handleDeleteSeason = async () => {
+    if (!deleteSeason) return;
+    try {
+      const matches  = await db.matches.where('season_id').equals(deleteSeason.id).toArray();
+      const matchIds = matches.map((m) => m.id);
+      const sets     = matchIds.length ? await db.sets.where('match_id').anyOf(matchIds).toArray() : [];
+      const setIds   = sets.map((s) => s.id);
+
+      await db.transaction('rw', db.tables, async () => {
+        if (setIds.length) {
+          await Promise.all([
+            db.contacts.where('set_id').anyOf(setIds).delete(),
+            db.rallies.where('set_id').anyOf(setIds).delete(),
+            db.lineups.where('set_id').anyOf(setIds).delete(),
+            db.substitutions.where('set_id').anyOf(setIds).delete(),
+          ]);
+          await db.sets.bulkDelete(setIds);
+        }
+        if (matchIds.length) {
+          await db.opp_tendencies.where('match_id').anyOf(matchIds).delete();
+          await db.timeouts.where('match_id').anyOf(matchIds).delete();
+          await db.matches.bulkDelete(matchIds);
+        }
+        await db.seasons.delete(deleteSeason.id);
+      });
+
+      // Deleting the default season would leave other pages auto-selecting a ghost —
+      // fall back to this team's next-most-recent season (highest year), if any.
+      if (getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID) === deleteSeason.id) {
+        const remaining = await db.seasons.where('team_id').equals(deleteSeason.team_id).toArray();
+        const latest = remaining.length
+          ? remaining.reduce((a, b) => (Number(b.year) > Number(a.year) ? b : a))
+          : null;
+        setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, latest?.id ?? null);
+      }
+      setDeleteSeason(null);
+    } catch (err) {
+      setDeleteSeason(null);
+      showToast(`Delete failed: ${err.message}`, 'error');
+    }
+  };
+
   return (
     <div>
       <PageHeader title="Seasons" backTo="/" />
@@ -186,13 +251,15 @@ export function SeasonsPage() {
             const accent = getAccent(season.team);
             const pct = season.total > 0 ? (season.played / season.total) * 100 : 0;
             return (
-              <button
+              <div
                 key={season.id}
-                onClick={() => navigate(`/seasons/${season.id}`)}
-                className="w-full bg-surface rounded-xl overflow-hidden text-left hover:bg-slate-700 transition-colors"
+                className="w-full bg-surface rounded-xl overflow-hidden flex items-stretch hover:bg-slate-700 transition-colors"
                 style={{ borderLeft: `4px solid ${accent}` }}
               >
-                <div className="px-4 py-3">
+                <button
+                  onClick={() => navigate(`/seasons/${season.id}`)}
+                  className="flex-1 min-w-0 text-left px-4 py-3"
+                >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-semibold truncate">{season.name ?? String(season.year)}</span>
@@ -216,8 +283,15 @@ export function SeasonsPage() {
                       <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: accent }} />
                     </div>
                   )}
-                </div>
-              </button>
+                </button>
+                <button
+                  onClick={() => setDeleteSeason(season)}
+                  className="px-4 text-slate-600 hover:text-red-400 transition-colors shrink-0"
+                  title="Delete season"
+                >
+                  <IconTrash />
+                </button>
+              </div>
             );
           };
 
@@ -252,6 +326,17 @@ export function SeasonsPage() {
       </div>
 
       {showModal && <NewSeasonModal onClose={() => setShowModal(false)} />}
+
+      {deleteSeason && (
+        <ConfirmDialog
+          title="Delete Season"
+          message={`Delete "${deleteSeason.name ?? deleteSeason.year}" for ${deleteSeason.team?.name ?? 'this team'}? All matches and stats for this season will be permanently erased. This cannot be undone.`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={handleDeleteSeason}
+          onCancel={() => setDeleteSeason(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { db } from '../../db/schema';
 import { useUiStore, selectShowToast } from '../../store/uiStore';
+import { STORAGE_KEYS, getIntStorage, setStorageItem } from '../../utils/storage';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 
@@ -20,6 +21,12 @@ export function SeasonFormModal({ onClose, teamId, season, required = false }) {
         showToast('Season updated', 'success');
       } else {
         await db.seasons.add({ team_id: teamId, ...data });
+        // Keep Default Season pointed at the default team's most recent season by year.
+        if (getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID) === teamId) {
+          const teamSeasons = await db.seasons.where('team_id').equals(teamId).toArray();
+          const latest = teamSeasons.reduce((a, b) => (Number(b.year) > Number(a.year) ? b : a));
+          setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, latest.id);
+        }
         showToast('Season added', 'success');
       }
       onClose();

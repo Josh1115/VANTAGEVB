@@ -11,9 +11,7 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary';
 function AppShell() {
   const { session, loading, recoveryMode, clearRecoveryMode } = useAuth();
   const [view, setView] = useState('login'); // 'login' | 'signup'
-  const wasLoggedOut = useRef(false);
-
-  if (!loading && !session) wasLoggedOut.current = true;
+  const hasRedirectedHome = useRef(false);
 
   useEffect(() => {
     if (!loading) {
@@ -21,10 +19,12 @@ function AppShell() {
     }
   }, [session, loading]);
 
-  // When transitioning from logged-out → logged-in, reset URL to home
-  // so the router doesn't land on whatever page was open before login.
-  if (!loading && session && wasLoggedOut.current) {
-    wasLoggedOut.current = false;
+  // The first time auth resolves to a logged-in session — whether from a
+  // fresh login or an already-valid session restored on app boot — reset
+  // the URL to home so the user never lands on whatever page happened to
+  // be open last, on any device.
+  if (!loading && session && !hasRedirectedHome.current) {
+    hasRedirectedHome.current = true;
     router.navigate('/', { replace: true });
   }
 
