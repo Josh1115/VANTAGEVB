@@ -268,6 +268,20 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
                     >
                       ▶ Start
                     </button>
+                    <button
+                      onClick={() => onDeleteConfirm(match)}
+                      className="p-1.5 text-slate-500 hover:text-red-400 transition-colors"
+                      title="Delete match"
+                      aria-label="Delete match"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                        <path d="M10 11v6" />
+                        <path d="M14 11v6" />
+                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -440,10 +454,11 @@ export function HomePage() {
       const all = defaultSeasonId
         ? await db.matches.where('season_id').equals(defaultSeasonId).toArray()
         : await db.matches.toArray();
+      // Keep closest-to-today first so the card stack shows the most recent
+      // match on top and the furthest-out of the five on the bottom.
       matches = all
         .sort((a, b) => Math.abs(new Date(a.date) - now) - Math.abs(new Date(b.date) - now))
-        .slice(0, 5)
-        .sort(sortByDateTime);
+        .slice(0, 5);
     }
 
     const seasonIds = [...new Set(matches.map((m) => m.season_id).filter(Boolean))];
@@ -1470,7 +1485,7 @@ export function HomePage() {
             />
           )}
 
-          {recentMatches !== undefined && matchView !== 'schedule' && [...displayMatches].reverse().map((match, idx) => (
+          {recentMatches !== undefined && matchView !== 'schedule' && displayMatches.map((match, idx) => (
             <SwipeableMatchCard
               key={match.id}
               onDeleteConfirm={() => setConfirmDelete(match)}
@@ -1533,6 +1548,20 @@ export function HomePage() {
                       className="text-xs font-semibold px-2.5 py-1 rounded bg-amber-900/40 text-amber-400 hover:bg-amber-900/60 transition-colors"
                     >
                       ▶ Start
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(match)}
+                      className="p-1.5 text-slate-500 hover:text-red-400 transition-colors"
+                      title="Delete match"
+                      aria-label="Delete match"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                        <path d="M10 11v6" />
+                        <path d="M14 11v6" />
+                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                      </svg>
                     </button>
                   </div>
                 </div>
@@ -1955,6 +1984,18 @@ export function HomePage() {
                 {schedSaving ? 'Saving…' : 'Save Game'}
               </Button>
             </div>
+            <Button
+              variant="danger"
+              className="w-full"
+              onClick={() => {
+                const id = editMatchId;
+                const oppName = schedOpp;
+                resetSchedForm();
+                setConfirmDelete({ id, opponent_name: oppName });
+              }}
+            >
+              Delete Match
+            </Button>
           </div>
         </>,
         document.body
