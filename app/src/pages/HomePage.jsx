@@ -10,6 +10,9 @@ import { fmtDate, fmtHitting, fmtPct, fmtSetScores } from '../stats/formatters';
 import { computePlayerStats, computeTeamStats } from '../stats/engine';
 import { deleteMatch } from '../stats/queries';
 import { useUiStore, selectShowToast } from '../store/uiStore';
+import { useAuth } from '../contexts/AuthContext';
+import { usePlan } from '../hooks/usePlan';
+import { syncWithCloud } from '../stats/backup';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -374,6 +377,21 @@ export function HomePage() {
   const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const showToast = useUiStore(selectShowToast);
+  const { session } = useAuth();
+  const { teamsAllowed, matchLimit, isMaster } = usePlan();
+  const [cloudSaving, setCloudSaving] = useState(false);
+
+  async function handleSaveToCloud() {
+    setCloudSaving(true);
+    try {
+      await syncWithCloud(supabase, session, { teamsAllowed, matchLimit, isMaster });
+      showToast('Saved to cloud', 'success');
+    } catch (e) {
+      showToast(e.message ?? 'Cloud save failed', 'error');
+    } finally {
+      setCloudSaving(false);
+    }
+  }
   const [matchView, setMatchView] = useState(() => {
     const v = getStorageItem(STORAGE_KEYS.MATCH_VIEW_DEFAULT, 'closest');
     return v === 'recent' ? 'closest' : v;
@@ -1645,6 +1663,18 @@ export function HomePage() {
           {todayDisplay}
         </div>
 
+        {session && (
+          <div className="px-4">
+            <Button
+              className="w-full fab-glow"
+              variant="secondary"
+              disabled={cloudSaving}
+              onClick={handleSaveToCloud}
+            >
+              {cloudSaving ? 'Saving…' : 'Save to Cloud'}
+            </Button>
+          </div>
+        )}
 
         <div className="border-t border-slate-800 mx-4 mb-6 pt-6">
           <button
