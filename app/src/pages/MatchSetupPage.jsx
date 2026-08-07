@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getStorageItem, getIntStorage, STORAGE_KEYS, getPlayoffLabel } from '../utils/storage';
-import { useUiStore, selectShowToast } from '../store/uiStore';
+import { useUiStore, selectShowToast, selectShowUpgradeNudge } from '../store/uiStore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
@@ -18,6 +18,7 @@ import { supabase, consumeMatchSlotStrict } from '../utils/supabase';
 export function MatchSetupPage() {
   const navigate     = useNavigate();
   const showToast    = useUiStore(selectShowToast);
+  const showUpgradeNudge = useUiStore(selectShowUpgradeNudge);
   const resetMatch   = useMatchStore((s) => s.resetMatch);
   const playoffLabel = getPlayoffLabel();
   const [searchParams] = useSearchParams();
@@ -221,6 +222,10 @@ export function MatchSetupPage() {
             setSaving(false);
             return;
           }
+          if (!error && data?.allowed !== false && plan === 'trial') {
+            if (data.used === 4 || data.used >= data.limit) showUpgradeNudge(data.used, data.limit);
+            else showToast(`Trial match ${data.used} of ${data.limit} used`, 'info');
+          }
         } catch { /* offline — local check below will catch it */ }
       }
 
@@ -341,7 +346,10 @@ export function MatchSetupPage() {
       if (!isMaster && !scheduledMatchId) {
         if (plan === 'trial') {
           const slot = await consumeMatchSlotStrict();
-          if (slot) showToast(`Trial match ${slot.used} of ${slot.limit} used`, 'info');
+          if (slot) {
+            if (slot.used === 4 || slot.used >= slot.limit) showUpgradeNudge(slot.used, slot.limit);
+            else showToast(`Trial match ${slot.used} of ${slot.limit} used`, 'info');
+          }
         } else {
           try {
             const { data, error } = await supabase.rpc('consume_match_slot');

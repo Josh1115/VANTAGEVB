@@ -2,7 +2,9 @@ import { Component, useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { NavBar } from './NavBar';
 import { UpdatePrompt } from './UpdatePrompt';
-import { useUiStore, selectToast } from '../../store/uiStore';
+import { useUiStore, selectToast, selectUpgradeNudge, selectCloseUpgradeNudge } from '../../store/uiStore';
+import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
 import { autoSaveBackup } from '../../stats/backup';
 import { useInstallPrompt } from '../../hooks/useInstallPrompt';
 import { usePlan } from '../../hooks/usePlan';
@@ -161,6 +163,33 @@ function ExpiryBanner() {
   );
 }
 
+// Popup shown when a trial user hits their 4th or 5th (last) match slot.
+function UpgradeNudgeModal() {
+  const nudge = useUiStore(selectUpgradeNudge);
+  const close = useUiStore(selectCloseUpgradeNudge);
+  const navigate = useNavigate();
+  if (!nudge) return null;
+  const atLimit = nudge.used >= nudge.limit;
+  return (
+    <Modal
+      title={atLimit ? 'Trial complete' : 'One match left'}
+      onClose={close}
+      footer={
+        <>
+          <Button variant="secondary" onClick={close}>Not now</Button>
+          <Button variant="primary" onClick={() => { close(); navigate('/upgrade'); }}>Upgrade now</Button>
+        </>
+      }
+    >
+      <p className="text-sm text-slate-300">
+        {atLimit
+          ? `You've used all ${nudge.limit} of your trial matches. Upgrade to a full season plan to keep recording matches.`
+          : `You've used ${nudge.used} of your ${nudge.limit} trial matches — just one left. Upgrade now to keep going without interruption.`}
+      </p>
+    </Modal>
+  );
+}
+
 export function Layout() {
   const { pathname } = useLocation();
   const { session } = useAuth();
@@ -203,6 +232,8 @@ export function Layout() {
           {toast.message}
         </div>
       )}
+
+      <UpgradeNudgeModal />
     </div>
   );
 }
