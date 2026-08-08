@@ -590,6 +590,10 @@ export function HomePage() {
     const last5  = [...matches].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
     const last5W = last5.filter(isWin).length;
     const last5L = last5.length - last5W;
+    // Progress bar only tracks the regular-season slate (reg-season + tourney),
+    // so playoff matches don't count toward "season" completion.
+    const progressMatches = allSeasonMatches.filter(m => m.match_type === 'reg-season' || m.match_type === 'tourney');
+    const progressCompleted = progressMatches.filter(m => m.status === MATCH_STATUS.COMPLETE).length;
     return {
       teamName:   team.name ?? team.abbreviation ?? 'Team',
       seasonName: season.name ?? String(season.year),
@@ -597,7 +601,7 @@ export function HomePage() {
       winPct:  matches.length ? wins / matches.length : null,
       homeW, homeL, awayW, awayL, neutW, neutL, confW, confL, tourneyW, tourneyL, last5W, last5L, last5Count: last5.length,
       hasLocData: (homeW + homeL + awayW + awayL + neutW + neutL) > 0,
-      matchProgress: { completed: matches.length, total: allSeasonMatches.length },
+      matchProgress: { completed: progressCompleted, total: progressMatches.length },
       stateRank:        historyEntry?.state_rank         ?? null,
       nationalRank:     historyEntry?.national_rank      ?? null,
       classRank:        historyEntry?.class_rank         ?? null,
