@@ -1247,10 +1247,10 @@ function useLastSetScore() {
 
 const SETTINGS_TABS = [
   { value: 'pricing',         label: 'Pricing'         },
-  { value: 'help',            label: 'Help & Guides'   },
   { value: 'personalization', label: 'Personalization' },
   { value: 'live-match',      label: 'Live Match'      },
   { value: 'match-rules',     label: 'Match Rules'     },
+  { value: 'help',            label: 'Help & Guides'   },
   { value: 'data',            label: 'Data Management' },
   { value: 'legal',           label: 'Legal'           },
 ];
