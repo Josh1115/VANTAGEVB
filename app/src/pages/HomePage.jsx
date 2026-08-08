@@ -600,7 +600,6 @@ export function HomePage() {
       wins, losses, total: matches.length,
       winPct:  matches.length ? wins / matches.length : null,
       homeW, homeL, awayW, awayL, neutW, neutL, confW, confL, tourneyW, tourneyL, last5W, last5L, last5Count: last5.length,
-      hasLocData: (homeW + homeL + awayW + awayL + neutW + neutL) > 0,
       matchProgress: { completed: progressCompleted, total: progressMatches.length },
       stateRank:        historyEntry?.state_rank         ?? null,
       nationalRank:     historyEntry?.national_rank      ?? null,
@@ -1150,65 +1149,36 @@ export function HomePage() {
               </button>
             </div>
 
-            {/* Stats row */}
+            {/* Stats row — always shows every stat, even at 0-0 / no data, so the
+                layout doesn't jump around as a season fills in. */}
             <div className="px-4 py-2.5 border-t border-slate-700/60 flex items-center justify-center gap-3 flex-wrap text-xs">
-              {seasonRecord.winPct !== null && (
-                <>
-                  <span className="font-black text-primary">
-                    {fmtPct(seasonRecord.winPct)} WIN
-                  </span>
-                  {seasonRecord.hasLocData && <span className="text-slate-400 font-black">·</span>}
-                </>
-              )}
-              {seasonRecord.hasLocData && (
-                <>
-                  {(seasonRecord.homeW + seasonRecord.homeL) > 0 && (
-                    <span className="text-white font-semibold">
-                      {seasonRecord.homeW}–{seasonRecord.homeL} <span className="text-white">HOME</span>
-                    </span>
-                  )}
-                  {(seasonRecord.awayW + seasonRecord.awayL) > 0 && (
-                    <>
-                      <span className="text-white font-black">·</span>
-                      <span className="text-white font-semibold">
-                        {seasonRecord.awayW}–{seasonRecord.awayL} <span className="text-white">AWAY</span>
-                      </span>
-                    </>
-                  )}
-                  {(seasonRecord.neutW + seasonRecord.neutL) > 0 && (
-                    <>
-                      <span className="text-white font-black">·</span>
-                      <span className="text-white font-semibold">
-                        {seasonRecord.neutW}–{seasonRecord.neutL} <span className="text-white">NEUT</span>
-                      </span>
-                    </>
-                  )}
-                  {(seasonRecord.confW + seasonRecord.confL) > 0 && (
-                    <>
-                      <span className="text-white font-black">·</span>
-                      <span className="text-white font-semibold">
-                        {seasonRecord.confW}–{seasonRecord.confL} <span className="text-white">CONF</span>
-                      </span>
-                    </>
-                  )}
-                  {(seasonRecord.tourneyW + seasonRecord.tourneyL) > 0 && (
-                    <>
-                      <span className="text-white font-black">·</span>
-                      <span className="text-white font-semibold">
-                        {seasonRecord.tourneyW}–{seasonRecord.tourneyL} <span className="text-white">TOURN</span>
-                      </span>
-                    </>
-                  )}
-                  {seasonRecord.last5Count > 0 && (
-                    <>
-                      <span className="text-white font-black">·</span>
-                      <span className="text-white font-semibold">
-                        {seasonRecord.last5W}–{seasonRecord.last5L} <span className="text-white">L{seasonRecord.last5Count}</span>
-                      </span>
-                    </>
-                  )}
-                </>
-              )}
+              <span className="font-black text-primary">
+                {fmtPct(seasonRecord.winPct)} WIN
+              </span>
+              <span className="text-slate-400 font-black">·</span>
+              <span className="text-white font-semibold">
+                {seasonRecord.homeW}–{seasonRecord.homeL} <span className="text-white">HOME</span>
+              </span>
+              <span className="text-white font-black">·</span>
+              <span className="text-white font-semibold">
+                {seasonRecord.awayW}–{seasonRecord.awayL} <span className="text-white">AWAY</span>
+              </span>
+              <span className="text-white font-black">·</span>
+              <span className="text-white font-semibold">
+                {seasonRecord.neutW}–{seasonRecord.neutL} <span className="text-white">NEUT</span>
+              </span>
+              <span className="text-white font-black">·</span>
+              <span className="text-white font-semibold">
+                {seasonRecord.confW}–{seasonRecord.confL} <span className="text-white">CONF</span>
+              </span>
+              <span className="text-white font-black">·</span>
+              <span className="text-white font-semibold">
+                {seasonRecord.tourneyW}–{seasonRecord.tourneyL} <span className="text-white">TOURN</span>
+              </span>
+              <span className="text-white font-black">·</span>
+              <span className="text-white font-semibold">
+                {seasonRecord.last5W}–{seasonRecord.last5L} <span className="text-white">L{seasonRecord.last5Count || 5}</span>
+              </span>
             </div>
 
             {/* Season progress bar */}
