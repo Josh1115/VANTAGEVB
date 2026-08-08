@@ -679,9 +679,6 @@ export function TeamsPage() {
   return (
     <div>
       <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 pb-3 pt-safe flex flex-col items-center gap-0.5">
-        <div className="w-full flex items-center justify-end">
-          <Button size="sm" onClick={() => setOrgModal({})}>+ Org</Button>
-        </div>
         <img
           src="/logo.png"
           alt="VANTAGE"
@@ -703,6 +700,12 @@ export function TeamsPage() {
             description="Add a school or club to get started"
             action={<Button onClick={() => setOrgModal({})}>Add Organization</Button>}
           />
+        )}
+
+        {orgs !== undefined && orgs.length > 0 && (
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => setOrgModal({})}>+High School / Club</Button>
+          </div>
         )}
 
         {(orgs ?? []).map((org) => (
@@ -886,7 +889,7 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
             <IconTrash />
           </button>
         </div>
-        <Button size="sm" variant="ghost" onClick={onAddTeam ?? undefined} disabled={!onAddTeam} title={!onAddTeam ? 'Team limit reached — end a previous season or upgrade your plan' : undefined}>+ Team</Button>
+        <Button size="sm" onClick={onAddTeam ?? undefined} disabled={!onAddTeam} title={!onAddTeam ? 'Team limit reached — end a previous season or upgrade your plan' : undefined}>+ Team</Button>
       </div>
 
       {(teams ?? []).length === 0 ? (
@@ -908,11 +911,11 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
           return (
           <div key={gender ?? 'other'}>
             <div className="px-5 py-2 border-b border-slate-700/60 bg-slate-800/40 flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-widest text-primary">
                 {GENDER_LABELS[gender] ?? 'Other'}
               </span>
-              {info && <span className="text-xs text-slate-500 font-medium">{info.label}</span>}
-              {info && <span className="text-xs text-slate-600">{info.count} {info.count === 1 ? 'season' : 'seasons'}</span>}
+              {info && <span className="text-xs text-primary font-medium">{info.label}</span>}
+              {info && <span className="text-xs text-primary">{info.count} {info.count === 1 ? 'season' : 'seasons'}</span>}
               <button
                 onClick={() => onAllTimeRoster(gender)}
                 className="ml-auto text-[10px] font-bold text-primary hover:text-orange-300 transition-colors uppercase tracking-wide"
