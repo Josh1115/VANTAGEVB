@@ -5,6 +5,7 @@ import { UpdatePrompt } from './UpdatePrompt';
 import { useUiStore, selectToast, selectUpgradeNudge, selectCloseUpgradeNudge } from '../../store/uiStore';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { Confetti } from '../ui/Confetti';
 import { autoSaveBackup } from '../../stats/backup';
 import { useInstallPrompt } from '../../hooks/useInstallPrompt';
 import { usePlan } from '../../hooks/usePlan';
@@ -190,6 +191,39 @@ function UpgradeNudgeModal() {
   );
 }
 
+// One-time popup shown on August 10, 2026 (day one of tryouts) for every user, then never again.
+const TRYOUTS_POPUP_KEY = 'vbstat_tryouts_2026_seen';
+
+function TryoutsGoodLuckModal() {
+  const [visible, setVisible] = useState(() => {
+    const now = new Date();
+    const isTryoutsDay = now.getFullYear() === 2026 && now.getMonth() === 7 && now.getDate() === 10; // month 7 = August
+    return isTryoutsDay && !localStorage.getItem(TRYOUTS_POPUP_KEY);
+  });
+
+  if (!visible) return null;
+
+  function dismiss() {
+    localStorage.setItem(TRYOUTS_POPUP_KEY, '1');
+    setVisible(false);
+  }
+
+  return (
+    <>
+      <Confetti />
+      <Modal
+        title="🏐 Good luck!"
+        onClose={dismiss}
+        footer={<Button variant="primary" onClick={dismiss}>Thanks!</Button>}
+      >
+        <p className="text-sm text-slate-300 text-center">
+          Best of luck on day one of your 2026 tryouts!
+        </p>
+      </Modal>
+    </>
+  );
+}
+
 export function Layout() {
   const { pathname } = useLocation();
   const { session } = useAuth();
@@ -221,6 +255,7 @@ export function Layout() {
       {!hideNav && <NavBar />}
       <IosInstallBanner />
       <AndroidInstallBanner />
+      <TryoutsGoodLuckModal />
 
       {/* Toast */}
       {toast && (
