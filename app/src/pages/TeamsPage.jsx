@@ -679,12 +679,15 @@ export function TeamsPage() {
   return (
     <div>
       <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 pb-3 pt-safe flex flex-col items-center gap-0.5">
-        <img
-          src="/logo.png"
-          alt="VANTAGE"
-          className="h-auto mx-auto"
-          style={{ width: 'min(52vw, 260px)', transform: 'translateX(-3%)' }}
-        />
+        <div className="relative mx-auto" style={{ width: 'min(52vw, 260px)' }}>
+          <img
+            src="/logo.png"
+            alt="VANTAGE"
+            className="h-auto w-full block"
+            style={{ transform: 'translateX(-3%)' }}
+          />
+          <span className="absolute text-slate-400 select-none" style={{ top: '6%', right: '2%', fontSize: 'min(2.2vw, 11px)' }}>™</span>
+        </div>
         <span className="text-lg font-bold text-white tracking-wide">Teams</span>
       </header>
 

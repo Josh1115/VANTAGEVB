@@ -116,12 +116,15 @@ export function LoginPage({ onSignup }) {
         className="w-full mb-6"
         style={{ opacity: phase >= 1 ? 1 : 0, transition: 'opacity 1.3s ease' }}
       >
-        <img
-          src="/logo.png"
-          alt="VANTAGE"
-          className="h-auto mx-auto"
-          style={{ width: 'min(92vw, 720px)', transform: 'translateX(-3%)' }}
-        />
+        <div className="relative mx-auto" style={{ width: 'min(92vw, 720px)' }}>
+          <img
+            src="/logo.png"
+            alt="VANTAGE"
+            className="h-auto w-full block"
+            style={{ transform: 'translateX(-3%)' }}
+          />
+          <span className="absolute text-slate-400 select-none" style={{ top: '6%', right: '2%', fontSize: 'min(3.8vw, 30px)' }}>™</span>
+        </div>
       </div>
 
       <div className="flex flex-col items-center w-full max-w-sm flex-1">

@@ -1548,12 +1548,15 @@ export function SettingsPage() {
         {/* About */}
         <section className="bg-surface rounded-xl p-5">
           <div className="text-center mb-4">
-            <img
-              src="/logo.png"
-              alt="VANTAGE"
-              className="h-auto mx-auto"
-              style={{ width: 'min(72vw, 340px)', transform: 'translateX(-3%)' }}
-            />
+            <div className="relative mx-auto" style={{ width: 'min(72vw, 340px)' }}>
+              <img
+                src="/logo.png"
+                alt="VANTAGE"
+                className="h-auto w-full block"
+                style={{ transform: 'translateX(-3%)' }}
+              />
+              <span className="absolute text-slate-400 select-none" style={{ top: '6%', right: '2%', fontSize: 'min(3vw, 14px)' }}>™</span>
+            </div>
             <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-400 mt-1">Immediate Impact Analytics</p>
           </div>
           <div className="border-t border-slate-700 mb-4" />

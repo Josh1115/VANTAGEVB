@@ -988,16 +988,19 @@ export function HomePage() {
         ))}
 
         <h1 className="tracking-wide flex flex-col items-center gap-0.5" style={{ transform: 'translateY(25%)' }}>
-          <img
-            src="/logo.png"
-            alt="VANTAGE"
-            className="h-auto mx-auto"
-            style={{ width: 'min(62vw, 482px)', transform: 'translateX(-3%)' }}
-            onClick={handleLogoClick}
-            onPointerDown={handleLogoPointerDown}
-            onPointerUp={handleLogoPointerUp}
-            onPointerLeave={handleLogoPointerUp}
-          />
+          <div className="relative mx-auto" style={{ width: 'min(62vw, 482px)' }}>
+            <img
+              src="/logo.png"
+              alt="VANTAGE"
+              className="h-auto w-full block"
+              style={{ transform: 'translateX(-3%)' }}
+              onClick={handleLogoClick}
+              onPointerDown={handleLogoPointerDown}
+              onPointerUp={handleLogoPointerUp}
+              onPointerLeave={handleLogoPointerUp}
+            />
+            <span className="absolute text-slate-400 select-none" style={{ top: '6%', right: '2%', fontSize: 'min(2.6vw, 20px)' }}>™</span>
+          </div>
           <span className="text-[17.5px] font-semibold tracking-[0.22em] text-slate-300 uppercase" style={{ transform: 'translateY(-8px)' }}>
             Immediate Impact Analytics
           </span>
@@ -1359,6 +1362,9 @@ export function HomePage() {
                   {nextMatch.match_type === 'ihsa-playoffs' && nextMatch.opponent_playoff_seed != null && (
                     <span className="text-slate-400 font-normal"> (#{nextMatch.opponent_playoff_seed})</span>
                   )}
+                  {nextMatch.opponent_record && (
+                    <span className="text-slate-400 font-normal"> ({nextMatch.opponent_record})</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                   {nextMatch.location && (
@@ -1376,9 +1382,6 @@ export function HomePage() {
                     }`}>
                       {nextMatch.conference === 'conference' ? 'CON' : 'NC'}
                     </span>
-                  )}
-                  {nextMatch.opponent_record && (
-                    <span className="text-[9px] font-semibold text-slate-500">{nextMatch.opponent_record}</span>
                   )}
                   <span className="text-[11px] text-slate-400 truncate">
                     {fmtDate(nextMatch.date)}{nextMatch.match_time ? ` · ${fmtTime(nextMatch.match_time)}` : ''}
@@ -1551,6 +1554,9 @@ export function HomePage() {
                         {match.match_type === 'ihsa-playoffs' && match.opponent_playoff_seed != null && (
                           <span className="text-slate-400 font-normal"> (#{match.opponent_playoff_seed})</span>
                         )}
+                        {match.opponent_record && (
+                          <span className="text-slate-400 font-normal"> ({match.opponent_record})</span>
+                        )}
                       </span>
                       {match.match_type === 'tourney' && match.tournament_name && (
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide">{match.tournament_name}</span>
@@ -1575,9 +1581,6 @@ export function HomePage() {
                         }`}>
                           {match.conference === 'conference' ? 'CON' : 'NC'}
                         </span>
-                      )}
-                      {match.opponent_record && (
-                        <span className="text-[10px] font-semibold text-slate-500">{match.opponent_record}</span>
                       )}
                       <span className="text-xs text-slate-400">
                         {match.season ? `${match.season.name ?? match.season.year} · ` : ''}{fmtDate(match.date)}{match.match_time ? ` · ${fmtTime(match.match_time)}` : ''}
