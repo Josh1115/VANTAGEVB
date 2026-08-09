@@ -99,7 +99,7 @@ const PRIMARY = [249, 115, 22];  // orange-500
 const WHITE = [255, 255, 255];
 const MUTED = [148, 163, 184];   // slate-400
 
-function addPageHeader(doc, title, subtitle) {
+export function addPageHeader(doc, title, subtitle) {
   const w = doc.internal.pageSize.getWidth();
   doc.setFillColor(...DARK);
   doc.rect(0, 0, w, 30, 'F');

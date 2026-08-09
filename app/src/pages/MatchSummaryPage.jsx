@@ -11,7 +11,7 @@ import { computeMatchStats,
          aggregateXKTeamStats, computeWinCorrelation, pickMetricVal,
          computeTimeoutEffectiveness } from '../stats/engine';
 import { getRalliesForMatch, getRalliesForMatches } from '../stats/queries';
-import { exportMatchCSV, exportMatchPDF, exportMaxPrepsCSV } from '../stats/export';
+import { exportMatchCSV, exportMaxPrepsCSV, addPageHeader } from '../stats/export';
 import { fmtHitting, fmtPassRating, fmtPct, fmtCount, fmtDate } from '../stats/formatters';
 import { ROTATION_COLS, ROTATION_STAT_KEYS, withMinMax, SERVING_COLS, TAB_COLUMNS, ISOOS_COLS, ISOOS_STAT_KEYS, TRANS_COLS, TRANS_STAT_KEYS, RUN_COLS, RUN_STAT_KEYS } from '../stats/columns';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -386,13 +386,18 @@ function ScoreTimeline({ rawRallies, sets, teamName, opponentName }) {
 
 // ── Share Card ───────────────────────────────────────────────────────────────
 
+const SHARE_ORANGE_START = '#f2650f';
+const SHARE_ORANGE_END   = '#d94e05';
+const SHARE_WIN          = '#34d67a';
+const SHARE_LOSS         = '#f2545b';
+const SHARE_WHITE        = '#f4f5f7';
+
 const ShareCard = ({ cardRef, match, sets, stats, teamColors, seasonRecord, playerNames }) => {
   if (!match || !stats) return null;
 
   const won = (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
   const completedSets = (sets ?? []).filter(s => s.status === 'complete');
-  const primary   = teamColors?.primary   ?? '#ea580c';
-  const secondary = teamColors?.secondary ?? '#1e1b4b';
+  const homeTeamName = teamColors?.orgName ?? 'Home';
 
   // Top performers from player stats
   const topPerformers = (() => {
@@ -405,18 +410,16 @@ const ShareCard = ({ cardRef, match, sets, stats, teamColors, seasonRecord, play
       return sorted[0] ?? null;
     };
     const rows = [
-      { icon: '⚡', label: 'Kills',   entry: best(s => s.k   ?? 0) },
-      { icon: '🎯', label: 'Aces',    entry: best(s => s.ace  ?? 0) },
-      { icon: '🛡', label: 'Digs',    entry: best(s => s.dig  ?? 0) },
-      { icon: '🔥', label: 'Blocks',  entry: best(s => (s.bs ?? 0) + (s.ba ?? 0)) },
-      { icon: '🎨', label: 'Assists', entry: best(s => s.ast  ?? 0) },
+      { label: 'KILLS', entry: best(s => s.k   ?? 0) },
+      { label: 'ACES',  entry: best(s => s.ace  ?? 0) },
+      { label: 'DIGS',  entry: best(s => s.dig  ?? 0) },
+      { label: 'BLKS',  entry: best(s => (s.bs ?? 0) + (s.ba ?? 0)) },
+      { label: 'AST',   entry: best(s => s.ast  ?? 0) },
     ];
     return rows.filter(r => r.entry !== null).map(r => ({
-      icon: r.icon, label: r.label, name: getName(r.entry.pid), val: r.entry.val,
+      label: r.label, name: getName(r.entry.pid), val: r.entry.val,
     }));
   })();
-
-  const divider = <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', margin: '14px 0' }} />;
 
   return (
     <div
@@ -424,142 +427,117 @@ const ShareCard = ({ cardRef, match, sets, stats, teamColors, seasonRecord, play
       style={{
         position: 'absolute', left: '-9999px', top: 0,
         width: 480,
-        background: `linear-gradient(135deg, ${primary}ee 0%, ${secondary}bb 55%, #0a0a18 100%)`,
-        borderRadius: 20,
-        padding: '28px 28px 22px',
+        borderRadius: 14,
+        background: 'linear-gradient(180deg, #0e121a 0%, #05070b 100%)',
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        color: 'white',
+        color: SHARE_WHITE,
+        border: '1px solid rgba(255,255,255,0.07)',
+        boxShadow: '0 24px 60px -20px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.05) inset',
         overflow: 'hidden',
       }}
     >
-      {/* Subtle noise overlay for texture */}
+      {/* Top bar */}
       <div style={{
-        position: 'absolute', inset: 0, borderRadius: 20,
-        background: 'radial-gradient(ellipse at top left, rgba(255,255,255,0.07) 0%, transparent 60%)',
-        pointerEvents: 'none',
-      }} />
-
-      {/* Brand header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.9)' }}>
-          VANTAGE
-        </div>
-        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)' }}>
-          Match Result
-        </div>
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '11px 18px',
+        background: `linear-gradient(90deg, ${SHARE_ORANGE_START} 0%, ${SHARE_ORANGE_END} 100%)`,
+      }}>
+        <div style={{ fontSize: 12, fontWeight: 400, letterSpacing: '0.08em', color: '#fff' }}>MATCH SUMMARY</div>
       </div>
 
-      {/* Opponent + W/L */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
-            vs.
+      <div style={{ padding: '16px 20px 18px' }}>
+        {/* Teams, date, result, record */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, marginBottom: 16, textAlign: 'center' }}>
+          <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.02em' }}>
+            <span style={{ color: '#dfe2e8' }}>{homeTeamName}</span>
+            <span style={{ fontSize: 13, color: '#7d8494', fontWeight: 700, margin: '0 5px' }}>vs.</span>
+            <span>{match.opponent_name ?? 'Opponent'}</span>
           </div>
-          <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1.1, letterSpacing: '-0.01em' }}>
-            {match.opponent_name ?? 'Opponent'}
-          </div>
-          {match.opponent_record && (
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 3 }}>
-              {match.opponent_record}
-            </div>
-          )}
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 5 }}>
+          <div style={{ fontSize: 10.5, color: SHARE_ORANGE_START, fontWeight: 400, fontVariantNumeric: 'tabular-nums' }}>
             {match.date ? fmtDate(match.date) : ''}{match.location ? ` · ${match.location}` : ''}
           </div>
-        </div>
-        {/* Big W/L + set score */}
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 52, fontWeight: 900, lineHeight: 1, letterSpacing: '-0.03em', color: won ? '#4ade80' : '#f87171' }}>
+          <div style={{
+            fontSize: 27, fontWeight: 400, lineHeight: 0.85, fontVariantNumeric: 'tabular-nums',
+            letterSpacing: '-0.02em', marginTop: 3, color: won ? SHARE_WIN : SHARE_LOSS,
+            textShadow: won ? '0 0 22px rgba(52,214,122,0.35)' : '0 0 22px rgba(242,84,91,0.35)',
+          }}>
             {won ? 'W' : 'L'}
           </div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: 'rgba(255,255,255,0.85)', letterSpacing: '-0.02em' }}>
+          <div style={{ fontSize: 18, fontWeight: 400, color: '#dfe2e8', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>
             {match.our_sets_won ?? 0}–{match.opp_sets_won ?? 0}
           </div>
-        </div>
-      </div>
-
-      {/* Set chips */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 14 }}>
-        {completedSets.map(s => {
-          const sw = s.our_score > s.opp_score;
-          return (
-            <div key={s.id} style={{
-              background: sw ? 'rgba(74,222,128,0.18)' : 'rgba(248,113,113,0.18)',
-              border: `1px solid ${sw ? 'rgba(74,222,128,0.45)' : 'rgba(248,113,113,0.45)'}`,
-              borderRadius: 8, padding: '4px 11px', fontSize: 13,
-            }}>
-              <span style={{ fontSize: 9, fontWeight: 700, color: sw ? '#4ade80' : '#f87171', marginRight: 4, letterSpacing: '0.05em' }}>S{s.set_number}</span>
-              <span style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{s.our_score}–{s.opp_score}</span>
+          {seasonRecord && (
+            <div style={{ fontSize: 11, color: '#9498a1', marginTop: 6 }}>
+              Record <b style={{ color: SHARE_WHITE, fontWeight: 400, fontVariantNumeric: 'tabular-nums' }}>{seasonRecord.w}–{seasonRecord.l}</b>
             </div>
-          );
-        })}
-      </div>
+          )}
+        </div>
 
-      {divider}
-
-      {/* Top performers */}
-      {topPerformers.length > 0 && (
-        <>
-          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 10 }}>
-            Top Performers
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-            {topPerformers.map(({ icon, label, name, val }) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ fontSize: 14, width: 20, textAlign: 'center' }}>{icon}</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', width: 52, letterSpacing: '0.04em' }}>{label}</div>
-                <div style={{ flex: 1, fontSize: 14, fontWeight: 800, color: 'white' }}>{name}</div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: primary === '#e2e8f0' ? '#e8530b' : primary, fontVariantNumeric: 'tabular-nums', filter: 'brightness(1.4)' }}>{val}</div>
+        {/* Set score boxes */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: `repeat(${completedSets.length || 1}, 1fr)`, gap: 1,
+          background: 'rgba(255,255,255,0.06)', borderRadius: 8, overflow: 'hidden', marginBottom: 20,
+        }}>
+          {completedSets.map(s => {
+            const sw = s.our_score > s.opp_score;
+            return (
+              <div key={s.id} style={{ background: '#10141c', padding: '0 0 9px', textAlign: 'center' }}>
+                <div style={{ height: 3, marginBottom: 7, background: sw ? SHARE_WIN : SHARE_LOSS }} />
+                <div style={{ fontSize: 8.5, color: '#5c6270', letterSpacing: '0.1em', marginBottom: 3 }}>SET {s.set_number}</div>
+                <div style={{ fontSize: 14, fontWeight: 400, fontVariantNumeric: 'tabular-nums', color: sw ? SHARE_WIN : SHARE_LOSS }}>
+                  {s.our_score}–{s.opp_score}
+                </div>
               </div>
-            ))}
-          </div>
-          {divider}
-        </>
-      )}
-
-      {/* Team stats */}
-      <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 10 }}>
-        Team Stats
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, textAlign: 'center' }}>
-        {[
-          { label: 'HIT%', val: fmtHitting(stats.team.hit_pct) },
-          { label: 'ACE%', val: fmtPct(stats.team.ace_pct)     },
-          { label: 'SO%',  val: fmtPct(stats.rotation?.so_pct) },
-          { label: 'APR',  val: fmtPassRating(stats.team.apr)  },
-        ].map(({ label, val }) => (
-          <div key={label} style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '10px 4px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', marginBottom: 5, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: primary === '#e2e8f0' ? '#e8530b' : primary, filter: 'brightness(1.4)' }}>{val}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Season record */}
-      {seasonRecord && (
-        <>
-          {divider}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)' }}>
-              Season Record
-            </div>
-            <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.01em' }}>
-              <span style={{ color: '#4ade80' }}>{seasonRecord.w}</span>
-              <span style={{ color: 'rgba(255,255,255,0.3)', margin: '0 6px' }}>–</span>
-              <span style={{ color: '#f87171' }}>{seasonRecord.l}</span>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Footer branding */}
-      <div style={{ marginTop: 20, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.6)' }}>
-          VANTAGE
+            );
+          })}
         </div>
-        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.06em' }}>
-          Immediate Impact Analytics
+
+        {/* Top performers */}
+        {topPerformers.length > 0 && (
+          <>
+            <div style={{
+              textAlign: 'center', fontSize: 9.5, fontWeight: 400, letterSpacing: '0.16em',
+              textTransform: 'uppercase', color: SHARE_ORANGE_START, marginBottom: 11,
+            }}>
+              Top Performers
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+              {topPerformers.map(({ label, name, val }) => (
+                <div key={label} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', alignItems: 'center', fontSize: 12 }}>
+                  <div style={{ textAlign: 'center', color: SHARE_ORANGE_START, fontWeight: 400, fontSize: 10, letterSpacing: '0.05em' }}>{label}</div>
+                  <div style={{ textAlign: 'center', fontWeight: 700, color: '#eef0f3', textTransform: 'uppercase' }}>{name}</div>
+                  <div style={{ textAlign: 'center', fontWeight: 400, fontSize: 16, color: SHARE_ORANGE_START, fontVariantNumeric: 'tabular-nums' }}>{val}</div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Team stats */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)',
+          background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden',
+        }}>
+          {[
+            { label: 'HIT%', val: fmtHitting(stats.team.hit_pct) },
+            { label: 'K%',   val: fmtPct(stats.team.k_pct)       },
+            { label: 'SRV%', val: fmtPct(stats.team.si_pct)      },
+            { label: 'ACE%', val: fmtPct(stats.team.ace_pct)     },
+            { label: 'APR',  val: fmtPassRating(stats.team.apr)  },
+          ].map(({ label, val }, i) => (
+            <div key={label} style={{ textAlign: 'center', padding: '11px 1px', borderRight: i < 4 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+              <div style={{ fontSize: 8, color: SHARE_ORANGE_START, fontWeight: 400, letterSpacing: '0.06em', marginBottom: 5 }}>{label}</div>
+              <div style={{ fontSize: 15, fontWeight: 900, fontVariantNumeric: 'tabular-nums', color: SHARE_WHITE }}>{val}</div>
+            </div>
+          ))}
         </div>
+      </div>
+
+      {/* Bottom bar */}
+      <div style={{
+        display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '12px 20px',
+        background: `linear-gradient(90deg, ${SHARE_ORANGE_START} 0%, ${SHARE_ORANGE_END} 100%)`,
+      }}>
+        <div style={{ fontSize: 11.5, color: '#fff', letterSpacing: '0.14em', fontWeight: 400 }}>VANTAGEVB.NET</div>
       </div>
     </div>
   );
@@ -830,6 +808,9 @@ export function MatchSummaryPage() {
   const [sharingCard, setSharingCard] = useState(false);
   const shareCardRef    = useRef(null);
   const html2canvasRef  = useRef(null);
+  const tabContentRef   = useRef(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState(0);
   const [reviseModalSet, setReviseModalSet] = useState(null);
   const [boxScoreSet, setBoxScoreSet] = useState(null);
   const [statsVersion, setStatsVersion] = useState(0);
@@ -947,7 +928,7 @@ export function MatchSummaryPage() {
     const colorIds = org?.colors?.length ? org.colors : (team?.team_jersey_color ?? []);
     const primary   = ORG_COLOR_HEX[colorIds[0]] ?? '#ea580c';
     const secondary = ORG_COLOR_HEX[colorIds[1]] ?? ORG_COLOR_HEX[colorIds[0]] ?? '#1e1b4b';
-    return { primary, secondary, logoDataUrl: org?.logo_data_url ?? null };
+    return { primary, secondary, logoDataUrl: org?.logo_data_url ?? null, orgName: org?.name ?? team?.name ?? null };
   }, [match?.season_id]);
 
   // Season W–L record (includes this match)
@@ -1299,8 +1280,6 @@ export function MatchSummaryPage() {
     return rows;
   }, [displayStats]);
 
-  const matchMeta = match ? { ...match, sets: sets ?? [] } : {};
-
   function openEditModal() {
     setEditForm({
       opp:          match.opponent_name ?? '',
@@ -1376,17 +1355,65 @@ export function MatchSummaryPage() {
     }
   }
 
-  function handlePDF() {
-    if (!stats || !match) return;
-    const completedSets = (sets ?? [])
-      .filter((s) => s.status !== 'scheduled')
-      .sort((a, b) => a.set_number - b.set_number);
-    const perSetStats = completedSets.map((s) => {
-      const fc = stats.contacts.filter((c) => c.set_id === s.id);
-      return { set: s, players: computePlayerStats(fc, 1), team: computeTeamStats(fc, 1) };
+  // Waits a couple of animation frames so React has actually painted the tab
+  // we just switched to (setTab() alone doesn't guarantee the DOM is updated yet).
+  function waitFrames(n = 3) {
+    return new Promise((resolve) => {
+      let count = 0;
+      function step() { if (++count >= n) resolve(); else requestAnimationFrame(step); }
+      requestAnimationFrame(step);
     });
-    exportMatchPDF(matchMeta, stats.players, stats.team, stats.rotation, playerNames,
-      perSetStats, `match-${id}-stats.pdf`);
+  }
+
+  // Downloads a visual copy of this page: one screenshot per tab, stitched into a PDF.
+  // Slower than a data-table report (has to switch tabs, let charts render, and
+  // screenshot each one) but it's a real copy of what's on screen, not a re-typed report.
+  async function handlePDF() {
+    if (!stats || !match || pdfBusy) return;
+    const originalTab = tab;
+    setPdfBusy(true);
+    setPdfProgress(0);
+    try {
+      const html2canvas = html2canvasRef.current ?? (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+      const PAGE_WIDTH = 210; // mm, A4 width
+      const MARGIN = 8;
+      const HEADER_H = 30;
+      const imgWidthMM = PAGE_WIDTH - MARGIN * 2;
+      let doc = null;
+
+      for (let i = 0; i < TABS.length; i++) {
+        const t = TABS[i];
+        setTab(t.value);
+        await waitFrames(3);
+        await new Promise((r) => setTimeout(r, 400)); // let charts finish animating in
+        if (!tabContentRef.current) { setPdfProgress(i + 1); continue; }
+
+        const canvas = await html2canvas(tabContentRef.current, {
+          backgroundColor: '#020617', // slate-950, matches the app shell
+          scale: 2,
+          useCORS: true,
+          logging: false,
+        });
+        const imgHeightMM = canvas.height * (imgWidthMM / canvas.width);
+        const pageFormat = [PAGE_WIDTH, HEADER_H + imgHeightMM + MARGIN];
+
+        if (!doc) {
+          doc = new jsPDF({ unit: 'mm', format: pageFormat });
+        } else {
+          doc.addPage(pageFormat, 'p');
+        }
+        addPageHeader(doc, `vs. ${match.opponent_name ?? 'Opponent'}`,
+          `${t.label}  ·  ${match.date ? fmtDate(match.date) : ''}`);
+        doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', MARGIN, HEADER_H + 2, imgWidthMM, imgHeightMM);
+        setPdfProgress(i + 1);
+      }
+
+      doc?.save(`match-${id}-summary.pdf`);
+    } finally {
+      setTab(originalTab);
+      setPdfBusy(false);
+    }
   }
 
   function handleCSV() {
@@ -1561,8 +1588,8 @@ export function MatchSummaryPage() {
             {/* Below the two-column row: notes + export */}
             <MatchNotes matchId={id} initialNotes={match.notes ?? ''} />
             <div className="flex gap-2 mt-3 flex-wrap">
-              <Button size="sm" variant="secondary" disabled={!stats} onClick={handlePDF}>
-                PDF
+              <Button size="sm" variant="secondary" disabled={!stats || pdfBusy} onClick={handlePDF}>
+                {pdfBusy ? `Generating ${pdfProgress}/${TABS.length}…` : 'PDF'}
               </Button>
               <Button size="sm" variant="secondary" disabled={!stats} onClick={handleCSV}>
                 CSV
@@ -1666,7 +1693,7 @@ export function MatchSummaryPage() {
           </div>
 
           {/* Tab content */}
-          <div key={tab} className="p-4 md:p-6 animate-fade-in">
+          <div key={tab} ref={tabContentRef} className="p-4 md:p-6 animate-fade-in">
             {tab === 'scoring' && displayStats && (
               <div className="space-y-6">
                 <SubToggle
