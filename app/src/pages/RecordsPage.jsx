@@ -1293,8 +1293,12 @@ export function RecordsPage() {
   useEffect(() => {
     if (!gender) { setTeamId(null); return; }
     const matching = genderTeams[gender] ?? [];
-    if (matching.length === 1) setTeamId(matching[0].id);
-    else if (matching.length === 0) setTeamId(null);
+    if (matching.length === 0) { setTeamId(null); return; }
+    // Multiple teams for this gender (e.g. several club age groups) — default
+    // to the top level instead of forcing a manual pick: varsity for schools,
+    // else the oldest club age group (18U), else just the first one.
+    const top = matching.find(t => t.level === 'varsity') ?? matching.find(t => t.age_group === '18U') ?? matching[0];
+    setTeamId(top.id);
   }, [gender, genderTeams]);
 
   // One-time auto-select: jump to the default team when page opens with nothing selected
