@@ -47,6 +47,15 @@ function migrateBackup(data) {
 
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 
+// Mirrors utils/teams.js's countActiveSeasonTeams(), but works on a raw backup
+// payload instead of the live DB: a team only counts against the plan limit
+// while it has a season that hasn't been ended, so old/archived teams sitting
+// in an otherwise-normal backup shouldn't block a restore.
+function activeSeasonTeamCount(data) {
+  const seasons = Array.isArray(data.seasons) ? data.seasons : [];
+  return new Set(seasons.filter((s) => s.status !== 'ended').map((s) => s.team_id)).size;
+}
+
 async function collectBackupData() {
   const data = { version: BACKUP_VERSION, exportedAt: new Date().toISOString() };
   for (const table of ALL_TABLES) {
@@ -156,10 +165,10 @@ export async function restoreAutoBackup(backupId, { teamsAllowed = Infinity, mat
     throw new Error(`Backup is missing required tables: ${missingTables.join(', ')}`);
   }
 
-  const backupTeamCount  = Array.isArray(data.teams)   ? data.teams.length   : 0;
+  const backupTeamCount  = activeSeasonTeamCount(data);
   const backupMatchCount = Array.isArray(data.matches)  ? data.matches.length : 0;
   if (teamsAllowed < 99 && backupTeamCount > teamsAllowed) {
-    throw new Error(`Backup has ${backupTeamCount} teams but your plan allows ${teamsAllowed}. Upgrade before restoring.`);
+    throw new Error(`Backup has ${backupTeamCount} active teams but your plan allows ${teamsAllowed}. Upgrade before restoring.`);
   }
   if (isFinite(matchLimit) && backupMatchCount > matchLimit) {
     throw new Error(`Backup has ${backupMatchCount} matches but your plan allows ${matchLimit}. Upgrade before restoring.`);
@@ -210,10 +219,10 @@ export async function importBackup(file, { teamsAllowed = Infinity, matchLimit =
     throw new Error(`Invalid backup: missing required tables: ${missingTables.join(', ')}`);
   }
 
-  const backupTeamCount  = Array.isArray(data.teams)   ? data.teams.length   : 0;
+  const backupTeamCount  = activeSeasonTeamCount(data);
   const backupMatchCount = Array.isArray(data.matches)  ? data.matches.length : 0;
   if (teamsAllowed < 99 && backupTeamCount > teamsAllowed) {
-    throw new Error(`Backup has ${backupTeamCount} teams but your plan allows ${teamsAllowed}. Upgrade before importing.`);
+    throw new Error(`Backup has ${backupTeamCount} active teams but your plan allows ${teamsAllowed}. Upgrade before importing.`);
   }
   if (isFinite(matchLimit) && backupMatchCount > matchLimit) {
     throw new Error(`Backup has ${backupMatchCount} matches but your plan allows ${matchLimit} per season. Upgrade before importing.`);
@@ -252,10 +261,10 @@ export async function restoreFromCloud(supabase, { teamsAllowed = Infinity, matc
     throw new Error(`Cloud backup is missing required tables: ${missingTables.join(', ')}`);
   }
 
-  const backupTeamCount  = Array.isArray(payload.teams)   ? payload.teams.length   : 0;
+  const backupTeamCount  = activeSeasonTeamCount(payload);
   const backupMatchCount = Array.isArray(payload.matches)  ? payload.matches.length : 0;
   if (teamsAllowed < 99 && backupTeamCount > teamsAllowed) {
-    throw new Error(`Cloud backup has ${backupTeamCount} teams but your plan allows ${teamsAllowed}. Upgrade before restoring.`);
+    throw new Error(`Cloud backup has ${backupTeamCount} active teams but your plan allows ${teamsAllowed}. Upgrade before restoring.`);
   }
   if (isFinite(matchLimit) && backupMatchCount > matchLimit) {
     throw new Error(`Cloud backup has ${backupMatchCount} matches but your plan allows ${matchLimit}. Upgrade before restoring.`);

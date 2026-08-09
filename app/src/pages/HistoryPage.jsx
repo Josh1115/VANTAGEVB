@@ -557,7 +557,12 @@ function CommitCard({ entry, onEdit, onDelete }) {
               <span className="font-bold text-slate-100 truncate">{entry.player_name}</span>
               <span className="text-xs text-slate-500 shrink-0">'{String(entry.grad_year).slice(-2)}</span>
             </div>
-            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${divCls}`}>{entry.division}</span>
+            <div className="flex items-center gap-1 shrink-0">
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${divCls}`}>{entry.division}</span>
+              {/* Mouse-clickable equivalents of the swipe-to-reveal Edit/Delete above (desktop has no touch to swipe with) */}
+              <button onClick={() => onEdit(entry)} aria-label="Edit" className="w-6 h-6 flex items-center justify-center rounded text-slate-500 hover:text-primary hover:bg-slate-700/60 transition-colors">✎</button>
+              <button onClick={() => onDelete(entry)} aria-label="Delete" className="w-6 h-6 flex items-center justify-center rounded text-slate-500 hover:text-red-400 hover:bg-slate-700/60 transition-colors">🗑</button>
+            </div>
           </div>
           <p className="text-sm text-slate-400 mt-0.5">{entry.college}</p>
         </div>
@@ -712,6 +717,11 @@ function WinnerCard({ entry, onEdit, onDelete }) {
             {entry.times_won > 1 && (
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-primary/20 text-primary border-primary/30">×{entry.times_won}</span>
             )}
+            {/* Mouse-clickable equivalents of the swipe-to-reveal Edit/Delete above (desktop has no touch to swipe with) */}
+            <div className="flex items-center gap-1 ml-auto">
+              <button onClick={() => onEdit(entry)} aria-label="Edit" className="w-6 h-6 flex items-center justify-center rounded text-slate-500 hover:text-primary hover:bg-slate-700/60 transition-colors">✎</button>
+              <button onClick={() => onDelete(entry)} aria-label="Delete" className="w-6 h-6 flex items-center justify-center rounded text-slate-500 hover:text-red-400 hover:bg-slate-700/60 transition-colors">🗑</button>
+            </div>
           </div>
         </div>
       </div>

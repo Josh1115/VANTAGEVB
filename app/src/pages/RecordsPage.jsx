@@ -821,6 +821,19 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, onEditBaseline, teamI
           <span className="block">{row.date ? fmtDate(row.date) : ''}</span>
         </span>
       )}
+
+      {/* Mouse-clickable equivalents of the swipe-to-reveal buttons below (desktop has no touch to swipe with) */}
+      {canEditBaseline && (
+        <span className="flex items-center gap-1 shrink-0">
+          <button onClick={e => { e.stopPropagation(); onEditBaseline(row); }} aria-label="Edit" className="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-primary hover:bg-slate-700/60 transition-colors">✎</button>
+        </span>
+      )}
+      {row.historical && (
+        <span className="flex items-center gap-1 shrink-0">
+          <button onClick={e => { e.stopPropagation(); onEdit(row); }} aria-label="Edit" className="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-primary hover:bg-slate-700/60 transition-colors">✎</button>
+          <button onClick={e => { e.stopPropagation(); onDelete(row); }} aria-label="Delete" className="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-red-400 hover:bg-slate-700/60 transition-colors">🗑</button>
+        </span>
+      )}
     </div>
   );
 
@@ -1122,6 +1135,9 @@ function TourneyEntryCard({ entry, onEdit, onDelete }) {
             }`}>
               {placingLabel}{isChamp ? ' 🏆' : isSilver ? ' 🥈' : isBronze ? ' 🥉' : ''}
             </span>
+            {/* Mouse-clickable equivalents of the swipe-to-reveal Edit/Delete above (desktop has no touch to swipe with) */}
+            <button onClick={() => onEdit(entry)} aria-label="Edit" className="w-6 h-6 flex items-center justify-center rounded text-slate-500 hover:text-primary hover:bg-slate-700/60 transition-colors">✎</button>
+            <button onClick={() => onDelete(entry)} aria-label="Delete" className="w-6 h-6 flex items-center justify-center rounded text-slate-500 hover:text-red-400 hover:bg-slate-700/60 transition-colors">🗑</button>
           </div>
         </div>
 
