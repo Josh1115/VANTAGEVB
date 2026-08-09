@@ -169,8 +169,8 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
       </div>
 
       {/* Day cells */}
-      <div className="grid grid-cols-7 gap-y-1">
-        {Array.from({ length: firstDay }).map((_, i) => <div key={`pad${i}`} />)}
+      <div className="grid grid-cols-7 rounded-xl overflow-hidden border border-white/20">
+        {Array.from({ length: firstDay }).map((_, i) => <div key={`pad${i}`} className="border border-white/20 min-h-[46px]" />)}
         {Array.from({ length: daysInMonth }).map((_, i) => {
           const day     = i + 1;
           const dateStr = `${calMonthKey}-${String(day).padStart(2, '0')}`;
@@ -182,7 +182,7 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
             <button
               key={day}
               onClick={() => hasMatch ? setCalSelected(isSelected ? null : dateStr) : undefined}
-              className={`flex flex-col items-center pt-1.5 pb-2 rounded-xl min-h-[46px] transition-colors
+              className={`flex flex-col items-center pt-1.5 pb-2 border border-white/20 min-h-[46px] transition-colors
                 ${isSelected ? 'bg-slate-600' : hasMatch ? 'hover:bg-slate-700/60 active:bg-slate-700' : 'cursor-default'}
                 ${isToday && !isSelected ? 'ring-1 ring-inset ring-primary/50' : ''}
               `}
