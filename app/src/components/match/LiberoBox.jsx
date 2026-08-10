@@ -73,7 +73,7 @@ export const LiberoBox = memo(function LiberoBox({ liberoPlayer, onAssignLibero 
           onPointerDown={(e) => { e.preventDefault(); swapLibero(liberoPlayer); }}
           className="text-[2vmin] font-bold min-w-[16vmin] py-1 rounded leading-none border transition-colors text-center bg-slate-700 border-slate-500 text-slate-200 hover:bg-slate-600"
         >
-          SWAP OUT
+          LIB OUT
         </button>
       </div>
     );
@@ -96,7 +96,7 @@ export const LiberoBox = memo(function LiberoBox({ liberoPlayer, onAssignLibero 
             : 'bg-transparent border-slate-700 text-slate-700 cursor-not-allowed'
           }`}
       >
-        SWAP IN
+        LIB IN
       </button>
     </div>
   );
