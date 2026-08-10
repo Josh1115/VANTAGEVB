@@ -23,11 +23,15 @@ export function ChampionshipBanner({ title, year, orgName, primaryColorId, secon
   const yearStr      = String(year ?? '').toUpperCase();
   const yearFontSize = yearStr.length <= 4 ? 28 : yearStr.length <= 5 ? 22 : 16;
 
-  const orgLines   = wrapSvgText(orgName, 13);
+  const orgFontSize     = 12;
+  const orgLineHeight   = 20;
+  const orgBaselineOff  = 17;
+
+  const orgLines   = wrapSvgText(orgName, 9);
   const titleLines = wrapSvgText(title,   13);
 
-  const orgBlockH   = orgLines.length * 13;
-  const orgStartY   = Math.round(26 + (46 - orgBlockH) / 2) + 11;
+  const orgBlockH   = orgLines.length * orgLineHeight;
+  const orgStartY   = Math.round(26 + (46 - orgBlockH) / 2) + orgBaselineOff;
   const titleBlockH = titleLines.length * 13;
   const titleStartY = Math.round(132 + (33 - titleBlockH) / 2) + 10;
 
@@ -40,9 +44,9 @@ export function ChampionshipBanner({ title, year, orgName, primaryColorId, secon
       <path d="M 10,18 L 110,18 L 110,168 L 60,200 L 10,168 Z" fill={primary.bg}/>
       <path d="M 18,26 L 102,26 L 102,161 L 60,188 L 18,161 Z"
         fill="none" stroke={trimColor} strokeWidth="1.4" strokeOpacity="0.7"/>
-      <text x="60" y={orgStartY} fill={primary.text} fontSize="8" fontWeight="900"
+      <text x="60" y={orgStartY} fill={primary.text} fontSize={orgFontSize} fontWeight="900"
         textAnchor="middle" fontFamily="system-ui, sans-serif" letterSpacing="0.5">
-        {orgLines.map((line, i) => <tspan key={i} x="60" dy={i === 0 ? 0 : 13}>{line}</tspan>)}
+        {orgLines.map((line, i) => <tspan key={i} x="60" dy={i === 0 ? 0 : orgLineHeight}>{line}</tspan>)}
       </text>
       <line x1="24" y1="74" x2="96" y2="74" stroke={trimColor} strokeWidth="0.8" strokeOpacity="0.5"/>
       <text x="60" y="116" fill={primary.text} fontSize={yearFontSize} fontWeight="900"
