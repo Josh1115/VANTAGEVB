@@ -21,6 +21,7 @@ import { SwipeableMatchCard } from '../components/ui/SwipeableMatchCard';
 import { VBPlayerScene } from '../components/ui/VBPlayerScene';
 import { CourtWhiteboard } from '../components/match/CourtWhiteboard';
 import { Spinner } from '../components/ui/Spinner';
+import { SeasonKickoffModal } from '../components/shared/SeasonKickoffModal';
 
 // Converts "HH:MM" (24h) → "H:MM AM/PM"
 function fmtTime(t) {
@@ -391,9 +392,23 @@ export function HomePage() {
   const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const showToast = useUiStore(selectShowToast);
-  const { session } = useAuth();
+  const { session, profile, refreshProfile } = useAuth();
   const { teamsAllowed, matchLimit, isMaster } = usePlan();
   const [cloudSaving, setCloudSaving] = useState(false);
+
+  // ── One-time "2026 season kickoff" popup ──────────────────────────────────
+  // Shows once per account, on the first dashboard visit on/after Aug 13 2026.
+  const [showKickoffPopup, setShowKickoffPopup] = useState(false);
+  useEffect(() => {
+    if (!profile || !session || profile.seen_2026_kickoff_message) return;
+    if (new Date() < new Date(2026, 7, 13)) return; // month is 0-indexed: 7 = August
+    setShowKickoffPopup(true);
+    supabase
+      .from('profiles')
+      .update({ seen_2026_kickoff_message: true })
+      .eq('id', session.user.id)
+      .then(() => refreshProfile());
+  }, [profile, session, refreshProfile]);
 
   async function handleSaveToCloud() {
     setCloudSaving(true);
@@ -1770,6 +1785,10 @@ export function HomePage() {
           </button>
         </div>
       </div>
+
+      {showKickoffPopup && (
+        <SeasonKickoffModal onClose={() => setShowKickoffPopup(false)} />
+      )}
 
       {confirmLogout && (
         <ConfirmDialog
