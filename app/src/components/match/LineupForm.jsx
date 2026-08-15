@@ -18,9 +18,11 @@ const POSITION_OPTIONS = ['OH', 'OPP', 'MB', 'S', 'L', 'DS', 'RS'];
  *   setStartRotation  — setter for startRotation
  *   liberoId          — string, selected libero player id ('' = none)
  *   setLiberoId       — setter for liberoId
+ *   libero2Id         — string, second dressed libero player id ('' = none) — IHSA two-libero rule
+ *   setLibero2Id      — setter for libero2Id
  *   players           — Player[] from DB (active roster)
  */
-export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions, startZone, setStartZone, startRotation, setStartRotation, liberoId, setLiberoId, players }) {
+export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions, startZone, setStartZone, startRotation, setStartRotation, liberoId, setLiberoId, libero2Id, setLibero2Id, players }) {
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [dragOverIdx, setDragOverIdx] = useState(null);
   const containerRef = useRef(null);
@@ -58,11 +60,12 @@ export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions,
     setDragOverIdx(null);
   };
 
-  // Auto-select first player with position 'L' as libero when roster loads
+  // Auto-select first (and, if dressed, second) player with position 'L' as libero when roster loads
   useEffect(() => {
     if (!players) return;
-    const lib = players.find((p) => p.position === 'L');
-    setLiberoId(lib ? String(lib.id) : '');
+    const libs = players.filter((p) => p.position === 'L');
+    setLiberoId(libs[0] ? String(libs[0].id) : '');
+    if (setLibero2Id) setLibero2Id(libs[1] ? String(libs[1].id) : '');
   }, [players]);
 
   // Back-fill any slot that has a player but no position assigned.
@@ -211,11 +214,31 @@ export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions,
         >
           <option value="">— No libero —</option>
           {sortedPlayers.map((p) => (
-            <option key={p.id} value={p.id}>
+            <option key={p.id} value={p.id} disabled={String(p.id) === libero2Id}>
               #{p.jersey_number} {p.name} ({p.position})
             </option>
           ))}
         </select>
+
+        {setLibero2Id && liberoId && (
+          <>
+            <p className="text-[11px] text-slate-500 mt-2 mb-1">
+              2nd libero (optional) — IHSA allows two dressed liberos; only one is on court at a time.
+            </p>
+            <select
+              value={libero2Id}
+              onChange={(e) => setLibero2Id(e.target.value)}
+              className="w-full bg-surface border border-slate-600 text-white rounded px-2 py-2 text-sm focus:outline-none focus:border-primary"
+            >
+              <option value="">— No 2nd libero —</option>
+              {sortedPlayers.map((p) => (
+                <option key={p.id} value={p.id} disabled={String(p.id) === liberoId}>
+                  #{p.jersey_number} {p.name} ({p.position})
+                </option>
+              ))}
+            </select>
+          </>
+        )}
       </div>
 
       {/* Starting Rotation label */}

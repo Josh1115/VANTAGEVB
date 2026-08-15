@@ -56,6 +56,8 @@ export function MatchSetupPage() {
   const [startRotation, setStartRotation] = useState(1);
   // liberoId = player designated as libero (optional)
   const [liberoId,  setLiberoId]   = useState('');
+  // libero2Id = second dressed libero (optional) — IHSA two-libero rule; only one on court at a time
+  const [libero2Id, setLibero2Id]  = useState('');
   const [startFormations, setStartFormations] = useState(null);
   const [servingSide, setServingSide] = useState(SIDE.US);
   const [teamJerseyColor,   setTeamJerseyColor]   = useState('black');
@@ -175,6 +177,7 @@ export function MatchSetupPage() {
     setLineupState(sl.serve_order.map(String));
     setStartZone(sl.start_zone ?? 1);
     setLiberoId(sl.libero_player_id ? String(sl.libero_player_id) : '');
+    setLibero2Id(sl.libero2_player_id ? String(sl.libero2_player_id) : '');
     setSlotPositions(sl.slot_positions ?? Array(6).fill(''));
     setStartFormations(sl.serve_receive_formations ?? null);
     setLoadPickerOpen(false);
@@ -425,7 +428,8 @@ export function MatchSetupPage() {
         status:           SET_STATUS.IN_PROGRESS,
         our_score:        0,
         opp_score:        0,
-        libero_player_id: liberoId ? Number(liberoId) : null,
+        libero_player_id:  liberoId  ? Number(liberoId)  : null,
+        libero2_player_id: libero2Id ? Number(libero2Id) : null,
         start_rotation:   startRotation,
         serving_first:    servingSide, // persisted so the live page survives remount/reload
         ...(startFormations ? { serve_receive_formations: startFormations } : {}),
@@ -906,6 +910,8 @@ export function MatchSetupPage() {
                 setStartRotation={setStartRotation}
                 liberoId={liberoId}
                 setLiberoId={setLiberoId}
+                libero2Id={libero2Id}
+                setLibero2Id={setLibero2Id}
                 players={players}
               />
             )}

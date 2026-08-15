@@ -11,6 +11,7 @@ export function SavedLineupModal({ onClose, teamId, savedLineup, activePlayers }
   const [slotPositions, setSlotPositions] = useState(savedLineup?.slot_positions ?? Array(6).fill(''));
   const [startZone,     setStartZone]     = useState(savedLineup?.start_zone ?? 1);
   const [liberoId,      setLiberoId]      = useState(savedLineup?.libero_player_id ? String(savedLineup.libero_player_id) : '');
+  const [libero2Id,     setLibero2Id]     = useState(savedLineup?.libero2_player_id ? String(savedLineup.libero2_player_id) : '');
   const showToast = useUiStore(selectShowToast);
 
   const save = async () => {
@@ -23,7 +24,8 @@ export function SavedLineupModal({ onClose, teamId, savedLineup, activePlayers }
         serve_order:      lineup,
         slot_positions:   slotPositions,
         start_zone:       startZone,
-        libero_player_id: liberoId ? Number(liberoId) : null,
+        libero_player_id:  liberoId  ? Number(liberoId)  : null,
+        libero2_player_id: libero2Id ? Number(libero2Id) : null,
       };
       if (savedLineup) {
         await db.saved_lineups.update(savedLineup.id, data);
@@ -69,6 +71,8 @@ export function SavedLineupModal({ onClose, teamId, savedLineup, activePlayers }
           setStartZone={setStartZone}
           liberoId={liberoId}
           setLiberoId={setLiberoId}
+          libero2Id={libero2Id}
+          setLibero2Id={setLibero2Id}
           players={activePlayers}
         />
       </div>

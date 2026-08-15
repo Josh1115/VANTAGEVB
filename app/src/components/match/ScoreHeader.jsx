@@ -245,7 +245,7 @@ const NudgeBtn = memo(function NudgeBtn({ label, onTap }) {
   );
 });
 
-export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, opponentName, onTimeoutCalled, onAssignLibero, flipLayout = false, broadcastEnabled = false, hasFamilyScope = false }) {
+export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlayer2, teamName, opponentName, onTimeoutCalled, onAssignLibero, onAssignLibero2, flipLayout = false, broadcastEnabled = false, hasFamilyScope = false }) {
   const flipped = flipLayout;
   const {
     ourScore, oppScore, ourSetsWon, oppSetsWon, setNumber, serveSide,
@@ -434,7 +434,12 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, teamName, o
                   </div>
                 );
               })()}
-              <LiberoBox liberoPlayer={liberoPlayer} onAssignLibero={onAssignLibero} />
+              <LiberoBox
+                liberoPlayer={liberoPlayer}
+                liberoPlayer2={liberoPlayer2}
+                onAssignLibero={onAssignLibero}
+                onAssignLibero2={onAssignLibero2}
+              />
               <div className="flex flex-col items-center px-[1vmin] py-[0.4vmin] rounded border border-purple-700 bg-purple-950/40">
                 <span className="text-[1.1vmin] font-bold text-purple-500 leading-none uppercase tracking-wide">ROT</span>
                 <span className="text-[2.6vmin] font-black text-purple-400 leading-none tabular-nums">{rotationNum}</span>

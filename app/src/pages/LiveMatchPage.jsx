@@ -50,10 +50,12 @@ export function LiveMatchPage() {
   const [timeoutOpen,      setTimeoutOpen]      = useState(false);
   const [scoreAtTimeoutClose, setScoreAtTimeoutClose] = useState(null);
   const [liberoPickerOpen, setLiberoPickerOpen] = useState(false);
+  const [liberoPickerSlot, setLiberoPickerSlot] = useState(1); // which slot (1 or 2) the picker is assigning
   const [liberoSwapOpen,   setLiberoSwapOpen]   = useState(false);
   const [rotErrOpen,       setRotErrOpen]       = useState(false);
 
   const [liberoPlayer,        setLiberoPlayer]        = useState(null);
+  const [liberoPlayer2,       setLiberoPlayer2]        = useState(null);
   const [confettiNav,         setConfettiNav]         = useState(null); // { path, matchWin } | null
   const [summaryModalData,     setSummaryModalData]     = useState(null); // { winner } | null
   const [exportPromptNav,     setExportPromptNav]     = useState(null); // fn to call after export prompt
@@ -76,7 +78,7 @@ export function LiveMatchPage() {
   const {
     recordHomeRotError,
     resetMatch,
-    setMatch, setLineup, setPlayerNicknames, setLibero, swapLibero,
+    setMatch, setLineup, setPlayerNicknames, setLibero, setLibero2, swapLibero,
     startBroadcast, stopBroadcast,
     endSet, endMatch, finishRevisedSet, clearPendingSetWin,
     confirmServeZone, dismissServeZoneModal, loadServeReticles, loadSetFormationData,
@@ -93,6 +95,7 @@ export function LiveMatchPage() {
     setLineup:            s.setLineup,
     setPlayerNicknames:   s.setPlayerNicknames,
     setLibero:            s.setLibero,
+    setLibero2:           s.setLibero2,
     swapLibero:           s.swapLibero,
     endSet:               s.endSet,
     endMatch:             s.endMatch,
@@ -207,10 +210,15 @@ export function LiveMatchPage() {
     setTimeoutOpen(false);
   }, []);
   const handleLiberoPick   = useCallback((player) => {
-    setLibero(player.id, player.name, player.jersey_number);
-    setLiberoPlayer(player);
+    if (liberoPickerSlot === 2) {
+      setLibero2(player.id, player.name, player.jersey_number);
+      setLiberoPlayer2(player);
+    } else {
+      setLibero(player.id, player.name, player.jersey_number);
+      setLiberoPlayer(player);
+    }
     setLiberoPickerOpen(false);
-  }, [setLibero]);
+  }, [setLibero, setLibero2, liberoPickerSlot]);
 
   useEffect(() => {
     // Lock to landscape; release on unmount
@@ -273,12 +281,13 @@ export function LiveMatchPage() {
         db.lineups.where('set_id').equals(currentSet.id).toArray(),
       ]);
 
-      // Level 3: team + lineup players + explicit libero in parallel
+      // Level 3: team + lineup players + explicit libero(s) in parallel
       const playerIds = lineupRows.map((r) => r.player_id);
-      const [team, players, explicitLibero] = await Promise.all([
+      const [team, players, explicitLibero, explicitLibero2] = await Promise.all([
         season?.team_id ? db.teams.get(season.team_id) : null,
         playerIds.length ? db.players.bulkGet(playerIds) : [],
-        currentSet.libero_player_id ? db.players.get(currentSet.libero_player_id) : null,
+        currentSet.libero_player_id  ? db.players.get(currentSet.libero_player_id)  : null,
+        currentSet.libero2_player_id ? db.players.get(currentSet.libero2_player_id) : null,
       ]);
 
       const so1Row = lineupRows.find(r => r.serve_order === 1);
@@ -301,7 +310,9 @@ export function LiveMatchPage() {
         setLineup(baseLineup, baseRotation);
       }
 
-      // Resolve libero: explicit set designation → full-roster 'L' scan → nothing
+      // Resolve libero(s): explicit set designation(s) → full-roster 'L' scan → nothing.
+      // The roster scan only ever finds one, so it's the fallback for libero #1 only;
+      // a second dressed libero must be explicitly designated at match setup.
       let libero = explicitLibero;
       if (!libero && season?.team_id) {
         libero = await db.players
@@ -309,16 +320,21 @@ export function LiveMatchPage() {
           .filter((p) => p.position === 'L' && p.is_active)
           .first();
       }
+      const libero2 = explicitLibero2;
       if (libero) {
         setLibero(libero.id, libero.name, libero.jersey_number);
         setLiberoPlayer(libero);
       }
+      if (libero2) {
+        setLibero2(libero2.id, libero2.name, libero2.jersey_number);
+        setLiberoPlayer2(libero2);
+      }
 
-      // Build nickname map for all players including the libero so the libero
-      // respects the same name-display setting as the rest of the court.
+      // Build nickname map for all players including the libero(s) so they
+      // respect the same name-display setting as the rest of the court.
       setPlayerNicknames(
         Object.fromEntries(
-          [...players, libero].filter(Boolean).map((p) => [p.id, p.nickname ?? ''])
+          [...players, libero, libero2].filter(Boolean).map((p) => [p.id, p.nickname ?? ''])
         )
       );
 
@@ -352,7 +368,7 @@ export function LiveMatchPage() {
       const subInIds   = [...new Set(subRows.filter(r => !r.libero_swap).map(r => r.player_in))];
       const subPlayers = subInIds.length ? await db.players.bulkGet(subInIds) : [];
       const playersById = Object.fromEntries(
-        [...players, ...subPlayers, libero].filter(Boolean).map(p => [p.id, p])
+        [...players, ...subPlayers, libero, libero2].filter(Boolean).map(p => [p.id, p])
       );
       useMatchStore.setState({
         ...reconstructSetState({
@@ -366,6 +382,8 @@ export function LiveMatchPage() {
           playersById,
           format:       match.format ?? null,
           lastSetScore: match.last_set_score ?? 15,
+          libero1Id:    libero?.id ?? null,
+          libero2Id:    libero2?.id ?? null,
         }),
         committedContacts: currentSetContacts,
         ...(subPlayers.length ? {
@@ -377,6 +395,15 @@ export function LiveMatchPage() {
         ...(match.team_jersey_color   ? { teamJerseyColor:   match.team_jersey_color }   : {}),
         ...(match.libero_jersey_color ? { liberoJerseyColor: match.libero_jersey_color } : {}),
       });
+
+      // The replay above may have found that a direct libero-for-libero swap
+      // happened before this reload, flipping which dressed player is
+      // currently active — sync the local display objects to match.
+      if (libero || libero2) {
+        const { liberoId: replayedLiberoId, libero2Id: replayedLibero2Id } = useMatchStore.getState();
+        setLiberoPlayer(playersById[replayedLiberoId] ?? null);
+        setLiberoPlayer2(playersById[replayedLibero2Id] ?? null);
+      }
 
       if (match.season_id) setSeasonId(match.season_id);
       setHasFamilyScope(!!match.pv_token && navigator.onLine);
@@ -547,10 +574,12 @@ export function LiveMatchPage() {
       <div className="flex flex-col flex-1 min-h-0">
         <ScoreHeader
           liberoPlayer={liberoPlayer}
+          liberoPlayer2={liberoPlayer2}
           teamName={teamName}
           opponentName={opponentName}
           onTimeoutCalled={() => setTimeoutOpen(true)}
-          onAssignLibero={!liberoPlayer ? () => setLiberoPickerOpen(true) : undefined}
+          onAssignLibero={!liberoPlayer ? () => { setLiberoPickerSlot(1); setLiberoPickerOpen(true); } : undefined}
+          onAssignLibero2={liberoPlayer && !liberoPlayer2 ? () => { setLiberoPickerSlot(2); setLiberoPickerOpen(true); } : undefined}
           flipLayout={flipLayout}
           broadcastEnabled={broadcastEnabled}
           hasFamilyScope={hasFamilyScope}
@@ -583,12 +612,20 @@ export function LiveMatchPage() {
       )}
 
       {subOpen          && <SubstitutionModal onClose={() => setSubOpen(false)} />}
-      {liberoPickerOpen && <LiberoPickerModal onClose={() => setLiberoPickerOpen(false)} onPick={handleLiberoPick} />}
+      {liberoPickerOpen && (
+        <LiberoPickerModal
+          slot={liberoPickerSlot}
+          excludeId={liberoPickerSlot === 2 ? liberoPlayer?.id : liberoPlayer2?.id}
+          onClose={() => setLiberoPickerOpen(false)}
+          onPick={handleLiberoPick}
+        />
+      )}
       {liberoSwapOpen && liberoPlayer && (
         <LiberoSwapModal
           liberoPlayer={liberoPlayer}
+          liberoPlayer2={liberoPlayer2}
           onClose={() => setLiberoSwapOpen(false)}
-          onPick={(idx) => { swapLibero(liberoPlayer, idx); setLiberoSwapOpen(false); }}
+          onConfirm={(player, idx) => { swapLibero(player, idx); setLiberoSwapOpen(false); }}
         />
       )}
       {menuOpen && (

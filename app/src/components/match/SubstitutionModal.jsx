@@ -151,6 +151,7 @@ export function SubstitutionModal({ onClose }) {
   const lineup             = useMatchStore((s) => s.lineup);
   const teamId             = useMatchStore((s) => s.teamId);
   const liberoId           = useMatchStore((s) => s.liberoId);
+  const libero2Id          = useMatchStore((s) => s.libero2Id);
   const subsUsed           = useMatchStore((s) => s.subsUsed);
   const maxSubsPerSet      = useMatchStore((s) => s.maxSubsPerSet);
   const subPairs           = useMatchStore((s) => s.subPairs);
@@ -184,8 +185,9 @@ export function SubstitutionModal({ onClose }) {
 
   const onCourtIds = new Set(lineup.map((sl) => sl.playerId).filter(Boolean));
 
-  // Bench for sub 1: everyone not on court, not libero
-  const bench1 = (roster ?? []).filter((p) => !onCourtIds.has(p.id) && p.id !== liberoId);
+  // Bench for sub 1: everyone not on court, not a dressed libero (either one —
+  // libero entries must go through the dedicated libero swap, not a regular sub)
+  const bench1 = (roster ?? []).filter((p) => !onCourtIds.has(p.id) && p.id !== liberoId && p.id !== libero2Id);
 
   // Bench for sub 2: same base, but exclude sub 1's incoming player
   const bench2 = bench1.filter((p) => p.id !== inPlayerId);

@@ -53,7 +53,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
   const [homeConfirm, setHomeConfirm] = useState(false);
   const {
     rotateForward, rotateBackward, undoLast, subsUsed, maxSubsPerSet,
-    actionHistory, lastFeedItem, liberoOnCourt, swapLibero, lineup,
+    actionHistory, lastFeedItem, liberoOnCourt,
   } = useMatchStore(useShallow((s) => ({
     rotateForward:  s.rotateForward,
     rotateBackward: s.rotateBackward,
@@ -63,17 +63,11 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
     actionHistory:  s.actionHistory,
     lastFeedItem:   s.lastFeedItem,
     liberoOnCourt:  s.liberoOnCourt,
-    swapLibero:     s.swapLibero,
-    lineup:         s.lineup,
   })));
   const showToast = useUiStore((s) => s.showToast);
 
   const backHold = useHoldButton(rotateBackward);
   const fwdHold  = useHoldButton(rotateForward);
-
-  const canSwapLibero = liberoPlayer && (liberoOnCourt || [4, 5].some(
-    (i) => lineup[i]?.playerId && lineup[i].playerId !== liberoPlayer.id
-  ));
 
   const lastAction = actionHistory[0] ?? null;
 
@@ -155,21 +149,15 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         <span className="text-[1.53vmin] leading-none">SUB</span>
       </button>
 
-      {/* Libero swap */}
+      {/* Libero swap — always opens the swap picker (which libero, replacing whom) */}
       {liberoPlayer && (
         <button
-          onPointerDown={(e) => {
-            e.preventDefault();
-            if (!canSwapLibero) return;
-            if (liberoOnCourt) swapLibero(liberoPlayer); else onLiberoIn?.();
-          }}
-          className={`${btnBase} ${canSwapLibero
-            ? liberoOnCourt
-              ? 'bg-emerald-900/60 text-emerald-300 hover:bg-emerald-800/70'
-              : 'bg-slate-800 text-slate-500 hover:bg-slate-700'
-            : 'bg-slate-800 text-slate-700'}`}
+          onPointerDown={(e) => { e.preventDefault(); onLiberoIn?.(); }}
+          className={`${btnBase} ${liberoOnCourt
+            ? 'bg-emerald-900/60 text-emerald-300 hover:bg-emerald-800/70'
+            : 'bg-slate-800 text-slate-500 hover:bg-slate-700'}`}
         >
-          <span className="text-[1.53vmin] leading-none">{liberoOnCourt ? 'LIB ON' : 'LIB OFF'}</span>
+          <span className="text-[1.53vmin] leading-none">LIB SWAP</span>
         </button>
       )}
 

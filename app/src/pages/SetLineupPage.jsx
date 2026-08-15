@@ -19,6 +19,7 @@ export function SetLineupPage() {
   const showToast      = useUiStore(selectShowToast);
   const setLineup     = useMatchStore((s) => s.setLineup);
   const setLibero     = useMatchStore((s) => s.setLibero);
+  const setLibero2    = useMatchStore((s) => s.setLibero2);
   const storeServeSide = useMatchStore((s) => s.serveSide);
 
   const [allSets,   setAllSets]   = useState([]);
@@ -34,6 +35,7 @@ export function SetLineupPage() {
   const [startZone, setStartZone]  = useState(1);
   const [startRotation, setStartRotation] = useState(1);
   const [liberoId,  setLiberoId]   = useState('');
+  const [libero2Id, setLibero2Id]  = useState('');
   const [servingSide, setServingSide] = useState(storeServeSide ?? SIDE.US);
   const [saving,    setSaving]     = useState(false);
   const [error,     setError]      = useState('');
@@ -83,6 +85,7 @@ export function SetLineupPage() {
     setSlotPositions(Array(6).fill(''));
     setStartZone(1);
     setLiberoId('');
+    setLibero2Id('');
 
     // Pre-populate form with the existing lineup for this set
     const existingRows = await db.lineups.where('set_id').equals(set.id).toArray();
@@ -99,9 +102,12 @@ export function SetLineupPage() {
       if (firstRow) setStartZone(firstRow.position);
     }
 
-    // Pre-populate libero if set
+    // Pre-populate libero(s) if set
     if (set.libero_player_id) {
       setLiberoId(String(set.libero_player_id));
+    }
+    if (set.libero2_player_id) {
+      setLibero2Id(String(set.libero2_player_id));
     }
   }
 
@@ -121,6 +127,7 @@ export function SetLineupPage() {
     setLineupState(sl.serve_order.map(String));
     setStartZone(sl.start_zone ?? 1);
     setLiberoId(sl.libero_player_id ? String(sl.libero_player_id) : '');
+    setLibero2Id(sl.libero2_player_id ? String(sl.libero2_player_id) : '');
     setSlotPositions(sl.slot_positions ?? Array(6).fill(''));
     setPendingFormations(sl.serve_receive_formations ?? null);
     setPendingPlannedSubs(sl.planned_subs ?? null);
@@ -140,7 +147,8 @@ export function SetLineupPage() {
     try {
       // Update set with libero designation + optional formation/sub data
       await db.sets.update(setId, {
-        libero_player_id:         liberoId ? Number(liberoId) : null,
+        libero_player_id:         liberoId  ? Number(liberoId)  : null,
+        libero2_player_id:        libero2Id ? Number(libero2Id) : null,
         serve_receive_formations: (useFormations  && pendingFormations)  ? pendingFormations  : null,
         planned_subs:             (usePlannedSubs && pendingPlannedSubs) ? pendingPlannedSubs : null,
         start_rotation:           startRotation,
@@ -180,6 +188,10 @@ export function SetLineupPage() {
       if (liberoId) {
         const liberoPlayer = await db.players.get(Number(liberoId));
         setLibero(Number(liberoId), liberoPlayer?.name ?? '', liberoPlayer?.jersey_number ?? '');
+      }
+      if (libero2Id) {
+        const libero2Player = await db.players.get(Number(libero2Id));
+        setLibero2(Number(libero2Id), libero2Player?.name ?? '', libero2Player?.jersey_number ?? '');
       }
       useMatchStore.setState({ serveSide: servingSide });
 
@@ -326,6 +338,8 @@ export function SetLineupPage() {
           setStartRotation={setStartRotation}
           liberoId={liberoId}
           setLiberoId={setLiberoId}
+          libero2Id={libero2Id}
+          setLibero2Id={setLibero2Id}
           players={players}
         />
 

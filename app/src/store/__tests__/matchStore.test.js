@@ -350,6 +350,98 @@ describe('swapLibero', () => {
   });
 });
 
+// ── swapLibero — IHSA two-libero rule (direct libero-for-libero swap) ─────────
+
+describe('swapLibero — two dressed liberos', () => {
+  const liberoA = { id: 99, name: 'Lisa Libero',  jersey_number: '0' };
+  const liberoB = { id: 98, name: 'Bea Backup',   jersey_number: '1' };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    await initMatch();
+    loadLineup();
+    useMatchStore.getState().setLibero(99, 'Lisa Libero', '0');
+    useMatchStore.getState().setLibero2(98, 'Bea Backup', '1');
+  });
+
+  it('direct swap: the other dressed libero takes the on-court slot without restoring the original player', async () => {
+    await useMatchStore.getState().swapLibero(liberoA, 4); // A in for the back-row player
+    await useMatchStore.getState().swapLibero(liberoB);    // B takes over directly (no target idx)
+
+    const s = useMatchStore.getState();
+    expect(s.liberoOnCourt).toBe(true);
+    expect(s.liberoId).toBe(98);       // B is now active
+    expect(s.libero2Id).toBe(99);      // A is now the benched one
+    expect(s.lineup[4].playerId).toBe(98);
+    // The true original back-row player is still remembered for eventual swap-out
+    expect(s.liberoReplacedPlayerId).toBe(14);
+  });
+
+  it('direct swap: swapping the active libero back out restores the true original player, not the other libero', async () => {
+    await useMatchStore.getState().swapLibero(liberoA, 4);
+    await useMatchStore.getState().swapLibero(liberoB); // direct swap, B now active
+    await useMatchStore.getState().swapLibero(liberoB); // swap B out
+
+    const s = useMatchStore.getState();
+    expect(s.liberoOnCourt).toBe(false);
+    expect(s.lineup[4].playerId).toBe(14); // original player, not liberoA
+  });
+
+  it('undo restores which libero was active before a direct swap', async () => {
+    await useMatchStore.getState().swapLibero(liberoA, 4);
+    await useMatchStore.getState().swapLibero(liberoB); // direct swap
+    await useMatchStore.getState().undoLast();
+
+    const s = useMatchStore.getState();
+    expect(s.liberoId).toBe(99);  // back to A
+    expect(s.libero2Id).toBe(98); // back to B
+    expect(s.lineup[4].playerId).toBe(99);
+  });
+});
+
+// ── swapLibero — front-row target queues until the back row ───────────────────
+
+describe('swapLibero — front-row target queues until back row', () => {
+  const liberoA = { id: 99, name: 'Lisa Libero', jersey_number: '0' };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    await initMatch();
+    loadLineup();
+    useMatchStore.getState().setLibero(99, 'Lisa Libero', '0');
+  });
+
+  it('picking a front-row player does not touch the court or write a sub row', async () => {
+    await useMatchStore.getState().swapLibero(liberoA, 1); // index 1 = position 2, front row
+
+    const s = useMatchStore.getState();
+    expect(s.liberoOnCourt).toBe(false);
+    expect(s.lineup[1].playerId).toBe(11); // untouched
+    expect(s.liberoReplacedPlayerId).toBe(11); // queued for this player
+    expect(db.substitutions.add).not.toHaveBeenCalled();
+  });
+
+  it('the libero auto-swaps in the moment that player rotates into the back row', async () => {
+    await useMatchStore.getState().swapLibero(liberoA, 1); // queue for the position-2 player (id 11)
+    useMatchStore.getState().rotateForward(); // id 11 rotates from position 2 into position 1 (back row)
+
+    const s = useMatchStore.getState();
+    expect(s.liberoOnCourt).toBe(true);
+    expect(s.liberoId).toBe(99);
+    expect(s.lineup[0].playerId).toBe(99); // libero now occupying position 1
+    expect(s.liberoReplacedPlayerId).toBe(11);
+  });
+
+  it('stays queued through a rotation that does not bring the target to the back row', async () => {
+    await useMatchStore.getState().swapLibero(liberoA, 1); // queue for id 11 (position 2)
+    useMatchStore.getState().rotateBackward(); // id 11 moves from position 2 to position 3 — still front row
+
+    const s = useMatchStore.getState();
+    expect(s.liberoOnCourt).toBe(false);
+    expect(s.liberoReplacedPlayerId).toBe(11);
+  });
+});
+
 describe('substitutePlayer — correction mode', () => {
   const benchPlayer = { id: 20, name: 'Bench Player', jersey_number: '9', position: 'OH' };
 

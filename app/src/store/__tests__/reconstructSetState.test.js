@@ -162,6 +162,31 @@ describe('reconstructSetState', () => {
     expect(out.lineup.map(sl => sl.playerId)).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
+  it('replays a direct libero-for-libero swap: keeps the true original replaced player, flips active libero id', () => {
+    const playersById = {
+      ...PLAYERS,
+      3:   { id: 3,   name: 'P3',       jersey_number: 3,  position: 'OH' }, // original back-row player from baseLineup
+      101: { id: 101, name: 'Libero A', jersey_number: 11, position: 'L' },
+      102: { id: 102, name: 'Libero B', jersey_number: 12, position: 'L' },
+    };
+    const out = reconstructSetState(base({
+      playersById,
+      libero1Id: 101,
+      libero2Id: 102,
+      subRows: [
+        // Libero A swaps in for the true original back-row player (slot 3)
+        { player_out: 3,   player_in: 101, position: 3, libero_swap: true, in_position_label: 'L', timestamp: 100 },
+        // Direct swap: Libero B takes over the on-court slot from Libero A
+        { player_out: 101, player_in: 102, position: 3, libero_swap: true, in_position_label: 'L', timestamp: 200 },
+      ],
+    }));
+    expect(out.liberoOnCourt).toBe(true);
+    expect(out.liberoId).toBe(102);              // B is now active
+    expect(out.libero2Id).toBe(101);             // A is now the benched dressed libero
+    expect(out.liberoReplacedPlayerId).toBe(3);  // still the true original player, not Libero A
+    expect(out.lineup.find((sl) => sl.playerId === 102)).toBeTruthy();
+  });
+
   it('replays a correction sub into the lineup but does not count it toward subsUsed', () => {
     const out = reconstructSetState(base({
       subRows: [

@@ -131,6 +131,7 @@ function checkSetWin(ourScore, oppScore, setNumber, format, lastSetScore) {
 export function reconstructSetState({
   setRow, allSets, rallies, timeoutRows, subRows,
   baseLineup, baseRotation, playersById, format, lastSetScore,
+  libero1Id, libero2Id,
 }) {
   const setNumber = setRow.set_number ?? 1;
 
@@ -176,6 +177,17 @@ export function reconstructSetState({
   let liberoReplacedName          = '';
   let liberoReplacedJersey        = '';
   let liberoReplacedPositionLabel = '';
+  // Tracks WHICH of the (up to two) dressed liberos is currently active vs.
+  // benched — needed for the IHSA two-libero rule, where either of two
+  // dressed players can occupy the single on-court libero role. Seeded from
+  // the set's static pre-match designations; updated as libero_swap rows
+  // (including a direct libero-for-libero swap) are replayed below.
+  let currentLiberoId     = libero1Id ?? null;
+  let currentLiberoName   = playersById?.[libero1Id]?.name ?? '';
+  let currentLiberoJersey = playersById?.[libero1Id]?.jersey_number ?? '';
+  let currentLibero2Id     = libero2Id ?? null;
+  let currentLibero2Name   = playersById?.[libero2Id]?.name ?? '';
+  let currentLibero2Jersey = playersById?.[libero2Id]?.jersey_number ?? '';
   for (const row of allSubsOrdered) {
     const idx = lineup.findIndex((sl) => sl.playerId === row.player_out);
     const outSlotLabel = idx !== -1 ? lineup[idx].positionLabel : null;
@@ -187,12 +199,32 @@ export function reconstructSetState({
     }
     if (row.libero_swap) {
       if (row.in_position_label === 'L') {
-        const p = playersById?.[row.player_out];
-        liberoOnCourt               = true;
-        liberoReplacedPlayerId      = row.player_out;
-        liberoReplacedName          = p?.name ?? '';
-        liberoReplacedJersey        = p?.jersey_number ?? '';
-        liberoReplacedPositionLabel = outSlotLabel || p?.position || '';
+        const pIn = playersById?.[row.player_in];
+        liberoOnCourt = true;
+        // If the incoming player is the OTHER dressed libero, they swap places
+        // (this covers both a fresh swap-in of libero #2 and a direct
+        // libero-for-libero swap while one was already on court).
+        if (row.player_in !== currentLiberoId) {
+          currentLibero2Id     = currentLiberoId;
+          currentLibero2Name   = currentLiberoName;
+          currentLibero2Jersey = currentLiberoJersey;
+        }
+        currentLiberoId     = row.player_in;
+        currentLiberoName   = pIn?.name ?? '';
+        currentLiberoJersey = pIn?.jersey_number ?? '';
+
+        // Only a genuine "libero replaces a non-libero back-row player" swap
+        // updates who they replaced — a direct libero-for-libero swap leaves
+        // that memory untouched so swapping back out still restores the
+        // right original player.
+        const outWasDesignatedLibero = row.player_out === libero1Id || row.player_out === libero2Id;
+        if (!outWasDesignatedLibero) {
+          const p = playersById?.[row.player_out];
+          liberoReplacedPlayerId      = row.player_out;
+          liberoReplacedName          = p?.name ?? '';
+          liberoReplacedJersey        = p?.jersey_number ?? '';
+          liberoReplacedPositionLabel = outSlotLabel || p?.position || '';
+        }
       } else {
         liberoOnCourt               = false;
         liberoReplacedPlayerId      = null;
@@ -233,6 +265,8 @@ export function reconstructSetState({
     subPairs,
     exhaustedPlayerIds,
     liberoOnCourt, liberoReplacedPlayerId, liberoReplacedName, liberoReplacedJersey, liberoReplacedPositionLabel,
+    liberoId: currentLiberoId, liberoName: currentLiberoName, liberoJersey: currentLiberoJersey,
+    libero2Id: currentLibero2Id, libero2Name: currentLibero2Name, libero2Jersey: currentLibero2Jersey,
     committedRallies: ordered.map((r) => ({
       set_id:           r.set_id,
       rally_number:     r.rally_number,
@@ -368,6 +402,9 @@ const INITIAL_STATE = {
   liberoId:              null,
   liberoName:            '',
   liberoJersey:          '',
+  libero2Id:             null, // second dressed libero (IHSA two-libero rule), if designated
+  libero2Name:           '',
+  libero2Jersey:         '',
   liberoOnCourt:         false,
   liberoReplacedPlayerId:      null,
   liberoReplacedName:          '',
@@ -464,10 +501,22 @@ export const useMatchStore = create((set, get) => ({
     const { matchId } = get();
     if (matchId) db.matches.update(matchId, { libero_jersey_color: color }).catch(() => {});
   },
-  setLibero: (liberoId, name, jersey) => set({ liberoId, liberoName: name ?? '', liberoJersey: jersey ?? '' }),
+  setLibero:  (liberoId, name, jersey) => set({ liberoId, liberoName: name ?? '', liberoJersey: jersey ?? '' }),
+  setLibero2: (libero2Id, name, jersey) => set({ libero2Id, libero2Name: name ?? '', libero2Jersey: jersey ?? '' }),
 
-  rotateForward:  () => set((s) => ({ lineup: rotateFwd(s.lineup), rotationNum: (s.rotationNum % 6) + 1 })),
-  rotateBackward: () => set((s) => ({ lineup: rotateBwd(s.lineup), rotationNum: ((s.rotationNum - 2 + 6) % 6) + 1 })),
+  // Manual rotation nudges also need to trigger the libero auto-swap check —
+  // e.g. a pending libero (queued for a front-row player) becomes due the
+  // moment that player's slot is manually rotated into the back row.
+  rotateForward: () => set((s) => {
+    const lineup = rotateFwd(s.lineup);
+    const rotationNum = (s.rotationNum % 6) + 1;
+    return s.liberoId ? { rotationNum, ...autoSwapLibero(s, lineup) } : { lineup, rotationNum };
+  }),
+  rotateBackward: () => set((s) => {
+    const lineup = rotateBwd(s.lineup);
+    const rotationNum = ((s.rotationNum - 2 + 6) % 6) + 1;
+    return s.liberoId ? { rotationNum, ...autoSwapLibero(s, lineup) } : { lineup, rotationNum };
+  }),
 
   setPositionLabel: (playerId, label) => set((s) => ({
     lineup: s.lineup.map((sl) =>
@@ -812,6 +861,14 @@ export const useMatchStore = create((set, get) => ({
           actionHistory:               rest,
           liberoOnCourt:               action.prevLiberoOnCourt,
           lineup:                      action.prevLineup,
+          ...(action.prevLiberoId !== undefined && {
+            liberoId:      action.prevLiberoId,
+            liberoName:    action.prevLiberoName,
+            liberoJersey:  action.prevLiberoJersey,
+            libero2Id:     action.prevLibero2Id,
+            libero2Name:   action.prevLibero2Name,
+            libero2Jersey: action.prevLibero2Jersey,
+          }),
           liberoReplacedPlayerId:      action.prevReplacedId,
           liberoReplacedName:          action.prevReplacedName,
           liberoReplacedJersey:        action.prevReplacedJersey,
@@ -1124,8 +1181,12 @@ export const useMatchStore = create((set, get) => ({
     // Snapshot state before the swap for undo + DB write rollback
     const prevLiberoOnCourt         = s.liberoOnCourt;
     const prevLineup                = s.lineup;
+    const prevLiberoId              = s.liberoId;
     const prevLiberoName            = s.liberoName;
     const prevLiberoJersey          = s.liberoJersey;
+    const prevLibero2Id             = s.libero2Id;
+    const prevLibero2Name           = s.libero2Name;
+    const prevLibero2Jersey         = s.libero2Jersey;
     const prevReplacedId            = s.liberoReplacedPlayerId;
     const prevReplacedName          = s.liberoReplacedName;
     const prevReplacedJersey        = s.liberoReplacedJersey;
@@ -1137,7 +1198,32 @@ export const useMatchStore = create((set, get) => ({
     // through to the default 1.0 multiplier instead of their real one.
     let subPlayerOut, subPlayerIn, subPosition, subInPositionLabel;
 
-    if (s.liberoOnCourt) {
+    if (s.liberoOnCourt && liberoPlayer.id !== s.liberoId) {
+      // Direct libero-for-libero swap (IHSA two-libero rule) — the OTHER
+      // dressed libero takes over the on-court slot directly. Who they
+      // ultimately stand in for (liberoReplaced*) doesn't change, only which
+      // of the two dressed players is currently occupying the role.
+      const liberoSlotIdx = s.lineup.findIndex((sl) => sl.playerId === s.liberoId);
+      subPlayerOut        = s.liberoId;
+      subPlayerIn         = liberoPlayer.id;
+      subPosition         = liberoSlotIdx + 1;
+      subInPositionLabel  = 'L';
+
+      set({
+        lineup: s.lineup.map((sl) =>
+          sl.playerId === s.liberoId
+            ? { ...sl, playerId: liberoPlayer.id, playerName: liberoPlayer.name, jersey: liberoPlayer.jersey_number, positionLabel: 'L' }
+            : sl
+        ),
+        liberoId:      liberoPlayer.id,
+        liberoName:    liberoPlayer.name ?? '',
+        liberoJersey:  liberoPlayer.jersey_number ?? '',
+        libero2Id:     s.liberoId,
+        libero2Name:   s.liberoName,
+        libero2Jersey: s.liberoJersey,
+        liberoOnCourt: true,
+      });
+    } else if (s.liberoOnCourt) {
       // Swap libero out — restore the player they replaced
       const liberoSlotIdx = s.lineup.findIndex((sl) => sl.playerId === s.liberoId);
       subPlayerOut        = s.liberoId;
@@ -1160,14 +1246,40 @@ export const useMatchStore = create((set, get) => ({
     } else {
       // Swap libero in — use explicitly chosen slot or fall back to back-row MB first, then any back-row player
       const backRow = [4, 5, 0];
-      const eligible = (i) => s.lineup[i].playerId && s.lineup[i].playerId !== s.liberoId;
+      const eligible = (i) => s.lineup[i].playerId && s.lineup[i].playerId !== liberoPlayer.id;
       const targetIdx = explicitTargetIdx !== undefined
         ? explicitTargetIdx
         : backRow.find((i) => eligible(i) && s.lineup[i].positionLabel === 'MB')
           ?? backRow.find((i) => eligible(i));
       if (targetIdx === undefined) return;
 
-      const target       = s.lineup[targetIdx];
+      const target = s.lineup[targetIdx];
+
+      // A libero can only actually enter in the back row (positions 1, 5, 6).
+      // If the chosen player is currently front row, don't touch the court —
+      // just record the pairing. autoSwapLibero() (run on every rotation)
+      // fires the real swap automatically the instant that player's slot
+      // rotates into the back row, whether that's on their own serve or later.
+      const isBackRow = target.position === 1 || target.position === 5 || target.position === 6;
+      if (!isBackRow) {
+        set({
+          liberoId:                    liberoPlayer.id,
+          liberoName:                  liberoPlayer.name ?? '',
+          liberoJersey:                liberoPlayer.jersey_number ?? '',
+          ...(liberoPlayer.id !== s.liberoId && {
+            libero2Id:     s.liberoId,
+            libero2Name:   s.liberoName,
+            libero2Jersey: s.liberoJersey,
+          }),
+          liberoOnCourt:               false,
+          liberoReplacedPlayerId:      target.playerId,
+          liberoReplacedName:          target.playerName,
+          liberoReplacedJersey:        target.jersey,
+          liberoReplacedPositionLabel: target.positionLabel,
+        });
+        return; // nothing happened on court yet — no substitution row to write
+      }
+
       subPlayerOut        = target.playerId;
       subPlayerIn         = liberoPlayer.id;
       subPosition         = targetIdx + 1;
@@ -1179,8 +1291,17 @@ export const useMatchStore = create((set, get) => ({
             ? { ...sl, playerId: liberoPlayer.id, playerName: liberoPlayer.name, jersey: liberoPlayer.jersey_number, positionLabel: 'L' }
             : sl
         ),
+        liberoId:                    liberoPlayer.id,
         liberoName:                  liberoPlayer.name ?? '',
         liberoJersey:                liberoPlayer.jersey_number ?? '',
+        // If the bench libero being swapped in isn't the primary designation,
+        // trade places so the {liberoId, libero2Id} pair always reflects
+        // both dressed players regardless of which one is currently active.
+        ...(liberoPlayer.id !== s.liberoId && {
+          libero2Id:     s.liberoId,
+          libero2Name:   s.liberoName,
+          libero2Jersey: s.liberoJersey,
+        }),
         liberoOnCourt:               true,
         liberoReplacedPlayerId:      target.playerId,
         liberoReplacedName:          target.playerName,
@@ -1206,8 +1327,12 @@ export const useMatchStore = create((set, get) => ({
       set({
         lineup:                      prevLineup,
         liberoOnCourt:               prevLiberoOnCourt,
+        liberoId:                    prevLiberoId,
         liberoName:                  prevLiberoName,
         liberoJersey:                prevLiberoJersey,
+        libero2Id:                   prevLibero2Id,
+        libero2Name:                 prevLibero2Name,
+        libero2Jersey:               prevLibero2Jersey,
         liberoReplacedPlayerId:      prevReplacedId,
         liberoReplacedName:          prevReplacedName,
         liberoReplacedJersey:        prevReplacedJersey,
@@ -1221,6 +1346,12 @@ export const useMatchStore = create((set, get) => ({
       subId:                   subDbId,
       prevLiberoOnCourt:       prevLiberoOnCourt,
       prevLineup:              prevLineup,
+      prevLiberoId:            prevLiberoId,
+      prevLiberoName:          prevLiberoName,
+      prevLiberoJersey:        prevLiberoJersey,
+      prevLibero2Id:           prevLibero2Id,
+      prevLibero2Name:         prevLibero2Name,
+      prevLibero2Jersey:       prevLibero2Jersey,
       prevReplacedId:          prevReplacedId,
       prevReplacedName:        prevReplacedName,
       prevReplacedJersey:      prevReplacedJersey,

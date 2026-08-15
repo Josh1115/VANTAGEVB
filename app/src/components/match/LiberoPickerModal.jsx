@@ -4,27 +4,32 @@ import { Button } from '../ui/Button';
 import { useMatchStore } from '../../store/matchStore';
 import { db } from '../../db/schema';
 
-export function LiberoPickerModal({ onClose, onPick }) {
+export function LiberoPickerModal({ onClose, onPick, slot = 1, excludeId }) {
   const teamId = useMatchStore((s) => s.teamId);
 
   const roster = useLiveQuery(
     () => teamId ? db.players.where('team_id').equals(teamId).filter((p) => p.is_active).toArray() : [],
     [teamId]
   );
+  const eligible = (roster ?? []).filter((p) => p.id !== excludeId);
 
   return (
     <Modal
-      title="Assign Libero"
+      title={slot === 2 ? 'Assign 2nd Libero' : 'Assign Libero'}
       onClose={onClose}
       footer={<Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>}
     >
       <div className="space-y-3">
-        <p className="text-xs text-slate-400">Select the player to designate as libero for this set.</p>
-        {!roster || roster.length === 0 ? (
+        <p className="text-xs text-slate-400">
+          {slot === 2
+            ? 'Select the second dressed libero (IHSA two-libero rule). Only one is on court at a time.'
+            : 'Select the player to designate as libero for this set.'}
+        </p>
+        {!eligible || eligible.length === 0 ? (
           <p className="text-xs text-slate-500">No players found.</p>
         ) : (
           <div className="grid grid-cols-3 gap-1.5">
-            {roster.map((p) => (
+            {eligible.map((p) => (
               <button
                 key={p.id}
                 onClick={() => onPick(p)}
