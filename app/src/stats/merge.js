@@ -14,7 +14,27 @@ function groupBy(arr, key) {
   return map;
 }
 
-// Natural keys — used to match records across devices
+// Prefer matching by permanent id (`uid`, set once at creation and never changed —
+// see db/schema.js) over the natural-key guess below. This is what lets editing a
+// matched field (renaming an opponent, adding a jersey number) still be recognized
+// as "the same record, updated" instead of registering as a brand-new one and
+// getting duplicated. Falls back to the natural key for records created before
+// `uid` existed, or synced in from a device that hasn't taken this fix yet.
+function pickExisting(imp, byUid, byKey, key) {
+  if (imp.uid) {
+    const hit = byUid.get(imp.uid);
+    if (hit) return hit;
+  }
+  return byKey.get(key);
+}
+
+// Whether an incoming record is a newer edit than the one we have locally —
+// used to decide whether to actually adopt its fields once matched.
+function isNewer(imp, ex) {
+  return (imp.updated_at ?? '') > (ex.updated_at ?? '');
+}
+
+// Natural keys — fallback match for records that predate `uid`
 const nkOrg    = o => norm(o.name);
 const nkTeam   = t => `${norm(t.name)}|${t.gender ?? ''}|${t.level ?? ''}`;
 const nkSeason = s => String(s.year ?? '');
@@ -82,6 +102,10 @@ export async function parseMergePreviewFromData(data) {
   const exTeamByKey   = new Map(exTeams.map(t   => [`${t.org_id}|${nkTeam(t)}`,     t]));
   const exSeasonByKey = new Map(exSeasons.map(s => [`${s.team_id}|${nkSeason(s)}`,  s]));
   const exMatchByKey  = new Map(exMatches.map(m => [`${m.season_id}|${nkMatch(m)}`, m]));
+  const exOrgByUid    = new Map(exOrgs.filter(o => o.uid).map(o    => [o.uid, o]));
+  const exTeamByUid   = new Map(exTeams.filter(t => t.uid).map(t   => [t.uid, t]));
+  const exSeasonByUid = new Map(exSeasons.filter(s => s.uid).map(s => [s.uid, s]));
+  const exMatchByUid  = new Map(exMatches.filter(m => m.uid).map(m => [m.uid, m]));
   const exOrgById     = new Map(exOrgs.map(o    => [o.id, o]));
   const exTeamById    = new Map(exTeams.map(t   => [t.id, t]));
   const exSeasonById  = new Map(exSeasons.map(s => [s.id, s]));
@@ -98,19 +122,19 @@ export async function parseMergePreviewFromData(data) {
   const impSeasonMap = new Map();
 
   for (const o of data.organizations) {
-    const ex = exOrgByKey.get(nkOrg(o));
+    const ex = pickExisting(o, exOrgByUid, exOrgByKey, nkOrg(o));
     if (ex) impOrgMap.set(o.id, ex.id);
   }
   for (const t of data.teams) {
     const exOrgId = impOrgMap.get(t.org_id);
     if (exOrgId == null) continue;
-    const ex = exTeamByKey.get(`${exOrgId}|${nkTeam(t)}`);
+    const ex = pickExisting(t, exTeamByUid, exTeamByKey, `${exOrgId}|${nkTeam(t)}`);
     if (ex) impTeamMap.set(t.id, ex.id);
   }
   for (const s of data.seasons) {
     const exTeamId = impTeamMap.get(s.team_id);
     if (exTeamId == null) continue;
-    const ex = exSeasonByKey.get(`${exTeamId}|${nkSeason(s)}`);
+    const ex = pickExisting(s, exSeasonByUid, exSeasonByKey, `${exTeamId}|${nkSeason(s)}`);
     if (ex) impSeasonMap.set(s.id, ex.id);
   }
 
@@ -144,7 +168,7 @@ export async function parseMergePreviewFromData(data) {
       continue;
     }
 
-    const exMatch = exMatchByKey.get(`${exSeasonId}|${nkMatch(m)}`);
+    const exMatch = pickExisting(m, exMatchByUid, exMatchByKey, `${exSeasonId}|${nkMatch(m)}`);
     if (!exMatch) {
       // Don't offer to re-add a match the user deliberately deleted on this device.
       const season = exSeasonById.get(exSeasonId);
@@ -212,6 +236,13 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
   const exOppByKey    = new Map(exOpps.map(o    => [nkOpp(o),                       o]));
   const exMatchByKey  = new Map(exMatches.map(m => [`${m.season_id}|${nkMatch(m)}`, m]));
 
+  const exOrgByUid    = new Map(exOrgs.filter(o    => o.uid).map(o    => [o.uid, o]));
+  const exTeamByUid   = new Map(exTeams.filter(t   => t.uid).map(t   => [t.uid, t]));
+  const exSeasonByUid = new Map(exSeasons.filter(s => s.uid).map(s => [s.uid, s]));
+  const exPlayerByUid = new Map(exPlayers.filter(p => p.uid).map(p => [p.uid, p]));
+  const exOppByUid    = new Map(exOpps.filter(o    => o.uid).map(o    => [o.uid, o]));
+  const exMatchByUid  = new Map(exMatches.filter(m => m.uid).map(m => [m.uid, m]));
+
   // Lookups by local id, seeded from existing rows and extended as new rows are
   // added below — used to walk match → season → team → org for tombstone checks.
   const orgNameById = new Map(exOrgs.map(o => [o.id, o.name]));
@@ -249,8 +280,17 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
 
     // ── 1. Organizations ───────────────────────────────────────────────────
     for (const o of data.organizations) {
-      const ex = exOrgByKey.get(nkOrg(o));
-      if (ex) { orgMap.set(o.id, ex.id); continue; }
+      const ex = pickExisting(o, exOrgByUid, exOrgByKey, nkOrg(o));
+      if (ex) {
+        orgMap.set(o.id, ex.id);
+        if (isNewer(o, ex)) {
+          const { id: _, ...fields } = o;
+          await db.organizations.update(ex.id, fields);
+          Object.assign(ex, fields);
+          orgNameById.set(ex.id, fields.name);
+        }
+        continue;
+      }
       if (tombstoneSet.has(`organization::${tombstoneKeyForOrg(o.name)}`)) continue;
       const { id: _, ...rest } = o;
       const newId = await db.organizations.add(rest);
@@ -263,8 +303,16 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
     for (const t of data.teams) {
       const exOrgId = orgMap.get(t.org_id);
       if (exOrgId == null) continue;
-      const ex = exTeamByKey.get(`${exOrgId}|${nkTeam(t)}`);
-      if (ex) { teamMap.set(t.id, ex.id); continue; }
+      const ex = pickExisting(t, exTeamByUid, exTeamByKey, `${exOrgId}|${nkTeam(t)}`);
+      if (ex) {
+        teamMap.set(t.id, ex.id);
+        if (isNewer(t, ex)) {
+          const { id: _, org_id: __, ...fields } = t;
+          await db.teams.update(ex.id, fields);
+          Object.assign(ex, fields);
+        }
+        continue;
+      }
       const orgName = orgNameById.get(exOrgId);
       if (tombstoneSet.has(`team::${tombstoneKeyForTeam(orgName, t)}`)) continue;
       const { id: _, org_id: __, ...rest } = t;
@@ -278,8 +326,16 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
     for (const s of data.seasons) {
       const exTeamId = teamMap.get(s.team_id);
       if (exTeamId == null) continue;
-      const ex = exSeasonByKey.get(`${exTeamId}|${nkSeason(s)}`);
-      if (ex) { seasonMap.set(s.id, ex.id); continue; }
+      const ex = pickExisting(s, exSeasonByUid, exSeasonByKey, `${exTeamId}|${nkSeason(s)}`);
+      if (ex) {
+        seasonMap.set(s.id, ex.id);
+        if (isNewer(s, ex)) {
+          const { id: _, team_id: __, ...fields } = s;
+          await db.seasons.update(ex.id, fields);
+          Object.assign(ex, fields);
+        }
+        continue;
+      }
       const { id: _, team_id: __, ...rest } = s;
       const newId = await db.seasons.add({ ...rest, team_id: exTeamId });
       seasonMap.set(s.id, newId);
@@ -290,8 +346,16 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
     for (const p of data.players) {
       const exTeamId = teamMap.get(p.team_id);
       if (exTeamId == null) continue;
-      const ex = exPlayerByKey.get(`${exTeamId}|${nkPlayer(p)}`);
-      if (ex) { playerMap.set(p.id, ex.id); continue; }
+      const ex = pickExisting(p, exPlayerByUid, exPlayerByKey, `${exTeamId}|${nkPlayer(p)}`);
+      if (ex) {
+        playerMap.set(p.id, ex.id);
+        if (isNewer(p, ex)) {
+          const { id: _, team_id: __, ...fields } = p;
+          await db.players.update(ex.id, fields);
+          Object.assign(ex, fields);
+        }
+        continue;
+      }
       const { id: _, team_id: __, ...rest } = p;
       const newId = await db.players.add({ ...rest, team_id: exTeamId });
       playerMap.set(p.id, newId);
@@ -300,8 +364,16 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
 
     // ── 5. Opponents ───────────────────────────────────────────────────────
     for (const o of data.opponents) {
-      const ex = exOppByKey.get(nkOpp(o));
-      if (ex) { oppMap.set(o.id, ex.id); continue; }
+      const ex = pickExisting(o, exOppByUid, exOppByKey, nkOpp(o));
+      if (ex) {
+        oppMap.set(o.id, ex.id);
+        if (isNewer(o, ex)) {
+          const { id: _, ...fields } = o;
+          await db.opponents.update(ex.id, fields);
+          Object.assign(ex, fields);
+        }
+        continue;
+      }
       const { id: _, ...rest } = o;
       const newId = await db.opponents.add(rest);
       oppMap.set(o.id, newId);
@@ -352,7 +424,7 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
       const exSeasonId = seasonMap.get(impMatch.season_id);
       if (exSeasonId == null) continue;
 
-      const exMatch = exMatchByKey.get(`${exSeasonId}|${nkMatch(impMatch)}`);
+      const exMatch = pickExisting(impMatch, exMatchByUid, exMatchByKey, `${exSeasonId}|${nkMatch(impMatch)}`);
 
       if (decision === 'keep') continue;
 

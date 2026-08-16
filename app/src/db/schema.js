@@ -11,6 +11,50 @@ function getDbName() {
 
 export const db = new Dexie(getDbName());
 
+// v23: add `uid` (a permanent random id, assigned once and never changed) and
+// `updated_at` to the core entity tables. Cloud sync used to recognize "the same
+// player/opponent/match on two devices" by comparing name + jersey number (or
+// name + date) — so editing one of those fields (e.g. adding a jersey number, or
+// renaming a scrimmage) made sync think it was a brand-new record and duplicate
+// it instead of updating it. `uid` gives every record a fingerprint that survives
+// edits; `updated_at` lets sync tell which copy of an edited record is newer.
+// See stats/merge.js for how these are used, and the `creating`/`updating` hooks
+// below for how they get set automatically.
+db.version(23).stores({
+  rallies:            '++id, set_id, rally_number',
+  sets:               '++id, match_id, set_number',
+  lineups:            '++id, set_id, player_id',
+  substitutions:      '++id, set_id, rally_number',
+  organizations:      '++id, name, type, uid',
+  teams:              '++id, org_id, name, share_token, uid',
+  seasons:            '++id, team_id, year, status, uid',
+  players:            '++id, team_id, is_active, uid',
+  opponents:          '++id, name, uid',
+  saved_lineups:      '++id, team_id',
+  contacts:           '++id, match_id, player_id, action, set_id, rally_id, rotation_num',
+  matches:            '++id, season_id, status, date, opponent_id, uid',
+  opp_tendencies:     '++id, opp_id, match_id',
+  timeouts:           '++id, match_id, set_id',
+  historical_records: '++id, team_id, category, stat',
+  season_history:     '++id, team_id, year',
+  tourney_entries:    '++id, team_id, year',
+  player_commits:     '++id, team_id, grad_year',
+  auto_backups:       '++id, created_at',
+  accolade_types:     '++id, team_id',
+  accolade_winners:   '++id, type_id, team_id',
+  practice_sessions:  '++id, team_id, tool_type, date, archived',
+  tombstones:         '++id, type, key, [type+key]',
+}).upgrade(async (tx) => {
+  const now = new Date().toISOString();
+  const tables = ['organizations', 'teams', 'seasons', 'players', 'opponents', 'matches'];
+  for (const name of tables) {
+    await tx.table(name).toCollection().modify((row) => {
+      if (!row.uid) row.uid = crypto.randomUUID();
+      if (!row.updated_at) row.updated_at = now;
+    });
+  }
+});
+
 // v22: add tombstones table — records deliberate deletes (match/team/org) by natural
 // key so cloud sync can't resurrect something the user deleted on purpose.
 db.version(22).stores({
@@ -367,6 +411,22 @@ db.version(1).stores({
   rallies:       '++id, set_id, rally_number',
   contacts:      '++id, match_id, player_id, action, set_id, rally_id',
 });
+
+// Auto-assign a permanent `uid` to every new row in these tables, and keep
+// `updated_at` current on every edit — without having to touch every place in
+// the app that creates or edits a player/opponent/match/etc. See the v23
+// migration note above for why this exists.
+const UID_TRACKED_TABLES = ['organizations', 'teams', 'seasons', 'players', 'opponents', 'matches'];
+for (const name of UID_TRACKED_TABLES) {
+  db[name].hook('creating', (_primKey, obj) => {
+    if (!obj.uid) obj.uid = crypto.randomUUID();
+    if (!obj.updated_at) obj.updated_at = new Date().toISOString();
+  });
+  db[name].hook('updating', (modifications) => {
+    if ('updated_at' in modifications) return undefined;
+    return { updated_at: new Date().toISOString() };
+  });
+}
 
 // When another page/tab needs to upgrade the DB to a newer version, close
 // this connection immediately so the upgrade isn't blocked indefinitely.

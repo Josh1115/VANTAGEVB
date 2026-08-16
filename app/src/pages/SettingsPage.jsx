@@ -10,6 +10,7 @@ import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { exportBackup, importBackup, restoreAutoBackup, saveToCloud, restoreFromCloud, syncWithCloud } from '../stats/backup';
 import { supabase } from '../utils/supabase';
 import { MergeBackupModal } from '../components/settings/MergeBackupModal';
+import { DedupeModal } from '../components/settings/DedupeModal';
 import { TERMS_STORAGE_KEY } from '../components/auth/TermsGate';
 import { db } from '../db/schema';
 import { useUiStore } from '../store/uiStore';
@@ -1315,6 +1316,7 @@ export function SettingsPage() {
   const [pendingFile,         setPendingFile]         = useState(null);
   const [importing,           setImporting]           = useState(false);
   const [showMerge,           setShowMerge]           = useState(false);
+  const [showDedupe,          setShowDedupe]          = useState(false);
   const [restoringId,         setRestoringId]         = useState(null);
   const [confirmRestoreBackup, setConfirmRestoreBackup] = useState(null);
   const [storageRefreshKey,   setStorageRefreshKey]   = useState(0);
@@ -2444,6 +2446,14 @@ export function SettingsPage() {
                 >
                   Merge from Backup (JSON)
                 </Button>
+
+                <Button
+                  className="w-full"
+                  variant="secondary"
+                  onClick={() => setShowDedupe(true)}
+                >
+                  Clean Up Duplicates
+                </Button>
               </>
             )}
 
@@ -2726,6 +2736,10 @@ export function SettingsPage() {
           onClose={() => setShowMerge(false)}
           onSuccess={() => showToast('Merge complete', 'success')}
         />
+      )}
+
+      {showDedupe && (
+        <DedupeModal onClose={() => setShowDedupe(false)} />
       )}
 
       {confirmLogout && (
