@@ -1,6 +1,18 @@
 import { db } from '../db/schema';
 import { addTombstone, tombstoneKeyForMatch } from './merge';
 
+// Looks up an opponent by exact name, creating it if it doesn't exist yet.
+// Shared by every "edit a match's opponent" flow (dashboard schedule editor,
+// match summary editor) so renaming an opponent always keeps opponent_id
+// pointing at the right row instead of drifting from the displayed name.
+export async function findOrCreateOpponent(name) {
+  const trimmed = name.trim();
+  const existing = await db.opponents.where('name').equals(trimmed).first();
+  if (existing) return existing;
+  const id = await db.opponents.add({ name: trimmed });
+  return { id, name: trimmed };
+}
+
 // ── Single-match queries ────────────────────────────────────────────────────
 
 export const getContactsForMatch = (matchId) =>

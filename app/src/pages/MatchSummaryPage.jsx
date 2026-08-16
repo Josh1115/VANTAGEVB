@@ -10,7 +10,7 @@ import { computeMatchStats,
          computePQ, computeSetWinProb, computeMatchWinProb,
          aggregateXKTeamStats, computeWinCorrelation, pickMetricVal,
          computeTimeoutEffectiveness } from '../stats/engine';
-import { getRalliesForMatch, getRalliesForMatches } from '../stats/queries';
+import { getRalliesForMatch, getRalliesForMatches, findOrCreateOpponent } from '../stats/queries';
 import { exportMatchCSV, exportMaxPrepsCSV, addPageHeader } from '../stats/export';
 import { fmtHitting, fmtPassRating, fmtPct, fmtCount, fmtDate } from '../stats/formatters';
 import { ROTATION_COLS, ROTATION_STAT_KEYS, withMinMax, SERVING_COLS, TAB_COLUMNS, ISOOS_COLS, ISOOS_STAT_KEYS, TRANS_COLS, TRANS_STAT_KEYS, RUN_COLS, RUN_STAT_KEYS } from '../stats/columns';
@@ -1301,8 +1301,13 @@ export function MatchSummaryPage() {
     if (!editForm.opp.trim()) return;
     setEditSaving(true);
     try {
+      // Keep opponent_id in sync with the typed name — otherwise renaming the
+      // opponent here only changes what's displayed and leaves opponent_id
+      // pointing at the old opponent record.
+      const oppRecord = await findOrCreateOpponent(editForm.opp);
       await db.matches.update(id, {
-        opponent_name:   editForm.opp.trim(),
+        opponent_id:     oppRecord.id,
+        opponent_name:   oppRecord.name,
         opponent_abbr:   editForm.oppAbbr.trim().toUpperCase() || null,
         opponent_record: editForm.oppRecord.trim() || null,
         date:            editForm.date ? new Date(editForm.date + 'T12:00:00').toISOString() : match.date,

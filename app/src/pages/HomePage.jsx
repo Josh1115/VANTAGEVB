@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
-import { createPortal } from 'react-dom';
 import { STORAGE_KEYS, getStorageItem, setStorageItem, getIntStorage, getPlayoffLabel, getBoolStorage, setBoolStorage } from '../utils/storage';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -12,16 +11,18 @@ import { deleteMatch } from '../stats/queries';
 import { useUiStore, selectShowToast } from '../store/uiStore';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlan } from '../hooks/usePlan';
+import { useStorageEstimate } from '../hooks/useStorageEstimate';
 import { syncWithCloud } from '../stats/backup';
 import { Button } from '../components/ui/Button';
-import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { NetDivider } from '../components/ui/NetDivider';
 import { SwipeableMatchCard } from '../components/ui/SwipeableMatchCard';
-import { VBPlayerScene } from '../components/ui/VBPlayerScene';
 import { CourtWhiteboard } from '../components/match/CourtWhiteboard';
 import { Spinner } from '../components/ui/Spinner';
 import { SeasonKickoffModal } from '../components/shared/SeasonKickoffModal';
+import { DashboardHeader } from '../components/home/DashboardHeader';
+import { RankEditModal } from '../components/home/RankEditModal';
+import { EditScheduledMatchModal } from '../components/home/EditScheduledMatchModal';
 
 // Converts "HH:MM" (24h) → "H:MM AM/PM"
 function fmtTime(t) {
@@ -48,15 +49,6 @@ function computeTodayDisplay() {
   const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
   return `${day} · ${month} ${d.getDate()}`;
 }
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const BALL_TYPES = [
-  { type: 'spike',    cls: 'animate-spike-drop',   dur: 1700 },
-  { type: 'floater',  cls: 'animate-floater-arc',  dur: 1900 },
-  { type: 'ace',      cls: 'animate-ace-serve',    dur: 1400 },
-  { type: 'freeball', cls: 'animate-freeball-arc', dur: 2600 },
-];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -428,86 +420,12 @@ export function HomePage() {
   const scoreDetail  = getStorageItem(STORAGE_KEYS.SCORE_DETAIL, 'sets');
   const playoffLabel = getPlayoffLabel();
 
-  // ── Schedule-edit modal state ─────────────────────────────────────────────
-  const [schedOpen,      setSchedOpen]      = useState(false);
-  const [editMatchId,    setEditMatchId]    = useState(null);
-  const [schedOpp,       setSchedOpp]       = useState('');
-  const [schedOppAbbr,   setSchedOppAbbr]   = useState('');
-  const [schedDate,      setSchedDate]      = useState(() => new Date().toISOString().slice(0, 10));
-  const [schedLoc,       setSchedLoc]       = useState('home');
-  const [schedConf,      setSchedConf]      = useState('non-con');
-  const [schedMatchType,  setSchedMatchType]  = useState('reg-season');
-  const [schedTourneyName,  setSchedTourneyName]  = useState('');
-  const [schedTourneyRound, setSchedTourneyRound] = useState('pool');
-  const [schedPlayoffRound, setSchedPlayoffRound] = useState('');
-  const [schedOppRecord,    setSchedOppRecord]    = useState('');
-  const [schedOppRank,      setSchedOppRank]      = useState('');
-  const [schedOppSeed,      setSchedOppSeed]      = useState('');
-  const [schedTime,         setSchedTime]         = useState('');
-  const [schedSaving,    setSchedSaving]    = useState(false);
-  const [schedError,     setSchedError]     = useState('');
+  // ── Schedule-edit modal ────────────────────────────────────────────────────
+  // null = closed; an object = editing that match (see EditScheduledMatchModal)
+  const [editingMatch, setEditingMatch] = useState(null);
 
-  // ── Rank-edit popup state ──────────────────────────────────────────────────
-  const [rankModalOpen,     setRankModalOpen]     = useState(false);
-  const [rankStateInput,    setRankStateInput]    = useState('');
-  const [rankNationalInput, setRankNationalInput] = useState('');
-  const [rankClassInput,    setRankClassInput]    = useState('');
-  const [rankSaving,        setRankSaving]        = useState(false);
-  const [rankError,         setRankError]         = useState('');
-
-  function openRankEdit() {
-    setRankStateInput(seasonRecord?.stateRank != null ? String(seasonRecord.stateRank) : '');
-    setRankNationalInput(seasonRecord?.nationalRank != null ? String(seasonRecord.nationalRank) : '');
-    setRankClassInput(seasonRecord?.classRank ?? '');
-    setRankError('');
-    setRankModalOpen(true);
-  }
-
-  async function handleSaveRanks() {
-    if (!defaultTeamId || !defaultSeasonId || !seasonRecord?.seasonYear) return;
-    setRankSaving(true);
-    setRankError('');
-    try {
-      const yearStr = String(seasonRecord.seasonYear);
-      const newStateRank    = rankStateInput    ? Number(rankStateInput)    : null;
-      const newNationalRank = rankNationalInput ? Number(rankNationalInput) : null;
-      const newClassRank    = rankClassInput.trim() || null;
-
-      // Same (team_id, year-or-name) lookup HistoryPage uses, so we update the
-      // existing entry in place rather than creating a duplicate.
-      const existing = await db.season_history
-        .where('team_id').equals(defaultTeamId)
-        .filter(h => String(h.year) === yearStr)
-        .first();
-
-      const prevRanks = {};
-      if (existing) {
-        if (newStateRank !== (existing.state_rank ?? null))
-          prevRanks.prev_state_rank = existing.state_rank ?? null;
-        if (newNationalRank !== (existing.national_rank ?? null))
-          prevRanks.prev_national_rank = existing.national_rank ?? null;
-      }
-
-      const fields = {
-        state_rank:    newStateRank,
-        national_rank: newNationalRank,
-        class_rank:    newClassRank,
-        ...prevRanks,
-      };
-
-      if (existing) {
-        await db.season_history.update(existing.id, fields);
-      } else {
-        await db.season_history.add({ team_id: defaultTeamId, year: yearStr, ...fields });
-      }
-      setRankModalOpen(false);
-      showToast('Rankings updated', 'success');
-    } catch (e) {
-      setRankError(e.message ?? 'Failed to save. Please try again.');
-    } finally {
-      setRankSaving(false);
-    }
-  }
+  // ── Rank-edit popup ────────────────────────────────────────────────────────
+  const [rankModalOpen, setRankModalOpen] = useState(false);
 
   const [todayDisplay, setTodayDisplay] = useState(computeTodayDisplay);
   useEffect(() => {
@@ -772,62 +690,6 @@ export function HomePage() {
     };
   }, [defaultTeamId, defaultSeasonId]);
 
-  // ── Multi-ball system ──────────────────────────────────────────────────────
-  const [balls,       setBalls]       = useState([]); // [{ id, type, left }]
-  const [netRippling, setNetRippling] = useState(false);
-
-  function fireBall(typeStr, leftPct) {
-    const pick = typeStr
-      ? (BALL_TYPES.find((b) => b.type === typeStr) ?? BALL_TYPES[0])
-      : BALL_TYPES[Math.floor(Math.random() * BALL_TYPES.length)];
-    const id   = performance.now() + Math.random();
-    const left = leftPct ?? (20 + Math.random() * 60);
-    setBalls((prev) => [...prev, { id, type: pick.type, left }]);
-    setTimeout(() => setBalls((prev) => prev.filter((b) => b.id !== id)), pick.dur);
-  }
-
-  function fireBurst() {
-    const positions = [12, 28, 50, 68, 84];
-    const shuffled  = [...BALL_TYPES].sort(() => Math.random() - 0.5);
-    const count     = 4 + Math.floor(Math.random() * 2); // 4 or 5 balls
-    positions.slice(0, count).forEach((pos, i) => {
-      setTimeout(() => fireBall(shuffled[i % shuffled.length].type, pos), i * 130);
-    });
-    setNetRippling(true);
-    setTimeout(() => setNetRippling(false), 800);
-  }
-
-  // Auto-fire a single ball periodically
-  useEffect(() => {
-    const trigger = () => fireBall(null, 50);
-    const first   = setTimeout(trigger, 2500);
-    const interval = setInterval(trigger, 15000);
-    return () => { clearTimeout(first); clearInterval(interval); };
-  }, []);
-
-  // ── Long-press logo for burst ─────────────────────────────────────────────
-  const longPressTimer = useRef(null);
-  const isLongPress    = useRef(false);
-
-  function handleLogoPointerDown() {
-    isLongPress.current = false;
-    longPressTimer.current = setTimeout(() => {
-      isLongPress.current = true;
-      fireBurst();
-    }, 500);
-  }
-
-  function handleLogoPointerUp() {
-    clearTimeout(longPressTimer.current);
-  }
-
-  function handleLogoClick() {
-    if (isLongPress.current) return; // already handled by long-press
-    fireBall(null, 50);
-    setNetRippling(true);
-    setTimeout(() => setNetRippling(false), 450);
-  }
-
   const [displaySeasonRecord, setDisplaySeasonRecord] = useState({ wins: 0, losses: 0 });
   const seasonRecordAnimated = useRef(false);
 
@@ -861,167 +723,19 @@ export function HomePage() {
 
   const inProgress    = recentMatches?.find((m) => m.status === MATCH_STATUS.IN_PROGRESS);
 
-  const [storageUsagePct, setStorageUsagePct] = useState(0);
-  useEffect(() => {
-    if (!navigator.storage?.estimate) return;
-    navigator.storage.estimate().then(({ usage = 0, quota = 0 }) => {
-      if (quota > 0) setStorageUsagePct(usage / quota);
-    });
-  }, []);
+  const storageEstimate = useStorageEstimate();
+  const storageUsagePct = storageEstimate?.quota ? storageEstimate.usage / storageEstimate.quota : 0;
   const [guideVisible, setGuideVisible] = useState(() => !getBoolStorage(STORAGE_KEYS.HELP_GUIDE_SEEN));
   const displayMatches = recentMatches ?? [];
 
   function openEditMatch(match) {
-    setEditMatchId(match.id);
-    setSchedOpp(match.opponent_name ?? '');
-    setSchedOppAbbr(match.opponent_abbr ?? '');
-    setSchedDate(match.date ? match.date.slice(0, 10) : new Date().toISOString().slice(0, 10));
-    setSchedLoc(match.location ?? 'home');
-    setSchedConf(match.conference ?? 'non-con');
-    setSchedMatchType(match.match_type ?? 'reg-season');
-    setSchedTourneyName(match.tournament_name ?? '');
-    setSchedTourneyRound(match.tournament_round ?? 'pool');
-    setSchedPlayoffRound(match.playoff_round ?? '');
-    setSchedOppRecord(match.opponent_record ?? '');
-    setSchedOppRank(match.opponent_maxpreps_rank != null ? String(match.opponent_maxpreps_rank) : '');
-    setSchedOppSeed(match.opponent_playoff_seed != null ? String(match.opponent_playoff_seed) : '');
-    setSchedTime(match.match_time ?? '');
-    setSchedOpen(true);
-  }
-
-  async function handleScheduleGame() {
-    if (!schedOpp.trim() || !editMatchId) return;
-    setSchedSaving(true);
-    setSchedError('');
-    try {
-      let oppRecord = await db.opponents.where('name').equals(schedOpp.trim()).first();
-      if (!oppRecord) {
-        const oppId = await db.opponents.add({ name: schedOpp.trim() });
-        oppRecord = { id: oppId, name: schedOpp.trim() };
-      }
-      const fields = {
-        opponent_id:   oppRecord.id,
-        opponent_name: oppRecord.name,
-        opponent_abbr:         schedOppAbbr.trim().toUpperCase() || null,
-        opponent_record:       schedOppRecord.trim() || null,
-        opponent_maxpreps_rank: schedOppRank !== '' ? parseInt(schedOppRank, 10) : null,
-        date:          schedDate ? new Date(schedDate + 'T12:00:00').toISOString() : new Date().toISOString(),
-        location:      schedLoc,
-        conference:    schedConf,
-        match_type:       schedMatchType,
-        tournament_name:  schedMatchType === 'tourney' ? schedTourneyName.trim() || null : null,
-        tournament_round: schedMatchType === 'tourney' ? schedTourneyRound : null,
-        playoff_round:         schedMatchType === 'ihsa-playoffs' ? schedPlayoffRound.trim() || null : null,
-        opponent_playoff_seed: schedMatchType === 'ihsa-playoffs' && schedOppSeed !== '' ? parseInt(schedOppSeed, 10) : null,
-        match_time:       schedTime || null,
-      };
-      await db.matches.update(editMatchId, fields);
-      resetSchedForm();
-    } catch {
-      setSchedError('Failed to save. Please try again.');
-    } finally {
-      setSchedSaving(false);
-    }
-  }
-
-  function resetSchedForm() {
-    setSchedError('');
-    setEditMatchId(null);
-    setSchedOpp('');
-    setSchedOppAbbr('');
-    setSchedDate(new Date().toISOString().slice(0, 10));
-    setSchedLoc('home');
-    setSchedConf('non-con');
-    setSchedMatchType('reg-season');
-    setSchedTourneyName('');
-    setSchedTourneyRound('pool');
-    setSchedPlayoffRound('');
-    setSchedOppRecord('');
-    setSchedOppRank('');
-    setSchedOppSeed('');
-    setSchedTime('');
-    setSchedOpen(false);
+    setEditingMatch(match);
   }
 
   return (
     <div>
       {/* ── Header ── */}
-      <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 pt-safe pb-10 text-center relative">
-
-        {/* Volleyball net watermark (mesh sways via .net-wave CSS) */}
-        <svg
-          className={`absolute inset-0 w-full h-full pointer-events-none overflow-hidden${netRippling ? ' net-ripple' : ''}`}
-          aria-hidden="true"
-          viewBox="0 0 600 66"
-          preserveAspectRatio="xMidYMid slice"
-          style={{ opacity: 0.18 }}
-        >
-          <defs>
-            <pattern id="vb-net-mesh" x="0" y="0" width="18" height="10" patternUnits="userSpaceOnUse">
-              <path d="M 18 0 L 0 0 0 10" fill="none" stroke="white" strokeWidth="0.65" />
-            </pattern>
-          </defs>
-          <rect x="0" y="30" width="600" height="24" fill="url(#vb-net-mesh)" className="net-wave" />
-          <rect x="0" y="25" width="600" height="6" fill="white" />
-          <rect x="0" y="54" width="600" height="3" fill="white" />
-          {/* Left antenna — full-height rod with alternating red/white stripes */}
-          <rect x="44" y="0"  width="3" height="57" fill="white" />
-          <rect x="44" y="0"  width="3" height="4"  fill="#ef4444" />
-          <rect x="44" y="8"  width="3" height="4"  fill="#ef4444" />
-          <rect x="44" y="16" width="3" height="4"  fill="#ef4444" />
-          <rect x="44" y="24" width="3" height="4"  fill="#ef4444" />
-          <rect x="44" y="32" width="3" height="4"  fill="#ef4444" />
-          <rect x="44" y="40" width="3" height="4"  fill="#ef4444" />
-          <rect x="44" y="48" width="3" height="4"  fill="#ef4444" />
-          {/* Right antenna */}
-          <rect x="553" y="0"  width="3" height="57" fill="white" />
-          <rect x="553" y="0"  width="3" height="4"  fill="#ef4444" />
-          <rect x="553" y="8"  width="3" height="4"  fill="#ef4444" />
-          <rect x="553" y="16" width="3" height="4"  fill="#ef4444" />
-          <rect x="553" y="24" width="3" height="4"  fill="#ef4444" />
-          <rect x="553" y="32" width="3" height="4"  fill="#ef4444" />
-          <rect x="553" y="40" width="3" height="4"  fill="#ef4444" />
-          <rect x="553" y="48" width="3" height="4"  fill="#ef4444" />
-        </svg>
-
-        <VBPlayerScene />
-
-        <div className="absolute inset-0 crt-scanlines pointer-events-none overflow-hidden" aria-hidden="true" />
-
-        {/* Flying balls (supports multiple simultaneous) */}
-        {balls.map((ball) => (
-          <div
-            key={ball.id}
-            className="absolute top-0 pointer-events-none z-10"
-            style={{ left: `${ball.left}%` }}
-            aria-hidden="true"
-          >
-            <span className={`text-3xl inline-block ${BALL_TYPES.find((b) => b.type === ball.type)?.cls ?? 'animate-spike-drop'}`}>
-              🏐
-            </span>
-          </div>
-        ))}
-
-        <h1 className="tracking-wide flex flex-col items-center gap-0.5" style={{ transform: 'translateY(25%)' }}>
-          <div className="relative mx-auto" style={{ width: 'min(62vw, 482px)' }}>
-            <img
-              src="/logo.png"
-              alt="VANTAGE"
-              className="h-auto w-full block"
-              style={{ transform: 'translateX(-3%)' }}
-              onClick={handleLogoClick}
-              onPointerDown={handleLogoPointerDown}
-              onPointerUp={handleLogoPointerUp}
-              onPointerLeave={handleLogoPointerUp}
-            />
-            <span className="absolute text-slate-400 select-none" style={{ top: '6%', right: '2%', fontSize: 'min(2.6vw, 20px)' }}>™</span>
-          </div>
-          <span className="text-[17.5px] font-semibold tracking-[0.22em] text-slate-300 uppercase" style={{ transform: 'translateY(-8px)' }}>
-            Immediate Impact Analytics
-          </span>
-        </h1>
-
-      </header>
+      <DashboardHeader />
 
       <div className="p-4 md:p-6 space-y-4">
 
@@ -1105,7 +819,7 @@ export function HomePage() {
                 <span className="text-[15px] text-slate-400 font-semibold">{seasonRecord.seasonName}</span>
               </div>
               <button
-                onClick={openRankEdit}
+                onClick={() => setRankModalOpen(true)}
                 className="mt-0.5 w-full text-center hover:opacity-80 active:opacity-60 transition-opacity"
                 title="Tap to update rankings"
               >
@@ -1814,68 +1528,12 @@ export function HomePage() {
       )}
 
       {/* ── Rank-edit popup ── */}
-      {rankModalOpen && createPortal(
-        <>
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setRankModalOpen(false)} />
-          <div
-            className="fixed z-50 w-[calc(100%-2rem)] max-w-sm max-h-[90dvh] overflow-y-auto bg-bg rounded-2xl p-6 space-y-4 shadow-2xl"
-            style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
-          >
-            <h2 className="text-lg font-bold">Update Rankings</h2>
-
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Class</label>
-                <input
-                  type="text"
-                  value={rankClassInput}
-                  onChange={(e) => setRankClassInput(e.target.value)}
-                  placeholder="ex: 1"
-                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
-                  {seasonRecord?.teamState ?? 'State'}
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={rankStateInput}
-                  onChange={(e) => setRankStateInput(e.target.value)}
-                  placeholder="ex: 3"
-                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">National</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={rankNationalInput}
-                  onChange={(e) => setRankNationalInput(e.target.value)}
-                  placeholder="ex: 12"
-                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
-                />
-              </div>
-            </div>
-
-            {rankError && (
-              <p className="text-sm text-red-400 text-center">{rankError}</p>
-            )}
-
-            <div className="flex gap-3 pt-2">
-              <Button variant="secondary" className="flex-1" onClick={() => setRankModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button className="flex-1" disabled={rankSaving} onClick={handleSaveRanks}>
-                {rankSaving ? 'Saving…' : 'Save'}
-              </Button>
-            </div>
-          </div>
-        </>,
-        document.body
+      {rankModalOpen && (
+        <RankEditModal
+          seasonRecord={seasonRecord}
+          defaultTeamId={defaultTeamId}
+          onClose={() => setRankModalOpen(false)}
+        />
       )}
 
       {confirmDelete && (
@@ -1892,248 +1550,12 @@ export function HomePage() {
         />
       )}
 
-      {/* ── Edit Scheduled Match Modal ── */}
-      {schedOpen && createPortal(
-        <>
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={resetSchedForm} />
-          <div
-            className="fixed z-50 w-[calc(100%-2rem)] max-w-md max-h-[90dvh] overflow-y-auto bg-bg rounded-2xl p-6 space-y-4 shadow-2xl"
-            style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
-          >
-            <h2 className="text-lg font-bold">Edit Scheduled Game</h2>
-
-            {/* Opponent */}
-            <div>
-              <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Opponent</label>
-              <div className="flex gap-2 items-center">
-                <input
-                  type="text"
-                  value={schedOpp}
-                  onChange={(e) => setSchedOpp(e.target.value)}
-                  placeholder="Opponent team name"
-                  className="flex-1 bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
-                  autoFocus
-                />
-                <div className="flex flex-col items-center gap-0.5">
-                  <span className="text-[10px] text-slate-500 uppercase tracking-wide leading-none">Abbr</span>
-                  <input
-                    type="text"
-                    value={schedOppAbbr}
-                    onChange={(e) => setSchedOppAbbr(e.target.value.toUpperCase().slice(0, 3))}
-                    placeholder="OPP"
-                    maxLength={3}
-                    className="w-[56px] bg-surface border border-slate-600 text-white rounded-lg px-2 py-2 text-sm text-center font-bold uppercase tracking-widest focus:outline-none focus:border-primary placeholder:text-slate-600"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Opponent record + MaxPreps rank */}
-            <div className="flex gap-2">
-              <div className="flex-1 min-w-0">
-                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
-                  Record <span className="normal-case font-normal">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={schedOppRecord}
-                  onChange={(e) => setSchedOppRecord(e.target.value)}
-                  placeholder="ex: 12-3"
-                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
-                  MaxPreps Rank <span className="normal-case font-normal">(opt)</span>
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={schedOppRank}
-                  onChange={(e) => setSchedOppRank(e.target.value)}
-                  placeholder="ex: 42"
-                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
-                />
-              </div>
-            </div>
-
-            {/* Date + Time */}
-            <div className="flex gap-2">
-              <div className="flex-1 min-w-0">
-                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Date</label>
-                <input
-                  type="date"
-                  value={schedDate}
-                  onChange={(e) => setSchedDate(e.target.value)}
-                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Start Time <span className="normal-case font-normal text-slate-500">(optional)</span></label>
-                <input
-                  type="time"
-                  value={schedTime}
-                  onChange={(e) => setSchedTime(e.target.value)}
-                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
-                />
-              </div>
-            </div>
-
-            {/* Location */}
-            <div>
-              <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Location</label>
-              <div className="flex gap-2">
-                {['home', 'away', 'neutral'].map((loc) => (
-                  <button
-                    key={loc}
-                    onClick={() => setSchedLoc(loc)}
-                    className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors
-                      ${schedLoc === loc
-                        ? 'bg-primary text-white border-primary'
-                        : 'bg-surface text-slate-300 border-slate-600 hover:border-slate-400'
-                      }`}
-                  >
-                    {loc.charAt(0).toUpperCase() + loc.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Conference */}
-            <div>
-              <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Opponent Type</label>
-              <div className="flex gap-2">
-                {[['conference', 'Conference'], ['non-con', 'Non-Con']].map(([val, label]) => (
-                  <button
-                    key={val}
-                    onClick={() => setSchedConf(val)}
-                    className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors
-                      ${schedConf === val
-                        ? 'bg-primary text-white border-primary'
-                        : 'bg-surface text-slate-300 border-slate-600 hover:border-slate-400'
-                      }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Match Type */}
-            <div>
-              <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Match Type</label>
-              <div className="flex gap-2">
-                {[['reg-season', 'Reg Season'], ['tourney', 'Tourney'], ['ihsa-playoffs', playoffLabel], ['exhibition', 'Exhibition']].map(([val, label]) => (
-                  <button
-                    key={val}
-                    onClick={() => setSchedMatchType(val)}
-                    className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors
-                      ${schedMatchType === val
-                        ? 'bg-primary text-white border-primary'
-                        : 'bg-surface text-slate-300 border-slate-600 hover:border-slate-400'
-                      }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Tournament Name + Round */}
-            {schedMatchType === 'tourney' && (
-              <>
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
-                    Tournament Name <span className="text-slate-500 normal-case font-normal">(optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={schedTourneyName}
-                    onChange={(e) => setSchedTourneyName(e.target.value)}
-                    placeholder="ex: Holiday Classic, IHSA Sectional…"
-                    className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Round</label>
-                  <div className="flex gap-2">
-                    {[['pool', 'Pool Play'], ['bracket', 'Bracket / Playoffs']].map(([val, label]) => (
-                      <button
-                        key={val}
-                        onClick={() => setSchedTourneyRound(val)}
-                        className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors
-                          ${schedTourneyRound === val
-                            ? 'bg-primary text-white border-primary'
-                            : 'bg-surface text-slate-300 border-slate-600 hover:border-slate-400'
-                          }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Playoff Round */}
-            {schedMatchType === 'ihsa-playoffs' && (
-              <div>
-                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Playoff Round</label>
-                <input
-                  type="text"
-                  value={schedPlayoffRound}
-                  onChange={(e) => setSchedPlayoffRound(e.target.value)}
-                  placeholder="ex: Regional, Sectional, Super-Sectional, State…"
-                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
-                />
-              </div>
-            )}
-
-            {schedMatchType === 'ihsa-playoffs' && (
-              <div>
-                <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Opponent Playoff Seed</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={schedOppSeed}
-                  onChange={(e) => setSchedOppSeed(e.target.value)}
-                  placeholder="ex: 3"
-                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
-                />
-              </div>
-            )}
-
-            {/* Actions */}
-            {schedError && (
-              <p className="text-sm text-red-400 text-center">{schedError}</p>
-            )}
-            <div className="flex gap-3 pt-2">
-              <Button variant="secondary" className="flex-1" onClick={resetSchedForm}>
-                Cancel
-              </Button>
-              <Button
-                className="flex-1"
-                disabled={!schedOpp.trim() || schedSaving}
-                onClick={handleScheduleGame}
-              >
-                {schedSaving ? 'Saving…' : 'Save Game'}
-              </Button>
-            </div>
-            <Button
-              variant="danger"
-              className="w-full"
-              onClick={() => {
-                const id = editMatchId;
-                const oppName = schedOpp;
-                resetSchedForm();
-                setConfirmDelete({ id, opponent_name: oppName });
-              }}
-            >
-              Delete Match
-            </Button>
-          </div>
-        </>,
-        document.body
+      {editingMatch && (
+        <EditScheduledMatchModal
+          match={editingMatch}
+          onClose={() => setEditingMatch(null)}
+          onDeleteRequested={(m) => { setEditingMatch(null); setConfirmDelete(m); }}
+        />
       )}
     </div>
   );

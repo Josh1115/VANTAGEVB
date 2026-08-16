@@ -102,6 +102,92 @@ export async function mergeOpponentGroup(group, winnerId) {
   });
 }
 
+// ── Organizations ────────────────────────────────────────────────────────────
+// An org's only child records are its teams, so merging is shallow and safe —
+// no live stats hang directly off an organization row.
+
+export async function findDuplicateOrgGroups() {
+  const orgs = await db.organizations.toArray();
+  const groups = new Map();
+  for (const o of orgs) {
+    const key = norm(o.name);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(o);
+  }
+  return [...groups.values()].filter(g => g.length > 1);
+}
+
+export function pickDefaultOrgWinner(group) {
+  return [...group].sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''))[0];
+}
+
+export async function mergeOrgGroup(group, winnerId) {
+  const loserIds = group.map(o => o.id).filter(id => id !== winnerId);
+  if (!loserIds.length) return;
+  await db.transaction('rw', [db.organizations, db.teams], async () => {
+    await db.teams.where('org_id').anyOf(loserIds).modify({ org_id: winnerId });
+    await db.organizations.bulkDelete(loserIds);
+  });
+}
+
+// ── Teams ────────────────────────────────────────────────────────────────────
+// Grouped by org + name only (ignoring gender/level — the fields that trigger
+// this exact bug for a team, the same way jersey number does for a player).
+// Unlike players/opponents, a team drags a deep tree of live data behind it
+// (seasons → matches → sets/rallies). Reassigning everything is safe as long
+// as the two team copies don't both already have a season for the same year —
+// that would mean two independent sets of live stats trying to become "the
+// 2026 season" on one team, which needs a human to sort out, not a guess. Groups
+// with that kind of overlap come back with `safeToMerge: false` and are shown
+// for manual review instead of an auto-merge button.
+const TEAM_CHILD_TABLES = [
+  'seasons', 'players', 'saved_lineups', 'historical_records',
+  'season_history', 'tourney_entries', 'player_commits',
+  'accolade_types', 'accolade_winners', 'practice_sessions',
+];
+
+export async function findDuplicateTeamGroups() {
+  const [teams, seasons] = await Promise.all([db.teams.toArray(), db.seasons.toArray()]);
+  const groups = new Map();
+  for (const t of teams) {
+    const key = `${t.org_id}|${norm(t.name)}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(t);
+  }
+
+  const out = [];
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    const yearSets = group.map(t => new Set(seasons.filter(s => s.team_id === t.id).map(s => s.year)));
+    let overlap = false;
+    outer:
+    for (let i = 0; i < yearSets.length; i++) {
+      for (let j = i + 1; j < yearSets.length; j++) {
+        for (const y of yearSets[i]) {
+          if (yearSets[j].has(y)) { overlap = true; break outer; }
+        }
+      }
+    }
+    out.push({ teams: group, safeToMerge: !overlap });
+  }
+  return out;
+}
+
+export function pickDefaultTeamWinner(group) {
+  return [...group].sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''))[0];
+}
+
+export async function mergeTeamGroup(group, winnerId) {
+  const loserIds = group.map(t => t.id).filter(id => id !== winnerId);
+  if (!loserIds.length) return;
+  await db.transaction('rw', [db.teams, ...TEAM_CHILD_TABLES.map(name => db[name])], async () => {
+    for (const table of TEAM_CHILD_TABLES) {
+      await db[table].where('team_id').anyOf(loserIds).modify({ team_id: winnerId });
+    }
+    await db.teams.bulkDelete(loserIds);
+  });
+}
+
 // ── Matches ──────────────────────────────────────────────────────────────────
 // Matches carry live stats (sets/rallies/contacts), so this deliberately does
 // NOT auto-merge them — two matches with the same date could genuinely be two
