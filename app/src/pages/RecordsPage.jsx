@@ -740,7 +740,7 @@ function EditCareerBaselineModal({ playerId, onClose, onSaved }) {
 
 // ── LeaderboardRow ────────────────────────────────────────────────────────────
 
-function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, onEditBaseline, teamId }) {
+function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, onEditBaseline, onDeleteBaseline, teamId }) {
   const navigate  = useNavigate();
   const [swiped, setSwiped] = useState(false);
   const startX = useRef(0);
@@ -755,7 +755,8 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, onEditBaseline, teamI
     : row.rank === 3 ? 'bg-[#472f2f]'
     : 'bg-slate-800';
 
-  const swipeTranslate = row.historical ? '-translate-x-32' : '-translate-x-16';
+  // Both swipeable cases (historical, career baseline) now reveal 2 buttons (Edit + Delete)
+  const swipeTranslate = swipeable ? '-translate-x-32' : '';
 
   const inner = (
     <div
@@ -826,6 +827,9 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, onEditBaseline, teamI
       {canEditBaseline && (
         <span className="flex items-center gap-1 shrink-0">
           <button onClick={e => { e.stopPropagation(); onEditBaseline(row); }} aria-label="Edit" className="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-primary hover:bg-slate-700/60 transition-colors">✎</button>
+          {onDeleteBaseline && (
+            <button onClick={e => { e.stopPropagation(); onDeleteBaseline(row); }} aria-label="Delete" className="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-red-400 hover:bg-slate-700/60 transition-colors">🗑</button>
+          )}
         </span>
       )}
       {row.historical && (
@@ -850,6 +854,14 @@ function LeaderboardRow({ row, tab, fmt, onEdit, onDelete, onEditBaseline, teamI
             >
               Edit
             </button>
+            {onDeleteBaseline && (
+              <button
+                onClick={() => { setSwiped(false); onDeleteBaseline(row); }}
+                className="w-16 flex items-center justify-center bg-red-600 text-white text-xs font-bold"
+              >
+                Delete
+              </button>
+            )}
           </div>
           {inner}
         </div>
@@ -1208,8 +1220,9 @@ export function RecordsPage() {
   const [editTourney,         setEditTourney]         = useState(null);
   const [editBaselinePlayerId, setEditBaselinePlayerId] = useState(null);
   const [refreshKey,          setRefreshKey]          = useState(0);
-  const [confirmDeleteRecord,  setConfirmDeleteRecord]  = useState(null);
-  const [confirmDeleteTourney, setConfirmDeleteTourney] = useState(null);
+  const [confirmDeleteRecord,   setConfirmDeleteRecord]   = useState(null);
+  const [confirmDeleteTourney,  setConfirmDeleteTourney]  = useState(null);
+  const [confirmDeleteBaseline, setConfirmDeleteBaseline] = useState(null); // row being cleared, or null
   const [computeError,         setComputeError]         = useState(false);
 
   const orgs = useLiveQuery(
@@ -1362,6 +1375,19 @@ export function RecordsPage() {
       // best-effort delete
     }
     setConfirmDeleteTourney(null);
+  }
+
+  async function doDeleteBaseline(row) {
+    try {
+      await db.players.update(row.player_id, {
+        pre_vbstat_k: null, pre_vbstat_ace: null, pre_vbstat_blk: null,
+        pre_vbstat_ast: null, pre_vbstat_dig: null, pre_vbstat_sp: null,
+      });
+      setRefreshKey(k => k + 1);
+    } catch {
+      // best-effort delete
+    }
+    setConfirmDeleteBaseline(null);
   }
 
   const visibleStats = tab === 'team_season' ? TEAM_SEASON_STATS
@@ -1576,6 +1602,7 @@ export function RecordsPage() {
                             onEdit={setEditRow}
                             onDelete={setConfirmDeleteRecord}
                             onEditBaseline={tab === 'career' ? row => setEditBaselinePlayerId(row.player_id) : undefined}
+                            onDeleteBaseline={tab === 'career' ? row => setConfirmDeleteBaseline(row) : undefined}
                             teamId={teamId}
                           />
                         ))}
@@ -1641,6 +1668,17 @@ export function RecordsPage() {
           danger
           onConfirm={() => doDeleteRecord(confirmDeleteRecord)}
           onCancel={() => setConfirmDeleteRecord(null)}
+        />
+      )}
+
+      {confirmDeleteBaseline && (
+        <ConfirmDialog
+          title="Clear Baseline"
+          message={`Clear ${confirmDeleteBaseline.name ? `${confirmDeleteBaseline.name}'s ` : ''}pre-VBSTAT baseline stats? This cannot be undone.`}
+          confirmLabel="Clear"
+          danger
+          onConfirm={() => doDeleteBaseline(confirmDeleteBaseline)}
+          onCancel={() => setConfirmDeleteBaseline(null)}
         />
       )}
 
