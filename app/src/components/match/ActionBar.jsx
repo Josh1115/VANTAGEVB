@@ -157,6 +157,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
             ? 'bg-emerald-900/60 text-emerald-300 hover:bg-emerald-800/70'
             : 'bg-slate-800 text-slate-500 hover:bg-slate-700'}`}
         >
+          <span className="text-[1.53vmin] leading-none">ASSIGN</span>
           <span className="text-[1.53vmin] leading-none">LIB SWAP</span>
         </button>
       )}
@@ -175,6 +176,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
           onPointerDown={(e) => { e.preventDefault(); onStatsOpen(); }}
           className={`${btnBase} w-full bg-slate-800 text-slate-300 hover:bg-slate-700`}
         >
+          <span className={`text-[1.53vmin] leading-none ${alertCount > 0 ? 'text-orange-400' : 'text-slate-500'}`}>TEAM & PLAYER</span>
           <span className={`text-[1.53vmin] leading-none ${alertCount > 0 ? 'text-orange-400' : 'text-slate-500'}`}>STATS</span>
         </button>
         {alertCount > 0 && (
@@ -187,7 +189,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         onPointerDown={(e) => { e.preventDefault(); onSummaryOpen(); }}
         className={`${btnBase} bg-slate-800 text-slate-300 hover:bg-slate-700`}
       >
-        <span className="text-[1.53vmin] text-slate-500 leading-none">SCORE</span>
+        <span className="text-[1.53vmin] text-slate-500 leading-none">SCOREBOOK</span>
       </button>
 
       {/* Home */}

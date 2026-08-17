@@ -307,9 +307,12 @@ function getStatLabel(action, result, lastName) {
     case 'block':
       if (result === 'solo')   return `+1 ${lastName} Solo Blk`;
       if (result === 'assist') return `+1 ${lastName} Blk Ast`;
+      if (result === 'touch')  return `${lastName} Touch`;
       return `${lastName} Block`;
     case 'pass':   return `${lastName} Pass ${result}`;
-    case 'set':    return `${lastName} Set`;
+    case 'set':
+      if (result === 'ball_handling_error') return `${lastName} BHE`;
+      return `${lastName} Set`;
     case 'error':
       if (result === 'lift')   return `${lastName} Lift`;
       if (result === 'double') return `${lastName} Dbl`;

@@ -495,8 +495,8 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
 
           {/* Center column — set number + sparkline */}
           <div className="flex flex-col items-center justify-center px-[1.8vmin] bg-black/60 gap-[0.4vmin]">
-            <span className="text-[1.6vmin] font-black text-slate-500 uppercase tracking-wider leading-none">SET</span>
-            <span className="text-[4vmin] font-black text-slate-300 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{setNumber}</span>
+            <span className="text-[1.6vmin] font-black text-white uppercase tracking-wider leading-none">- SET -</span>
+            <span className="text-[4.6vmin] font-black text-white leading-none tabular-nums mt-[0.5vmin]" style={{ fontFamily: "'Orbitron', sans-serif" }}>{setNumber}</span>
             {isTied && (
               <span key={tiedFlashKey} className="tied-label-in text-[1.1vmin] font-black text-yellow-400 uppercase tracking-widest leading-none">TIE</span>
             )}
