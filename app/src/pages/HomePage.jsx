@@ -43,6 +43,17 @@ function sortByDateTime(a, b) {
   return ta < tb ? -1 : ta > tb ? 1 : 0;
 }
 
+// Returns 'TODAY' / 'TOMORROW' / null, comparing local calendar days (not raw ms)
+// so a match at 11pm tonight and one at 1am tomorrow aren't lumped together wrong.
+function getMatchDayLabel(dateStr) {
+  if (!dateStr) return null;
+  const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diffDays = Math.round((startOfDay(new Date(dateStr)) - startOfDay(new Date())) / 86400000);
+  if (diffDays === 0) return 'TODAY';
+  if (diffDays === 1) return 'TOMORROW';
+  return null;
+}
+
 function computeTodayDisplay() {
   const d = new Date();
   const day   = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
@@ -381,6 +392,7 @@ export function HomePage() {
   const navigate = useNavigate();
   const isWin = (match) => (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [rosterHealthDismissed, setRosterHealthDismissed] = useState(false);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const showToast = useUiStore(selectShowToast);
@@ -596,6 +608,14 @@ export function HomePage() {
     };
   }, []);
 
+  // ── Ongoing roster housekeeping checks (not just first-time onboarding) ────
+  const rosterHealth = useLiveQuery(async () => {
+    if (!defaultTeamId) return null;
+    const activePlayers = await db.players.where('team_id').equals(defaultTeamId).filter((p) => p.is_active).toArray();
+    const missingJersey = activePlayers.filter((p) => !p.jersey_number || !String(p.jersey_number).trim());
+    return { count: activePlayers.length, missingJersey };
+  }, [defaultTeamId]);
+
   const seasonLeaders = useLiveQuery(async () => {
     if (!defaultTeamId || !defaultSeasonId) return null;
     const allMatches = await db.matches
@@ -722,6 +742,7 @@ export function HomePage() {
 
 
   const inProgress    = recentMatches?.find((m) => m.status === MATCH_STATUS.IN_PROGRESS);
+  const nextMatchDayLabel = nextMatch ? getMatchDayLabel(nextMatch.date) : null;
 
   const storageEstimate = useStorageEstimate();
   const storageUsagePct = storageEstimate?.quota ? storageEstimate.usage / storageEstimate.quota : 0;
@@ -747,6 +768,35 @@ export function HomePage() {
               <p className="text-sm font-bold text-amber-300">Storage almost full ({Math.round(storageUsagePct * 100)}%)</p>
               <p className="text-xs text-amber-500 mt-0.5">Export a backup now to avoid losing data. <button onClick={() => navigate('/settings')} className="underline hover:text-amber-300 transition-colors">Go to Settings →</button></p>
             </div>
+          </div>
+        )}
+
+        {/* ── Roster housekeeping nudge — persists all season, not just first-time setup ── */}
+        {rosterHealth && !rosterHealthDismissed && (rosterHealth.count < 6 || rosterHealth.missingJersey.length > 0) && (
+          <div className="flex items-start gap-3 bg-amber-900/40 border border-amber-600/50 rounded-xl px-4 py-3">
+            <span className="text-amber-400 text-lg shrink-0">📋</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-amber-300">Roster check</p>
+              <ul className="text-xs text-amber-500 mt-0.5 space-y-0.5 list-disc list-inside">
+                {rosterHealth.count < 6 && (
+                  <li>Only {rosterHealth.count} active player{rosterHealth.count === 1 ? '' : 's'} — you need 6 to start a match.</li>
+                )}
+                {rosterHealth.missingJersey.length > 0 && (
+                  <li>
+                    {rosterHealth.missingJersey.length} player{rosterHealth.missingJersey.length === 1 ? '' : 's'} missing a jersey number:{' '}
+                    {rosterHealth.missingJersey.map((p) => p.name).join(', ')}
+                  </li>
+                )}
+              </ul>
+              <button onClick={() => navigate(`/teams/${defaultTeamId}`)} className="text-xs text-amber-400 underline hover:text-amber-300 transition-colors mt-1">
+                Go to Roster →
+              </button>
+            </div>
+            <button
+              onClick={() => setRosterHealthDismissed(true)}
+              className="text-amber-600 hover:text-amber-400 text-lg leading-none shrink-0 px-1"
+              aria-label="Dismiss"
+            >×</button>
           </div>
         )}
 
@@ -1112,8 +1162,13 @@ export function HomePage() {
                       {nextMatch.conference === 'conference' ? 'CON' : 'NC'}
                     </span>
                   )}
-                  <span className="text-[11px] text-slate-400 truncate">
-                    {fmtDate(nextMatch.date)}{nextMatch.match_time ? ` · ${fmtTime(nextMatch.match_time)}` : ''}
+                  <span className={`text-[11px] truncate ${
+                    nextMatchDayLabel === 'TODAY' ? 'font-black text-primary' :
+                    nextMatchDayLabel === 'TOMORROW' ? 'font-bold text-amber-400' :
+                    'text-slate-400'
+                  }`}>
+                    {nextMatchDayLabel === 'TODAY' ? '🏐 TODAY' : nextMatchDayLabel === 'TOMORROW' ? 'TOMORROW' : fmtDate(nextMatch.date)}
+                    {nextMatch.match_time ? ` · ${fmtTime(nextMatch.match_time)}` : ''}
                   </span>
                 </div>
               </div>
