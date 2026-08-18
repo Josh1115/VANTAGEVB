@@ -65,7 +65,17 @@ const MIGRATION_TABLES = [
 
 // One-time migration: copy data from the old shared VBAPPv2 DB into the
 // user's personal DB. Runs at most once per device (flag in localStorage).
-async function migrateSharedDb() {
+//
+// Only safe to do unattended when the account's cloud backup is also empty —
+// i.e. this is genuinely the first device ever setting this account up, so
+// there's nothing for the leftover local data to conflict with. If the cloud
+// already has data (another device already set the account up), this old
+// local copy was built independently and may not match it record-for-record
+// (a typo'd team name, a jersey number one device has and the other doesn't).
+// Auto-merging that in is exactly how duplicates were getting created — so
+// leave it untouched instead; a coach who wants it can bring it in
+// deliberately via Merge from Backup, which shows a review screen first.
+async function migrateSharedDb(session) {
   try {
     if (localStorage.getItem(MIGRATED_KEY)) return;
 
@@ -82,6 +92,17 @@ async function migrateSharedDb() {
     // Only migrate if the user's personal DB is still empty
     const myTeamCount = await db.teams.count();
     if (myTeamCount > 0) {
+      sharedDb.close();
+      localStorage.setItem(MIGRATED_KEY, '1');
+      return;
+    }
+
+    const { data: cloudBackup } = await supabase
+      .from('backups')
+      .select('user_id')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+    if (cloudBackup) {
       sharedDb.close();
       localStorage.setItem(MIGRATED_KEY, '1');
       return;
@@ -205,7 +226,7 @@ export function AuthProvider({ children }) {
         setSession(initialSession);
         fetchProfile(initialSession.user.id);
         maybeStartPendingCheckout(initialSession);
-        Promise.all([migrateSharedDb(), backfillLiberoSwapPositions()]).then(() => autoSync(initialSession));
+        Promise.all([migrateSharedDb(initialSession), backfillLiberoSwapPositions()]).then(() => autoSync(initialSession));
       } else {
         setSession(null);
       }
@@ -244,7 +265,7 @@ export function AuthProvider({ children }) {
         fetchProfile(session.user.id);
         maybeStartPendingCheckout(session);
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          Promise.all([migrateSharedDb(), backfillLiberoSwapPositions()]).then(() => autoSync(session));
+          Promise.all([migrateSharedDb(session), backfillLiberoSwapPositions()]).then(() => autoSync(session));
         }
       } else {
         setProfile(null);
