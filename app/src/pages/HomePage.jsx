@@ -8,6 +8,7 @@ import { MATCH_STATUS } from '../constants';
 import { fmtDate, fmtHitting, fmtPct, fmtSetScores } from '../stats/formatters';
 import { computePlayerStats, computeTeamStats } from '../stats/engine';
 import { deleteMatch } from '../stats/queries';
+import { findDuplicatePlayerGroups, findDuplicateOpponentGroups, findDuplicateOrgGroups, findDuplicateTeamGroups } from '../stats/dedupe';
 import { useUiStore, selectShowToast } from '../store/uiStore';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlan } from '../hooks/usePlan';
@@ -393,6 +394,7 @@ export function HomePage() {
   const isWin = (match) => (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [rosterHealthDismissed, setRosterHealthDismissed] = useState(false);
+  const [dupeHealthDismissed, setDupeHealthDismissed] = useState(false);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const showToast = useUiStore(selectShowToast);
@@ -616,6 +618,22 @@ export function HomePage() {
     return { count: activePlayers.length, missingJersey };
   }, [defaultTeamId]);
 
+  // Account-wide duplicate check (not scoped to one team) — surfaces the
+  // "Clean Up Duplicates" tool in Settings for coaches who'd otherwise never
+  // find it. See stats/dedupe.js for why these duplicates happen (renames/
+  // jersey-number edits made before the sync fix landed) and how merging works.
+  const dupeHealth = useLiveQuery(async () => {
+    const [players, opponents, orgs, teams] = await Promise.all([
+      findDuplicatePlayerGroups(),
+      findDuplicateOpponentGroups(),
+      findDuplicateOrgGroups(),
+      findDuplicateTeamGroups(),
+    ]);
+    const total = players.length + opponents.length + orgs.length + teams.length;
+    if (!total) return null;
+    return { total, players: players.length, opponents: opponents.length, orgs: orgs.length, teams: teams.length };
+  }, []);
+
   const seasonLeaders = useLiveQuery(async () => {
     if (!defaultTeamId || !defaultSeasonId) return null;
     const allMatches = await db.matches
@@ -794,6 +812,33 @@ export function HomePage() {
             </div>
             <button
               onClick={() => setRosterHealthDismissed(true)}
+              className="text-amber-600 hover:text-amber-400 text-lg leading-none shrink-0 px-1"
+              aria-label="Dismiss"
+            >×</button>
+          </div>
+        )}
+
+        {/* ── Duplicate-records nudge — points coaches at Settings' "Clean Up Duplicates" tool ── */}
+        {dupeHealth && !dupeHealthDismissed && (
+          <div className="flex items-start gap-3 bg-amber-900/40 border border-amber-600/50 rounded-xl px-4 py-3">
+            <span className="text-amber-400 text-lg shrink-0">🧹</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-amber-300">Possible duplicate records found</p>
+              <ul className="text-xs text-amber-500 mt-0.5 space-y-0.5 list-disc list-inside">
+                {dupeHealth.players   > 0 && <li>{dupeHealth.players} duplicate player group{dupeHealth.players === 1 ? '' : 's'}</li>}
+                {dupeHealth.opponents > 0 && <li>{dupeHealth.opponents} duplicate opponent group{dupeHealth.opponents === 1 ? '' : 's'}</li>}
+                {dupeHealth.orgs     > 0 && <li>{dupeHealth.orgs} duplicate organization group{dupeHealth.orgs === 1 ? '' : 's'}</li>}
+                {dupeHealth.teams    > 0 && <li>{dupeHealth.teams} duplicate team group{dupeHealth.teams === 1 ? '' : 's'}</li>}
+              </ul>
+              <button
+                onClick={() => navigate('/settings', { state: { tab: 'data', openDedupe: true } })}
+                className="text-xs text-amber-400 underline hover:text-amber-300 transition-colors mt-1"
+              >
+                Clean Up Duplicates →
+              </button>
+            </div>
+            <button
+              onClick={() => setDupeHealthDismissed(true)}
               className="text-amber-600 hover:text-amber-400 text-lg leading-none shrink-0 px-1"
               aria-label="Dismiss"
             >×</button>

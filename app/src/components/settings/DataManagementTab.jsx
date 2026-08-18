@@ -17,7 +17,7 @@ import { DedupeModal } from './DedupeModal';
 // `onStorageChange` tells the parent to re-poll the browser storage-quota
 // estimate — the "Storage" bar it shows lives outside this tab (in the
 // always-visible header), so it can't see these actions on its own.
-export function DataManagementTab({ onStorageChange }) {
+export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
   const navigate = useNavigate();
   const showToast = useUiStore((s) => s.showToast);
   const { session } = useAuth();
@@ -31,7 +31,7 @@ export function DataManagementTab({ onStorageChange }) {
   const [confirmImport,       setConfirmImport]       = useState(false);
   const [confirmClear,        setConfirmClear]        = useState(false);
   const [showMerge,           setShowMerge]           = useState(false);
-  const [showDedupe,          setShowDedupe]          = useState(false);
+  const [showDedupe,          setShowDedupe]          = useState(!!autoOpenDedupe);
   const [restoringId,         setRestoringId]         = useState(null);
   const [confirmRestoreBackup, setConfirmRestoreBackup] = useState(null);
   const [cloudSaving,         setCloudSaving]         = useState(false);

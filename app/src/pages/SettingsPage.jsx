@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { TabBar } from '../components/ui/Tab';
@@ -37,7 +38,11 @@ export function SettingsPage() {
   const showToast = useUiStore((s) => s.showToast);
   const { plan, isActive, isMaster, teamsAllowed } = usePlan();
 
-  const [settingsTab, setSettingsTab] = useState('pricing');
+  // Dashboard nudges (e.g. the duplicate-records banner) can deep-link here
+  // via navigate('/settings', { state: { tab, openDedupe } }) instead of
+  // landing a coach on the default tab and making them hunt for the button.
+  const location = useLocation();
+  const [settingsTab, setSettingsTab] = useState(location.state?.tab ?? 'pricing');
   const [helpTopic,   setHelpTopic]   = useState(null);
   const [storageRefreshKey, setStorageRefreshKey] = useState(0);
 
@@ -261,7 +266,7 @@ export function SettingsPage() {
           {settingsTab === 'personalization' && <PersonalizationTab />}
           {settingsTab === 'live-match'      && <LiveMatchTab />}
           {settingsTab === 'match-rules'     && <MatchRulesTab />}
-          {settingsTab === 'data'            && <DataManagementTab onStorageChange={() => setStorageRefreshKey(k => k + 1)} />}
+          {settingsTab === 'data'            && <DataManagementTab onStorageChange={() => setStorageRefreshKey(k => k + 1)} autoOpenDedupe={location.state?.openDedupe} />}
           {settingsTab === 'legal'           && <LegalTab />}
         </section>
 
