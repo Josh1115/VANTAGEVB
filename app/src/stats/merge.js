@@ -42,6 +42,20 @@ const nkPlayer = p => `${p.jersey_number ?? ''}|${norm(p.name)}`;
 const nkOpp    = o => norm(o.name);
 const nkMatch  = m => `${norm(m.opponent_name)}|${(m.date ?? '').slice(0, 10)}`;
 
+// Natural keys for the additive record tables below — deliberately built from
+// each record's true identity, not fields a coach can edit afterward. (The
+// historical-records key used to include `value`, so correcting a stat
+// duplicated the record instead of updating it — same bug class as the core
+// tables above, fixed here the same way: uid first, this key as a fallback.)
+const nkHistorical  = h => `${norm(h.category)}|${norm(h.stat)}|${norm(h.player_name ?? '')}`;
+const nkSeasonHist  = h => String(h.year ?? '');
+const nkTourney     = t => `${norm(t.name)}|${String(t.year ?? '')}`;
+const nkCommit      = c => `${norm(c.player_name)}|${String(c.grad_year ?? '')}`;
+const nkAccType     = t => norm(t.name);
+const nkAccWinner   = w => `${norm(w.player_name)}|${String(w.year ?? '')}`;
+const nkSavedLineup = l => norm(l.name);
+const nkPractice    = p => `${p.tool_type ?? ''}|${p.date ?? ''}`;
+
 // ── Tombstones ────────────────────────────────────────────────────────────────
 // Deliberate deletes are recorded here (by natural key, not local row id, since
 // ids differ per device) so a cloud sync can't silently re-add something the user
@@ -554,81 +568,90 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
 
     // ── 7. Historical records ──────────────────────────────────────────────
     if (Array.isArray(data.historical_records)) {
-      const exHistorical = await db.historical_records.toArray();
-      const exHistSet    = new Set(
-        exHistorical.map(r => `${r.team_id}|${r.category}|${r.stat}|${norm(r.player_name ?? '')}|${r.value}`)
-      );
-      const toAdd = [];
+      const exHistorical  = await db.historical_records.toArray();
+      const exHistByUid   = new Map(exHistorical.filter(r => r.uid).map(r => [r.uid, r]));
+      const exHistByKey   = new Map(exHistorical.map(r => [`${r.team_id}|${nkHistorical(r)}`, r]));
       for (const rec of data.historical_records) {
         const exTeamId = teamMap.get(rec.team_id);
         if (exTeamId == null) continue;
-        const key = `${exTeamId}|${rec.category}|${rec.stat}|${norm(rec.player_name ?? '')}|${rec.value}`;
-        if (!exHistSet.has(key)) {
-          const row = { ...rec, team_id: exTeamId };
-          delete row.id;
-          toAdd.push(row);
-          exHistSet.add(key);
+        const ex = pickExisting(rec, exHistByUid, exHistByKey, `${exTeamId}|${nkHistorical(rec)}`);
+        if (ex) {
+          if (isNewer(rec, ex)) {
+            const { id: _, team_id: __, ...fields } = rec;
+            await db.historical_records.update(ex.id, fields);
+          }
+          continue;
         }
+        const { id: _, team_id: __, ...rest } = rec;
+        const newId = await db.historical_records.add({ ...rest, team_id: exTeamId });
+        exHistByKey.set(`${exTeamId}|${nkHistorical(rec)}`, { ...rest, id: newId, team_id: exTeamId });
       }
-      if (toAdd.length) await db.historical_records.bulkAdd(toAdd);
     }
 
     // ── 8. Tourney entries ─────────────────────────────────────────────────
     if (Array.isArray(data.tourney_entries)) {
-      const exTourneys   = await db.tourney_entries.toArray();
-      const exTourneySet = new Set(exTourneys.map(t => `${t.team_id}|${norm(t.name)}|${t.year}`));
-      const toAdd = [];
+      const exTourneys    = await db.tourney_entries.toArray();
+      const exTourneyByUid = new Map(exTourneys.filter(t => t.uid).map(t => [t.uid, t]));
+      const exTourneyByKey = new Map(exTourneys.map(t => [`${t.team_id}|${nkTourney(t)}`, t]));
       for (const t of data.tourney_entries) {
         const exTeamId = teamMap.get(t.team_id);
         if (exTeamId == null) continue;
-        const key = `${exTeamId}|${norm(t.name)}|${t.year}`;
-        if (!exTourneySet.has(key)) {
-          const row = { ...t, team_id: exTeamId };
-          delete row.id;
-          toAdd.push(row);
-          exTourneySet.add(key);
+        const ex = pickExisting(t, exTourneyByUid, exTourneyByKey, `${exTeamId}|${nkTourney(t)}`);
+        if (ex) {
+          if (isNewer(t, ex)) {
+            const { id: _, team_id: __, ...fields } = t;
+            await db.tourney_entries.update(ex.id, fields);
+          }
+          continue;
         }
+        const { id: _, team_id: __, ...rest } = t;
+        const newId = await db.tourney_entries.add({ ...rest, team_id: exTeamId });
+        exTourneyByKey.set(`${exTeamId}|${nkTourney(t)}`, { ...rest, id: newId, team_id: exTeamId });
       }
-      if (toAdd.length) await db.tourney_entries.bulkAdd(toAdd);
     }
 
     // ── 9. Season history ──────────────────────────────────────────────────
-    // One row per team-year; skip when that team-year already exists (additive).
     if (Array.isArray(data.season_history)) {
-      const exSeasonHist    = await db.season_history.toArray();
-      const exSeasonHistSet = new Set(exSeasonHist.map(h => `${h.team_id}|${h.year}`));
-      const toAdd = [];
+      const exSeasonHist      = await db.season_history.toArray();
+      const exSeasonHistByUid = new Map(exSeasonHist.filter(h => h.uid).map(h => [h.uid, h]));
+      const exSeasonHistByKey = new Map(exSeasonHist.map(h => [`${h.team_id}|${nkSeasonHist(h)}`, h]));
       for (const h of data.season_history) {
         const exTeamId = teamMap.get(h.team_id);
         if (exTeamId == null) continue;
-        const key = `${exTeamId}|${h.year}`;
-        if (!exSeasonHistSet.has(key)) {
-          const row = { ...h, team_id: exTeamId };
-          delete row.id;
-          toAdd.push(row);
-          exSeasonHistSet.add(key);
+        const ex = pickExisting(h, exSeasonHistByUid, exSeasonHistByKey, `${exTeamId}|${nkSeasonHist(h)}`);
+        if (ex) {
+          if (isNewer(h, ex)) {
+            const { id: _, team_id: __, ...fields } = h;
+            await db.season_history.update(ex.id, fields);
+          }
+          continue;
         }
+        const { id: _, team_id: __, ...rest } = h;
+        const newId = await db.season_history.add({ ...rest, team_id: exTeamId });
+        exSeasonHistByKey.set(`${exTeamId}|${nkSeasonHist(h)}`, { ...rest, id: newId, team_id: exTeamId });
       }
-      if (toAdd.length) await db.season_history.bulkAdd(toAdd);
     }
 
     // ── 10. Player commits ─────────────────────────────────────────────────
     if (Array.isArray(data.player_commits)) {
-      const exCommits   = await db.player_commits.toArray();
-      const exCommitSet = new Set(exCommits.map(c => `${c.team_id}|${norm(c.player_name)}|${c.grad_year}`));
-      const toAdd = [];
+      const exCommits      = await db.player_commits.toArray();
+      const exCommitByUid  = new Map(exCommits.filter(c => c.uid).map(c => [c.uid, c]));
+      const exCommitByKey  = new Map(exCommits.map(c => [`${c.team_id}|${nkCommit(c)}`, c]));
       for (const c of data.player_commits) {
         const exTeamId = teamMap.get(c.team_id);
         if (exTeamId == null) continue;
-        const key = `${exTeamId}|${norm(c.player_name)}|${c.grad_year}`;
-        if (!exCommitSet.has(key)) {
-          const row = { ...c, team_id: exTeamId };
-          delete row.id;
-          toAdd.push(row);
-          exCommitSet.add(key);
+        const ex = pickExisting(c, exCommitByUid, exCommitByKey, `${exTeamId}|${nkCommit(c)}`);
+        if (ex) {
+          if (isNewer(c, ex)) {
+            const { id: _, team_id: __, ...fields } = c;
+            await db.player_commits.update(ex.id, fields);
+          }
+          continue;
         }
+        const { id: _, team_id: __, ...rest } = c;
+        const newId = await db.player_commits.add({ ...rest, team_id: exTeamId });
+        exCommitByKey.set(`${exTeamId}|${nkCommit(c)}`, { ...rest, id: newId, team_id: exTeamId });
       }
-      if (toAdd.length) await db.player_commits.bulkAdd(toAdd);
     }
 
     // ── 11. Accolade types ─────────────────────────────────────────────────
@@ -636,37 +659,116 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
     const accoladeTypeMap = new Map();
     if (Array.isArray(data.accolade_types)) {
       const exTypes     = await db.accolade_types.toArray();
-      const exTypeByKey = new Map(exTypes.map(t => [`${t.team_id}|${norm(t.name)}`, t]));
+      const exTypeByUid = new Map(exTypes.filter(t => t.uid).map(t => [t.uid, t]));
+      const exTypeByKey = new Map(exTypes.map(t => [`${t.team_id}|${nkAccType(t)}`, t]));
       for (const t of data.accolade_types) {
         const exTeamId = teamMap.get(t.team_id);
         if (exTeamId == null) continue;
-        const ex = exTypeByKey.get(`${exTeamId}|${norm(t.name)}`);
-        if (ex) { accoladeTypeMap.set(t.id, ex.id); continue; }
+        const ex = pickExisting(t, exTypeByUid, exTypeByKey, `${exTeamId}|${nkAccType(t)}`);
+        if (ex) {
+          accoladeTypeMap.set(t.id, ex.id);
+          if (isNewer(t, ex)) {
+            const { id: _, team_id: __, ...fields } = t;
+            await db.accolade_types.update(ex.id, fields);
+          }
+          continue;
+        }
         const { id: _, team_id: __, ...rest } = t;
         const newId = await db.accolade_types.add({ ...rest, team_id: exTeamId });
         accoladeTypeMap.set(t.id, newId);
-        exTypeByKey.set(`${exTeamId}|${norm(t.name)}`, { ...rest, id: newId, team_id: exTeamId });
+        exTypeByKey.set(`${exTeamId}|${nkAccType(t)}`, { ...rest, id: newId, team_id: exTeamId });
       }
     }
 
     // ── 12. Accolade winners ───────────────────────────────────────────────
     if (Array.isArray(data.accolade_winners)) {
-      const exWinners   = await db.accolade_winners.toArray();
-      const exWinnerSet = new Set(exWinners.map(w => `${w.type_id}|${norm(w.player_name)}|${w.year}`));
-      const toAdd = [];
+      const exWinners     = await db.accolade_winners.toArray();
+      const exWinnerByUid = new Map(exWinners.filter(w => w.uid).map(w => [w.uid, w]));
+      const exWinnerByKey = new Map(exWinners.map(w => [`${w.type_id}|${nkAccWinner(w)}`, w]));
       for (const w of data.accolade_winners) {
         const exTeamId = teamMap.get(w.team_id);
         const exTypeId = accoladeTypeMap.get(w.type_id);
         if (exTeamId == null || exTypeId == null) continue;
-        const key = `${exTypeId}|${norm(w.player_name)}|${w.year}`;
-        if (!exWinnerSet.has(key)) {
-          const row = { ...w, team_id: exTeamId, type_id: exTypeId };
-          delete row.id;
-          toAdd.push(row);
-          exWinnerSet.add(key);
+        const ex = pickExisting(w, exWinnerByUid, exWinnerByKey, `${exTypeId}|${nkAccWinner(w)}`);
+        if (ex) {
+          if (isNewer(w, ex)) {
+            // type_id is set explicitly (not spread from `w`) — a coach may have
+            // reassigned this winner to a different award, and `w.type_id` is
+            // the *imported* device's local id, not ours; exTypeId is already
+            // resolved through accoladeTypeMap above.
+            const { id: _, team_id: __, type_id: ___, ...fields } = w;
+            await db.accolade_winners.update(ex.id, { ...fields, type_id: exTypeId });
+          }
+          continue;
         }
+        const { id: _, team_id: __, type_id: ___, ...rest } = w;
+        const newId = await db.accolade_winners.add({ ...rest, team_id: exTeamId, type_id: exTypeId });
+        exWinnerByKey.set(`${exTypeId}|${nkAccWinner(w)}`, { ...rest, id: newId, team_id: exTeamId, type_id: exTypeId });
       }
-      if (toAdd.length) await db.accolade_winners.bulkAdd(toAdd);
+    }
+
+    // ── 13. Saved lineups ──────────────────────────────────────────────────
+    // Previously never merged at all — a lineup template saved on one device
+    // never reached any other device syncing the same account. Player ids
+    // embedded in serve_order/libero slots need remapping through playerMap,
+    // the same way dedupe.js's mergePlayerGroup remaps them when merging
+    // duplicate players (serve_order entries are stored as strings there too).
+    if (Array.isArray(data.saved_lineups)) {
+      const exLineups      = await db.saved_lineups.toArray();
+      const exLineupByUid  = new Map(exLineups.filter(l => l.uid).map(l => [l.uid, l]));
+      const exLineupByKey  = new Map(exLineups.map(l => [`${l.team_id}|${nkSavedLineup(l)}`, l]));
+      const remapPlayerIds = (l) => ({
+        ...l,
+        serve_order:       (l.serve_order ?? []).map(id => playerMap.get(Number(id)) ?? id),
+        libero_player_id:  l.libero_player_id  != null ? (playerMap.get(Number(l.libero_player_id))  ?? null) : null,
+        libero2_player_id: l.libero2_player_id != null ? (playerMap.get(Number(l.libero2_player_id)) ?? null) : null,
+      });
+      for (const l of data.saved_lineups) {
+        const exTeamId = teamMap.get(l.team_id);
+        if (exTeamId == null) continue;
+        const ex = pickExisting(l, exLineupByUid, exLineupByKey, `${exTeamId}|${nkSavedLineup(l)}`);
+        if (ex) {
+          if (isNewer(l, ex)) {
+            const { id: _, team_id: __, ...fields } = remapPlayerIds(l);
+            await db.saved_lineups.update(ex.id, fields);
+          }
+          continue;
+        }
+        const { id: _, team_id: __, ...rest } = remapPlayerIds(l);
+        const newId = await db.saved_lineups.add({ ...rest, team_id: exTeamId });
+        exLineupByKey.set(`${exTeamId}|${nkSavedLineup(l)}`, { ...rest, id: newId, team_id: exTeamId });
+      }
+    }
+
+    // ── 14. Practice sessions ────────────────────────────────────────────
+    // Previously never merged — logged only on the device that ran the drill.
+    // `date` is a full timestamp set once at creation (not user-typed), so it
+    // already uniquely identifies a session; `archived` is the only thing
+    // edited afterward, which isNewer/update below now actually propagates.
+    // team_id can be null (a session not tied to a specific team).
+    if (Array.isArray(data.practice_sessions)) {
+      const exSessions      = await db.practice_sessions.toArray();
+      const exSessionByUid  = new Map(exSessions.filter(p => p.uid).map(p => [p.uid, p]));
+      const exSessionByKey  = new Map(exSessions.map(p => [`${p.team_id ?? ''}|${nkPractice(p)}`, p]));
+      for (const p of data.practice_sessions) {
+        let exTeamId = null;
+        if (p.team_id != null) {
+          exTeamId = teamMap.get(p.team_id);
+          if (exTeamId == null) continue;
+        }
+        const key = `${exTeamId ?? ''}|${nkPractice(p)}`;
+        const ex = pickExisting(p, exSessionByUid, exSessionByKey, key);
+        if (ex) {
+          if (isNewer(p, ex)) {
+            const { id: _, team_id: __, ...fields } = p;
+            await db.practice_sessions.update(ex.id, fields);
+          }
+          continue;
+        }
+        const { id: _, team_id: __, ...rest } = p;
+        const newId = await db.practice_sessions.add({ ...rest, team_id: exTeamId });
+        exSessionByKey.set(key, { ...rest, id: newId, team_id: exTeamId });
+      }
     }
 
   });

@@ -11,6 +11,52 @@ function getDbName() {
 
 export const db = new Dexie(getDbName());
 
+// v24: extend the v23 `uid`/`updated_at` fix to the rest of the tables that
+// support in-place editing but were left out the first time — historical
+// records, season history, tournament entries, player commits, accolade
+// types/winners, saved lineups, and practice sessions. Same bug, same fix:
+// without a permanent id, editing one of these (correcting a career stat,
+// renaming a tournament or an award, archiving a practice session) made sync
+// treat the edit as a brand-new record instead of an update. Also fixes these
+// tables not syncing between devices at all — see stats/merge.js.
+db.version(24).stores({
+  rallies:            '++id, set_id, rally_number',
+  sets:               '++id, match_id, set_number',
+  lineups:            '++id, set_id, player_id',
+  substitutions:      '++id, set_id, rally_number',
+  organizations:      '++id, name, type, uid',
+  teams:              '++id, org_id, name, share_token, uid',
+  seasons:            '++id, team_id, year, status, uid',
+  players:            '++id, team_id, is_active, uid',
+  opponents:          '++id, name, uid',
+  saved_lineups:      '++id, team_id, uid',
+  contacts:           '++id, match_id, player_id, action, set_id, rally_id, rotation_num',
+  matches:            '++id, season_id, status, date, opponent_id, uid',
+  opp_tendencies:     '++id, opp_id, match_id',
+  timeouts:           '++id, match_id, set_id',
+  historical_records: '++id, team_id, category, stat, uid',
+  season_history:     '++id, team_id, year, uid',
+  tourney_entries:    '++id, team_id, year, uid',
+  player_commits:     '++id, team_id, grad_year, uid',
+  auto_backups:       '++id, created_at',
+  accolade_types:     '++id, team_id, uid',
+  accolade_winners:   '++id, type_id, team_id, uid',
+  practice_sessions:  '++id, team_id, tool_type, date, archived, uid',
+  tombstones:         '++id, type, key, [type+key]',
+}).upgrade(async (tx) => {
+  const now = new Date().toISOString();
+  const tables = [
+    'saved_lineups', 'historical_records', 'season_history', 'tourney_entries',
+    'player_commits', 'accolade_types', 'accolade_winners', 'practice_sessions',
+  ];
+  for (const name of tables) {
+    await tx.table(name).toCollection().modify((row) => {
+      if (!row.uid) row.uid = crypto.randomUUID();
+      if (!row.updated_at) row.updated_at = now;
+    });
+  }
+});
+
 // v23: add `uid` (a permanent random id, assigned once and never changed) and
 // `updated_at` to the core entity tables. Cloud sync used to recognize "the same
 // player/opponent/match on two devices" by comparing name + jersey number (or
@@ -416,7 +462,11 @@ db.version(1).stores({
 // `updated_at` current on every edit — without having to touch every place in
 // the app that creates or edits a player/opponent/match/etc. See the v23
 // migration note above for why this exists.
-const UID_TRACKED_TABLES = ['organizations', 'teams', 'seasons', 'players', 'opponents', 'matches'];
+const UID_TRACKED_TABLES = [
+  'organizations', 'teams', 'seasons', 'players', 'opponents', 'matches',
+  'saved_lineups', 'historical_records', 'season_history', 'tourney_entries',
+  'player_commits', 'accolade_types', 'accolade_winners', 'practice_sessions',
+];
 for (const name of UID_TRACKED_TABLES) {
   db[name].hook('creating', (_primKey, obj) => {
     if (!obj.uid) obj.uid = crypto.randomUUID();
