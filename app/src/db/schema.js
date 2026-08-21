@@ -9,6 +9,15 @@ function getDbName() {
   }
 }
 
+// crypto.randomUUID() isn't available on older browsers (e.g. pre-15.4
+// Safari) — fall back to a manually-built random id so record creation
+// never crashes on those devices.
+function safeUUID() {
+  return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+}
+
 export const db = new Dexie(getDbName());
 
 // v24: extend the v23 `uid`/`updated_at` fix to the rest of the tables that
@@ -51,7 +60,7 @@ db.version(24).stores({
   ];
   for (const name of tables) {
     await tx.table(name).toCollection().modify((row) => {
-      if (!row.uid) row.uid = crypto.randomUUID();
+      if (!row.uid) row.uid = safeUUID();
       if (!row.updated_at) row.updated_at = now;
     });
   }
@@ -95,7 +104,7 @@ db.version(23).stores({
   const tables = ['organizations', 'teams', 'seasons', 'players', 'opponents', 'matches'];
   for (const name of tables) {
     await tx.table(name).toCollection().modify((row) => {
-      if (!row.uid) row.uid = crypto.randomUUID();
+      if (!row.uid) row.uid = safeUUID();
       if (!row.updated_at) row.updated_at = now;
     });
   }
@@ -469,7 +478,7 @@ const UID_TRACKED_TABLES = [
 ];
 for (const name of UID_TRACKED_TABLES) {
   db[name].hook('creating', (_primKey, obj) => {
-    if (!obj.uid) obj.uid = crypto.randomUUID();
+    if (!obj.uid) obj.uid = safeUUID();
     if (!obj.updated_at) obj.updated_at = new Date().toISOString();
   });
   db[name].hook('updating', (modifications) => {
