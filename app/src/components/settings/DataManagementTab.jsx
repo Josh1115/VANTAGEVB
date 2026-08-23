@@ -260,7 +260,7 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
               disabled={cloudSaving}
               onClick={handleSaveToCloud}
             >
-              {cloudSaving ? 'Saving…' : 'Save to Cloud'}
+              {cloudSaving ? 'Syncing…' : 'Sync Now'}
             </Button>
             <Button
               className="flex-1"
@@ -272,6 +272,9 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
             </Button>
           </div>
           <p className="text-[11px] text-slate-500 mt-1.5">
+            Pulls in matches from your other devices and pushes this one's up — use this if a match isn't showing up everywhere yet.
+          </p>
+          <p className="text-[11px] text-slate-500 mt-1">
             {lastCloudSave
               ? `Last saved: ${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(lastCloudSave))}`
               : 'No cloud backup yet'}
