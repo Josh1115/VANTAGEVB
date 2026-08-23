@@ -31,6 +31,14 @@ import { Confetti } from '../components/ui/Confetti';
 import { SetSummaryModal } from '../components/match/SetSummaryModal';
 import { ServeZoneModal } from '../components/match/ServeZoneModal';
 
+// 100dvh reports the browser's own dynamic-viewport-height calculation, which
+// is more reliable than measuring window.innerHeight by hand — but only on
+// Safari 15.4+ (early 2022). Older iOS doesn't support it and, per the note
+// below, mishandles it anyway (browser chrome ends up covering the
+// ActionBar). Feature-detect once and keep the JS measurement as a fallback
+// for those older devices only.
+const SUPPORTS_DVH = typeof CSS !== 'undefined' && CSS.supports('height', '100dvh');
+
 export function LiveMatchPage() {
   const { matchId: matchIdParam } = useParams();
   const { session } = useAuth();
@@ -226,9 +234,10 @@ export function LiveMatchPage() {
     return () => screen.orientation?.unlock?.();
   }, []);
 
-  // Use window.innerHeight for reliable cross-platform viewport height
-  // (100dvh can include browser chrome on older iOS, hiding the ActionBar)
+  // Only needed as a fallback on older iOS that doesn't support 100dvh —
+  // see SUPPORTS_DVH above. Modern browsers size via CSS instead.
   useEffect(() => {
+    if (SUPPORTS_DVH) return;
     const update = () => setScreenH(window.innerHeight);
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
@@ -498,9 +507,10 @@ export function LiveMatchPage() {
     : 0.015;
 
   return (
-    // Full viewport, no scroll, column layout
-    // h-dvh = dynamic viewport height (accounts for iOS Safari browser chrome)
-    <div className="w-screen flex flex-col bg-court overflow-hidden" style={{ height: screenH }}>
+    // Full viewport, no scroll, column layout.
+    // 100dvh (accounts for iOS Safari browser chrome) where supported,
+    // falling back to the hand-measured height on older iOS — see SUPPORTS_DVH.
+    <div className="w-screen flex flex-col bg-court overflow-hidden" style={{ height: SUPPORTS_DVH ? '100dvh' : screenH }}>
 
       {/* CRT scanline overlay — intensity scales with run count */}
       <div
