@@ -376,7 +376,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
         <div className="flex items-center gap-1 shrink-0">
           {/* Sets won box — spacer matches badge height so it aligns with the timeout row */}
           <div className="flex flex-col items-center justify-center">
-            {(broadcastEnabled || hasFamilyScope) && <div className="mb-[0.4vmin] invisible text-[1.2vmin] py-[0.3vmin]">·</div>}
+            <div className="mb-[0.4vmin] invisible text-[1.2vmin] py-[0.3vmin]">·</div>
             {flipped ? (
               <div className="border-2 border-slate-500 rounded px-[1.8vmin] py-[0.5vmin] bg-slate-800/40">
                 <span className="text-[3.1vmin] font-black text-slate-300 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{oppSetsWon}</span>
@@ -390,9 +390,9 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
 
           {/* Badge + timeout circles + sub counter stacked */}
           <div className="flex flex-col items-start justify-center">
-            {(broadcastEnabled || hasFamilyScope) && (
-              <div className="mb-[0.4vmin]">
-                {broadcastEnabled ? (
+            <div className="mb-[0.4vmin] flex items-center gap-[0.6vmin]">
+              {(broadcastEnabled || hasFamilyScope) && (
+                broadcastEnabled ? (
                   <div className="flex items-center gap-[0.6vmin] bg-slate-800/90 border border-slate-600/60 text-slate-400 text-[1.2vmin] font-bold px-[1.2vmin] py-[0.3vmin] rounded-full pointer-events-none">
                     <span className="w-[1vmin] h-[1vmin] rounded-full bg-red-500 animate-pulse shrink-0" />
                     FamScope
@@ -402,9 +402,12 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
                     <span className="w-[1vmin] h-[1vmin] flex items-center justify-center text-slate-500 shrink-0 leading-none" style={{ fontSize: '0.9vmin' }}>✕</span>
                     FamScope
                   </div>
-                )}
+                )
+              )}
+              <div className="flex items-center gap-[0.4vmin] bg-purple-950/40 border border-purple-700/60 text-purple-400 text-[1.2vmin] font-bold px-[1.2vmin] py-[0.3vmin] rounded pointer-events-none">
+                ROT - <span className="tabular-nums">{rotationNum}</span>
               </div>
-            )}
+            </div>
             <div className="flex items-center gap-1">
               {flipped ? (
                 <TimeoutBox used={oppTimeouts} onTap={() => setTimeoutConfirm('them')} />
@@ -440,10 +443,6 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
                 onAssignLibero={onAssignLibero}
                 onAssignLibero2={onAssignLibero2}
               />
-              <div className="flex flex-col items-center px-[1vmin] py-[0.4vmin] rounded border border-purple-700 bg-purple-950/40">
-                <span className="text-[1.1vmin] font-bold text-purple-500 leading-none uppercase tracking-wide">ROT</span>
-                <span className="text-[2.6vmin] font-black text-purple-400 leading-none tabular-nums">{rotationNum}</span>
-              </div>
             </div>
           </div>
         </div>
