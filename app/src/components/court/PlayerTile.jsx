@@ -457,12 +457,12 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
                     cls={serveType === SERVE_TYPE.TOPSPIN ? 'bg-teal-600/80 text-white' : 'bg-violet-900/70 text-violet-400 hover:bg-violet-800/70'} />
                   <Btn key={`att-${!!serveType}`} label={serveType ? 'ATT' : '← PICK'}
                     onTap={serveType ? () => { tap(ACTION.SERVE, RESULT.IN, { serve_type: serveType }); setServeRecorded(true); } : undefined}
-                    cls={`${!serveType ? 'bg-slate-800/40 text-slate-600 cursor-not-allowed pointer-events-none text-[1.6vmin]'
+                    cls={`${!serveType ? 'bg-slate-800/40 text-slate-600 cursor-not-allowed pointer-events-none text-[0.9vmin]'
                       : serveType === SERVE_TYPE.FLOAT ? 'bg-emerald-950/80 text-emerald-300 hover:bg-emerald-900/80'
                       : 'bg-teal-950/80 text-teal-300 hover:bg-teal-900/80'}${serveType ? ' serve-unlock-btn' : ''}`} />
                   <Btn key={`ace-${!!serveType}`} label={serveType ? 'ACE' : '← TYPE'}
                     onTap={serveType ? () => { tapAndScore(ACTION.SERVE, RESULT.ACE, { serve_type: serveType }); setServeRecorded(true); } : undefined}
-                    cls={`${!serveType ? 'bg-slate-800/40 text-slate-600 cursor-not-allowed pointer-events-none text-[1.6vmin]'
+                    cls={`${!serveType ? 'bg-slate-800/40 text-slate-600 cursor-not-allowed pointer-events-none text-[0.9vmin]'
                       : serveType === SERVE_TYPE.FLOAT ? 'bg-emerald-700/80 text-white hover:bg-emerald-600/90'
                       : 'bg-teal-600/80 text-white hover:bg-teal-500/90'}${serveType ? ' serve-unlock-btn' : ''}`}
                     style={serveType ? { animationDelay: '50ms' } : undefined} />

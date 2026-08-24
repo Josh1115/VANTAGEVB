@@ -97,12 +97,13 @@ async function migrateSharedDb(session) {
       return;
     }
 
-    const { data: cloudBackup } = await supabase
-      .from('backups')
-      .select('user_id')
-      .eq('user_id', session.user.id)
-      .maybeSingle();
-    if (cloudBackup) {
+    // Atomically claim the right to migrate — see claim_migration() in
+    // supabase/migrations/20260821_atomic_migration_claim.sql. Only one
+    // concurrent device can ever win this, closing the race where two devices
+    // both check "does cloud data exist yet?" at the same instant and both
+    // proceed to migrate their own (possibly different) local data.
+    const { data: claimed, error: claimError } = await supabase.rpc('claim_migration');
+    if (claimError || !claimed) {
       sharedDb.close();
       localStorage.setItem(MIGRATED_KEY, '1');
       return;

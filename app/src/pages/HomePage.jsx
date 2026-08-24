@@ -463,11 +463,13 @@ export function HomePage() {
       const all = defaultSeasonId
         ? await db.matches.where('season_id').equals(defaultSeasonId).toArray()
         : await db.matches.toArray();
-      // Keep closest-to-today first so the card stack shows the most recent
+      // Pick the 5 matches closest to today, then re-sort just those 5 into
+      // true chronological order so the card stack shows the most recent
       // match on top and the furthest-out of the five on the bottom.
       matches = all
         .sort((a, b) => Math.abs(new Date(a.date) - now) - Math.abs(new Date(b.date) - now))
-        .slice(0, 5);
+        .slice(0, 5)
+        .sort(sortByDateTime);
     }
 
     const seasonIds = [...new Set(matches.map((m) => m.season_id).filter(Boolean))];
