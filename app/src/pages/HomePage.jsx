@@ -1586,7 +1586,7 @@ export function HomePage() {
               disabled={cloudSaving}
               onClick={handleSaveToCloud}
             >
-              {cloudSaving ? 'Saving…' : 'Save to Cloud'}
+              {cloudSaving ? 'Syncing…' : 'Sync Now'}
             </Button>
           </div>
         )}

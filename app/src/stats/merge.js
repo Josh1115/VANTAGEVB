@@ -38,7 +38,12 @@ function isNewer(imp, ex) {
 const nkOrg    = o => norm(o.name);
 const nkTeam   = t => `${norm(t.name)}|${t.gender ?? ''}|${t.level ?? ''}`;
 const nkSeason = s => String(s.year ?? '');
-const nkPlayer = p => `${p.jersey_number ?? ''}|${norm(p.name)}`;
+// Name only (within the team scope already baked into the caller's key prefix) —
+// jersey number is a mutable, coach-editable field, not part of a player's
+// identity. Including it here used to mean any number change made on one
+// device before syncing looked like a brand-new player instead of an edit,
+// duplicating the roster (see stats/dedupe.js, which cleans up the fallout).
+const nkPlayer = p => norm(p.name);
 const nkOpp    = o => norm(o.name);
 const nkMatch  = m => `${norm(m.opponent_name)}|${(m.date ?? '').slice(0, 10)}`;
 

@@ -305,16 +305,20 @@ export async function syncWithCloud(supabase, session, { teamsAllowed = Infinity
   if (cloudRow?.payload) {
     const cloudData = migrateBackup({ ...cloudRow.payload });
     const preview = await parseMergePreviewFromData(cloudData);
-    if (preview.valid) {
-      const decisions = {};
-      // No one is present to resolve conflicts during an automatic sync — default to
-      // keeping the local version so this can never silently overwrite a match someone
-      // is actively scoring on this device. True same-game conflicts are rare (it would
-      // take two devices editing the identical opponent/date/team) and can still be
-      // resolved manually via Import & Merge.
-      for (const c of preview.conflicts) decisions[c.importedId] = 'keep';
-      await executeMerge(preview, decisions, { isMaster, matchLimit });
+    if (!preview.valid) {
+      // Don't silently fall through to uploading local-only data — that would
+      // overwrite the cloud copy with a snapshot that never merged in whatever
+      // was already there (e.g. another device's match). Stop and surface it.
+      throw new Error(`Cloud sync failed (${preview.error || 'could not read cloud backup'}) — nothing was uploaded. Try again, or contact support if this keeps happening.`);
     }
+    const decisions = {};
+    // No one is present to resolve conflicts during an automatic sync — default to
+    // keeping the local version so this can never silently overwrite a match someone
+    // is actively scoring on this device. True same-game conflicts are rare (it would
+    // take two devices editing the identical opponent/date/team) and can still be
+    // resolved manually via Import & Merge.
+    for (const c of preview.conflicts) decisions[c.importedId] = 'keep';
+    await executeMerge(preview, decisions, { isMaster, matchLimit });
   }
 
   await saveToCloud(supabase, session);
