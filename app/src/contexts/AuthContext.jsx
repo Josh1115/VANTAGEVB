@@ -127,7 +127,16 @@ async function migrateSharedDb(session) {
 
 export function AuthProvider({ children }) {
   const [session,      setSession]      = useState(undefined);
-  const [profile,      setProfile]      = useState(null);
+  // Seed from the last known profile so a device that opens offline keeps
+  // whatever plan/entitlement it last confirmed, instead of starting locked.
+  const [profile,      setProfile]      = useState(() => {
+    try {
+      const cached = getStorageItem(STORAGE_KEYS.PROFILE_CACHE);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const [recoveryMode, setRecoveryMode] = useState(false);
   const reloading = useRef(false);
 
@@ -156,20 +165,29 @@ export function AuthProvider({ children }) {
   }
 
   async function fetchProfile(userId) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
-    setProfile(data ?? null);
 
-    // Seed localStorage from profile on first login — only if the key is empty
     if (data) {
+      setProfile(data);
+      setStorageItem(STORAGE_KEYS.PROFILE_CACHE, JSON.stringify(data));
+
+      // Seed localStorage from profile on first login — only if the key is empty
       if (!getStorageItem(STORAGE_KEYS.COACH_NAME) && data.coach_name)
         setStorageItem(STORAGE_KEYS.COACH_NAME, data.coach_name);
       if (!getStorageItem(STORAGE_KEYS.PROGRAM_NAME) && data.school_name)
         setStorageItem(STORAGE_KEYS.PROGRAM_NAME, data.school_name);
+    } else if (!error) {
+      // Query genuinely found no profile row — that's real, not a dropped
+      // connection. Clear it (and the stale cache) rather than keep it around.
+      setProfile(null);
+      setStorageItem(STORAGE_KEYS.PROFILE_CACHE, null);
     }
+    // else: the request itself failed (e.g. offline) — leave the existing/cached
+    // profile in place instead of wiping it and locking the app out.
   }
 
   // A visitor may have picked a plan before signing up (see LoginPage). Once a

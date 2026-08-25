@@ -29,11 +29,25 @@ export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions,
   const rowRefs = useRef([]);
   const draggingIdxRef = useRef(null);
   const dragOverIdxRef = useRef(null);
+  // Tracks which serve slots have a coach-chosen position (as opposed to one
+  // auto-filled from a player's saved default), so re-picking a player for
+  // that slot doesn't silently revert it back to that player's default.
+  const manualPositionSlots = useRef(new Set());
+
+  // Safety net: when the whole lineup is reset to empty (e.g. season change),
+  // drop any stale manual-override flags along with it.
+  useEffect(() => {
+    if (lineup.every((id) => !id)) manualPositionSlots.current.clear();
+  }, [lineup]);
 
   const swapSlots = (from, to) => {
     const swapArr = (arr) => { const n = [...arr]; [n[from], n[to]] = [n[to], n[from]]; return n; };
     setLineup(swapArr);
     setSlotPositions(swapArr);
+    const fromManual = manualPositionSlots.current.has(from);
+    const toManual = manualPositionSlots.current.has(to);
+    manualPositionSlots.current[fromManual ? 'add' : 'delete'](to);
+    manualPositionSlots.current[toManual ? 'add' : 'delete'](from);
   };
 
   const handleDragMove = (e) => {
@@ -103,8 +117,9 @@ export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions,
       next[slotIdx] = playerId;
       return next;
     });
-    // Auto-populate position from player's default
-    if (playerId && players) {
+    // Auto-populate position from player's default — but never clobber a
+    // position the coach already chose for this slot via the dropdown.
+    if (playerId && players && !manualPositionSlots.current.has(slotIdx)) {
       const p = players.find((pl) => String(pl.id) === playerId);
       if (p?.position) {
         setSlotPositions((prev) => {
@@ -117,6 +132,8 @@ export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions,
   };
 
   const assignPosition = (slotIdx, pos) => {
+    if (pos) manualPositionSlots.current.add(slotIdx);
+    else manualPositionSlots.current.delete(slotIdx);
     setSlotPositions((prev) => {
       const next = [...prev];
       next[slotIdx] = pos;

@@ -32,6 +32,7 @@ export const STORAGE_KEYS = {
   HELP_GUIDE_SEEN:      'vbstat_help_guide_seen',
   SIDELINE_MODE:        'vbstat_sideline_mode',
   ARCHIVED_OPPONENTS:   'vbstat_archived_opponents',
+  PROFILE_CACHE:        'vbstat_profile_cache',
 };
 
 export function getStorageItem(key, defaultValue = null) {
