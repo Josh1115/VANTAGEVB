@@ -663,13 +663,17 @@ export function HomePage() {
       return best;
     };
     const ts = computeTeamStats(contacts);
+    // Only APR carries a minimum-attempts qualifier — it's a rate stat, so a
+    // tiny sample can be misleadingly high/low. The counting stats below
+    // (kills, aces, blocks, digs, assists, reception count) have no minimum:
+    // whoever has the most, leads, from match one.
     const leaders = {
-      kills:   findLeader(ps => (ps.ta  ?? 0) >= 10 ? (ps.k   ?? 0) : 0),
-      aces:    findLeader(ps => (ps.sa  ?? 0) >= 10 ? (ps.ace  ?? 0) : 0),
-      blocks:  findLeader(ps => (ps.bs ?? 0) + (ps.ba ?? 0) + (ps.be ?? 0) >= 10 ? (ps.bs ?? 0) + (ps.ba ?? 0) : 0),
-      digs:    findLeader(ps => (ps.dig ?? 0) >= 10 ? (ps.dig  ?? 0) : 0),
-      assists: findLeader(ps => (ps.ast ?? 0) + (ps.bhe ?? 0) >= 10 ? (ps.ast ?? 0) : 0),
-      rec:     findLeader(ps => (ps.pa  ?? 0) >= 10 ? (ps.pa   ?? 0) : 0),
+      kills:   findLeader(ps => ps.k   ?? 0),
+      aces:    findLeader(ps => ps.ace  ?? 0),
+      blocks:  findLeader(ps => (ps.bs ?? 0) + (ps.ba ?? 0)),
+      digs:    findLeader(ps => ps.dig  ?? 0),
+      assists: findLeader(ps => ps.ast ?? 0),
+      rec:     findLeader(ps => ps.pa   ?? 0),
       apr:     findLeader(ps => (ps.pa  ?? 0) >= 10 ? (ps.apr  ?? 0) : 0),
     };
 
