@@ -9,6 +9,7 @@ import { supabase } from '../../utils/supabase';
 import { STORAGE_KEYS, setStorageItem } from '../../utils/storage';
 import { useTrimSetting } from '../../hooks/useSettingsStorage';
 import { exportBackup, importBackup, restoreAutoBackup, saveToCloud, restoreFromCloud, syncWithCloud } from '../../stats/backup';
+import { findDuplicatePlayerGroups, findDuplicateOpponentGroups, findDuplicateOrgGroups, findDuplicateTeamGroups } from '../../stats/dedupe';
 import { Button } from '../ui/Button';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { MergeBackupModal } from './MergeBackupModal';
@@ -38,6 +39,24 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
   const [cloudRestoring,      setCloudRestoring]      = useState(false);
   const [lastCloudSave,       setLastCloudSave]       = useState(null);
   const [confirmCloudRestore, setConfirmCloudRestore] = useState(false);
+
+  // Account-wide duplicate check (not scoped to one team) — was previously
+  // surfaced as a dismissible banner on the Dashboard; moved here since it's
+  // a data-hygiene detail, not something that needs to compete for attention
+  // on the main screen. See stats/dedupe.js for why these duplicates happen
+  // (renames/jersey-number edits made before the sync fix landed) and how
+  // merging works.
+  const dupeHealth = useLiveQuery(async () => {
+    const [players, opponents, orgs, teams] = await Promise.all([
+      findDuplicatePlayerGroups(),
+      findDuplicateOpponentGroups(),
+      findDuplicateOrgGroups(),
+      findDuplicateTeamGroups(),
+    ]);
+    const total = players.length + opponents.length + orgs.length + teams.length;
+    if (!total) return null;
+    return { total, players: players.length, opponents: opponents.length, orgs: orgs.length, teams: teams.length };
+  }, []);
 
   const autoBackups = useLiveQuery(
     () => db.auto_backups.orderBy('created_at').reverse().limit(5).toArray(),
@@ -217,6 +236,17 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
           >
             Clean Up Duplicates
           </Button>
+          {dupeHealth && (
+            <p className="text-xs text-amber-500 -mt-2">
+              🧹 Possible duplicates found:{' '}
+              {[
+                dupeHealth.players   > 0 && `${dupeHealth.players} player group${dupeHealth.players === 1 ? '' : 's'}`,
+                dupeHealth.opponents > 0 && `${dupeHealth.opponents} opponent group${dupeHealth.opponents === 1 ? '' : 's'}`,
+                dupeHealth.orgs      > 0 && `${dupeHealth.orgs} organization group${dupeHealth.orgs === 1 ? '' : 's'}`,
+                dupeHealth.teams     > 0 && `${dupeHealth.teams} team group${dupeHealth.teams === 1 ? '' : 's'}`,
+              ].filter(Boolean).join(', ')}
+            </p>
+          )}
         </>
       )}
 
