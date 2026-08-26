@@ -54,6 +54,10 @@ const AuthContext = createContext(AUTH_CONTEXT_DEFAULT);
 
 const USER_ID_KEY  = 'vbstat_user_id';
 const MIGRATED_KEY = 'vbstat_shared_migrated';
+// Same literal as App.jsx's HOME_REDIRECT_KEY (not imported, to avoid a
+// circular import) — cleared here so a genuine sign-out/account-switch
+// still lands the next login on the dashboard, not wherever this tab was.
+const HOME_REDIRECT_KEY = 'vbstat_home_redirected';
 
 const MIGRATION_TABLES = [
   'organizations', 'teams', 'seasons', 'players', 'opponents',
@@ -150,6 +154,7 @@ export function AuthProvider({ children }) {
     const priorUid = localStorage.getItem(USER_ID_KEY);
     if (priorUid && priorUid !== uid) clearUserSettings();
     try { localStorage.setItem(USER_ID_KEY, uid); } catch { /* best-effort */ }
+    try { sessionStorage.removeItem(HOME_REDIRECT_KEY); } catch { /* best-effort */ }
     window.location.reload();
   }
 
@@ -161,6 +166,7 @@ export function AuthProvider({ children }) {
     // identical to a genuine account switch and reset all settings for the
     // same coach. The shared-device protection still applies: switchToUser()
     // wipes settings when a *different* account's uid shows up later.
+    try { sessionStorage.removeItem(HOME_REDIRECT_KEY); } catch { /* best-effort */ }
     window.location.reload();
   }
 
