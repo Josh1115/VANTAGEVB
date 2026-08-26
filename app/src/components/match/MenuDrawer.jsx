@@ -50,7 +50,11 @@ const JERSEY_COLORS = [
   { id: 'pink',   label: 'Pink',   bg: '#db2777', border: '#ec4899' },
 ];
 
-export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName, opponentName, onEndMatch }) {
+export function MenuDrawer({
+  onClose, flipLayout = false, onFlipLayout,
+  simpleRotationView = false, onSimpleRotationView,
+  teamName, opponentName, onEndMatch,
+}) {
   const {
     matchId, currentSetId, ourScore, oppScore, fudgeScore,
     endSet, resetCurrentSet, resetToRotation,
@@ -193,6 +197,22 @@ export function MenuDrawer({ onClose, flipLayout = false, onFlipLayout, teamName
             role="switch"
           >
             <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${flipLayout ? 'translate-x-5' : ''}`} />
+          </button>
+        </div>
+
+        {/* ── Simple Rotation View ── */}
+        <div className="flex items-center justify-between py-3 mb-3 border-t border-slate-700">
+          <div>
+            <div className="text-sm font-medium text-white">Simple Rotation View</div>
+            <div className="text-xs text-slate-400 mt-0.5">Keep players in their basic rotation slots — no serve-receive or on-court movement</div>
+          </div>
+          <button
+            onClick={onSimpleRotationView}
+            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${simpleRotationView ? 'bg-primary' : 'bg-slate-600'}`}
+            aria-checked={simpleRotationView}
+            role="switch"
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${simpleRotationView ? 'translate-x-5' : ''}`} />
           </button>
         </div>
 

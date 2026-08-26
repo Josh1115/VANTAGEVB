@@ -287,7 +287,7 @@ function PerfectPassBadge({ x, y }) {
   );
 }
 
-export const CourtGrid = memo(function CourtGrid({ aceZoneHints = {} }) {
+export const CourtGrid = memo(function CourtGrid({ aceZoneHints = {}, simpleRotationView = false }) {
   const {
     lineup, committedContacts, currentSetId, rallyPhase, serveSide,
     rotationNum, liberoId, serveReceiveFormations,
@@ -410,18 +410,20 @@ export const CourtGrid = memo(function CourtGrid({ aceZoneHints = {} }) {
   const subTimersRef   = useRef([]);
 
   const cells = useMemo(() => {
-    if (inRally) return getBaseDisplayOrder(lineup);
-    if (inServeReceive) {
-      const custom = serveReceiveFormations?.[rotationNum];
-      if (custom) {
-        const byServeOrder = {};
-        lineup.forEach((sl) => { byServeOrder[sl.serveOrder - 1] = sl; });
-        return custom.map((soIdx) => byServeOrder[soIdx] ?? null);
+    if (!simpleRotationView) {
+      if (inRally) return getBaseDisplayOrder(lineup);
+      if (inServeReceive) {
+        const custom = serveReceiveFormations?.[rotationNum];
+        if (custom) {
+          const byServeOrder = {};
+          lineup.forEach((sl) => { byServeOrder[sl.serveOrder - 1] = sl; });
+          return custom.map((soIdx) => byServeOrder[soIdx] ?? null);
+        }
+        return getServeReceiveDisplayOrder(lineup);
       }
-      return getServeReceiveDisplayOrder(lineup);
     }
     return GRID_ORDER.map((i) => lineup[i]);
-  }, [lineup, inRally, inServeReceive, serveReceiveFormations, rotationNum]);
+  }, [lineup, inRally, inServeReceive, serveReceiveFormations, rotationNum, simpleRotationView]);
 
   // Sub flash + ghost — runs after cells is computed
   useEffect(() => {

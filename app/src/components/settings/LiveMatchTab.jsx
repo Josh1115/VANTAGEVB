@@ -43,6 +43,7 @@ export function LiveMatchTab() {
   const [soundsOn,   saveSounds]     = useToggleSetting(STORAGE_KEYS.SOUNDS);
   const [flipLayout, saveFlipLayout] = useToggleSetting(STORAGE_KEYS.FLIP_LAYOUT);
   const [assumeSetterRot1, saveAssumeSetterRot1] = useToggleSetting(STORAGE_KEYS.ASSUME_SETTER_ROT1, true);
+  const [simpleRotationView, saveSimpleRotationView] = useToggleSetting(STORAGE_KEYS.SIMPLE_ROTATION_VIEW);
   const [playerNameFormat, savePlayerNameFormat] = useStrSetting(STORAGE_KEYS.PLAYER_NAME_FORMAT, 'initial_last');
   const [rosterSort,       saveRosterSort]       = useStrSetting(STORAGE_KEYS.ROSTER_SORT, 'jersey');
 
@@ -112,6 +113,8 @@ export function LiveMatchTab() {
       <ToggleRow label="Flip Team Layout" description="Show your team on the right side of the scoreboard" checked={flipLayout} onChange={saveFlipLayout} />
 
       <ToggleRow label="Assume Setter is Rotation 1" description="Auto-fill the starting rotation so the setter is always considered ROT 1 during match setup" checked={assumeSetterRot1} onChange={saveAssumeSetterRot1} />
+
+      <ToggleRow label="Simple Rotation View" description="Keep players fixed in their basic rotation slots instead of moving to serve-receive or on-court positions — shows raw serve order and overlap at a glance" checked={simpleRotationView} onChange={saveSimpleRotationView} />
 
     </div>
   );

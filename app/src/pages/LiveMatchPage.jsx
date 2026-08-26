@@ -74,11 +74,20 @@ export function LiveMatchPage() {
   const [seasonId,            setSeasonId]            = useState(null);
   const [hasFamilyScope,      setHasFamilyScope]      = useState(false);
   const [flipLayout,          setFlipLayout]          = useState(() => getBoolStorage(STORAGE_KEYS.FLIP_LAYOUT));
+  const [simpleRotationView,  setSimpleRotationView]  = useState(() => getBoolStorage(STORAGE_KEYS.SIMPLE_ROTATION_VIEW));
 
   const handleToggleFlip = useCallback(() => {
     setFlipLayout((prev) => {
       const next = !prev;
       setBoolStorage(STORAGE_KEYS.FLIP_LAYOUT, next);
+      return next;
+    });
+  }, []);
+
+  const handleToggleSimpleRotationView = useCallback(() => {
+    setSimpleRotationView((prev) => {
+      const next = !prev;
+      setBoolStorage(STORAGE_KEYS.SIMPLE_ROTATION_VIEW, next);
       return next;
     });
   }, []);
@@ -595,7 +604,7 @@ export function LiveMatchPage() {
           hasFamilyScope={hasFamilyScope}
         />
         <div className="flex flex-row flex-1 min-h-0">
-          <CourtGrid aceZoneHints={aceZoneHints} />
+          <CourtGrid aceZoneHints={aceZoneHints} simpleRotationView={simpleRotationView} />
           <OppScoringColumn />
         </div>
       </div>
@@ -643,6 +652,8 @@ export function LiveMatchPage() {
           onClose={() => setMenuOpen(false)}
           flipLayout={flipLayout}
           onFlipLayout={handleToggleFlip}
+          simpleRotationView={simpleRotationView}
+          onSimpleRotationView={handleToggleSimpleRotationView}
           teamName={teamName}
           opponentName={opponentName}
           onEndMatch={async (winner) => {
