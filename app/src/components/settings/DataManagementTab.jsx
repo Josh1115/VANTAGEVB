@@ -6,7 +6,7 @@ import { useUiStore } from '../../store/uiStore';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
 import { supabase } from '../../utils/supabase';
-import { STORAGE_KEYS, setStorageItem } from '../../utils/storage';
+import { STORAGE_KEYS, setStorageItem, getIntStorage } from '../../utils/storage';
 import { useTrimSetting } from '../../hooks/useSettingsStorage';
 import { exportBackup, importBackup, restoreAutoBackup, saveToCloud, restoreFromCloud, syncWithCloud } from '../../stats/backup';
 import { findDuplicatePlayerGroups, findDuplicateOpponentGroups, findDuplicateOrgGroups, findDuplicateTeamGroups } from '../../stats/dedupe';
@@ -57,6 +57,18 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
     if (!total) return null;
     return { total, players: players.length, opponents: opponents.length, orgs: orgs.length, teams: teams.length };
   }, []);
+
+  // Ongoing roster housekeeping check (not just first-time onboarding) — was
+  // previously a dismissible banner on the Dashboard; moved here for the same
+  // reason as the duplicate-records notice above.
+  const defaultTeamId = getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID);
+  const rosterHealth = useLiveQuery(async () => {
+    if (!defaultTeamId) return null;
+    const activePlayers = await db.players.where('team_id').equals(defaultTeamId).filter((p) => p.is_active).toArray();
+    const missingJersey = activePlayers.filter((p) => !p.jersey_number || !String(p.jersey_number).trim());
+    if (activePlayers.length >= 6 && missingJersey.length === 0) return null;
+    return { count: activePlayers.length, missingJersey };
+  }, [defaultTeamId]);
 
   const autoBackups = useLiveQuery(
     () => db.auto_backups.orderBy('created_at').reverse().limit(5).toArray(),
@@ -181,6 +193,29 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
 
   return (
     <div className="p-4 space-y-3">
+      {rosterHealth && (
+        <div className="flex items-start gap-3 bg-amber-900/40 border border-amber-600/50 rounded-xl px-4 py-3">
+          <span className="text-amber-400 text-lg shrink-0">📋</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-amber-300">Roster check</p>
+            <ul className="text-xs text-amber-500 mt-0.5 space-y-0.5 list-disc list-inside">
+              {rosterHealth.count < 6 && (
+                <li>Only {rosterHealth.count} active player{rosterHealth.count === 1 ? '' : 's'} — you need 6 to start a match.</li>
+              )}
+              {rosterHealth.missingJersey.length > 0 && (
+                <li>
+                  {rosterHealth.missingJersey.length} player{rosterHealth.missingJersey.length === 1 ? '' : 's'} missing a jersey number:{' '}
+                  {rosterHealth.missingJersey.map((p) => p.name).join(', ')}
+                </li>
+              )}
+            </ul>
+            <button onClick={() => navigate(`/teams/${defaultTeamId}`)} className="text-xs text-amber-400 underline hover:text-amber-300 transition-colors mt-1">
+              Go to Roster →
+            </button>
+          </div>
+        </div>
+      )}
+
       <div>
         <label className="block text-sm font-medium mb-1">MaxPreps Team ID</label>
         <div className="text-xs text-slate-400 mb-2">
