@@ -811,14 +811,17 @@ function VantageArrow() {
 const GENDER_ORDER = ['F', 'M', 'Mixed', null];
 const GENDER_LABELS = { F: 'Girls', M: 'Boys', Mixed: 'Mixed' };
 
-function TeamRow({ team, onSelectTeam, onEditTeam, onDeleteTeam }) {
+function TeamRow({ team, isActive, onSelectTeam, onEditTeam, onDeleteTeam }) {
   return (
     <div className="flex items-center hover:bg-slate-700 transition-colors">
       <button
         onClick={() => onSelectTeam(team.id)}
         className="flex-1 px-5 py-4 flex items-center justify-between"
       >
-        <div className="font-semibold text-base">{team.name}</div>
+        <div className="font-semibold text-base flex items-center gap-2">
+          {team.name}
+          {isActive && <Badge color="green">ACTIVE</Badge>}
+        </div>
         <div className="flex items-center gap-2.5">
           <Badge color="gray">VIEW</Badge>
           <VantageArrow />
@@ -863,6 +866,15 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
       if (y && map[s.team_id]) map[s.team_id].push(y);
     }
     return map;
+  }, [teams]);
+
+  // Teams with at least one season not marked 'ended' — same rule used
+  // elsewhere (countActiveSeasonTeams) for the per-season team limit.
+  const activeTeamIds = useLiveQuery(async () => {
+    if (!teams?.length) return new Set();
+    const teamIds = teams.map((t) => t.id);
+    const openSeasons = await db.seasons.where('team_id').anyOf(teamIds).filter(s => s.status !== 'ended').toArray();
+    return new Set(openSeasons.map((s) => s.team_id));
   }, [teams]);
 
   const genderGroups = GENDER_ORDER
@@ -930,6 +942,7 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
               <TeamRow
                 key={team.id}
                 team={team}
+                isActive={activeTeamIds?.has(team.id)}
                 onSelectTeam={onSelectTeam}
                 onEditTeam={onEditTeam}
                 onDeleteTeam={onDeleteTeam}
@@ -956,6 +969,7 @@ function OrgSection({ org, onEditOrg, onDeleteOrg, onAddTeam, onEditTeam, onDele
                 <TeamRow
                   key={team.id}
                   team={team}
+                  isActive={activeTeamIds?.has(team.id)}
                   onSelectTeam={onSelectTeam}
                   onEditTeam={onEditTeam}
                   onDeleteTeam={onDeleteTeam}
