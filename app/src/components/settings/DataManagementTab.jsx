@@ -96,7 +96,7 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
     try {
       await syncWithCloud(supabase, session, { teamsAllowed, matchLimit, isMaster });
       setLastCloudSave(new Date().toISOString());
-      showToast('Saved to cloud', 'success');
+      showToast('Saved to cloud — close the app so other devices pick it up.', 'success');
       onStorageChange?.();
     } catch (e) {
       showToast(e.message ?? 'Cloud save failed', 'error');
@@ -303,6 +303,9 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
           </div>
           <p className="text-[11px] text-slate-500 mt-1.5">
             Pulls in matches from your other devices and pushes this one's up — use this if a match isn't showing up everywhere yet.
+          </p>
+          <p className="text-[11px] text-amber-500 mt-1">
+            After syncing, fully close the app so other devices can see this update.
           </p>
           <p className="text-[11px] text-slate-500 mt-1">
             {lastCloudSave

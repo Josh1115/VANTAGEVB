@@ -418,7 +418,7 @@ export function HomePage() {
     setCloudSaving(true);
     try {
       await syncWithCloud(supabase, session, { teamsAllowed, matchLimit, isMaster });
-      showToast('Saved to cloud', 'success');
+      showToast('Saved to cloud — close the app so other devices pick it up.', 'success');
     } catch (e) {
       showToast(e.message ?? 'Cloud save failed', 'error');
     } finally {
@@ -1544,6 +1544,9 @@ export function HomePage() {
             >
               {cloudSaving ? 'Syncing…' : 'Sync Now'}
             </Button>
+            <p className="text-[11px] text-amber-500 text-center mt-1">
+              After syncing, fully close the app so other devices can see this update.
+            </p>
           </div>
         )}
 
