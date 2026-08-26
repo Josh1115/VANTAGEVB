@@ -296,6 +296,20 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Try a sync the moment the device regains a connection — covers a device
+  // that finished a match while offline (gym wifi, no signal) and would
+  // otherwise just sit there until someone happens to reopen the app. Best
+  // effort: the 'online' event isn't a perfect signal (some devices fire it
+  // for a wifi connection with no real internet), but it's a real improvement
+  // over waiting on the user to notice. autoSync() already fails silently and
+  // re-checks the DB-user guard, so this is safe to fire opportunistically.
+  useEffect(() => {
+    if (!session) return;
+    const handleOnline = () => autoSync(session);
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [session]);
+
   async function signOut() {
     await supabase.auth.signOut();
   }

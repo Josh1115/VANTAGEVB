@@ -13,6 +13,8 @@ import { LineupForm } from '../components/match/LineupForm';
 import { usePlan } from '../hooks/usePlan';
 import { PvShareSheet } from '../components/parentvantage/PvShareSheet';
 import { supabase, consumeMatchSlotStrict } from '../utils/supabase';
+import { useAuth } from '../contexts/AuthContext';
+import { autoSaveBackup } from '../stats/backup';
 
 
 export function MatchSetupPage() {
@@ -26,7 +28,8 @@ export function MatchSetupPage() {
   const rawMatchId = searchParams.get('match');
   const scheduledMatchId = rawMatchId ? parseInt(rawMatchId, 10) || null : null;
 
-  const { isMaster, plan, matchLimit } = usePlan();
+  const { isMaster, plan, matchLimit, teamsAllowed } = usePlan();
+  const { session } = useAuth();
 
   const [seasonId,  setSeasonId]  = useState(searchParams.get('season') ?? '');
   const [opponent,           setOpponent]           = useState('');
@@ -291,6 +294,9 @@ export function MatchSetupPage() {
       const savedMatch = await db.matches.get(matchId);
       setPvShareMatch(savedMatch);
       setPvNav(`/matches/${matchId}/summary`);
+      // Push right away instead of waiting for the next app-open/manual sync —
+      // fire-and-forget, same pattern as the live-scoring finish flow.
+      autoSaveBackup('match_end', { session, teamsAllowed, matchLimit, isMaster }).catch(() => {});
     } catch (err) {
       if (err.code === 'MATCH_LIMIT') { setError('This season has reached its match limit.'); return; }
       showToast('Failed to save match. Try again.', 'error');

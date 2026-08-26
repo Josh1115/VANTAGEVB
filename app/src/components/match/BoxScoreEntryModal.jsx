@@ -3,6 +3,9 @@ import { db } from '../../db/schema';
 import { useMatchStore } from '../../store/matchStore';
 import { useUiStore, selectShowToast } from '../../store/uiStore';
 import { SIDE, SET_STATUS, MATCH_STATUS, FORMAT } from '../../constants';
+import { useAuth } from '../../contexts/AuthContext';
+import { usePlan } from '../../hooks/usePlan';
+import { autoSaveBackup } from '../../stats/backup';
 
 const STAT_FIELDS = [
   { key: 'sa',  label: 'SA'  },
@@ -79,6 +82,8 @@ function buildContacts(matchId, setId, playerId, fields) {
 export function BoxScoreEntryModal({ set, matchId, players, onClose, onSaved }) {
   const reviseSet  = useMatchStore((s) => s.reviseSet);
   const showToast  = useUiStore(selectShowToast);
+  const { session } = useAuth();
+  const { teamsAllowed, matchLimit, isMaster } = usePlan();
 
   // Step: 'select' → pick players; 'stats' → enter stats
   const [step, setStep] = useState('select');
@@ -172,6 +177,9 @@ export function BoxScoreEntryModal({ set, matchId, players, onClose, onSaved }) 
           .where('match_id').equals(matchId)
           .filter((row) => row.status === SET_STATUS.IN_PROGRESS)
           .delete();
+        // Push right away instead of waiting for the next app-open/manual sync —
+        // fire-and-forget, same pattern as the live-scoring finish flow.
+        autoSaveBackup('match_end', { session, teamsAllowed, matchLimit, isMaster }).catch(() => {});
       } else {
         await db.matches.update(matchId, {
           our_sets_won: newSetsUs,

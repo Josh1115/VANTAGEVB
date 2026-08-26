@@ -743,6 +743,7 @@ export function LiveMatchPage() {
               try {
               if (isRevising) {
                 await finishRevisedSet(pendingSetWin);
+                autoSaveBackup('match_end', { session, teamsAllowed, matchLimit, isMaster }).catch(() => {});
                 clearPendingSetWin();
                 navigate(`/matches/${matchIdParam}/summary`);
               } else if (isMatchOver) {
