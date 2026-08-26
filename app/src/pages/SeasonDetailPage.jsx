@@ -96,13 +96,17 @@ export function SeasonDetailPage() {
     return {
       team: ts,
       teamId: season.team_id,
+      // Only APR carries a minimum-attempts qualifier — it's a rate stat, so a
+      // tiny sample can be misleadingly high/low. The counting stats below
+      // (kills, aces, blocks, digs, assists, reception count) have no minimum:
+      // whoever has the most, leads, from match one.
       leaders: {
-        kills:   findLeader(s => (s.ta  ?? 0) >= 10 ? (s.k   ?? 0) : 0),
-        aces:    findLeader(s => (s.sa  ?? 0) >= 10 ? (s.ace  ?? 0) : 0),
-        blocks:  findLeader(s => (s.bs ?? 0) + (s.ba ?? 0) + (s.be ?? 0) >= 10 ? (s.bs ?? 0) + (s.ba ?? 0) : 0),
-        digs:    findLeader(s => (s.dig ?? 0) >= 10 ? (s.dig  ?? 0) : 0),
-        assists: findLeader(s => (s.ast ?? 0) >= 10 ? (s.ast ?? 0) : 0),
-        rec:     findLeader(s => (s.pa  ?? 0) >= 10 ? (s.pa   ?? 0) : 0),
+        kills:   findLeader(s => s.k   ?? 0),
+        aces:    findLeader(s => s.ace  ?? 0),
+        blocks:  findLeader(s => (s.bs ?? 0) + (s.ba ?? 0)),
+        digs:    findLeader(s => s.dig  ?? 0),
+        assists: findLeader(s => s.ast ?? 0),
+        rec:     findLeader(s => s.pa   ?? 0),
         apr:     findLeader(s => (s.pa  ?? 0) >= 10 ? (s.apr  ?? 0) : 0),
       },
     };
