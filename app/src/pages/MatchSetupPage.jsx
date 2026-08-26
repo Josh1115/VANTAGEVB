@@ -314,6 +314,29 @@ export function MatchSetupPage() {
 
       const oppRecord = await resolveOpponent(opponent);
 
+      // If this wasn't reached via its own scheduled-match link (e.g. a
+      // quick-start button instead of tapping the schedule card), check
+      // whether a still-scheduled match already exists for this same
+      // team/opponent/date and continue that record instead of creating a
+      // fresh one. Keeps one real-world game as one match ID through its
+      // whole scheduled → in-progress → complete lifecycle, so cross-device
+      // sync recognizes it as the same game instead of two disconnected
+      // records that can never reconcile with each other.
+      let linkedMatchId     = scheduledMatchId;
+      let linkedMatchRecord = scheduledMatch;
+      if (!linkedMatchId) {
+        const existing = await db.matches
+          .where('season_id').equals(Number(seasonId))
+          .filter((m) => m.opponent_id === oppRecord.id
+            && m.status === MATCH_STATUS.SCHEDULED
+            && (m.date ?? '').slice(0, 10) === matchDate)
+          .first();
+        if (existing) {
+          linkedMatchId     = existing.id;
+          linkedMatchRecord = existing;
+        }
+      }
+
       // Shared fields for both the update (scheduled) and add (new) paths
       const matchPayload = {
         opponent_id:            oppRecord.id,
@@ -346,7 +369,7 @@ export function MatchSetupPage() {
       // scheduling; other plans keep the best-effort/offline-tolerant check
       // since their real limit is the local per-season count below.
       let effectiveMatchId;
-      if (!isMaster && !scheduledMatchId) {
+      if (!isMaster && !linkedMatchId) {
         if (plan === 'trial') {
           const slot = await consumeMatchSlotStrict();
           if (slot) {
@@ -371,13 +394,13 @@ export function MatchSetupPage() {
           }
         }
       }
-      if (scheduledMatchId) {
-        await db.matches.update(scheduledMatchId, {
+      if (linkedMatchId) {
+        await db.matches.update(linkedMatchId, {
           ...matchPayload,
-          pv_token: scheduledMatch?.pv_token ?? crypto.randomUUID(),
-          date:     scheduledMatch?.date ?? new Date().toISOString(),
+          pv_token: linkedMatchRecord?.pv_token ?? crypto.randomUUID(),
+          date:     linkedMatchRecord?.date ?? new Date().toISOString(),
         });
-        effectiveMatchId = scheduledMatchId;
+        effectiveMatchId = linkedMatchId;
       } else {
         effectiveMatchId = await db.transaction('rw', [db.matches, db.seasons], async () => {
           const [liveCount, season, totalCount] = await Promise.all([

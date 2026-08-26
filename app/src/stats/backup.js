@@ -3,6 +3,7 @@ import { STORAGE_KEYS } from '../utils/storage';
 import { supabase } from '../utils/supabase';
 import { parseMergePreviewFromData, executeMerge, tombstoneKeyForMatch } from './merge';
 import { deleteMatch } from './queries';
+import { MATCH_STATUS } from '../constants';
 
 const BACKUP_VERSION = 1;
 
@@ -314,10 +315,18 @@ export async function syncWithCloud(supabase, session, { teamsAllowed = Infinity
     const decisions = {};
     // No one is present to resolve conflicts during an automatic sync — default to
     // keeping the local version so this can never silently overwrite a match someone
-    // is actively scoring on this device. True same-game conflicts are rare (it would
-    // take two devices editing the identical opponent/date/team) and can still be
-    // resolved manually via Import & Merge.
-    for (const c of preview.conflicts) decisions[c.importedId] = 'keep';
+    // is actively scoring on this device. One safe exception: if this device's copy
+    // is still an untouched "scheduled" placeholder (never started, nothing to lose)
+    // and the incoming copy has real progress (in-progress or complete), there's no
+    // live scoring at risk — take the more-advanced version instead of leaving the
+    // placeholder stuck forever no matter how many times sync runs. Any other pairing
+    // (both already started, or the local copy is itself further along) still
+    // defaults to 'keep' and can be resolved manually via Import & Merge.
+    for (const c of preview.conflicts) {
+      const localUntouched = c.current.status === MATCH_STATUS.SCHEDULED;
+      const incomingFurtherAlong = c.imported.status !== MATCH_STATUS.SCHEDULED;
+      decisions[c.importedId] = (localUntouched && incomingFurtherAlong) ? 'replace' : 'keep';
+    }
     await executeMerge(preview, decisions, { isMaster, matchLimit });
   }
 
