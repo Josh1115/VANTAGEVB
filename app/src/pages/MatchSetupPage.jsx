@@ -15,6 +15,7 @@ import { PvShareSheet } from '../components/parentvantage/PvShareSheet';
 import { supabase, consumeMatchSlotStrict } from '../utils/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { autoSaveBackup } from '../stats/backup';
+import { clearMatchTombstone } from '../stats/merge';
 
 
 export function MatchSetupPage() {
@@ -296,6 +297,8 @@ export function MatchSetupPage() {
       );
 
       const savedMatch = await db.matches.get(matchId);
+      // Undo any "deleted" marker for this same game so the next sync keeps it.
+      if (savedMatch) await clearMatchTombstone(savedMatch);
       setPvShareMatch(savedMatch);
       setPvNav(`/matches/${matchId}/summary`);
       // Push right away instead of waiting for the next app-open/manual sync —
@@ -480,6 +483,8 @@ export function MatchSetupPage() {
       );
 
       const savedMatch = await db.matches.get(effectiveMatchId);
+      // Undo any "deleted" marker for this same game so the next sync keeps it.
+      if (savedMatch) await clearMatchTombstone(savedMatch);
       setPvShareMatch(savedMatch);
       setPvNav(`/matches/${effectiveMatchId}/live`);
     } catch (err) {

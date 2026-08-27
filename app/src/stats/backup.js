@@ -1,7 +1,7 @@
 import { db } from '../db/schema';
 import { STORAGE_KEYS } from '../utils/storage';
 import { supabase } from '../utils/supabase';
-import { parseMergePreviewFromData, executeMerge, tombstoneKeyForMatch } from './merge';
+import { parseMergePreviewFromData, executeMerge, tombstoneKeyForMatch, isMatchTombstoneOutdated } from './merge';
 import { deleteMatch } from './queries';
 import { MATCH_STATUS } from '../constants';
 
@@ -107,7 +107,7 @@ async function applyBackupData(data) {
 async function removeTombstonedMatches() {
   const tombstones = await db.tombstones.where('type').equals('match').toArray();
   if (!tombstones.length) return;
-  const tombstoneSet = new Set(tombstones.map(t => t.key));
+  const tombByKey = new Map(tombstones.map(t => [t.key, t]));
 
   const [orgs, teams, seasons, matches] = await Promise.all([
     db.organizations.toArray(), db.teams.toArray(), db.seasons.toArray(), db.matches.toArray(),
@@ -121,8 +121,11 @@ async function removeTombstonedMatches() {
     const team   = season ? teamById.get(season.team_id) : null;
     const org    = team ? orgById.get(team.org_id) : null;
     if (!season || !team || !org) continue;
-    const key = tombstoneKeyForMatch(org.name, team, season.year, m);
-    if (tombstoneSet.has(key)) await deleteMatch(m.id);
+    const tomb = tombByKey.get(tombstoneKeyForMatch(org.name, team, season.year, m));
+    if (!tomb) continue;
+    // The game was re-created after this delete — drop the stale marker, keep it.
+    if (isMatchTombstoneOutdated(tomb, m)) { await db.tombstones.delete(tomb.id); continue; }
+    await deleteMatch(m.id);
   }
 }
 

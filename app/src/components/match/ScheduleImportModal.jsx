@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import Papa from 'papaparse';
 import { db } from '../../db/schema';
 import { MATCH_STATUS } from '../../constants';
+import { clearMatchTombstone } from '../../stats/merge';
 import { useUiStore, selectShowToast } from '../../store/uiStore';
 import { usePlan } from '../../hooks/usePlan';
 import { Modal } from '../ui/Modal';
@@ -153,6 +154,8 @@ export function ScheduleImportModal({ seasonId, onClose }) {
         added++;
         effectiveCount++;
         await db.seasons.update(seasonId, { peak_match_count: effectiveCount });
+        // Undo any "deleted" marker for this same game so the next sync keeps it.
+        await clearMatchTombstone({ season_id: seasonId, opponent_name: opp.name, date: dateStr });
       }
 
       if (skipped > 0) {

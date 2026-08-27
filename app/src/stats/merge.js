@@ -85,6 +85,34 @@ export async function addTombstone(type, key) {
   await db.tombstones.add({ type, key, deleted_at: new Date().toISOString() });
 }
 
+// A match tombstone is "outdated" once a match with the same natural key exists
+// that was created/edited AFTER the delete was recorded — i.e. the user
+// deliberately put the game back. In that case the re-created match wins and the
+// tombstone should be dropped so it stops deleting it on every sync.
+export function isMatchTombstoneOutdated(tomb, match) {
+  const mts = match?.updated_at ?? '';
+  return !!tomb?.deleted_at && mts !== '' && mts > tomb.deleted_at;
+}
+
+// Inverse of the delete → addTombstone path: when the user deliberately
+// (re-)creates a match, drop any "deleted" marker for the same game (same
+// opponent + date within the season) so the next cloud sync doesn't remove the
+// new one. Safe to call on every match create/schedule.
+export async function clearMatchTombstone(match) {
+  if (!match || match.season_id == null) return;
+  try {
+    const season = await db.seasons.get(match.season_id);
+    const team   = season ? await db.teams.get(season.team_id) : null;
+    const org    = team ? await db.organizations.get(team.org_id) : null;
+    if (!season || !team || !org) return;
+    const key = tombstoneKeyForMatch(org.name, team, season.year, match);
+    await db.tombstones.where('[type+key]').equals(['match', key]).delete();
+  } catch {
+    // Best-effort — if this fails the marker stays and the sync-time staleness
+    // check (isMatchTombstoneOutdated) still clears it on the next sync.
+  }
+}
+
 // ── Phase 1 — Preview (read-only) ─────────────────────────────────────────────
 
 export async function parseMergePreview(file) {
@@ -129,6 +157,7 @@ export async function parseMergePreviewFromData(data) {
   const exTeamById    = new Map(exTeams.map(t   => [t.id, t]));
   const exSeasonById  = new Map(exSeasons.map(s => [s.id, s]));
   const tombstoneSet  = new Set(exTombstones.map(t => `${t.type}::${t.key}`));
+  const matchTombByKey = new Map(exTombstones.filter(t => t.type === 'match').map(t => [t.key, t]));
 
   const exContactsByMatch = new Map();
   for (const c of exContacts) {
@@ -189,13 +218,15 @@ export async function parseMergePreviewFromData(data) {
 
     const exMatch = pickExisting(m, exMatchByUid, exMatchByKey, `${exSeasonId}|${nkMatch(m)}`);
     if (!exMatch) {
-      // Don't offer to re-add a match the user deliberately deleted on this device.
+      // Don't offer to re-add a match the user deliberately deleted on this
+      // device — unless the incoming copy is newer than that delete, meaning
+      // the game was intentionally re-created somewhere.
       const season = exSeasonById.get(exSeasonId);
       const team   = season ? exTeamById.get(season.team_id) : null;
       const org    = team ? exOrgById.get(team.org_id) : null;
       if (season && team && org) {
-        const key = tombstoneKeyForMatch(org.name, team, season.year, m);
-        if (tombstoneSet.has(`match::${key}`)) continue;
+        const tomb = matchTombByKey.get(tombstoneKeyForMatch(org.name, team, season.year, m));
+        if (tomb && !isMatchTombstoneOutdated(tomb, m)) continue;
       }
       newMatches.push(info);
     } else {
@@ -295,7 +326,20 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
       }
       if (toAdd.length) await db.tombstones.bulkAdd(toAdd);
     }
-    const tombstoneSet = new Set((await db.tombstones.toArray()).map(t => `${t.type}::${t.key}`));
+    const allTombRows  = await db.tombstones.toArray();
+    const tombstoneSet  = new Set(allTombRows.map(t => `${t.type}::${t.key}`));
+    const matchTombByKey = new Map(allTombRows.filter(t => t.type === 'match').map(t => [t.key, t]));
+
+    // Drop a stale match tombstone (locally + from the working sets) once the
+    // user has re-created the game it was blocking. Returns true when dropped.
+    async function dropTombstoneIfOutdated(key, match) {
+      const tomb = matchTombByKey.get(key);
+      if (!tomb || !isMatchTombstoneOutdated(tomb, match)) return false;
+      await db.tombstones.delete(tomb.id);
+      matchTombByKey.delete(key);
+      tombstoneSet.delete(`match::${key}`);
+      return true;
+    }
 
     // ── 1. Organizations ───────────────────────────────────────────────────
     for (const o of data.organizations) {
@@ -430,11 +474,13 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
       const orgName = team ? orgNameById.get(team.org_id) : null;
       if (!season || !team || orgName == null) continue;
       const key = tombstoneKeyForMatch(orgName, team, season.year, m);
-      if (tombstoneSet.has(`match::${key}`)) {
-        await cascadeDeleteMatchRow(m.id);
-        exMatchByKey.delete(`${m.season_id}|${nkMatch(m)}`);
-        matchesTombstoned++;
-      }
+      if (!matchTombByKey.has(key)) continue;
+      // The user re-created this game after the delete — drop the stale marker
+      // and keep the match instead of deleting it again.
+      if (await dropTombstoneIfOutdated(key, m)) continue;
+      await cascadeDeleteMatchRow(m.id);
+      exMatchByKey.delete(`${m.season_id}|${nkMatch(m)}`);
+      matchesTombstoned++;
     }
 
     // ── 6. Matches ─────────────────────────────────────────────────────────
@@ -447,14 +493,19 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
 
       if (decision === 'keep') continue;
 
-      // Don't resurrect a match the user deliberately deleted on this device.
+      // Don't resurrect a match the user deliberately deleted on this device —
+      // unless the incoming copy is newer than that delete, meaning the game was
+      // intentionally re-created elsewhere (then drop the stale marker).
       if (decision == null) {
         const season = seasonById.get(exSeasonId);
         const team   = season ? teamById.get(season.team_id) : null;
         const orgName = team ? orgNameById.get(team.org_id) : null;
         if (season && team && orgName != null) {
           const key = tombstoneKeyForMatch(orgName, team, season.year, impMatch);
-          if (tombstoneSet.has(`match::${key}`)) { matchesTombstoned++; continue; }
+          if (matchTombByKey.has(key) && !(await dropTombstoneIfOutdated(key, impMatch))) {
+            matchesTombstoned++;
+            continue;
+          }
         }
       }
 

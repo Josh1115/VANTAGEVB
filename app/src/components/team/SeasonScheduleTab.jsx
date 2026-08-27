@@ -8,6 +8,7 @@ import { computeMatchStats, computeTeamStats, computePlayerStats } from '../../s
 import { exportMaxPrepsCSV } from '../../stats/export';
 import { getStorageItem, STORAGE_KEYS, getPlayoffLabel } from '../../utils/storage';
 import { deleteMatch } from '../../stats/queries';
+import { clearMatchTombstone } from '../../stats/merge';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
@@ -290,6 +291,8 @@ export function SeasonScheduleTab({ seasonId }) {
           await db.matches.add({ season_id: seasonId, status: MATCH_STATUS.SCHEDULED, pv_token: crypto.randomUUID(), ...fields });
           await db.seasons.update(seasonId, { peak_match_count: effective + 1 });
         });
+        // Undo any "deleted" marker for this same game so the next sync keeps it.
+        await clearMatchTombstone({ season_id: seasonId, opponent_name: fields.opponent_name, date: fields.date });
       }
       resetSchedForm();
     } catch (e) {
