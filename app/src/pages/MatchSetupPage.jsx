@@ -27,6 +27,10 @@ export function MatchSetupPage() {
 
   const rawMatchId = searchParams.get('match');
   const scheduledMatchId = rawMatchId ? parseInt(rawMatchId, 10) || null : null;
+  // Reached via a scheduled game's "Start" button: this match already had its
+  // slot confirmed when it was scheduled, so the create-a-new-match limit must
+  // not block starting it (the button gate / warning banners below).
+  const startingScheduled = scheduledMatchId != null;
 
   const { isMaster, plan, matchLimit, teamsAllowed } = usePlan();
   const { session } = useAuth();
@@ -493,19 +497,28 @@ export function MatchSetupPage() {
 
       <div className="p-4 md:p-6 space-y-5 max-w-lg mx-auto">
 
-        {/* Season match limit warning */}
-        {!isMaster && selectedSeason && seasonMatchCount !== undefined && seasonMatchCount >= matchLimit && (
+        {/* Season match limit warning — skipped when starting an already-scheduled
+            match, since that match's slot was already accounted for. */}
+        {!isMaster && !startingScheduled && selectedSeason && seasonMatchCount !== undefined && seasonMatchCount >= matchLimit && (
           <div className="rounded-xl border border-red-700/50 bg-red-900/20 px-4 py-3">
             <p className="text-sm text-red-300">
-              Your trial has reached the <span className="font-black">{matchLimit}-match</span> limit.{' '}
-              <a href="/upgrade" className="underline font-semibold">Upgrade to continue.</a>
+              {plan === 'trial' ? (
+                <>
+                  Your trial has reached the <span className="font-black">{matchLimit}-match</span> limit.{' '}
+                  <a href="/upgrade" className="underline font-semibold">Upgrade to continue.</a>
+                </>
+              ) : (
+                <>This season has reached its <span className="font-black">{matchLimit}-match</span> limit.</>
+              )}
             </p>
           </div>
         )}
-        {!isMaster && selectedSeason && seasonMatchCount !== undefined && seasonMatchCount >= Math.floor(matchLimit * 0.9) && seasonMatchCount < matchLimit && (
+        {!isMaster && !startingScheduled && selectedSeason && seasonMatchCount !== undefined && seasonMatchCount >= Math.floor(matchLimit * 0.9) && seasonMatchCount < matchLimit && (
           <div className="rounded-xl border border-amber-700/50 bg-amber-900/20 px-4 py-3">
             <p className="text-sm text-amber-300">
-              Trial match <span className="font-black">{seasonMatchCount + 1} of {matchLimit}</span>.
+              {plan === 'trial'
+                ? <>Trial match <span className="font-black">{seasonMatchCount + 1} of {matchLimit}</span>.</>
+                : <>Match <span className="font-black">{seasonMatchCount + 1} of {matchLimit}</span> this season.</>}
             </p>
           </div>
         )}
@@ -1017,7 +1030,7 @@ export function MatchSetupPage() {
             {saving ? 'Saving…' : 'Save Match'}
           </Button>
         ) : (
-          <Button size="lg" className="w-full" disabled={saving || (!isMaster && seasonMatchCount >= matchLimit)} onClick={handleStart}>
+          <Button size="lg" className="w-full" disabled={saving || (!isMaster && !startingScheduled && seasonMatchCount >= matchLimit)} onClick={handleStart}>
             {saving ? 'Creating…' : 'Start Match'}
           </Button>
         )}
