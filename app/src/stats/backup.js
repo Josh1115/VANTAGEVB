@@ -3,7 +3,7 @@ import { STORAGE_KEYS } from '../utils/storage';
 import { supabase } from '../utils/supabase';
 import { parseMergePreviewFromData, executeMerge, tombstoneKeyForMatch, isMatchTombstoneOutdated } from './merge';
 import { deleteMatch } from './queries';
-import { MATCH_STATUS } from '../constants';
+import { MATCH_STATUS, TRIAL_MATCH_LIMIT } from '../constants';
 
 const BACKUP_VERSION = 1;
 
@@ -55,6 +55,32 @@ function migrateBackup(data) {
 function activeSeasonTeamCount(data) {
   const seasons = Array.isArray(data.seasons) ? data.seasons : [];
   return new Set(seasons.filter((s) => s.status !== 'ended').map((s) => s.team_id)).size;
+}
+
+// Whether a backup payload exceeds the plan's match allowance. Every paid plan
+// allows N matches per season — the same basis live match creation enforces —
+// so restore must compare against the biggest single season, not the grand
+// total (a multi-season coach can legitimately be well over N overall). The
+// trial allowance is a whole-account total (server-enforced via
+// profiles.matches_created), so for trial it stays a total.
+// Returns { count, perSeason } when over the limit, else null.
+function matchLimitOverage(data, matchLimit) {
+  if (!isFinite(matchLimit)) return null; // master / inactive — no cap
+  const matches = Array.isArray(data.matches) ? data.matches : [];
+  const perSeason = matchLimit !== TRIAL_MATCH_LIMIT;
+  if (!perSeason) {
+    return matches.length > matchLimit ? { count: matches.length, perSeason } : null;
+  }
+  const bySeason = new Map();
+  for (const m of matches) bySeason.set(m.season_id, (bySeason.get(m.season_id) ?? 0) + 1);
+  const peak = bySeason.size ? Math.max(...bySeason.values()) : 0;
+  return peak > matchLimit ? { count: peak, perSeason } : null;
+}
+
+function matchLimitError(over, matchLimit, verb) {
+  return new Error(over.perSeason
+    ? `This backup has a season with ${over.count} matches; your plan allows ${matchLimit} per season. Upgrade before ${verb}.`
+    : `This backup has ${over.count} matches; your plan allows ${matchLimit}. Upgrade before ${verb}.`);
 }
 
 async function collectBackupData() {
@@ -169,14 +195,12 @@ export async function restoreAutoBackup(backupId, { teamsAllowed = Infinity, mat
     throw new Error(`Backup is missing required tables: ${missingTables.join(', ')}`);
   }
 
-  const backupTeamCount  = activeSeasonTeamCount(data);
-  const backupMatchCount = Array.isArray(data.matches)  ? data.matches.length : 0;
+  const backupTeamCount = activeSeasonTeamCount(data);
   if (teamsAllowed < 99 && backupTeamCount > teamsAllowed) {
     throw new Error(`Backup has ${backupTeamCount} active teams but your plan allows ${teamsAllowed}. Upgrade before restoring.`);
   }
-  if (isFinite(matchLimit) && backupMatchCount > matchLimit) {
-    throw new Error(`Backup has ${backupMatchCount} matches but your plan allows ${matchLimit}. Upgrade before restoring.`);
-  }
+  const over = matchLimitOverage(data, matchLimit);
+  if (over) throw matchLimitError(over, matchLimit, 'restoring');
 
   const tablesForTx = db.tables.filter((t) => t.name !== 'auto_backups');
   await db.transaction('rw', tablesForTx, async () => {
@@ -223,14 +247,12 @@ export async function importBackup(file, { teamsAllowed = Infinity, matchLimit =
     throw new Error(`Invalid backup: missing required tables: ${missingTables.join(', ')}`);
   }
 
-  const backupTeamCount  = activeSeasonTeamCount(data);
-  const backupMatchCount = Array.isArray(data.matches)  ? data.matches.length : 0;
+  const backupTeamCount = activeSeasonTeamCount(data);
   if (teamsAllowed < 99 && backupTeamCount > teamsAllowed) {
     throw new Error(`Backup has ${backupTeamCount} active teams but your plan allows ${teamsAllowed}. Upgrade before importing.`);
   }
-  if (isFinite(matchLimit) && backupMatchCount > matchLimit) {
-    throw new Error(`Backup has ${backupMatchCount} matches but your plan allows ${matchLimit} per season. Upgrade before importing.`);
-  }
+  const over = matchLimitOverage(data, matchLimit);
+  if (over) throw matchLimitError(over, matchLimit, 'importing');
 
   await applyBackupData(data);
 }
@@ -265,21 +287,21 @@ export async function restoreFromCloud(supabase, { teamsAllowed = Infinity, matc
     throw new Error(`Cloud backup is missing required tables: ${missingTables.join(', ')}`);
   }
 
-  const backupTeamCount  = activeSeasonTeamCount(payload);
-  const backupMatchCount = Array.isArray(payload.matches)  ? payload.matches.length : 0;
+  const backupTeamCount = activeSeasonTeamCount(payload);
   if (teamsAllowed < 99 && backupTeamCount > teamsAllowed) {
     throw new Error(`Cloud backup has ${backupTeamCount} active teams but your plan allows ${teamsAllowed}. Upgrade before restoring.`);
   }
-  if (isFinite(matchLimit) && backupMatchCount > matchLimit) {
-    throw new Error(`Cloud backup has ${backupMatchCount} matches but your plan allows ${matchLimit}. Upgrade before restoring.`);
-  }
+  const over = matchLimitOverage(payload, matchLimit);
+  if (over) throw matchLimitError(over, matchLimit, 'restoring');
 
   await applyBackupData(payload);
 
-  // Sync the server-side match counter so trial limits reflect restored data
+  // Sync the server-side trial counter (a whole-account total) to the restored
+  // data so trial limits stay accurate after a restore.
+  const totalMatches = Array.isArray(payload.matches) ? payload.matches.length : 0;
   await supabase
     .from('profiles')
-    .update({ matches_created: backupMatchCount })
+    .update({ matches_created: totalMatches })
     .eq('id', user.id);
 }
 
