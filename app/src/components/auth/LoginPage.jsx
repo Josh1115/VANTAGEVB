@@ -8,6 +8,13 @@ import { PENDING_PLAN_KEY } from '../../utils/checkout';
 const PROGRAM_COUNT_CACHE_KEY = 'vantage_program_count_il';
 const PROGRAM_COUNT_CACHE_MS = 24 * 60 * 60 * 1000;
 
+const TESTIMONIALS = [
+  { quote: 'It covers every base!', author: null },
+  { quote: 'It has made my life so much easier and given me access to everything I need in-match and post game.', author: 'Grace' },
+  { quote: 'My assistant coach was blown away by the match breakdown in our meeting after the game.', author: 'Fieldcrest HS' },
+  { quote: '[Vantage] is so intuitive and in-depth, running the trial was amazing', author: null },
+];
+
 function friendlyAuthError(msg) {
   if (!msg) return 'Something went wrong. Please try again.';
   // Never expose raw JWTs or Bearer tokens to the user
@@ -32,6 +39,8 @@ export function LoginPage({ onSignup }) {
   const [pricingOpen,  setPricingOpen]  = useState(true);
   const [captchaToken, setCaptchaToken] = useState(null);
   const [programCount, setProgramCount] = useState(null);
+  const [testimonialIdx,     setTestimonialIdx]     = useState(() => Math.floor(Math.random() * TESTIMONIALS.length));
+  const [testimonialVisible, setTestimonialVisible] = useState(true);
   const passRef = useRef(null);
   const turnstileRef = useRef(null);
 
@@ -57,6 +66,29 @@ export function LoginPage({ onSignup }) {
   useEffect(() => {
     if (showForm) window.scrollTo({ top: 0, behavior: 'instant' });
   }, [showForm]);
+
+  useEffect(() => {
+    if (TESTIMONIALS.length <= 1) return;
+    const HOLD_MS = 6000;
+    const FADE_MS = 500;
+    let outerId, innerId;
+    function cycle() {
+      outerId = setTimeout(() => {
+        setTestimonialVisible(false);
+        innerId = setTimeout(() => {
+          setTestimonialIdx(prev => {
+            let next;
+            do { next = Math.floor(Math.random() * TESTIMONIALS.length); } while (next === prev);
+            return next;
+          });
+          setTestimonialVisible(true);
+          cycle();
+        }, FADE_MS);
+      }, HOLD_MS);
+    }
+    cycle();
+    return () => { clearTimeout(outerId); clearTimeout(innerId); };
+  }, []);
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase(p => Math.max(p, 1)), 80);
@@ -146,6 +178,23 @@ export function LoginPage({ onSignup }) {
           >
             Vantage works both on and offline!
           </p>
+          {/* Testimonials */}
+          <div
+            className="w-full text-center px-2 min-h-[2.5rem] flex items-center justify-center"
+            style={{ opacity: phase >= 2 ? 1 : 0, transition: 'opacity 0.8s ease' }}
+          >
+            <p
+              className="text-sm italic text-primary"
+              style={{ opacity: testimonialVisible ? 1 : 0, transition: 'opacity 0.5s ease' }}
+            >
+              &ldquo;{TESTIMONIALS[testimonialIdx].quote}&rdquo;
+              {TESTIMONIALS[testimonialIdx].author && (
+                <span className="block text-xs not-italic text-primary/70 mt-1">
+                  — {TESTIMONIALS[testimonialIdx].author}
+                </span>
+              )}
+            </p>
+          </div>
           {/* Buttons */}
           <div
             className="w-full flex flex-col gap-4 mt-[0.421875rem]"
