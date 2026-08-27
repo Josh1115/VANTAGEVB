@@ -13,6 +13,7 @@ const TESTIMONIALS = [
   { quote: 'It has made my life so much easier and given me access to everything I need in-match and post game.', author: 'Grace' },
   { quote: 'My assistant coach was blown away by the match breakdown in our meeting after the game.', author: 'Fieldcrest HS' },
   { quote: '[Vantage] is so intuitive and in-depth, running the trial was amazing', author: null },
+  { quote: '[Vantage] worked great. I loved it.', author: 'Sullivan HS' },
 ];
 
 function friendlyAuthError(msg) {
