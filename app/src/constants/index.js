@@ -216,12 +216,13 @@ export const SCHOOL_YEAR_CLS = {
 export const MATCH_DUPE_REVIEW_WINDOW_HOURS = 48;
 
 // Feature flags
-// AUTO_SYNC_ENABLED: temporarily false while cloud sync is being diagnosed
-// (all users hitting syncing issues, Aug 2026). While false, cloud sync only
-// happens when a user taps "Save to Cloud" / "Restore from Cloud" — no sync on
-// app open, sign-in, reconnect, or match end. Flip back to true to restore
-// automatic sync; no other code changes needed.
-export const AUTO_SYNC_ENABLED = false;
+// AUTO_SYNC_ENABLED: turned off Aug 2026 while cross-device match duplication
+// was diagnosed and fixed (placeholder-dedup pass in stats/matchIdentity.js +
+// the Clean Up Duplicates match review). Re-enabled 2026-08-28 after that fix
+// landed and was verified. While false, cloud sync only happens on an explicit
+// "Save to Cloud" / "Restore from Cloud" tap — no sync on app open, sign-in,
+// reconnect, or match end.
+export const AUTO_SYNC_ENABLED = true;
 
 // NFHS rules
 // MAX_SUBS_PER_SET: intentionally 18 (club/college rules) rather than NFHS's 12.
