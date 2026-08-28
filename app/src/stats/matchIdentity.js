@@ -58,6 +58,27 @@ export function pickSurvivor(rows) {
   })[0];
 }
 
+// When a sync finds the incoming and local copies of a match are BOTH still
+// untouched "scheduled" placeholders but carry different permanent ids — each
+// device scheduled the same game on its own — pick the one id both sides should
+// converge on (the lexically-smaller uid, matching pickSurvivor). Once they
+// share an id, a later edit to the date / opponent / time keeps the game as one
+// record instead of splitting into a duplicate. Returns the uid to write onto
+// the local row, or null when there is nothing to change.
+//
+// Deliberately limited to placeholders: a match with any live data is never
+// re-keyed, and two genuinely different games (a real rematch) differ by date
+// or time so they are matched as separate rows in the first place, never here.
+export function convergedPlaceholderUid(impMatch, exMatch) {
+  if (!impMatch || !exMatch) return null;
+  if (!impMatch.uid || !exMatch.uid) return null;
+  if (impMatch.uid === exMatch.uid) return null;
+  if (impMatch.status !== MATCH_STATUS.SCHEDULED) return null;
+  if (exMatch.status  !== MATCH_STATUS.SCHEDULED) return null;
+  const winner = impMatch.uid < exMatch.uid ? impMatch.uid : exMatch.uid;
+  return winner === exMatch.uid ? null : winner;
+}
+
 // ── Planner ──────────────────────────────────────────────────────────────────
 //
 //   matches      — all local match rows

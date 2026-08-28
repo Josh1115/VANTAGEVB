@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { planMatchDedup, distinguishKey, pickSurvivor } from '../matchIdentity';
+import { planMatchDedup, distinguishKey, pickSurvivor, convergedPlaceholderUid } from '../matchIdentity';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -166,6 +166,36 @@ describe('planMatchDedup — safety', () => {
 });
 
 // ── Low-level helpers ────────────────────────────────────────────────────────
+
+describe('convergedPlaceholderUid', () => {
+  const sched = (uid) => ({ uid, status: 'scheduled' });
+
+  it('returns the smaller uid when the local row has the larger one', () => {
+    expect(convergedPlaceholderUid(sched('uid-a'), sched('uid-b'))).toBe('uid-a');
+  });
+
+  it('returns null when the local row already holds the smaller uid', () => {
+    expect(convergedPlaceholderUid(sched('uid-b'), sched('uid-a'))).toBeNull();
+  });
+
+  it('returns null when both sides already share a uid', () => {
+    expect(convergedPlaceholderUid(sched('uid-a'), sched('uid-a'))).toBeNull();
+  });
+
+  it('never re-keys once either side has been played', () => {
+    expect(convergedPlaceholderUid({ uid: 'uid-a', status: 'complete' }, sched('uid-b'))).toBeNull();
+    expect(convergedPlaceholderUid(sched('uid-a'), { uid: 'uid-b', status: 'in_progress' })).toBeNull();
+  });
+
+  it('returns null when a uid is missing (legacy row)', () => {
+    expect(convergedPlaceholderUid(sched(undefined), sched('uid-b'))).toBeNull();
+    expect(convergedPlaceholderUid(sched('uid-a'), sched(null))).toBeNull();
+  });
+
+  it('returns null when there is no matched local row', () => {
+    expect(convergedPlaceholderUid(sched('uid-a'), null)).toBeNull();
+  });
+});
 
 describe('distinguishKey / pickSurvivor', () => {
   it('distinguishKey ignores case and surrounding whitespace in opponent name', () => {

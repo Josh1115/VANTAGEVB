@@ -1,5 +1,5 @@
 import { db } from '../db/schema';
-import { planMatchDedup } from './matchIdentity';
+import { planMatchDedup, convergedPlaceholderUid } from './matchIdentity';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -492,7 +492,25 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
 
       const exMatch = pickExisting(impMatch, exMatchByUid, exMatchByKey, `${exSeasonId}|${nkMatch(impMatch)}`);
 
-      if (decision === 'keep') continue;
+      if (decision === 'keep') {
+        // Two devices that each scheduled the same game hold separate rows with
+        // separate `uid`s; sync otherwise keeps them lined up only by natural
+        // key (season + opponent + date), which stops matching the moment
+        // either is edited. While both copies are still untouched "scheduled"
+        // placeholders — nothing at stake — converge them onto one deterministic
+        // `uid` so a later date / opponent / time change rides on a shared id
+        // and can't split into a duplicate. `updated_at` is carried through
+        // unchanged so this housekeeping isn't seen as a content edit.
+        const convergedUid = convergedPlaceholderUid(impMatch, exMatch);
+        if (convergedUid) {
+          const mods = { uid: convergedUid };
+          if (exMatch.updated_at != null) mods.updated_at = exMatch.updated_at;
+          await db.matches.update(exMatch.id, mods);
+          exMatch.uid = convergedUid;
+          exMatchByUid.set(convergedUid, exMatch);
+        }
+        continue;
+      }
 
       // Don't resurrect a match the user deliberately deleted on this device —
       // unless the incoming copy is newer than that delete, meaning the game was
