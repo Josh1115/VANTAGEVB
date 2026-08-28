@@ -216,13 +216,14 @@ export const SCHOOL_YEAR_CLS = {
 export const MATCH_DUPE_REVIEW_WINDOW_HOURS = 48;
 
 // Feature flags
-// AUTO_SYNC_ENABLED: turned off Aug 2026 while cross-device match duplication
-// was diagnosed and fixed (placeholder-dedup pass in stats/matchIdentity.js +
-// the Clean Up Duplicates match review). Re-enabled 2026-08-28 after that fix
-// landed and was verified. While false, cloud sync only happens on an explicit
-// "Save to Cloud" / "Restore from Cloud" tap — no sync on app open, sign-in,
-// reconnect, or match end.
-export const AUTO_SYNC_ENABLED = true;
+// AUTO_SYNC_ENABLED: off again 2026-08-28 after a coach's whole season of
+// matches was wiped by a snowballing "deleted" marker (tombstone) loop —
+// restore/sync kept re-deleting and re-stamping tombstones. Keep automatic sync
+// disabled until that loop is fixed (removeTombstonedMatches calling deleteMatch;
+// applyBackupData preserving stale local tombstones; resolveDuplicateMatch
+// tombstoning survivors). While false, cloud sync only happens on an explicit
+// "Save to Cloud" / "Restore from Cloud" tap.
+export const AUTO_SYNC_ENABLED = false;
 
 // NFHS rules
 // MAX_SUBS_PER_SET: intentionally 18 (club/college rules) rather than NFHS's 12.
