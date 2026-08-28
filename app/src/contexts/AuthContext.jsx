@@ -8,6 +8,7 @@ import { router } from '../router';
 import { db } from '../db/schema';
 import { backfillLiberoSwapPositions } from '../db/liberoBackfill';
 import { getStorageItem, setStorageItem, STORAGE_KEYS } from '../utils/storage';
+import { AUTO_SYNC_ENABLED } from '../constants';
 
 // Wipe all user-specific localStorage settings so one account's data can't
 // bleed into the next account that opens the app on the same device.
@@ -215,6 +216,10 @@ export function AuthProvider({ children }) {
   }
 
   async function autoSync(session) {
+    // Automatic sync is disabled while cloud sync is being diagnosed — cloud
+    // sync now only runs on an explicit "Save to Cloud" / "Restore from Cloud"
+    // tap. Re-enable via AUTO_SYNC_ENABLED in constants.
+    if (!AUTO_SYNC_ENABLED) return;
     // Guard: if the open DB doesn't belong to this session user, the page is
     // mid-reload after an account switch. Abort to prevent saving one user's
     // local data under a different user's cloud backup.
@@ -310,7 +315,7 @@ export function AuthProvider({ children }) {
   // over waiting on the user to notice. autoSync() already fails silently and
   // re-checks the DB-user guard, so this is safe to fire opportunistically.
   useEffect(() => {
-    if (!session) return;
+    if (!session || !AUTO_SYNC_ENABLED) return;
     const handleOnline = () => autoSync(session);
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);

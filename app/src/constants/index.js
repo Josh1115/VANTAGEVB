@@ -208,6 +208,14 @@ export const SCHOOL_YEAR_CLS = {
   Senior:    'bg-black text-white border-slate-600',
 };
 
+// Feature flags
+// AUTO_SYNC_ENABLED: temporarily false while cloud sync is being diagnosed
+// (all users hitting syncing issues, Aug 2026). While false, cloud sync only
+// happens when a user taps "Save to Cloud" / "Restore from Cloud" — no sync on
+// app open, sign-in, reconnect, or match end. Flip back to true to restore
+// automatic sync; no other code changes needed.
+export const AUTO_SYNC_ENABLED = false;
+
 // NFHS rules
 // MAX_SUBS_PER_SET: intentionally 18 (club/college rules) rather than NFHS's 12.
 // Overridable via localStorage key 'vbstat_max_subs'. Change to 12 for strict NFHS play.

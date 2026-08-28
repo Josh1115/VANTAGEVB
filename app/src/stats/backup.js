@@ -3,7 +3,7 @@ import { STORAGE_KEYS } from '../utils/storage';
 import { supabase } from '../utils/supabase';
 import { parseMergePreviewFromData, executeMerge, tombstoneKeyForMatch, isMatchTombstoneOutdated } from './merge';
 import { deleteMatch } from './queries';
-import { MATCH_STATUS, TRIAL_MATCH_LIMIT } from '../constants';
+import { MATCH_STATUS, TRIAL_MATCH_LIMIT, AUTO_SYNC_ENABLED } from '../constants';
 
 const BACKUP_VERSION = 1;
 
@@ -182,7 +182,12 @@ export async function autoSaveBackup(label = 'auto', { session, teamsAllowed, ma
     await db.auto_backups.bulkDelete(toDelete);
   }
 
-  syncWithCloud(supabase, session, { teamsAllowed, matchLimit, isMaster }).catch(() => {});
+  // Automatic sync is disabled while cloud sync is being diagnosed. The local
+  // auto-backup above still runs; cloud sync now only happens on an explicit
+  // "Save to Cloud" tap. Re-enable via AUTO_SYNC_ENABLED in constants.
+  if (AUTO_SYNC_ENABLED) {
+    syncWithCloud(supabase, session, { teamsAllowed, matchLimit, isMaster }).catch(() => {});
+  }
 }
 
 export async function restoreAutoBackup(backupId, { teamsAllowed = Infinity, matchLimit = Infinity } = {}) {
