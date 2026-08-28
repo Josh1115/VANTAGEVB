@@ -5,13 +5,127 @@ import {
   findDuplicateTeamGroups, pickDefaultTeamWinner, mergeTeamGroup,
   findDuplicatePlayerGroups, pickDefaultPlayerWinner, mergePlayerGroup,
   findDuplicateOpponentGroups, pickDefaultOpponentWinner, mergeOpponentGroup,
-  findLikelyDuplicateMatches,
+  findLikelyDuplicateMatchPairs, resolveDuplicateMatch, dismissMatchPair,
 } from '../../stats/dedupe';
 
 function fmtDate(d) {
   if (!d) return '—';
   const dt = new Date(d + 'T12:00:00');
   return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// One reviewed pair of possibly-duplicate matches. The coach either keeps one
+// (which deletes the other, after a confirm that spells out what's lost) or
+// marks them as genuinely different games.
+function MatchPairRow({ pair, onResolved }) {
+  const [confirmKeepId, setConfirmKeepId] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr]   = useState(null);
+
+  const [a, b] = pair.matches;
+  const loser  = confirmKeepId == null ? null : (confirmKeepId === a.id ? b : a);
+
+  async function keep(survivorId) {
+    setBusy(true);
+    setErr(null);
+    try {
+      const loserId = survivorId === a.id ? b.id : a.id;
+      await resolveDuplicateMatch(loserId, survivorId);
+      onResolved(pair.pairKey);
+    } catch (e) {
+      setErr(e.message ?? 'Could not delete that match. Try again.');
+      setBusy(false);
+    }
+  }
+
+  function keepBoth() {
+    dismissMatchPair(a, b);
+    onResolved(pair.pairKey);
+  }
+
+  return (
+    <div className="bg-slate-900 border border-amber-700/40 rounded-xl p-3 space-y-2">
+      <p className="text-xs font-semibold text-slate-400">{pair.teamName} · {pair.seasonYear}</p>
+
+      <div className="flex flex-col gap-1.5">
+        {pair.matches.map(mm => (
+          <div key={mm.id} className="bg-slate-800 rounded-lg px-3 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm text-slate-200 truncate">{mm.opponentName}</span>
+              <span className="text-[11px] text-slate-500 shrink-0">
+                {fmtDate(mm.date)}{mm.time ? ` · ${mm.time}` : ''}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-2 mt-0.5">
+              <span className="text-[11px] text-slate-500">
+                {mm.status} · {mm.hasStats ? `${mm.setCount} sets, ${mm.contactCount} stats` : 'no stats yet'}
+              </span>
+              <Link to={`/matches/${mm.id}/summary`} className="text-[11px] text-primary shrink-0">View →</Link>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {err && <p className="text-[11px] text-red-400">{err}</p>}
+
+      {confirmKeepId == null ? (
+        <div className="flex flex-wrap gap-1.5">
+          {pair.matches.map(mm => (
+            <button
+              key={mm.id}
+              onClick={() => (loserHasData(pair, mm.id) ? setConfirmKeepId(mm.id) : keep(mm.id))}
+              disabled={busy}
+              className={`flex-1 min-w-[120px] px-3 py-2 rounded-lg text-xs font-bold ${
+                pair.defaultKeep === mm.id
+                  ? 'bg-primary/15 border border-primary/40 text-white'
+                  : 'bg-slate-800 border border-slate-700 text-slate-300'
+              }`}
+            >
+              Keep {mm.opponentName} · {fmtDate(mm.date)}
+            </button>
+          ))}
+          <button
+            onClick={keepBoth}
+            disabled={busy}
+            className="flex-1 min-w-[120px] px-3 py-2 rounded-lg text-xs font-semibold bg-slate-800 border border-slate-700 text-slate-400"
+          >
+            Different games — keep both
+          </button>
+        </div>
+      ) : (
+        <div className="bg-red-900/30 border border-red-800/50 rounded-lg p-2.5 space-y-2">
+          <p className="text-[11px] text-red-200">
+            Delete the {loser.opponentName} · {fmtDate(loser.date)} match
+            {loser.hasStats ? ` and its ${loser.setCount} sets / ${loser.contactCount} recorded stats` : ''}?
+            This can't be undone.
+          </p>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => keep(confirmKeepId)}
+              disabled={busy}
+              className="flex-1 px-3 py-2 rounded-lg text-xs font-bold bg-red-600 text-white"
+            >
+              {busy ? 'Deleting…' : 'Delete it'}
+            </button>
+            <button
+              onClick={() => setConfirmKeepId(null)}
+              disabled={busy}
+              className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-800 border border-slate-700 text-slate-300"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Only make the coach confirm when the copy that would be deleted actually has
+// data in it — folding away an empty scheduled entry needs no ceremony.
+function loserHasData(pair, survivorId) {
+  const loser = pair.matches.find(m => m.id !== survivorId);
+  return !!loser?.hasStats;
 }
 
 function PickerRow({ group, winnerId, onPick, label }) {
@@ -67,7 +181,7 @@ export function DedupeModal({ onClose }) {
   const [teamEntries,   setTeamEntries]   = useState([]); // { teams, safeToMerge }
   const [playerGroups,  setPlayerGroups]  = useState([]);
   const [oppGroups,     setOppGroups]     = useState([]);
-  const [matchDupes,    setMatchDupes]    = useState([]);
+  const [matchPairs,    setMatchPairs]    = useState([]);
   const [orgWinners,    setOrgWinners]    = useState({}); // groupIndex -> org id
   const [teamWinners,   setTeamWinners]   = useState({}); // entryIndex -> team id
   const [playerWinners, setPlayerWinners] = useState({}); // groupIndex -> player id
@@ -78,18 +192,18 @@ export function DedupeModal({ onClose }) {
   useEffect(() => {
     (async () => {
       try {
-        const [oGroups, tEntries, pGroups, opGroups, mDupes] = await Promise.all([
+        const [oGroups, tEntries, pGroups, opGroups, mPairs] = await Promise.all([
           findDuplicateOrgGroups(),
           findDuplicateTeamGroups(),
           findDuplicatePlayerGroups(),
           findDuplicateOpponentGroups(),
-          findLikelyDuplicateMatches(),
+          findLikelyDuplicateMatchPairs(),
         ]);
         setOrgGroups(oGroups);
         setTeamEntries(tEntries);
         setPlayerGroups(pGroups);
         setOppGroups(opGroups);
-        setMatchDupes(mDupes);
+        setMatchPairs(mPairs);
         setOrgWinners(Object.fromEntries(oGroups.map((g, i) => [i, pickDefaultOrgWinner(g).id])));
         setTeamWinners(Object.fromEntries(
           tEntries.filter(e => e.safeToMerge).map((e) => [tEntries.indexOf(e), pickDefaultTeamWinner(e.teams).id])
@@ -136,7 +250,7 @@ export function DedupeModal({ onClose }) {
   const mergeableTeamCount = teamEntries.filter(e => e.safeToMerge).length;
   const mergeableGroupCount = orgGroups.length + mergeableTeamCount + playerGroups.length + oppGroups.length;
   const nothingToMerge = mergeableGroupCount === 0;
-  const nothingAtAll = nothingToMerge && teamEntries.length === 0 && matchDupes.length === 0;
+  const nothingAtAll = nothingToMerge && teamEntries.length === 0 && matchPairs.length === 0;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col">
@@ -239,29 +353,22 @@ export function DedupeModal({ onClose }) {
               </div>
             )}
 
-            {matchDupes.length > 0 && (
+            {matchPairs.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-                  Possible Duplicate Matches — review manually
+                  Possible Duplicate Matches — you decide
                 </p>
                 <p className="text-[11px] text-slate-500">
-                  These share a team/season and date. Matches carry live stats, so they aren't merged
-                  automatically — open one below and delete it yourself if it's a real duplicate.
+                  Same team, same season, same opponent, within a couple of days of each other.
+                  Keep the right one (the other is deleted), or say they're two different games.
+                  Save to Cloud afterward so your other devices pick up the change.
                 </p>
-                {matchDupes.map((d, i) => (
-                  <div key={i} className="bg-slate-900 border border-amber-700/40 rounded-xl p-3 space-y-1.5">
-                    <p className="text-xs font-semibold text-slate-400">{d.teamName} · {d.seasonYear}</p>
-                    {d.matches.map(m => (
-                      <Link
-                        key={m.id}
-                        to={`/matches/${m.id}/summary`}
-                        className="flex items-center justify-between bg-slate-800 rounded-lg px-3 py-2 hover:bg-slate-700"
-                      >
-                        <span className="text-sm text-slate-200 truncate">{m.opponentName}</span>
-                        <span className="text-xs text-slate-500 shrink-0">{fmtDate(m.date)} · {m.setCount} sets · {m.status}</span>
-                      </Link>
-                    ))}
-                  </div>
+                {matchPairs.map(pair => (
+                  <MatchPairRow
+                    key={pair.pairKey}
+                    pair={pair}
+                    onResolved={(k) => setMatchPairs(ps => ps.filter(p => p.pairKey !== k))}
+                  />
                 ))}
               </div>
             )}

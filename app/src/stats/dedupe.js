@@ -1,4 +1,7 @@
 import { db } from '../db/schema';
+import { deleteMatch } from './queries';
+import { clearMatchTombstone } from './merge';
+import { MATCH_DUPE_REVIEW_WINDOW_HOURS } from '../constants';
 
 // One-time cleanup for duplicates created by the bug fixed in stats/merge.js
 // (sync used to recognize a player/opponent by name + jersey number / name alone,
@@ -189,46 +192,142 @@ export async function mergeTeamGroup(group, winnerId) {
 }
 
 // ── Matches ──────────────────────────────────────────────────────────────────
-// Matches carry live stats (sets/rallies/contacts), so this deliberately does
-// NOT auto-merge them — two matches with the same date could genuinely be two
-// different games. This only surfaces likely duplicates (same season + same
-// date) for a coach to look at and delete manually from the match's own page.
+// Matches carry live stats, so — unlike the identical-scheduled-placeholder case
+// that stats/matchIdentity.js handles automatically during sync — anything that
+// might involve real data is NOT merged automatically. Instead we surface likely
+// duplicate *pairs* for the coach to resolve by hand: pick which one to keep, or
+// mark them as genuinely different games (a "keep both" that's remembered so it
+// stops nagging).
+//
+// A pair is flagged when both matches are in the same season, are against the
+// same opponent (or one still has no opponent set — "TBD"), and their dates fall
+// within MATCH_DUPE_REVIEW_WINDOW_HOURS of each other.
 
-export async function findLikelyDuplicateMatches() {
-  const [matches, sets, seasons, teams] = await Promise.all([
+const DISMISSED_PAIRS_KEY = 'vbstat_dismissed_match_dupes';
+
+function loadDismissedPairs() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DISMISSED_PAIRS_KEY) ?? '[]');
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch {
+    return new Set();
+  }
+}
+
+// Stable identifier for a pair — sorted permanent uids (falling back to row id
+// for pre-uid rows) so a "keep both" decision sticks across reloads.
+export function matchPairKey(a, b) {
+  return [a.uid || `id:${a.id}`, b.uid || `id:${b.id}`].sort().join('::');
+}
+
+export function dismissMatchPair(a, b) {
+  const set = loadDismissedPairs();
+  set.add(matchPairKey(a, b));
+  try {
+    localStorage.setItem(DISMISSED_PAIRS_KEY, JSON.stringify([...set]));
+  } catch {
+    // localStorage unavailable (private mode etc.) — the pair just reappears
+    // next time, which is acceptable.
+  }
+}
+
+function matchStatSummary(m, setCount, contactCount) {
+  return {
+    id:           m.id,
+    uid:          m.uid ?? null,
+    opponentName: m.opponent_name || 'TBD',
+    date:         (m.date ?? '').slice(0, 10),
+    time:         m.match_time ?? null,
+    status:       m.status,
+    setCount,
+    contactCount,
+    hasStats:     setCount > 0 || contactCount > 0,
+  };
+}
+
+// Best default "keep this one": prefer the copy that actually has data, then the
+// one that's further along, then the most recently edited.
+const STATUS_RANK = { complete: 3, in_progress: 2, setup: 1, scheduled: 0 };
+export function pickDefaultMatchSurvivor(a, b) {
+  if (a.hasStats !== b.hasStats) return a.hasStats ? a : b;
+  const ra = STATUS_RANK[a.status] ?? 0;
+  const rb = STATUS_RANK[b.status] ?? 0;
+  if (ra !== rb) return ra > rb ? a : b;
+  return (a._updated_at ?? '') >= (b._updated_at ?? '') ? a : b;
+}
+
+export async function findLikelyDuplicateMatchPairs() {
+  const [matches, sets, contacts, seasons, teams] = await Promise.all([
     db.matches.toArray(),
     db.sets.toArray(),
+    db.contacts.toArray(),
     db.seasons.toArray(),
     db.teams.toArray(),
   ]);
-  const setCountByMatch = new Map();
-  for (const s of sets) setCountByMatch.set(s.match_id, (setCountByMatch.get(s.match_id) ?? 0) + 1);
+
+  const setCount     = new Map();
+  const contactCount = new Map();
+  for (const s of sets)     setCount.set(s.match_id, (setCount.get(s.match_id) ?? 0) + 1);
+  for (const c of contacts) contactCount.set(c.match_id, (contactCount.get(c.match_id) ?? 0) + 1);
   const seasonById = new Map(seasons.map(s => [s.id, s]));
   const teamById   = new Map(teams.map(t => [t.id, t]));
 
-  const groups = new Map();
+  const windowMs  = MATCH_DUPE_REVIEW_WINDOW_HOURS * 60 * 60 * 1000;
+  const dismissed = loadDismissedPairs();
+
+  const bySeason = new Map();
   for (const m of matches) {
-    const key = `${m.season_id}|${(m.date ?? '').slice(0, 10)}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(m);
+    if (!bySeason.has(m.season_id)) bySeason.set(m.season_id, []);
+    bySeason.get(m.season_id).push(m);
   }
 
-  const dupes = [];
-  for (const group of groups.values()) {
-    if (group.length < 2) continue;
-    const season = seasonById.get(group[0].season_id);
+  const pairs = [];
+  for (const [seasonId, group] of bySeason) {
+    const season = seasonById.get(seasonId);
     const team   = season ? teamById.get(season.team_id) : null;
-    dupes.push({
-      teamName:   team?.name ?? 'Unknown team',
-      seasonYear: season?.year ?? '?',
-      matches: group.map(m => ({
-        id:           m.id,
-        opponentName: m.opponent_name ?? 'Unknown',
-        date:         (m.date ?? '').slice(0, 10),
-        status:       m.status,
-        setCount:     setCountByMatch.get(m.id) ?? 0,
-      })),
-    });
+
+    for (let i = 0; i < group.length; i++) {
+      for (let j = i + 1; j < group.length; j++) {
+        const a = group[i];
+        const b = group[j];
+
+        const oa = norm(a.opponent_name);
+        const ob = norm(b.opponent_name);
+        const sameOpponent  = oa && ob && oa === ob;
+        const oneStillUnNamed = !oa || !ob;
+        if (!sameOpponent && !oneStillUnNamed) continue;
+
+        const ta = Date.parse(a.date);
+        const tb = Date.parse(b.date);
+        if (Number.isNaN(ta) || Number.isNaN(tb)) continue;
+        if (Math.abs(ta - tb) > windowMs) continue;
+
+        if (dismissed.has(matchPairKey(a, b))) continue;
+
+        const infoA = { ...matchStatSummary(a, setCount.get(a.id) ?? 0, contactCount.get(a.id) ?? 0), _updated_at: a.updated_at };
+        const infoB = { ...matchStatSummary(b, setCount.get(b.id) ?? 0, contactCount.get(b.id) ?? 0), _updated_at: b.updated_at };
+
+        pairs.push({
+          pairKey:      matchPairKey(a, b),
+          teamName:     team?.name ?? 'Unknown team',
+          seasonYear:   season?.year ?? '?',
+          defaultKeep:  pickDefaultMatchSurvivor(infoA, infoB).id,
+          matches:      [infoA, infoB],
+        });
+      }
+    }
   }
-  return dupes;
+  return pairs;
+}
+
+// Resolve one reviewed pair: cascade-delete the loser (same as deleting it from
+// its own page), then — if the surviving match shares the loser's natural key
+// (season + opponent + date) — clear the tombstone that delete just wrote, so
+// the next sync doesn't also remove the survivor. When the keys differ (e.g. the
+// dates don't match), the tombstone is left in place so the deletion propagates
+// to other devices the normal way.
+export async function resolveDuplicateMatch(loserId, survivorId) {
+  const survivor = await db.matches.get(survivorId);
+  await deleteMatch(loserId);
+  if (survivor) await clearMatchTombstone(survivor);
 }

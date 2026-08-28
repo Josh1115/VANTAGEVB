@@ -1,7 +1,7 @@
 import { db } from '../db/schema';
 import { STORAGE_KEYS } from '../utils/storage';
 import { supabase } from '../utils/supabase';
-import { parseMergePreviewFromData, executeMerge, tombstoneKeyForMatch, isMatchTombstoneOutdated } from './merge';
+import { parseMergePreviewFromData, executeMerge, tombstoneKeyForMatch, isMatchTombstoneOutdated, dedupeLocalMatches } from './merge';
 import { deleteMatch } from './queries';
 import { MATCH_STATUS, TRIAL_MATCH_LIMIT, AUTO_SYNC_ENABLED } from '../constants';
 
@@ -301,6 +301,10 @@ export async function restoreFromCloud(supabase, { teamsAllowed = Infinity, matc
 
   await applyBackupData(payload);
 
+  // A cloud payload written by a device from before the placeholder-dedup fix
+  // can itself contain duplicate scheduled entries — clean them up on the way in.
+  await dedupeLocalMatches();
+
   // Sync the server-side trial counter (a whole-account total) to the restored
   // data so trial limits stay accurate after a restore.
   const totalMatches = Array.isArray(payload.matches) ? payload.matches.length : 0;
@@ -359,6 +363,13 @@ export async function syncWithCloud(supabase, session, { teamsAllowed = Infinity
     }
     await executeMerge(preview, decisions, { isMaster, matchLimit });
   }
+
+  // Collapse duplicate / left-over "scheduled" placeholder matches (e.g. the
+  // same game scheduled independently on two devices, or a schedule entry left
+  // behind after the game was played) into the single real game, so every
+  // device converges on one match per game. Only ever removes a scheduled match
+  // with no recorded stats.
+  await dedupeLocalMatches();
 
   await saveToCloud(supabase, session);
 }

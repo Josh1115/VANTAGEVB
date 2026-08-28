@@ -208,6 +208,13 @@ export const SCHOOL_YEAR_CLS = {
   Senior:    'bg-black text-white border-slate-600',
 };
 
+// "Clean Up Duplicates" match review: two matches for the same team + season,
+// against the same opponent (or one still unnamed), whose dates fall within this
+// many hours of each other, are surfaced for the coach to resolve by hand. Kept
+// tight on purpose — a real rematch against the same team in one tournament is
+// almost always further apart than this.
+export const MATCH_DUPE_REVIEW_WINDOW_HOURS = 48;
+
 // Feature flags
 // AUTO_SYNC_ENABLED: temporarily false while cloud sync is being diagnosed
 // (all users hitting syncing issues, Aug 2026). While false, cloud sync only

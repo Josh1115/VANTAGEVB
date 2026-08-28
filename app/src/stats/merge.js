@@ -1,4 +1,5 @@
 import { db } from '../db/schema';
+import { planMatchDedup } from './matchIdentity';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -830,4 +831,46 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
   });
 
   return { matchesAdded, matchesReplaced, matchesSkipped, matchesTombstoned };
+}
+
+// ── Placeholder dedup ─────────────────────────────────────────────────────────
+// Fold duplicate / left-over "scheduled" placeholder matches into the single
+// real game they represent. Safe to call after any merge or restore: it only
+// ever deletes a match whose status is "scheduled" AND which has zero recorded
+// stats (see stats/matchIdentity.js for the reasoning and safety guarantees).
+// Runs on every device after a sync and is fully deterministic, so no tombstone
+// is needed — each device removes the same rows on its own. Returns the number
+// of placeholder rows removed.
+export async function dedupeLocalMatches() {
+  const [matches, sets, contacts] = await Promise.all([
+    db.matches.toArray(),
+    db.sets.toArray(),
+    db.contacts.toArray(),
+  ]);
+
+  const withStats = new Set();
+  for (const s of sets)     withStats.add(s.match_id);
+  for (const c of contacts) withStats.add(c.match_id);
+
+  const { deletions } = planMatchDedup(matches, (id) => withStats.has(id));
+  if (!deletions.length) return 0;
+
+  await db.transaction('rw', db.tables, async () => {
+    for (const { loserId } of deletions) {
+      // Cascade-delete exactly like deleteMatch()/cascadeDeleteMatchRow() —
+      // a placeholder normally has no children, but stay defensive.
+      const exSets   = await db.sets.where('match_id').equals(loserId).toArray();
+      const exSetIds = exSets.map((s) => s.id);
+      await db.contacts.where('match_id').equals(loserId).delete();
+      if (exSetIds.length) {
+        await db.rallies.where('set_id').anyOf(exSetIds).delete();
+        await db.lineups.where('set_id').anyOf(exSetIds).delete();
+        await db.substitutions.where('set_id').anyOf(exSetIds).delete();
+      }
+      await db.sets.where('match_id').equals(loserId).delete();
+      await db.matches.delete(loserId);
+    }
+  });
+
+  return deletions.length;
 }
