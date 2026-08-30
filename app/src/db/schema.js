@@ -1,4 +1,5 @@
 import Dexie from 'dexie';
+import { normalizeMatchDate } from '../utils/matchDate';
 
 function getDbName() {
   try {
@@ -19,6 +20,50 @@ function safeUUID() {
 }
 
 export const db = new Dexie(getDbName());
+
+// v25: normalize match `date` to a timezone-proof calendar day.
+// `date` was built with `new Date(localString).toISOString()`, which bakes in
+// the device's UTC offset — so the same real game got a different day string on
+// devices in different timezones, or rolled to the next day when quick-started
+// in the evening. Cloud sync identifies a match by `opponent | date.slice(0,10)`,
+// so that drift split one game into two (see stats/merge.js, utils/matchDate.js).
+// Re-anchor every match to noon UTC of the day the coach meant (recovered by
+// reading the stored timestamp in this device's local timezone — how it was
+// entered). `updated_at` is deliberately NOT touched: this is a storage-format
+// cleanup, not a content edit, and bumping it would spawn spurious sync
+// conflicts. The pass is idempotent, so devices that upgrade at different times
+// still converge on identical strings.
+db.version(25).stores({
+  rallies:            '++id, set_id, rally_number',
+  sets:               '++id, match_id, set_number',
+  lineups:            '++id, set_id, player_id',
+  substitutions:      '++id, set_id, rally_number',
+  organizations:      '++id, name, type, uid',
+  teams:              '++id, org_id, name, share_token, uid',
+  seasons:            '++id, team_id, year, status, uid',
+  players:            '++id, team_id, is_active, uid',
+  opponents:          '++id, name, uid',
+  saved_lineups:      '++id, team_id, uid',
+  contacts:           '++id, match_id, player_id, action, set_id, rally_id, rotation_num',
+  matches:            '++id, season_id, status, date, opponent_id, uid',
+  opp_tendencies:     '++id, opp_id, match_id',
+  timeouts:           '++id, match_id, set_id',
+  historical_records: '++id, team_id, category, stat, uid',
+  season_history:     '++id, team_id, year, uid',
+  tourney_entries:    '++id, team_id, year, uid',
+  player_commits:     '++id, team_id, grad_year, uid',
+  auto_backups:       '++id, created_at',
+  accolade_types:     '++id, team_id, uid',
+  accolade_winners:   '++id, type_id, team_id, uid',
+  practice_sessions:  '++id, team_id, tool_type, date, archived, uid',
+  tombstones:         '++id, type, key, [type+key]',
+}).upgrade(async (tx) => {
+  await tx.table('matches').toCollection().modify((m) => {
+    if (!m.date) return;
+    const fixed = normalizeMatchDate(m.date);
+    if (fixed !== m.date) m.date = fixed;
+  });
+});
 
 // v24: extend the v23 `uid`/`updated_at` fix to the rest of the tables that
 // support in-place editing but were left out the first time — historical

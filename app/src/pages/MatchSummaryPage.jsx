@@ -39,6 +39,7 @@ import { VideoCorrectionsModal } from '../components/match/VideoCorrectionsModal
 import { Modal } from '../components/ui/Modal';
 import { FORMAT, MATCH_STATUS, ORG_COLOR_HEX } from '../constants';
 import { getStorageItem, STORAGE_KEYS, getPlayoffLabel } from '../utils/storage';
+import { matchDateISO } from '../utils/matchDate';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
   ResponsiveContainer,
@@ -1310,7 +1311,7 @@ export function MatchSummaryPage() {
         opponent_name:   oppRecord.name,
         opponent_abbr:   editForm.oppAbbr.trim().toUpperCase() || null,
         opponent_record: editForm.oppRecord.trim() || null,
-        date:            editForm.date ? new Date(editForm.date + 'T12:00:00').toISOString() : match.date,
+        date:            editForm.date ? matchDateISO(editForm.date) : match.date,
         location:        editForm.loc,
         conference:      editForm.conf,
         match_type:       editForm.matchType,

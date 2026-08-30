@@ -7,6 +7,7 @@ import { fmtDate, fmtHitting, fmtPct } from '../../stats/formatters';
 import { computeMatchStats, computeTeamStats, computePlayerStats } from '../../stats/engine';
 import { exportMaxPrepsCSV, maxPrepsFilename } from '../../stats/export';
 import { getStorageItem, STORAGE_KEYS, getPlayoffLabel } from '../../utils/storage';
+import { matchDateISO } from '../../utils/matchDate';
 import { deleteMatch } from '../../stats/queries';
 import { clearMatchTombstone } from '../../stats/merge';
 import { Button } from '../ui/Button';
@@ -253,7 +254,7 @@ export function SeasonScheduleTab({ seasonId }) {
         opponent_abbr:          schedOppAbbr.trim().toUpperCase() || null,
         opponent_record:        schedOppRecord.trim() || null,
         opponent_maxpreps_rank: schedOppRank !== '' ? parseInt(schedOppRank, 10) : null,
-        date:                   schedDate ? new Date(schedDate + 'T12:00:00').toISOString() : new Date().toISOString(),
+        date:                   matchDateISO(schedDate),
         match_time:             schedTime || null,
         location:               schedLoc,
         conference:             schedConf,

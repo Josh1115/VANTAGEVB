@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { db } from '../../db/schema';
 import { getPlayoffLabel } from '../../utils/storage';
+import { matchDateISO } from '../../utils/matchDate';
 import { findOrCreateOpponent } from '../../stats/queries';
 import { Button } from '../ui/Button';
 
@@ -42,7 +43,7 @@ export function EditScheduledMatchModal({ match, onClose, onDeleteRequested }) {
         opponent_abbr:          oppAbbr.trim().toUpperCase() || null,
         opponent_record:        oppRecord.trim() || null,
         opponent_maxpreps_rank: oppRank !== '' ? parseInt(oppRank, 10) : null,
-        date:          date ? new Date(date + 'T12:00:00').toISOString() : new Date().toISOString(),
+        date:          matchDateISO(date),
         location:      loc,
         conference:    conf,
         match_type:       matchType,

@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button';
 import { useMatchStore } from '../store/matchStore';
 import { MATCH_STATUS, SET_STATUS, FORMAT, SIDE } from '../constants';
 import { serveOrderToZone, rotationFromStartZone } from '../components/court/CourtZonePicker';
+import { matchDateISO, todayLocalDateStr, todayMatchDateISO, matchDay } from '../utils/matchDate';
 import { LineupForm } from '../components/match/LineupForm';
 import { usePlan } from '../hooks/usePlan';
 import { PvShareSheet } from '../components/parentvantage/PvShareSheet';
@@ -69,7 +70,7 @@ export function MatchSetupPage() {
   const [servingSide, setServingSide] = useState(SIDE.US);
   const [teamJerseyColor,   setTeamJerseyColor]   = useState('black');
   const [liberoJerseyColor, setLiberoJerseyColor] = useState('black');
-  const [matchDate, setMatchDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [matchDate, setMatchDate] = useState(() => todayLocalDateStr());
   const [matchTime, setMatchTime] = useState('');
   const [saving,         setSaving]         = useState(false);
   const [error,          setError]          = useState('');
@@ -276,7 +277,7 @@ export function MatchSetupPage() {
           tournament_round:       matchType === 'tourney' ? tournamentRound : null,
           playoff_round:          matchType === 'ihsa-playoffs' ? playoffRound.trim() || null : null,
           opponent_playoff_seed:  matchType === 'ihsa-playoffs' && oppPlayoffSeed !== '' ? parseInt(oppPlayoffSeed, 10) : null,
-          date:                   matchDate ? new Date(matchDate + (matchTime ? `T${matchTime}:00` : 'T12:00:00')).toISOString() : new Date().toISOString(),
+          date:                   matchDateISO(matchDate),
           match_time:             matchTime || null,
           our_sets_won:           ourSetsWon,
           opp_sets_won:           oppSetsWon,
@@ -341,7 +342,7 @@ export function MatchSetupPage() {
           .where('season_id').equals(Number(seasonId))
           .filter((m) => m.opponent_id === oppRecord.id
             && m.status === MATCH_STATUS.SCHEDULED
-            && (m.date ?? '').slice(0, 10) === matchDate)
+            && matchDay(m.date) === matchDate)
           .first();
         if (existing) {
           linkedMatchId     = existing.id;
@@ -410,7 +411,7 @@ export function MatchSetupPage() {
         await db.matches.update(linkedMatchId, {
           ...matchPayload,
           pv_token: linkedMatchRecord?.pv_token ?? crypto.randomUUID(),
-          date:     linkedMatchRecord?.date ?? new Date().toISOString(),
+          date:     linkedMatchRecord?.date ?? todayMatchDateISO(),
         });
         effectiveMatchId = linkedMatchId;
       } else {
@@ -432,7 +433,7 @@ export function MatchSetupPage() {
             ...matchPayload,
             season_id:  Number(seasonId),
             pv_token:   crypto.randomUUID(),
-            date:       matchDate ? new Date(matchDate + (matchTime ? `T${matchTime}:00` : 'T12:00:00')).toISOString() : new Date().toISOString(),
+            date:       matchDateISO(matchDate),
             match_time: matchTime || null,
           });
           await db.seasons.update(Number(seasonId), { peak_match_count: effective + 1 });

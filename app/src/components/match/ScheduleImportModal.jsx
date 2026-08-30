@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import Papa from 'papaparse';
 import { db } from '../../db/schema';
 import { MATCH_STATUS } from '../../constants';
+import { matchDateISO } from '../../utils/matchDate';
 import { clearMatchTombstone } from '../../stats/merge';
 import { useUiStore, selectShowToast } from '../../store/uiStore';
 import { usePlan } from '../../hooks/usePlan';
@@ -135,9 +136,7 @@ export function ScheduleImportModal({ seasonId, onClose }) {
           const id = await db.opponents.add({ name: row.opponent });
           opp = { id, name: row.opponent };
         }
-        const dateStr = row.date
-          ? new Date(row.date + 'T12:00:00').toISOString()
-          : new Date().toISOString();
+        const dateStr = matchDateISO(row.date);
         await db.matches.add({
           season_id:       seasonId,
           opponent_id:     opp.id,
