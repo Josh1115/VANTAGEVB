@@ -1,5 +1,6 @@
 import Dexie from 'dexie';
 import { normalizeMatchDate } from '../utils/matchDate';
+import { repairServerPlayerIds } from '../stats/serverRepair';
 
 function getDbName() {
   try {
@@ -20,6 +21,47 @@ function safeUUID() {
 }
 
 export const db = new Dexie(getDbName());
+
+// v26: rebuild `rally.server_player_id` (SRV PT / ATT:PT) from the serve
+// contacts the coach logged. That field was either never recorded (~half of
+// older rallies) or, on a match synced before stats/merge.js learned to
+// translate it, left pointing at the other device's player id. Only nulls and
+// orphans are rewritten — a rally that already names a real local player is
+// left untouched. Idempotent: no serve contact to pair with = no change. See
+// stats/serverRepair.js.
+db.version(26).stores({
+  rallies:            '++id, set_id, rally_number',
+  sets:               '++id, match_id, set_number',
+  lineups:            '++id, set_id, player_id',
+  substitutions:      '++id, set_id, rally_number',
+  organizations:      '++id, name, type, uid',
+  teams:              '++id, org_id, name, share_token, uid',
+  seasons:            '++id, team_id, year, status, uid',
+  players:            '++id, team_id, is_active, uid',
+  opponents:          '++id, name, uid',
+  saved_lineups:      '++id, team_id, uid',
+  contacts:           '++id, match_id, player_id, action, set_id, rally_id, rotation_num',
+  matches:            '++id, season_id, status, date, opponent_id, uid',
+  opp_tendencies:     '++id, opp_id, match_id',
+  timeouts:           '++id, match_id, set_id',
+  historical_records: '++id, team_id, category, stat, uid',
+  season_history:     '++id, team_id, year, uid',
+  tourney_entries:    '++id, team_id, year, uid',
+  player_commits:     '++id, team_id, grad_year, uid',
+  auto_backups:       '++id, created_at',
+  accolade_types:     '++id, team_id, uid',
+  accolade_winners:   '++id, type_id, team_id, uid',
+  practice_sessions:  '++id, team_id, tool_type, date, archived, uid',
+  tombstones:         '++id, type, key, [type+key]',
+}).upgrade(async (tx) => {
+  // Never let a hiccup in the repair block the DB from opening — the field it
+  // fixes only feeds two display stats, and it can be re-run later.
+  try {
+    await repairServerPlayerIds(tx);
+  } catch (err) {
+    console.warn('[VBStat] server_player_id repair (v26) skipped:', err);
+  }
+});
 
 // v25: normalize match `date` to a timezone-proof calendar day.
 // `date` was built with `new Date(localString).toISOString()`, which bakes in
