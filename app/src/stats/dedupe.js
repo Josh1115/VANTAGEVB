@@ -205,6 +205,26 @@ export async function mergeTeamGroup(group, winnerId) {
 
 const DISMISSED_PAIRS_KEY = 'vbstat_dismissed_match_dupes';
 
+// An opponent name that isn't really an opponent yet — blank, or the literal
+// "TBD" coaches type into pre-scheduled tournament slots. Treated as "unnamed"
+// so a leftover "TBD" slot is flagged against the real game it became.
+const isBlankOpp = (o) => !o || o === 'tbd';
+
+// Whether two matches in the same season look like the same game entered twice:
+// same real opponent (or one side still unassigned), and dates within `windowMs`.
+export function matchesLookLikeDuplicates(a, b, windowMs) {
+  const oa = norm(a.opponent_name);
+  const ob = norm(b.opponent_name);
+  const sameOpponent    = oa && ob && oa === ob && !isBlankOpp(oa);
+  const oneStillUnNamed = isBlankOpp(oa) || isBlankOpp(ob);
+  if (!sameOpponent && !oneStillUnNamed) return false;
+
+  const ta = Date.parse(a.date);
+  const tb = Date.parse(b.date);
+  if (Number.isNaN(ta) || Number.isNaN(tb)) return false;
+  return Math.abs(ta - tb) <= windowMs;
+}
+
 function loadDismissedPairs() {
   try {
     const parsed = JSON.parse(localStorage.getItem(DISMISSED_PAIRS_KEY) ?? '[]');
@@ -291,17 +311,7 @@ export async function findLikelyDuplicateMatchPairs() {
         const a = group[i];
         const b = group[j];
 
-        const oa = norm(a.opponent_name);
-        const ob = norm(b.opponent_name);
-        const sameOpponent  = oa && ob && oa === ob;
-        const oneStillUnNamed = !oa || !ob;
-        if (!sameOpponent && !oneStillUnNamed) continue;
-
-        const ta = Date.parse(a.date);
-        const tb = Date.parse(b.date);
-        if (Number.isNaN(ta) || Number.isNaN(tb)) continue;
-        if (Math.abs(ta - tb) > windowMs) continue;
-
+        if (!matchesLookLikeDuplicates(a, b, windowMs)) continue;
         if (dismissed.has(matchPairKey(a, b))) continue;
 
         const infoA = { ...matchStatSummary(a, setCount.get(a.id) ?? 0, contactCount.get(a.id) ?? 0), _updated_at: a.updated_at };

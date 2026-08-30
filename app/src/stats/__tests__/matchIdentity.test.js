@@ -143,6 +143,82 @@ describe('planMatchDedup — Part B (scheduled + already played)', () => {
   });
 });
 
+// ── Part C: "TBD" tournament slots that got assigned ─────────────────────────
+
+describe('planMatchDedup — Part C (TBD tournament slots)', () => {
+  const tbd    = (o) => m({ ...o, opponent_name: 'TBD', status: 'scheduled' });
+  const played = (o) => m({ ...o, status: 'complete' });
+
+  it('drops a leftover "TBD" slot when its game was played at the same start time', () => {
+    const slot = tbd({ id: 1, uid: 'uid-1', match_time: '10:00' });
+    const game = played({ id: 2, uid: 'uid-2', opponent_name: 'Grant', match_time: '10:00' });
+    const { deletions } = plan([slot, game], [2]);
+    expect(deletions).toHaveLength(1);
+    expect(deletions[0].loserId).toBe(1);
+    expect(deletions[0].survivorId).toBe(2);
+    expect(deletions[0].reason).toBe('tbd-slot-assigned');
+  });
+
+  it('clears a whole tournament: 5 "TBD" slots at 5 times, 5 games played at those times', () => {
+    const times = ['09:00', '11:00', '13:00', '15:00', '17:00'];
+    const slots = times.map((t, i) => tbd({ id: i + 1, uid: `s${i}`, match_time: t }));
+    const games = times.map((t, i) => played({ id: i + 11, uid: `g${i}`, opponent_name: `Opp ${i}`, match_time: t }));
+    const statIds = games.map((g) => g.id);
+    const { deletions } = plan([...slots, ...games], statIds);
+    expect(deletions).toHaveLength(5);
+    expect(deletions.map((d) => d.loserId).sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5]);
+    expect(deletions.some((d) => statIds.includes(d.loserId))).toBe(false); // never a real game
+  });
+
+  it('keeps a "TBD" slot that has NO game at its time (a genuine unassigned game)', () => {
+    const slot = tbd({ id: 1, uid: 'uid-1', match_time: '10:00' });
+    const game = played({ id: 2, uid: 'uid-2', opponent_name: 'Grant', match_time: '14:00' });
+    expect(plan([slot, game], [2]).deletions).toHaveLength(0);
+  });
+
+  it('keeps a lone "TBD" slot with nothing else that day', () => {
+    const slot = tbd({ id: 1, uid: 'uid-1', match_time: '10:00' });
+    expect(plan([slot], []).deletions).toHaveLength(0);
+  });
+
+  it('does not fold a "TBD" slot with no start time (cannot pair it safely)', () => {
+    const slot = tbd({ id: 1, uid: 'uid-1', match_time: null });
+    const game = played({ id: 2, uid: 'uid-2', opponent_name: 'Grant', match_time: null });
+    expect(plan([slot, game], [2]).deletions).toHaveLength(0);
+  });
+
+  it('folds a "TBD" slot into a real game that is renamed but not yet played', () => {
+    const slot    = tbd({ id: 1, uid: 'uid-1', match_time: '10:00' });
+    const renamed = m({ id: 2, uid: 'uid-2', opponent_name: 'Grant', status: 'scheduled', match_time: '10:00' });
+    const { deletions } = plan([slot, renamed], []);
+    expect(deletions).toHaveLength(1);
+    expect(deletions[0].loserId).toBe(1);
+  });
+
+  it('does not fold when two non-blank games share the slot time', () => {
+    const slot  = tbd({ id: 1, uid: 'uid-1', match_time: '10:00' });
+    const gameA = played({ id: 2, uid: 'uid-2', opponent_name: 'Grant', match_time: '10:00' });
+    const gameB = played({ id: 3, uid: 'uid-3', opponent_name: 'Lakes', match_time: '10:00' });
+    expect(plan([slot, gameA, gameB], [2, 3]).deletions).toHaveLength(0);
+  });
+
+  it('treats "tbd" / "TBD" / " Tbd " all as unassigned', () => {
+    for (const label of ['tbd', 'TBD', ' Tbd ']) {
+      const slot = m({ id: 1, uid: 'uid-1', opponent_name: label, status: 'scheduled', match_time: '10:00' });
+      const game = m({ id: 2, uid: 'uid-2', opponent_name: 'Grant', status: 'complete', match_time: '10:00' });
+      expect(plan([slot, game], [2]).deletions).toHaveLength(1);
+    }
+  });
+
+  it('never touches a "TBD" row that has stats (not a placeholder)', () => {
+    const slotWithStats = tbd({ id: 1, uid: 'uid-1', match_time: '10:00' });
+    const game          = played({ id: 2, uid: 'uid-2', opponent_name: 'Grant', match_time: '10:00' });
+    // id 1 unexpectedly has stats -> it's a played game, not a deletable slot
+    const { deletions } = plan([slotWithStats, game], [1, 2]);
+    expect(deletions.some((d) => d.loserId === 1)).toBe(false);
+  });
+});
+
 // ── Safety / guards ──────────────────────────────────────────────────────────
 
 describe('planMatchDedup — safety', () => {

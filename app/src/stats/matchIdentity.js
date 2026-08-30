@@ -23,6 +23,13 @@ import { MATCH_STATUS } from '../constants';
 const norm = (s) => (s ?? '').trim().toLowerCase();
 const day  = (d) => (d ?? '').slice(0, 10);
 
+// A match whose opponent hasn't been assigned yet: blank, or the literal "TBD"
+// coaches type into pre-scheduled tournament slots.
+const isBlankOpp = (m) => {
+  const o = norm(m.opponent_name);
+  return o === '' || o === 'tbd';
+};
+
 // Everything a coach could use to tell two same-opponent games apart. Two
 // placeholders that match on all of this are treated as the same game
 // double-entered (e.g. once per device), not as a real doubleheader.
@@ -119,6 +126,31 @@ export function planMatchDedup(matches, hasStats) {
     );
     if (hits.length === 1) {
       deletions.push({ loserId: p.id, survivorId: hits[0].id, reason: 'scheduled-already-played' });
+      consumed.add(p.id);
+    }
+  }
+
+  // ── Part C: a "TBD" tournament slot that has since been assigned ──
+  // Coaches pre-schedule a tournament's games as "TBD" at fixed start times,
+  // then edit each to the real opponent as it's played. That opponent edit
+  // breaks the natural-key link to the cloud's copy of the slot, so the stale
+  // "TBD" row comes back on a sync. The fixed slot TIME identifies it safely:
+  // a blank / "TBD" placeholder is a leftover when exactly one non-blank game
+  // (played or still scheduled) sits in the same season, same day, same start
+  // time. A "TBD" slot with no game at its time is a genuine unassigned game
+  // and is left alone.
+  for (const p of placeholders) {
+    if (consumed.has(p.id)) continue;
+    if (!isBlankOpp(p) || !p.match_time) continue;
+    const assigned = matches.filter((r) =>
+      r.id !== p.id &&
+      !isBlankOpp(r) &&
+      r.season_id === p.season_id &&
+      day(r.date) === day(p.date) &&
+      r.match_time && r.match_time === p.match_time
+    );
+    if (assigned.length === 1) {
+      deletions.push({ loserId: p.id, survivorId: assigned[0].id, reason: 'tbd-slot-assigned' });
       consumed.add(p.id);
     }
   }
