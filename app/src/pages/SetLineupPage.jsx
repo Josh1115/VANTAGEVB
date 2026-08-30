@@ -7,7 +7,7 @@ import { useMatchStore } from '../store/matchStore';
 import { SET_STATUS, SIDE, FORMAT } from '../constants';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
-import { serveOrderToZone } from '../components/court/CourtZonePicker';
+import { serveOrderToZone, rotationFromStartZone } from '../components/court/CourtZonePicker';
 import { LineupForm } from '../components/match/LineupForm';
 
 export function SetLineupPage() {
@@ -33,7 +33,6 @@ export function SetLineupPage() {
   // slotPositions[i] = position label override for serve slot i
   const [slotPositions, setSlotPositions] = useState(Array(6).fill(''));
   const [startZone, setStartZone]  = useState(1);
-  const [startRotation, setStartRotation] = useState(1);
   const [liberoId,  setLiberoId]   = useState('');
   const [libero2Id, setLibero2Id]  = useState('');
   const [servingSide, setServingSide] = useState(storeServeSide ?? SIDE.US);
@@ -144,6 +143,8 @@ export function SetLineupPage() {
     if (!setId) return;
 
     setSaving(true);
+    // Rotation number is derived purely from where Player I starts.
+    const startRotation = rotationFromStartZone(startZone);
     try {
       // Update set with libero designation + optional formation/sub data
       await db.sets.update(setId, {
@@ -334,8 +335,6 @@ export function SetLineupPage() {
           setSlotPositions={setSlotPositions}
           startZone={startZone}
           setStartZone={setStartZone}
-          startRotation={startRotation}
-          setStartRotation={setStartRotation}
           liberoId={liberoId}
           setLiberoId={setLiberoId}
           libero2Id={libero2Id}

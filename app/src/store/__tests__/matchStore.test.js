@@ -36,7 +36,8 @@ vi.mock('../../store/uiStore', () => ({
 
 vi.mock('../../utils/storage', () => ({
   getIntStorage:  vi.fn().mockReturnValue(NaN),
-  STORAGE_KEYS:   { MAX_SUBS: 'vbstat_max_subs' },
+  getBoolStorageDefaultTrue: vi.fn().mockReturnValue(true),
+  STORAGE_KEYS:   { MAX_SUBS: 'vbstat_max_subs', SERVE_ZONE_PROMPT: 'vbstat_serve_zone_prompt' },
 }));
 
 // ── Subject under test ───────────────────────────────────────────────────────

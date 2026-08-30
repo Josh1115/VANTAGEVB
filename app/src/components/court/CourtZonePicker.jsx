@@ -10,6 +10,14 @@ export function serveOrderToZone(serveOrderIdx, startZone) {
   return ((startZone - 1 + serveOrderIdx) % 6) + 1;
 }
 
+// The rotation number (1-6) for a set, derived purely from the court zone
+// where Player I starts. Zone 1 (serving) = ROT 1, zone 6 = ROT 2, … zone 2 = ROT 6.
+// This is the single source of truth for the rotation shown on the live match
+// pill, set resets, and mid-match reloads.
+export function rotationFromStartZone(startZone) {
+  return ((1 - (startZone ?? 1) + 6) % 6) + 1;
+}
+
 export function CourtZonePicker({ value, onChange, serveOrder, players }) {
   const zoneInfo = {};
   ROMAN.forEach((r, i) => {

@@ -11,7 +11,7 @@ import { computeMatchStats,
          aggregateXKTeamStats, computeWinCorrelation, pickMetricVal,
          computeTimeoutEffectiveness } from '../stats/engine';
 import { getRalliesForMatch, getRalliesForMatches, findOrCreateOpponent } from '../stats/queries';
-import { exportMatchCSV, exportMaxPrepsCSV, addPageHeader } from '../stats/export';
+import { exportMatchCSV, exportMaxPrepsCSV, maxPrepsFilename, addPageHeader } from '../stats/export';
 import { fmtHitting, fmtPassRating, fmtPct, fmtCount, fmtDate } from '../stats/formatters';
 import { ROTATION_COLS, ROTATION_STAT_KEYS, withMinMax, SERVING_COLS, TAB_COLUMNS, ISOOS_COLS, ISOOS_STAT_KEYS, TRANS_COLS, TRANS_STAT_KEYS, RUN_COLS, RUN_STAT_KEYS } from '../stats/columns';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -1429,7 +1429,7 @@ export function MatchSummaryPage() {
   function handleMaxPreps() {
     if (!stats) return;
     const uuid = getStorageItem(STORAGE_KEYS.MAXPREPS_TEAM_ID, '');
-    exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, uuid, `match-${id}-maxpreps.txt`);
+    exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, uuid, maxPrepsFilename(match));
   }
 
   async function captureCard() {

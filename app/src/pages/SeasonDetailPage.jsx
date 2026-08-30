@@ -5,7 +5,7 @@ import { db } from '../db/schema';
 import { MATCH_STATUS } from '../constants';
 import { fmtDate, fmtHitting, fmtPct } from '../stats/formatters';
 import { computeMatchStats, computeTeamStats, computePlayerStats } from '../stats/engine';
-import { exportMaxPrepsCSV } from '../stats/export';
+import { exportMaxPrepsCSV, maxPrepsFilename } from '../stats/export';
 import { getStorageItem, STORAGE_KEYS, getPlayoffLabel } from '../utils/storage';
 import { deleteMatch } from '../stats/queries';
 import { clearMatchTombstone } from '../stats/merge';
@@ -232,7 +232,8 @@ export function SeasonDetailPage() {
     e.stopPropagation();
     const uuid = getStorageItem(STORAGE_KEYS.MAXPREPS_TEAM_ID, '');
     const stats = await computeMatchStats(matchId);
-    exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, uuid, `match-${matchId}-maxpreps.txt`);
+    const match = matches.find((m) => m.id === matchId);
+    exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, uuid, maxPrepsFilename(match));
   }
 
   function resetSchedForm() {

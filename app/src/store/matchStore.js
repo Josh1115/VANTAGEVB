@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { ACTION, RESULT, SIDE, FORMAT, SET_STATUS, MATCH_STATUS, NFHS } from '../constants';
 import { db } from '../db/schema';
 import { useUiStore } from './uiStore';
-import { getIntStorage, STORAGE_KEYS } from '../utils/storage';
+import { getIntStorage, getBoolStorageDefaultTrue, STORAGE_KEYS } from '../utils/storage';
 
 
 const emptyLineup = () =>
@@ -950,7 +950,8 @@ export const useMatchStore = create((set, get) => ({
     if (
       contactData.action === ACTION.SERVE &&
       (contactData.result === RESULT.IN || contactData.result === RESULT.ACE) &&
-      s.serveSide === SIDE.US
+      s.serveSide === SIDE.US &&
+      getBoolStorageDefaultTrue(STORAGE_KEYS.SERVE_ZONE_PROMPT)
     ) {
       set({ pendingServeContact: { contactId: id, result: contactData.result, player_id: contactData.player_id } });
     }
@@ -1458,10 +1459,12 @@ export const useMatchStore = create((set, get) => ({
     await db.substitutions.where('set_id').equals(s.currentSetId).delete();
     await db.sets.update(s.currentSetId, { our_fudge: 0, opp_fudge: 0 });
 
+    // Rotation number is derived purely from where Player I starts (serve-order-1
+    // row's court zone), not the stored start_rotation — keeps the pill honest to
+    // the lineup even for a set that was set up before this became the rule.
     const so1Row      = lineupRows.find((r) => r.serve_order === 1);
     const sz          = so1Row?.position ?? 1;
-    const zoneRotNum  = ((1 - sz + 6) % 6) + 1;
-    const rotationNum = setRow?.start_rotation ?? zoneRotNum;
+    const rotationNum = ((1 - sz + 6) % 6) + 1;
 
     let lineup = s.lineup;
     if (lineupRows.length > 0) {

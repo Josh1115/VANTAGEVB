@@ -17,6 +17,7 @@ import { STORAGE_KEYS, getBoolStorage, setBoolStorage, getStorageItem } from '..
 import { autoSaveBackup, exportBackup } from '../stats/backup';
 import { ScoreHeader } from '../components/match/ScoreHeader';
 import { CourtGrid } from '../components/court/CourtGrid';
+import { rotationFromStartZone } from '../components/court/CourtZonePicker';
 import { ActionBar } from '../components/match/ActionBar';
 import { SubstitutionModal } from '../components/match/SubstitutionModal';
 import { LiberoPickerModal } from '../components/match/LiberoPickerModal';
@@ -310,8 +311,10 @@ export function LiveMatchPage() {
 
       const so1Row = lineupRows.find(r => r.serve_order === 1);
       const sz = so1Row?.position ?? 1;
-      const zoneRotNum = ((1 - sz + 6) % 6) + 1;
-      const baseRotation = currentSet.start_rotation ?? zoneRotNum;
+      // Rotation number is derived purely from where Player I starts (the court
+      // zone on the lineup's serve-order-1 row), not the stored start_rotation —
+      // so the live pill always matches the lineup the coach actually built.
+      const baseRotation = rotationFromStartZone(sz);
       let baseLineup = useMatchStore.getState().lineup; // empty-slot default from resetMatch()
       if (lineupRows.length > 0) {
         baseLineup = lineupRows

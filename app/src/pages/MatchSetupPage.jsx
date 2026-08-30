@@ -8,7 +8,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { useMatchStore } from '../store/matchStore';
 import { MATCH_STATUS, SET_STATUS, FORMAT, SIDE } from '../constants';
-import { serveOrderToZone } from '../components/court/CourtZonePicker';
+import { serveOrderToZone, rotationFromStartZone } from '../components/court/CourtZonePicker';
 import { LineupForm } from '../components/match/LineupForm';
 import { usePlan } from '../hooks/usePlan';
 import { PvShareSheet } from '../components/parentvantage/PvShareSheet';
@@ -58,10 +58,9 @@ export function MatchSetupPage() {
   const [lineup,         setLineupState]    = useState(Array(6).fill(''));
   // slotPositions[i] = position label override for serve slot i (e.g. 'OH', 'MB')
   const [slotPositions,  setSlotPositions]  = useState(Array(6).fill(''));
-  // startZone = court zone (1-6) where Player I starts; default 1 = back right
+  // startZone = court zone (1-6) where Player I starts; default 1 = back right.
+  // The rotation number is derived from this — see rotationFromStartZone.
   const [startZone, setStartZone]  = useState(1);
-  // startRotation = rotation label (1-6) for Player I; independent of court position
-  const [startRotation, setStartRotation] = useState(1);
   // liberoId = player designated as libero (optional)
   const [liberoId,  setLiberoId]   = useState('');
   // libero2Id = second dressed libero (optional) — IHSA two-libero rule; only one on court at a time
@@ -457,7 +456,7 @@ export function MatchSetupPage() {
         }
       }
 
-      // Create first set
+      // Create first set. Rotation number is derived purely from where Player I starts.
       const setId = await db.sets.add({
         match_id:         effectiveMatchId,
         set_number:       1,
@@ -466,7 +465,7 @@ export function MatchSetupPage() {
         opp_score:        0,
         libero_player_id:  liberoId  ? Number(liberoId)  : null,
         libero2_player_id: libero2Id ? Number(libero2Id) : null,
-        start_rotation:   startRotation,
+        start_rotation:   rotationFromStartZone(startZone),
         serving_first:    servingSide, // persisted so the live page survives remount/reload
         ...(startFormations ? { serve_receive_formations: startFormations } : {}),
       });
@@ -953,8 +952,6 @@ export function MatchSetupPage() {
                 setSlotPositions={setSlotPositions}
                 startZone={startZone}
                 setStartZone={setStartZone}
-                startRotation={startRotation}
-                setStartRotation={setStartRotation}
                 liberoId={liberoId}
                 setLiberoId={setLiberoId}
                 libero2Id={libero2Id}

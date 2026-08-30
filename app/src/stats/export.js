@@ -21,6 +21,19 @@ function playerRows(playerStats, playerNames) {
   return Object.entries(playerStats).map(([id, s]) => ({ id, name: playerNames[id] ?? `#${id}`, ...s }));
 }
 
+// Descriptive download name for a MaxPreps export, e.g.
+// "vantage-vs-madison-2026-08-25-maxpreps.txt" — so a folder full of them is
+// legible instead of every file reading "match-<id>-maxpreps.txt".
+export function maxPrepsFilename(match) {
+  const opp = (match?.opponent_name ?? 'opponent')
+    .trim()
+    .replace(/[^\w\s-]/g, '')   // drop punctuation
+    .replace(/\s+/g, '-')
+    .toLowerCase() || 'opponent';
+  const date = match?.date ? String(match.date).slice(0, 10) : 'undated';
+  return `vantage-vs-${opp}-${date}-maxpreps.txt`;
+}
+
 // ── CSV Export ────────────────────────────────────────────────────────────────
 
 export function exportMatchCSV(playerStats, playerNames, filename = 'match-stats.csv') {
