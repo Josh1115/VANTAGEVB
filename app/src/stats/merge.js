@@ -61,6 +61,21 @@ export function uidClaimedMatchIds(impMatches, byUid) {
   return claimed;
 }
 
+// Translate the named player-id fields on a child row (rally, substitution) to
+// this device's ids via `playerMap` (imported id → local id), returning a copy.
+// A key absent from `obj` stays absent (a libero_swap sub row carries none); a
+// present-but-null value stays null; an unmapped id becomes null rather than
+// silently pointing at a stranger. Lineups and contacts remap inline the same
+// way — this is the shared rule for every other player reference.
+export function remapPlayerKeys(obj, keys, playerMap) {
+  const out = { ...obj };
+  for (const k of keys) {
+    if (!(k in obj)) continue;
+    out[k] = obj[k] != null ? (playerMap.get(obj[k]) ?? null) : obj[k];
+  }
+  return out;
+}
+
 // season_id|opponent|date → [match, ...]. Several matches can share one key
 // (tournament slots on a day, a doubleheader); pickExistingMatch pairs them off.
 export function indexMatchesByKey(exMatches) {
@@ -646,17 +661,18 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
       if (lineupRows.length) await db.lineups.bulkAdd(lineupRows);
 
       // ── Substitutions ─────────────────────────────────────────────────
+      // Every player reference on a sub row has to be translated to THIS
+      // device's player ids or the lineup replays wrong on reload. player_in /
+      // player_out are the fields the app actually reads (matchStore writes
+      // them, reconstructSetState replays them); the _id-suffixed variants
+      // only appear on some legacy rows.
       const subRows = [];
       for (const impSet of impSets) {
         const newSetId = localSetMap.get(impSet.id);
         if (newSetId == null) continue;
         for (const sub of impSubsBySet.get(impSet.id) ?? []) {
-          const row = {
-            ...sub,
-            set_id:        newSetId,
-            player_in_id:  sub.player_in_id  != null ? (playerMap.get(sub.player_in_id)  ?? null) : null,
-            player_out_id: sub.player_out_id != null ? (playerMap.get(sub.player_out_id) ?? null) : null,
-          };
+          const row = remapPlayerKeys(sub, ['player_in', 'player_out', 'player_in_id', 'player_out_id'], playerMap);
+          row.set_id = newSetId;
           delete row.id;
           subRows.push(row);
         }
@@ -672,7 +688,10 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
         if (newSetId == null) continue;
         for (const rally of impRalliesBySet.get(impSet.id) ?? []) {
           rallyOrigIds.push(rally.id);
-          const row = { ...rally, set_id: newSetId };
+          // server_player_id is a player reference too — translate it, or SRV PT
+          // / ATT:PT read 0 for every player on a synced match.
+          const row = remapPlayerKeys(rally, ['server_player_id'], playerMap);
+          row.set_id = newSetId;
           delete row.id;
           rallyRows.push(row);
         }

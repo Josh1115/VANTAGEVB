@@ -28,6 +28,7 @@ const {
   pickExistingMatch,
   uidClaimedMatchIds,
   indexMatchesByKey,
+  remapPlayerKeys,
 } = await import('../merge');
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -95,6 +96,50 @@ describe('pickExistingMatch', () => {
 
   it('returns undefined when the key is unknown', () => {
     expect(pickExistingMatch({}, byUid, byKey, 'nope', new Set())).toBeUndefined();
+  });
+});
+
+describe('remapPlayerKeys', () => {
+  const pmap = new Map([[10, 100], [20, 200]]);
+
+  it('translates present player-id fields to local ids', () => {
+    const out = remapPlayerKeys(
+      { rally_number: 3, serve_side: 'us', server_player_id: 10 },
+      ['server_player_id'], pmap,
+    );
+    expect(out).toEqual({ rally_number: 3, serve_side: 'us', server_player_id: 100 });
+  });
+
+  it('remaps every named key, including the legacy _id variants', () => {
+    const out = remapPlayerKeys(
+      { player_in: 10, player_out: 20, player_in_id: 20, player_out_id: 10 },
+      ['player_in', 'player_out', 'player_in_id', 'player_out_id'], pmap,
+    );
+    expect(out).toEqual({ player_in: 100, player_out: 200, player_in_id: 200, player_out_id: 100 });
+  });
+
+  it('leaves an absent key absent (libero_swap row carries no player_in/out)', () => {
+    const out = remapPlayerKeys(
+      { libero_swap: true, timestamp: 5 },
+      ['player_in', 'player_out'], pmap,
+    );
+    expect(out).toEqual({ libero_swap: true, timestamp: 5 });
+    expect('player_in' in out).toBe(false);
+  });
+
+  it('keeps a present null null, and nulls an id that maps to nobody', () => {
+    const out = remapPlayerKeys(
+      { server_player_id: null, other: 999 },
+      ['server_player_id', 'other'], pmap,
+    );
+    expect(out.server_player_id).toBeNull();
+    expect(out.other).toBeNull(); // 999 not in pmap
+  });
+
+  it('does not mutate the input', () => {
+    const src = { server_player_id: 10 };
+    remapPlayerKeys(src, ['server_player_id'], pmap);
+    expect(src.server_player_id).toBe(10);
   });
 });
 
