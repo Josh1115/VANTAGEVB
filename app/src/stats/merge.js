@@ -29,6 +29,51 @@ function pickExisting(imp, byUid, byKey, key) {
   return byKey.get(key);
 }
 
+// Matches specifically. Unlike the record types above, the same natural key
+// legitimately covers several rows — a tournament's "TBD" games all fall on one
+// day, a real doubleheader is the same opponent twice on one date — so the key
+// index holds a LIST, not a single row (see indexMatchesByKey). `uid` still wins
+// outright; the natural-key fallback may only claim a local row that no other
+// incoming match has already taken this pass (`claimed`), so N incoming games
+// that share a key pair up 1:1 with the N local rows instead of all collapsing
+// onto whichever landed in the map last. When every same-key local row is
+// already spoken for, the incoming row is genuinely new — return undefined.
+export function pickExistingMatch(imp, byUid, byKeyList, key, claimed) {
+  if (imp.uid) {
+    const hit = byUid.get(imp.uid);
+    if (hit) return hit;
+  }
+  const list = byKeyList.get(key);
+  if (!list) return undefined;
+  return list.find(m => !claimed.has(m.id));
+}
+
+// Local match rows that some incoming match will claim by `uid`, computed up
+// front: the natural-key fallback in pickExistingMatch must never hand one of
+// these rows to a different game that only lined up on season + opponent + date.
+export function uidClaimedMatchIds(impMatches, byUid) {
+  const claimed = new Set();
+  for (const m of impMatches) {
+    if (!m.uid) continue;
+    const hit = byUid.get(m.uid);
+    if (hit) claimed.add(hit.id);
+  }
+  return claimed;
+}
+
+// season_id|opponent|date → [match, ...]. Several matches can share one key
+// (tournament slots on a day, a doubleheader); pickExistingMatch pairs them off.
+export function indexMatchesByKey(exMatches) {
+  const map = new Map();
+  for (const m of exMatches) {
+    const k = `${m.season_id}|${nkMatch(m)}`;
+    const list = map.get(k);
+    if (list) list.push(m);
+    else map.set(k, [m]);
+  }
+  return map;
+}
+
 // Whether an incoming record is a newer edit than the one we have locally —
 // used to decide whether to actually adopt its fields once matched.
 function isNewer(imp, ex) {
@@ -149,7 +194,7 @@ export async function parseMergePreviewFromData(data) {
   const exOrgByKey    = new Map(exOrgs.map(o    => [nkOrg(o),                       o]));
   const exTeamByKey   = new Map(exTeams.map(t   => [`${t.org_id}|${nkTeam(t)}`,     t]));
   const exSeasonByKey = new Map(exSeasons.map(s => [`${s.team_id}|${nkSeason(s)}`,  s]));
-  const exMatchByKey  = new Map(exMatches.map(m => [`${m.season_id}|${nkMatch(m)}`, m]));
+  const exMatchByKey  = indexMatchesByKey(exMatches);
   const exOrgByUid    = new Map(exOrgs.filter(o => o.uid).map(o    => [o.uid, o]));
   const exTeamByUid   = new Map(exTeams.filter(t => t.uid).map(t   => [t.uid, t]));
   const exSeasonByUid = new Map(exSeasons.filter(s => s.uid).map(s => [s.uid, s]));
@@ -197,6 +242,12 @@ export async function parseMergePreviewFromData(data) {
   const newMatches = [];
   const conflicts  = [];
 
+  // Rows an incoming match claims by uid are reserved before natural-key matching
+  // starts (below), and each natural-key match reserves its row as it is made —
+  // so a set of same-key games (a tournament day) pairs off 1:1 with the local
+  // rows and any extra incoming game falls through as genuinely new.
+  const claimedMatchIds = uidClaimedMatchIds(data.matches, exMatchByUid);
+
   for (const m of data.matches) {
     const exSeasonId = impSeasonMap.get(m.season_id);
     const seasonYear = impSeasonById.get(m.season_id)?.year ?? '?';
@@ -217,7 +268,8 @@ export async function parseMergePreviewFromData(data) {
       continue;
     }
 
-    const exMatch = pickExisting(m, exMatchByUid, exMatchByKey, `${exSeasonId}|${nkMatch(m)}`);
+    const exMatch = pickExistingMatch(m, exMatchByUid, exMatchByKey, `${exSeasonId}|${nkMatch(m)}`, claimedMatchIds);
+    if (exMatch) claimedMatchIds.add(exMatch.id);
     if (!exMatch) {
       // Don't offer to re-add a match the user deliberately deleted on this
       // device — unless the incoming copy is newer than that delete, meaning
@@ -285,7 +337,7 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
   const exSeasonByKey = new Map(exSeasons.map(s => [`${s.team_id}|${nkSeason(s)}`,  s]));
   const exPlayerByKey = new Map(exPlayers.map(p => [`${p.team_id}|${nkPlayer(p)}`,  p]));
   const exOppByKey    = new Map(exOpps.map(o    => [nkOpp(o),                       o]));
-  const exMatchByKey  = new Map(exMatches.map(m => [`${m.season_id}|${nkMatch(m)}`, m]));
+  const exMatchByKey  = indexMatchesByKey(exMatches);
 
   const exOrgByUid    = new Map(exOrgs.filter(o    => o.uid).map(o    => [o.uid, o]));
   const exTeamByUid   = new Map(exTeams.filter(t   => t.uid).map(t   => [t.uid, t]));
@@ -480,17 +532,26 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
       // and keep the match instead of deleting it again.
       if (await dropTombstoneIfOutdated(key, m)) continue;
       await cascadeDeleteMatchRow(m.id);
-      exMatchByKey.delete(`${m.season_id}|${nkMatch(m)}`);
+      const dk = `${m.season_id}|${nkMatch(m)}`;
+      const dlist = (exMatchByKey.get(dk) ?? []).filter(x => x.id !== m.id);
+      if (dlist.length) exMatchByKey.set(dk, dlist);
+      else exMatchByKey.delete(dk);
       matchesTombstoned++;
     }
 
     // ── 6. Matches ─────────────────────────────────────────────────────────
+    // Same claim-as-you-go pairing as the preview pass: uid matches reserved up
+    // front, each natural-key match reserved when made, so several same-key
+    // games line up 1:1 and a genuinely new one is inserted rather than folded.
+    const claimedMatchIds = uidClaimedMatchIds(data.matches, exMatchByUid);
+
     for (const impMatch of data.matches) {
       const decision   = decisions[impMatch.id]; // 'keep' | 'replace' | undefined = new
       const exSeasonId = seasonMap.get(impMatch.season_id);
       if (exSeasonId == null) continue;
 
-      const exMatch = pickExisting(impMatch, exMatchByUid, exMatchByKey, `${exSeasonId}|${nkMatch(impMatch)}`);
+      const exMatch = pickExistingMatch(impMatch, exMatchByUid, exMatchByKey, `${exSeasonId}|${nkMatch(impMatch)}`, claimedMatchIds);
+      if (exMatch) claimedMatchIds.add(exMatch.id);
 
       if (decision === 'keep') {
         // Two devices that each scheduled the same game hold separate rows with

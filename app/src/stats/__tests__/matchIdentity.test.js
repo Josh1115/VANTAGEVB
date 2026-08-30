@@ -271,6 +271,19 @@ describe('convergedPlaceholderUid', () => {
   it('returns null when there is no matched local row', () => {
     expect(convergedPlaceholderUid(sched('uid-a'), null)).toBeNull();
   });
+
+  it('never fuses two tournament slots that differ only by start time', () => {
+    const a = { uid: 'uid-a', status: 'scheduled', match_time: '09:00' };
+    const b = { uid: 'uid-b', status: 'scheduled', match_time: '14:00' };
+    expect(convergedPlaceholderUid(a, b)).toBeNull();
+    expect(convergedPlaceholderUid(b, a)).toBeNull();
+  });
+
+  it('still converges two placeholders that share a start time', () => {
+    const a = { uid: 'uid-a', status: 'scheduled', match_time: '09:00' };
+    const b = { uid: 'uid-b', status: 'scheduled', match_time: '09:00' };
+    expect(convergedPlaceholderUid(a, b)).toBe('uid-a');
+  });
 });
 
 describe('distinguishKey / pickSurvivor', () => {

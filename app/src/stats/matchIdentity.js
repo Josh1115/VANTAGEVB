@@ -82,6 +82,9 @@ export function convergedPlaceholderUid(impMatch, exMatch) {
   if (impMatch.uid === exMatch.uid) return null;
   if (impMatch.status !== MATCH_STATUS.SCHEDULED) return null;
   if (exMatch.status  !== MATCH_STATUS.SCHEDULED) return null;
+  // Same opponent + date but different start times = two different games in one
+  // tournament day, not one game scheduled twice — never fuse their identities.
+  if ((impMatch.match_time ?? '') !== (exMatch.match_time ?? '')) return null;
   const winner = impMatch.uid < exMatch.uid ? impMatch.uid : exMatch.uid;
   return winner === exMatch.uid ? null : winner;
 }
