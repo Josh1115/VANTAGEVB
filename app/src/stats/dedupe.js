@@ -1,5 +1,5 @@
 import { db } from '../db/schema';
-import { deleteMatch } from './queries';
+import { cascadeDeleteMatchRow } from './queries';
 import { clearMatchTombstone } from './merge';
 import { MATCH_DUPE_REVIEW_WINDOW_HOURS } from '../constants';
 
@@ -330,14 +330,16 @@ export async function findLikelyDuplicateMatchPairs() {
   return pairs;
 }
 
-// Resolve one reviewed pair: cascade-delete the loser (same as deleting it from
-// its own page), then — if the surviving match shares the loser's natural key
-// (season + opponent + date) — clear the tombstone that delete just wrote, so
-// the next sync doesn't also remove the survivor. When the keys differ (e.g. the
-// dates don't match), the tombstone is left in place so the deletion propagates
-// to other devices the normal way.
+// Resolve one reviewed pair: delete the losing copy WITHOUT writing a tombstone.
+// A natural-key delete-marker (season + opponent + date) can match the SURVIVING
+// copy on another device — the two copies duplicated precisely because their
+// keys drifted — and remove it on the next sync, which is how a dedupe merge
+// could destroy the match the coach chose to keep. Worst case the loser
+// reappears from an older cloud backup and the coach merges it again; no data is
+// lost. Also clear any pre-existing marker sharing the survivor's key so a
+// stale one from an earlier delete doesn't remove it later.
 export async function resolveDuplicateMatch(loserId, survivorId) {
   const survivor = await db.matches.get(survivorId);
-  await deleteMatch(loserId);
+  await cascadeDeleteMatchRow(loserId);
   if (survivor) await clearMatchTombstone(survivor);
 }

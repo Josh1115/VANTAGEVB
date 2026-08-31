@@ -218,11 +218,14 @@ export const MATCH_DUPE_REVIEW_WINDOW_HOURS = 48;
 // Feature flags
 // AUTO_SYNC_ENABLED: off again 2026-08-28 after a coach's whole season of
 // matches was wiped by a snowballing "deleted" marker (tombstone) loop —
-// restore/sync kept re-deleting and re-stamping tombstones. Keep automatic sync
-// disabled until that loop is fixed (removeTombstonedMatches calling deleteMatch;
-// applyBackupData preserving stale local tombstones; resolveDuplicateMatch
-// tombstoning survivors). While false, cloud sync only happens on an explicit
-// "Save to Cloud" / "Restore from Cloud" tap.
+// restore/sync kept re-deleting and re-stamping tombstones.
+// The three loop bugs are now fixed (2026-08-31): removeTombstonedMatches uses
+// cascadeDeleteMatchRow (no re-tombstone); applyBackupData drops stale local
+// tombstones for matches present in the restored payload; resolveDuplicateMatch
+// deletes the loser without a tombstone. Still left OFF pending real-device
+// verification of restore + dedupe before automatic sync is switched back on.
+// While false, cloud sync only happens on an explicit "Save to Cloud" /
+// "Restore from Cloud" tap.
 export const AUTO_SYNC_ENABLED = false;
 
 // NFHS rules

@@ -2,7 +2,7 @@ import { db } from '../db/schema';
 import { STORAGE_KEYS } from '../utils/storage';
 import { supabase } from '../utils/supabase';
 import { parseMergePreviewFromData, executeMerge, tombstoneKeyForMatch, isMatchTombstoneOutdated, dedupeLocalMatches } from './merge';
-import { deleteMatch } from './queries';
+import { cascadeDeleteMatchRow } from './queries';
 import { MATCH_STATUS, TRIAL_MATCH_LIMIT, AUTO_SYNC_ENABLED } from '../constants';
 
 const BACKUP_VERSION = 1;
@@ -119,6 +119,13 @@ async function applyBackupData(data) {
     }
   });
 
+  // An explicit restore/import trusts the payload's match list: any match that
+  // came back in the backup wins over a stale local delete-marker for it, so
+  // drop those markers before enforcement runs. Markers for matches NOT in the
+  // payload stay — those are real deletions still propagating from a device that
+  // hasn't uploaded yet.
+  await dropTombstonesForPresentMatches();
+
   // Now that every known deletion (local + incoming) is recorded, remove any
   // match the payload brought back that this device had already deleted.
   await removeTombstonedMatches();
@@ -127,6 +134,40 @@ async function applyBackupData(data) {
     for (const [key, value] of Object.entries(data.settings)) {
       if (typeof value === 'string' && !BLOCKED_SETTINGS_KEYS.has(key)) localStorage.setItem(key, value);
     }
+  }
+}
+
+// Maps each match to its tombstone key (org name | team nk | season year | opp | date).
+async function matchTombstoneKeys(matches) {
+  const [orgs, teams, seasons] = await Promise.all([
+    db.organizations.toArray(), db.teams.toArray(), db.seasons.toArray(),
+  ]);
+  const orgById    = new Map(orgs.map(o => [o.id, o]));
+  const teamById   = new Map(teams.map(t => [t.id, t]));
+  const seasonById = new Map(seasons.map(s => [s.id, s]));
+  const keys = new Set();
+  for (const m of matches) {
+    const season = seasonById.get(m.season_id);
+    const team   = season ? teamById.get(season.team_id) : null;
+    const org    = team ? orgById.get(team.org_id) : null;
+    if (!season || !team || !org) continue;
+    keys.add(tombstoneKeyForMatch(org.name, team, season.year, m));
+  }
+  return keys;
+}
+
+// Fix for the tombstone-wipe class of bug: after an explicit restore/import the
+// local match table IS the payload, so any match-tombstone whose key matches a
+// match sitting there is stale by definition — the user chose to restore this
+// data. Drop those markers so removeTombstonedMatches() doesn't immediately
+// re-delete a match the user just restored. Tombstones for matches absent from
+// the payload are untouched (a real cross-device delete still in flight).
+async function dropTombstonesForPresentMatches() {
+  const matchTombs = await db.tombstones.where('type').equals('match').toArray();
+  if (!matchTombs.length) return;
+  const presentKeys = await matchTombstoneKeys(await db.matches.toArray());
+  for (const t of matchTombs) {
+    if (presentKeys.has(t.key)) await db.tombstones.delete(t.id);
   }
 }
 
@@ -151,7 +192,12 @@ async function removeTombstonedMatches() {
     if (!tomb) continue;
     // The game was re-created after this delete — drop the stale marker, keep it.
     if (isMatchTombstoneOutdated(tomb, m)) { await db.tombstones.delete(tomb.id); continue; }
-    await deleteMatch(m.id);
+    // Enforce the existing delete-marker WITHOUT writing a fresh one. deleteMatch()
+    // records a new tombstone every call, so using it here stamped a new marker
+    // (deleted_at = now) on every sync/restore — a self-feeding loop that made
+    // tombstones pile up and, because the new timestamp always beat the match's
+    // updated_at, permanently buried matches that should have healed.
+    await cascadeDeleteMatchRow(m.id);
   }
 }
 

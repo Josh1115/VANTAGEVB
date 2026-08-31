@@ -148,20 +148,15 @@ export const getPlayerPositionsForMatches = async (matchIds) => {
   );
 };
 
-// Cascade-delete a match and all dependent records.
-// If the match had an opponent_id and this was their only match, the opponent
-// record (and their tendencies) are also deleted to avoid orphaned profiles.
-export async function deleteMatch(matchId) {
-  const match  = await db.matches.get(matchId);
+// Deletes a match row and every dependent record (sets, contacts, rallies,
+// lineups, substitutions) WITHOUT recording a delete-marker (tombstone) and
+// without the orphaned-opponent cleanup. Use this whenever a tombstone already
+// exists or must not be created — the sync-time tombstone-enforcement pass
+// (backup.js) and the duplicate-merge tool (dedupe.js). `deleteMatch` wraps this
+// and adds the tombstone + opponent cleanup for a real user-initiated delete.
+export async function cascadeDeleteMatchRow(matchId) {
   const sets   = await db.sets.where('match_id').equals(matchId).toArray();
   const setIds = sets.map((s) => s.id);
-
-  // Resolve the natural-key path before the row is gone, so cloud sync knows
-  // never to bring this specific match back from an older cloud backup.
-  const season = match ? await db.seasons.get(match.season_id) : null;
-  const team   = season ? await db.teams.get(season.team_id) : null;
-  const org    = team ? await db.organizations.get(team.org_id) : null;
-
   await Promise.all([
     db.contacts.where('match_id').equals(matchId).delete(),
     db.rallies.where('set_id').anyOf(setIds).delete(),
@@ -170,6 +165,22 @@ export async function deleteMatch(matchId) {
   ]);
   await db.sets.where('match_id').equals(matchId).delete();
   await db.matches.delete(matchId);
+}
+
+// Cascade-delete a match and all dependent records, recording a tombstone so the
+// deletion propagates across devices on the next cloud sync.
+// If the match had an opponent_id and this was their only match, the opponent
+// record (and their tendencies) are also deleted to avoid orphaned profiles.
+export async function deleteMatch(matchId) {
+  const match  = await db.matches.get(matchId);
+
+  // Resolve the natural-key path before the row is gone, so cloud sync knows
+  // never to bring this specific match back from an older cloud backup.
+  const season = match ? await db.seasons.get(match.season_id) : null;
+  const team   = season ? await db.teams.get(season.team_id) : null;
+  const org    = team ? await db.organizations.get(team.org_id) : null;
+
+  await cascadeDeleteMatchRow(matchId);
 
   if (match && season && team && org) {
     await addTombstone('match', tombstoneKeyForMatch(org.name, team, season.year, match));
