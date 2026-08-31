@@ -386,44 +386,44 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
         style={{ height: 'calc(10vmin + env(safe-area-inset-top))', paddingTop: 'env(safe-area-inset-top)', background: '#08090b', borderBottom: '1px solid rgba(232,83,11,0.2)' }}
       >
 
-        {/* ── Far left: sets won (standalone) + FamScope badge above timeout circles + sub counter ── */}
-        <div className="flex items-center gap-1 shrink-0">
-          {/* Sets won box — spacer matches badge height so it aligns with the timeout row */}
-          <div className="flex flex-col items-center justify-center">
-            <div className="mb-[0.4vmin] invisible text-[1.2vmin] py-[0.3vmin]">·</div>
-            {flipped ? (
-              <div className="border-2 border-slate-500 rounded px-[1.8vmin] py-[0.5vmin] bg-slate-800/40">
-                <span className="text-[3.1vmin] font-black text-slate-300 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{oppSetsWon}</span>
-              </div>
-            ) : (
-              <div className="border-2 border-orange-500 rounded px-[1.8vmin] py-[0.5vmin] bg-orange-950/30">
-                <span className="text-[3.1vmin] font-black text-orange-400 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{ourSetsWon}</span>
+        {/* ── Far left: pills row (FamScope / ROT / NXT SRV) sitting directly above
+             the sets-won box + timeout circles + sub counter ── */}
+        <div className="flex flex-col items-start justify-center shrink-0">
+          {/* Pills row — left edge lines up with the sets-won box below it */}
+          <div className="mb-[0.4vmin] flex items-center gap-[0.6vmin]">
+            {(broadcastEnabled || hasFamilyScope) && (
+              broadcastEnabled ? (
+                <div className="flex items-center gap-[0.6vmin] bg-slate-800/90 border border-slate-600/60 text-slate-400 text-[1.2vmin] font-bold px-[1.2vmin] py-[0.3vmin] rounded-full pointer-events-none">
+                  <span className="w-[1vmin] h-[1vmin] rounded-full bg-red-500 animate-pulse shrink-0" />
+                  FamScope
+                </div>
+              ) : (
+                <div className="flex items-center gap-[0.6vmin] bg-slate-800/90 border border-slate-600/60 text-slate-400 text-[1.2vmin] font-bold px-[1.2vmin] py-[0.3vmin] rounded-full pointer-events-none">
+                  <span className="w-[1vmin] h-[1vmin] flex items-center justify-center text-slate-500 shrink-0 leading-none" style={{ fontSize: '0.9vmin' }}>✕</span>
+                  FamScope
+                </div>
+              )
+            )}
+            <div className="flex items-center gap-[0.4vmin] bg-purple-950/40 border border-purple-700/60 text-purple-400 text-[1.2vmin] font-bold px-[1.2vmin] py-[0.3vmin] rounded pointer-events-none">
+              ROT - <span className="tabular-nums">{rotationNum}</span>
+            </div>
+            {nextServer?.playerName && (
+              <div className="flex items-center gap-[0.6vmin] bg-teal-950/40 border border-teal-600/60 text-teal-300 text-[1.2vmin] font-bold px-[1.2vmin] py-[0.3vmin] rounded pointer-events-none whitespace-nowrap">
+                NXT SRV <span>{firstInitialLastName(nextServer.playerName)}{nextServer.positionLabel ? ` · ${nextServer.positionLabel}` : ''}</span>
               </div>
             )}
           </div>
 
-          {/* Badge + timeout circles + sub counter stacked */}
-          <div className="flex flex-col items-start justify-center">
-            <div className="mb-[0.4vmin] flex items-center gap-[0.6vmin]">
-              {(broadcastEnabled || hasFamilyScope) && (
-                broadcastEnabled ? (
-                  <div className="flex items-center gap-[0.6vmin] bg-slate-800/90 border border-slate-600/60 text-slate-400 text-[1.2vmin] font-bold px-[1.2vmin] py-[0.3vmin] rounded-full pointer-events-none">
-                    <span className="w-[1vmin] h-[1vmin] rounded-full bg-red-500 animate-pulse shrink-0" />
-                    FamScope
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-[0.6vmin] bg-slate-800/90 border border-slate-600/60 text-slate-400 text-[1.2vmin] font-bold px-[1.2vmin] py-[0.3vmin] rounded-full pointer-events-none">
-                    <span className="w-[1vmin] h-[1vmin] flex items-center justify-center text-slate-500 shrink-0 leading-none" style={{ fontSize: '0.9vmin' }}>✕</span>
-                    FamScope
-                  </div>
-                )
-              )}
-              <div className="flex items-center gap-[0.4vmin] bg-purple-950/40 border border-purple-700/60 text-purple-400 text-[1.2vmin] font-bold px-[1.2vmin] py-[0.3vmin] rounded pointer-events-none">
-                ROT - <span className="tabular-nums">{rotationNum}</span>
-              </div>
-              {nextServer?.playerName && (
-                <div className="flex items-center gap-[0.6vmin] bg-teal-950/40 border border-teal-600/60 text-teal-300 text-[1.2vmin] font-bold px-[1.2vmin] py-[0.3vmin] rounded pointer-events-none whitespace-nowrap">
-                  NXT SRV <span>{firstInitialLastName(nextServer.playerName)}{nextServer.positionLabel ? ` · ${nextServer.positionLabel}` : ''}</span>
+          {/* Sets won box + timeout circles + sub counter */}
+          <div className="flex items-center gap-1">
+            <div className="flex flex-col items-center justify-center">
+              {flipped ? (
+                <div className="border-2 border-slate-500 rounded px-[1.8vmin] py-[0.5vmin] bg-slate-800/40">
+                  <span className="text-[3.1vmin] font-black text-slate-300 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{oppSetsWon}</span>
+                </div>
+              ) : (
+                <div className="border-2 border-orange-500 rounded px-[1.8vmin] py-[0.5vmin] bg-orange-950/30">
+                  <span className="text-[3.1vmin] font-black text-orange-400 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{ourSetsWon}</span>
                 </div>
               )}
             </div>
