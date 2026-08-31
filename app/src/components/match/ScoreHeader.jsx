@@ -245,13 +245,21 @@ const NudgeBtn = memo(function NudgeBtn({ label, onTap }) {
   );
 });
 
+// "Layla Ivins" → "L. Ivins"; leaves a single-word name untouched.
+function firstInitialLastName(full) {
+  const parts = (full || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0];
+  return `${parts[0][0]}. ${parts.slice(1).join(' ')}`;
+}
+
 export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlayer2, teamName, opponentName, onTimeoutCalled, onAssignLibero, onAssignLibero2, flipLayout = false, broadcastEnabled = false, hasFamilyScope = false }) {
   const flipped = flipLayout;
   const {
     ourScore, oppScore, ourSetsWon, oppSetsWon, setNumber, serveSide,
     ourTimeouts, oppTimeouts, useTimeout, subsUsed, maxSubsPerSet, adjustScore,
     currentRun, lastFeedItem, pointHistory, format, lastSetScore, rotationNum,
-    committedRallies,
+    committedRallies, lineup,
   } = useMatchStore(useShallow((s) => ({
     ourScore:         s.ourScore,
     oppScore:         s.oppScore,
@@ -272,6 +280,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
     lastSetScore:     s.lastSetScore,
     rotationNum:      s.rotationNum,
     committedRallies: s.committedRallies,
+    lineup:           s.lineup,
   })));
 
   const { teamStats, oppStats } = useMatchStats();
@@ -288,6 +297,11 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
   const [tiedFlashKey,    setTiedFlashKey]    = useState(0);
   const weServe     = serveSide === SIDE.US;
   const prevTiedRef = useRef(false);
+
+  // Next server = whoever is in court position 2 right now: on our next sideout
+  // the lineup rotates forward and position 2 drops back to serve (see
+  // matchStore rotateFwd). Only meaningful while the opponent holds serve.
+  const nextServer = !weServe ? lineup?.find((sl) => sl.position === 2) : null;
 
   const [serveVersion,    setServeVersion]    = useState(0);
   const subWarn2Fired    = useRef(false);
@@ -407,6 +421,11 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
               <div className="flex items-center gap-[0.4vmin] bg-purple-950/40 border border-purple-700/60 text-purple-400 text-[1.2vmin] font-bold px-[1.2vmin] py-[0.3vmin] rounded pointer-events-none">
                 ROT - <span className="tabular-nums">{rotationNum}</span>
               </div>
+              {nextServer?.playerName && (
+                <div className="flex items-center gap-[0.6vmin] bg-teal-950/40 border border-teal-600/60 text-teal-300 text-[1.2vmin] font-bold px-[1.2vmin] py-[0.3vmin] rounded pointer-events-none whitespace-nowrap">
+                  NXT SRV <span>{firstInitialLastName(nextServer.playerName)}{nextServer.positionLabel ? ` · ${nextServer.positionLabel}` : ''}</span>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-1">
               {flipped ? (
