@@ -1,5 +1,6 @@
 import { db } from '../db/schema';
 import { STORAGE_KEYS } from '../utils/storage';
+import { raiseTrialCreatedFloor } from '../utils/trialMatchCount';
 import { supabase } from '../utils/supabase';
 import { parseMergePreviewFromData, executeMerge, tombstoneKeyForMatch, isMatchTombstoneOutdated, dedupeLocalMatches } from './merge';
 import { cascadeDeleteMatchRow } from './queries';
@@ -358,6 +359,8 @@ export async function restoreFromCloud(supabase, { teamsAllowed = Infinity, matc
     .from('profiles')
     .update({ matches_created: totalMatches })
     .eq('id', user.id);
+  // Never let a restore lower the local "trial matches ever created" tally.
+  raiseTrialCreatedFloor(totalMatches);
 }
 
 // Merge the cloud backup into this device (never deleting local rows), then push the

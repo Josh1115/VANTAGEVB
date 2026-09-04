@@ -101,6 +101,7 @@ export async function consumeMatchSlotStrict() {
   if (error) {
     const e = new Error("You'll need an internet connection for this — trial matches are confirmed with the server. Try again once you're back online, or schedule matches ahead of time so they're ready to record offline.");
     e.code = 'MATCH_LIMIT';
+    e.offline = true;
     throw e;
   }
   if (data?.allowed === false) {

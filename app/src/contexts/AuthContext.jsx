@@ -8,6 +8,7 @@ import { router } from '../router';
 import { db } from '../db/schema';
 import { backfillLiberoSwapPositions } from '../db/liberoBackfill';
 import { getStorageItem, setStorageItem, STORAGE_KEYS } from '../utils/storage';
+import { raiseTrialCreatedFloor, applyServerReset } from '../utils/trialMatchCount';
 import { AUTO_SYNC_ENABLED } from '../constants';
 
 // Wipe all user-specific localStorage settings so one account's data can't
@@ -181,6 +182,15 @@ export function AuthProvider({ children }) {
     if (data) {
       setProfile(data);
       setStorageItem(STORAGE_KEYS.PROFILE_CACHE, JSON.stringify(data));
+
+      // Keep the local "trial matches ever created" tally in step with the
+      // server: honor a support-issued reset (can lower it, once per stamp),
+      // then floor it to the server's count so a reinstall / second device
+      // can't restart at 0.
+      if (data.plan === 'trial') {
+        applyServerReset(data.match_count_reset_at, data.matches_created);
+        raiseTrialCreatedFloor(data.matches_created);
+      }
 
       // Seed localStorage from profile on first login — only if the key is empty
       if (!getStorageItem(STORAGE_KEYS.COACH_NAME) && data.coach_name)

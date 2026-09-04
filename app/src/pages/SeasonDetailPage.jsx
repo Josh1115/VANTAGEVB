@@ -21,6 +21,7 @@ import { PvShareSheet } from '../components/parentvantage/PvShareSheet';
 import { ScheduleImportModal } from '../components/match/ScheduleImportModal';
 import { usePlan } from '../hooks/usePlan';
 import { consumeMatchSlotStrict } from '../utils/supabase';
+import { readTrialCreated, noteTrialMatchCreated, raiseTrialCreatedFloor } from '../utils/trialMatchCount';
 import { useUiStore, selectShowToast, selectShowUpgradeNudge } from '../store/uiStore';
 
 
@@ -305,31 +306,46 @@ export function SeasonDetailPage() {
           pv_token: existing?.pv_token ?? crypto.randomUUID(),
         });
       } else {
-        // Trial slot is confirmed with the server up front, before it's ever
-        // added locally — scheduling ahead of time is when a trial coach can
-        // reasonably be asked to have a connection, so the match can be
-        // recorded fully offline later without any further server check.
+        // Trial slot is confirmed with the server when there's a connection.
+        // Offline, we fall through to the local count check below (which caps a
+        // trial at matchLimit total) so a coach can still schedule their whole
+        // slate ahead of time — every scheduled match counts toward the trial.
+        let trialServerConfirmed = false;
         if (!isMaster && plan === 'trial') {
-          const slot = await consumeMatchSlotStrict();
-          if (slot) {
-            if (slot.used === 4 || slot.used >= slot.limit) showUpgradeNudge(slot.used, slot.limit);
-            else showToast(`Trial match ${slot.used} of ${slot.limit} used`, 'info');
+          try {
+            const slot = await consumeMatchSlotStrict();
+            trialServerConfirmed = true;
+            if (slot) {
+              raiseTrialCreatedFloor(slot.used);
+              if (slot.used === 4 || slot.used >= slot.limit) showUpgradeNudge(slot.used, slot.limit);
+              else showToast(`Trial match ${slot.used} of ${slot.limit} used`, 'info');
+            }
+          } catch (slotErr) {
+            if (!slotErr.offline) throw slotErr;
           }
         }
+        const trialFloor = plan === 'trial' ? readTrialCreated() : 0;
         await db.transaction('rw', [db.matches, db.seasons], async () => {
-          const [liveCount, season] = await Promise.all([
+          const [liveCount, season, totalCount] = await Promise.all([
             db.matches.where('season_id').equals(id).count(),
             db.seasons.get(id),
+            plan === 'trial' ? db.matches.count() : Promise.resolve(0),
           ]);
-          const effective = Math.max(liveCount, season?.peak_match_count ?? 0);
+          const perSeasonPeak = Math.max(liveCount, season?.peak_match_count ?? 0);
+          const effective = plan === 'trial'
+            ? Math.max(totalCount, trialFloor)
+            : perSeasonPeak;
           if (!isMaster && effective >= matchLimit) {
             const e = new Error('limit');
             e.code = 'MATCH_LIMIT';
             throw e;
           }
           await db.matches.add({ season_id: id, status: MATCH_STATUS.SCHEDULED, pv_token: crypto.randomUUID(), ...fields });
-          await db.seasons.update(id, { peak_match_count: effective + 1 });
+          await db.seasons.update(id, { peak_match_count: perSeasonPeak + 1 });
         });
+        // Offline trial schedule the server didn't count — bump the local tally
+        // so a later delete can't win the slot back.
+        if (plan === 'trial' && !trialServerConfirmed) noteTrialMatchCreated();
         // Undo any "deleted" marker for this same game so the next sync keeps it.
         await clearMatchTombstone({ season_id: id, opponent_name: fields.opponent_name, date: fields.date });
       }

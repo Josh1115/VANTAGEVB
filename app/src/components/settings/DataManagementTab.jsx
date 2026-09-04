@@ -7,6 +7,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
 import { supabase } from '../../utils/supabase';
 import { STORAGE_KEYS, setStorageItem, getIntStorage } from '../../utils/storage';
+import { resetTrialCreated } from '../../utils/trialMatchCount';
 import { useTrimSetting } from '../../hooks/useSettingsStorage';
 import { exportBackup, importBackup, restoreAutoBackup, saveToCloud, restoreFromCloud, syncWithCloud } from '../../stats/backup';
 import { findDuplicatePlayerGroups, findDuplicateOpponentGroups, findDuplicateOrgGroups, findDuplicateTeamGroups } from '../../stats/dedupe';
@@ -176,6 +177,9 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
       });
       setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, null);
       setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, null);
+      // The server-side trial counter is reset to 0 below — keep the local
+      // "matches ever created" tally in step with it.
+      resetTrialCreated();
       // Push an empty backup to the cloud so autoSync doesn't restore the old
       // data on the next page load, and reset the server-side match counter.
       if (session) {

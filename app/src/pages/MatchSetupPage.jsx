@@ -17,6 +17,7 @@ import { supabase, consumeMatchSlotStrict } from '../utils/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { autoSaveBackup } from '../stats/backup';
 import { clearMatchTombstone } from '../stats/merge';
+import { readTrialCreated, noteTrialMatchCreated, raiseTrialCreatedFloor } from '../utils/trialMatchCount';
 
 
 export function MatchSetupPage() {
@@ -220,6 +221,7 @@ export function MatchSetupPage() {
       return;
     }
     setSaving(true);
+    let trialServerConfirmed = false;
     try {
       if (!isMaster) {
         try {
@@ -234,6 +236,8 @@ export function MatchSetupPage() {
             return;
           }
           if (!error && data?.allowed !== false && plan === 'trial') {
+            trialServerConfirmed = true;
+            raiseTrialCreatedFloor(data.used);
             if (data.used === 4 || data.used >= data.limit) showUpgradeNudge(data.used, data.limit);
             else showToast(`Trial match ${data.used} of ${data.limit} used`, 'info');
           }
@@ -245,15 +249,17 @@ export function MatchSetupPage() {
       const ourSetsWon = parsedSets.filter((s) => s.ourScore > s.oppScore).length;
       const oppSetsWon = parsedSets.filter((s) => s.oppScore > s.ourScore).length;
 
+      const trialFloor = plan === 'trial' ? readTrialCreated() : 0;
       const matchId = await db.transaction('rw', [db.matches, db.seasons], async () => {
         const [liveCount, season, totalCount] = await Promise.all([
           db.matches.where('season_id').equals(Number(seasonId)).count(),
           db.seasons.get(Number(seasonId)),
           plan === 'trial' ? db.matches.count() : Promise.resolve(0),
         ]);
+        const perSeasonPeak = Math.max(liveCount, season?.peak_match_count ?? 0);
         const effective = plan === 'trial'
-          ? totalCount
-          : Math.max(liveCount, season?.peak_match_count ?? 0);
+          ? Math.max(totalCount, trialFloor)
+          : perSeasonPeak;
         if (!isMaster && effective >= matchLimit) {
           const e = new Error('Match limit reached.');
           e.code = 'MATCH_LIMIT';
@@ -282,9 +288,12 @@ export function MatchSetupPage() {
           our_sets_won:           ourSetsWon,
           opp_sets_won:           oppSetsWon,
         });
-        await db.seasons.update(Number(seasonId), { peak_match_count: effective + 1 });
+        await db.seasons.update(Number(seasonId), { peak_match_count: perSeasonPeak + 1 });
         return id;
       });
+      // Offline trial create the server didn't count — bump the local tally so a
+      // later delete can't win the slot back.
+      if (plan === 'trial' && !trialServerConfirmed) noteTrialMatchCreated();
 
       await db.sets.bulkAdd(
         parsedSets.map((s, i) => ({
@@ -377,17 +386,26 @@ export function MatchSetupPage() {
       // A slot was already confirmed with the server when this match was
       // scheduled, so starting it doesn't check again (that would double-charge
       // the trial counter for one match). Only a brand-new, unscheduled match
-      // needs a check here — for trial specifically that check must actually
-      // succeed with the server (no offline fallback), same reasoning as
-      // scheduling; other plans keep the best-effort/offline-tolerant check
-      // since their real limit is the local per-season count below.
+      // needs a check here. For trial the server check is best-effort: online it
+      // confirms the slot, offline we fall through to the local "matches ever
+      // created" tally below (which never drops when a match is deleted).
       let effectiveMatchId;
+      let trialServerConfirmed = false;
       if (!isMaster && !linkedMatchId) {
         if (plan === 'trial') {
-          const slot = await consumeMatchSlotStrict();
-          if (slot) {
-            if (slot.used === 4 || slot.used >= slot.limit) showUpgradeNudge(slot.used, slot.limit);
-            else showToast(`Trial match ${slot.used} of ${slot.limit} used`, 'info');
+          try {
+            const slot = await consumeMatchSlotStrict();
+            trialServerConfirmed = true;
+            if (slot) {
+              raiseTrialCreatedFloor(slot.used);
+              if (slot.used === 4 || slot.used >= slot.limit) showUpgradeNudge(slot.used, slot.limit);
+              else showToast(`Trial match ${slot.used} of ${slot.limit} used`, 'info');
+            }
+          } catch (slotErr) {
+            // Offline: fall through to the local tally check below, which caps a
+            // trial at matchLimit (TRIAL_MATCH_LIMIT). A real server-confirmed
+            // "limit reached" still blocks here.
+            if (!slotErr.offline) throw slotErr;
           }
         } else {
           try {
@@ -415,15 +433,17 @@ export function MatchSetupPage() {
         });
         effectiveMatchId = linkedMatchId;
       } else {
+        const trialFloor = plan === 'trial' ? readTrialCreated() : 0;
         effectiveMatchId = await db.transaction('rw', [db.matches, db.seasons], async () => {
           const [liveCount, season, totalCount] = await Promise.all([
             db.matches.where('season_id').equals(Number(seasonId)).count(),
             db.seasons.get(Number(seasonId)),
             plan === 'trial' ? db.matches.count() : Promise.resolve(0),
           ]);
+          const perSeasonPeak = Math.max(liveCount, season?.peak_match_count ?? 0);
           const effective = plan === 'trial'
-            ? totalCount
-            : Math.max(liveCount, season?.peak_match_count ?? 0);
+            ? Math.max(totalCount, trialFloor)
+            : perSeasonPeak;
           if (!isMaster && effective >= matchLimit) {
             const e = new Error('Match limit reached.');
             e.code = 'MATCH_LIMIT';
@@ -436,9 +456,12 @@ export function MatchSetupPage() {
             date:       matchDateISO(matchDate),
             match_time: matchTime || null,
           });
-          await db.seasons.update(Number(seasonId), { peak_match_count: effective + 1 });
+          await db.seasons.update(Number(seasonId), { peak_match_count: perSeasonPeak + 1 });
           return id;
         });
+        // Offline trial create the server didn't count — bump the local tally so
+        // a later delete can't win the slot back.
+        if (plan === 'trial' && !trialServerConfirmed) noteTrialMatchCreated();
       }
 
       // Remove any orphaned in-progress sets from a previous back-and-restart cycle
