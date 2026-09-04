@@ -152,7 +152,9 @@
 
 .animate-page-enter {
   animation: page-enter 200ms var(--ease-out) backwards;
-  will-change: transform, opacity;
+  /* No `will-change: transform` here: it creates a CSS containing block, which
+     traps every `position: fixed` modal rendered inside a page so it centres on
+     the (tall) page instead of the viewport — users had to scroll to find pop-ups. */
 }
 
 /* ── Item 3: CRT scan-line overlay ── */
@@ -173,8 +175,10 @@
 }
 
 .animate-slide-up-fade {
-  animation: slide-up-fade var(--duration-base) var(--ease-out) both;
-  will-change: transform, opacity;
+  /* `backwards` (not `both`): holds the start frame during any stagger delay but
+     does NOT retain `translateY(0)` afterwards — a retained transform, like
+     `will-change: transform`, would trap `position: fixed` modals nested inside. */
+  animation: slide-up-fade var(--duration-base) var(--ease-out) backwards;
 }
 
 /* ── Item 7: Match list slide-in-right ── */
@@ -184,8 +188,8 @@
 }
 
 .animate-slide-in-right {
-  animation: slide-in-right var(--duration-base) var(--ease-out) both;
-  will-change: transform, opacity;
+  /* `backwards` not `both` + no `will-change` — see .animate-slide-up-fade above. */
+  animation: slide-in-right var(--duration-base) var(--ease-out) backwards;
 }
 
 /* ── Item 5: Run strip flame glow ── */
