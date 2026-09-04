@@ -606,6 +606,7 @@ export function HomePage() {
       classRank:        historyEntry?.class_rank         ?? null,
       prevStateRank:    historyEntry?.prev_state_rank    ?? null,
       prevNationalRank: historyEntry?.prev_national_rank ?? null,
+      prevClassRank:    historyEntry?.prev_class_rank    ?? null,
       teamState:        team.state ?? null,
       seasonYear:       season.year,
     };
@@ -936,6 +937,20 @@ export function HomePage() {
                 <span className="text-[15px] font-black text-amber-400 tracking-wide">
                   CLASS: {seasonRecord.classRank != null ? `#${seasonRecord.classRank}` : '–'}
                 </span>
+                {(() => {
+                  // Class rank is free text (usually a number) — only show a
+                  // delta when both this and the previous value are numeric.
+                  const cur  = Number(seasonRecord.classRank);
+                  const prev = Number(seasonRecord.prevClassRank);
+                  if (seasonRecord.classRank == null || seasonRecord.prevClassRank == null) return null;
+                  if (!Number.isFinite(cur) || !Number.isFinite(prev) || prev === cur) return null;
+                  const delta = prev - cur;
+                  return (
+                    <span className={`text-[12.5px] font-bold ml-1 ${delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      ({delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`})
+                    </span>
+                  );
+                })()}
                 <span className="text-slate-600 mx-2">·</span>
                 <span className="text-[15px] font-black text-amber-400 tracking-wide">
                   {seasonRecord.teamState ?? 'STATE'}: {seasonRecord.stateRank != null ? `#${seasonRecord.stateRank}` : '–'}

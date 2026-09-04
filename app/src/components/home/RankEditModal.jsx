@@ -38,6 +38,8 @@ export function RankEditModal({ seasonRecord, defaultTeamId, onClose }) {
           prevRanks.prev_state_rank = existing.state_rank ?? null;
         if (newNationalRank !== (existing.national_rank ?? null))
           prevRanks.prev_national_rank = existing.national_rank ?? null;
+        if (newClassRank !== (existing.class_rank ?? null))
+          prevRanks.prev_class_rank = existing.class_rank ?? null;
       }
 
       const fields = {
