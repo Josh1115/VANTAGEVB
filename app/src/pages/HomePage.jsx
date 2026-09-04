@@ -878,31 +878,38 @@ export function HomePage() {
         {/* ── Team quick-switch pills (multi-team accounts only) ── */}
         {teamPillGroups && switchableTeams.length > 1 && (
           <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5">
-            {teamPillGroups.map((group, gi) => (
-              <div key={group.label ?? gi} className="flex flex-wrap items-center justify-center gap-2">
-                {gi > 0 && <span className="text-slate-600 font-bold px-0.5 select-none">|</span>}
-                {group.label && (
-                  <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{group.label}</span>
-                )}
-                {group.teams.map((t) => {
-                  const active = t.id === defaultTeamId;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => handleSwitchTeam(t)}
-                      aria-pressed={active}
-                      className={`shrink-0 px-3.5 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                        active
-                          ? 'bg-primary text-white'
-                          : 'bg-surface text-slate-400 hover:text-white hover:bg-slate-700/60'
-                      }`}
-                    >
-                      {t.name}
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
+            {teamPillGroups.map((group, gi) => {
+              // Last group's label sits to the RIGHT of its pills (e.g.
+              // "Girls […] | […] Boys"); every other group labels on the left.
+              const labelAfter = gi === teamPillGroups.length - 1 && teamPillGroups.length > 1;
+              const label = group.label && (
+                <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{group.label}</span>
+              );
+              return (
+                <div key={group.label ?? gi} className="flex flex-wrap items-center justify-center gap-2">
+                  {gi > 0 && <span className="text-slate-600 font-bold px-0.5 select-none">|</span>}
+                  {!labelAfter && label}
+                  {group.teams.map((t) => {
+                    const active = t.id === defaultTeamId;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => handleSwitchTeam(t)}
+                        aria-pressed={active}
+                        className={`shrink-0 px-3.5 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+                          active
+                            ? 'bg-primary text-white'
+                            : 'bg-surface text-slate-400 hover:text-white hover:bg-slate-700/60'
+                        }`}
+                      >
+                        {t.name}
+                      </button>
+                    );
+                  })}
+                  {labelAfter && label}
+                </div>
+              );
+            })}
           </div>
         )}
 
