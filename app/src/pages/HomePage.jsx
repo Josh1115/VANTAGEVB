@@ -469,8 +469,31 @@ export function HomePage() {
     return teams
       .slice()
       .sort((a, b) => a.id - b.id)
-      .map((t) => ({ id: t.id, name: t.name ?? t.abbreviation ?? 'Team', seasonId: latestSeasonId(t.id) }));
+      .map((t) => ({
+        id:       t.id,
+        name:     t.name ?? t.abbreviation ?? 'Team',
+        gender:   t.gender ?? null,
+        seasonId: latestSeasonId(t.id),
+      }));
   }, []);
+
+  // Split the switch pills into gender groups (Girls | Boys) only when the
+  // account actually has teams of more than one gender.
+  const teamPillGroups = useMemo(() => {
+    if (!switchableTeams) return null;
+    const LABELS = { F: 'Girls', M: 'Boys', Mixed: 'Mixed' };
+    const order  = ['F', 'M', 'Mixed'];
+    const byGender = new Map();
+    for (const t of switchableTeams) {
+      const key = t.gender ?? 'other';
+      if (!byGender.has(key)) byGender.set(key, []);
+      byGender.get(key).push(t);
+    }
+    if (byGender.size < 2) return [{ label: null, teams: switchableTeams }];
+    return [...byGender.keys()]
+      .sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99))
+      .map((key) => ({ label: LABELS[key] ?? null, teams: byGender.get(key) }));
+  }, [switchableTeams]);
 
   function handleSwitchTeam(team) {
     if (team.id === defaultTeamId) return;
@@ -853,25 +876,33 @@ export function HomePage() {
         </div>
 
         {/* ── Team quick-switch pills (multi-team accounts only) ── */}
-        {switchableTeams && switchableTeams.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5">
-            {switchableTeams.map((t) => {
-              const active = t.id === defaultTeamId;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => handleSwitchTeam(t)}
-                  aria-pressed={active}
-                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                    active
-                      ? 'bg-primary text-white'
-                      : 'bg-surface text-slate-400 hover:text-white hover:bg-slate-700/60'
-                  }`}
-                >
-                  {t.name}
-                </button>
-              );
-            })}
+        {teamPillGroups && switchableTeams.length > 1 && (
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5">
+            {teamPillGroups.map((group, gi) => (
+              <div key={group.label ?? gi} className="flex flex-wrap items-center justify-center gap-2">
+                {gi > 0 && <span className="text-slate-600 font-bold px-0.5 select-none">|</span>}
+                {group.label && (
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{group.label}</span>
+                )}
+                {group.teams.map((t) => {
+                  const active = t.id === defaultTeamId;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => handleSwitchTeam(t)}
+                      aria-pressed={active}
+                      className={`shrink-0 px-3.5 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+                        active
+                          ? 'bg-primary text-white'
+                          : 'bg-surface text-slate-400 hover:text-white hover:bg-slate-700/60'
+                      }`}
+                    >
+                      {t.name}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         )}
 
