@@ -445,8 +445,39 @@ export function HomePage() {
     return () => document.removeEventListener('visibilitychange', refresh);
   }, []);
 
+  // Bumped by the on-dashboard team switcher so the storage-backed default
+  // team/season below are re-read and every dependent live query re-runs
+  // without a full navigation away and back.
+  const [, bumpTeamSwitch] = useState(0);
   const defaultTeamId   = getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID);
   const defaultSeasonId = getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID);
+
+  // Teams for the dashboard's quick-switch pills — null (pills hidden) unless
+  // the account has more than one team. Each carries its most recent season so
+  // switching lands on something the dashboard can actually show.
+  const switchableTeams = useLiveQuery(async () => {
+    const [teams, seasons] = await Promise.all([
+      db.teams.toArray(),
+      db.seasons.toArray(),
+    ]);
+    if (teams.length < 2) return null;
+    const latestSeasonId = (teamId) => {
+      const owned = seasons.filter((s) => s.team_id === teamId);
+      if (!owned.length) return null;
+      return owned.reduce((a, b) => (Number(b.year) > Number(a.year) ? b : a)).id;
+    };
+    return teams
+      .slice()
+      .sort((a, b) => a.id - b.id)
+      .map((t) => ({ id: t.id, name: t.name ?? t.abbreviation ?? 'Team', seasonId: latestSeasonId(t.id) }));
+  }, []);
+
+  function handleSwitchTeam(team) {
+    if (team.id === defaultTeamId) return;
+    setStorageItem(STORAGE_KEYS.DEFAULT_TEAM_ID, team.id);
+    setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, team.seasonId ?? null);
+    bumpTeamSwitch((n) => n + 1);
+  }
 
   const recentMatches = useLiveQuery(async () => {
     let matches;
@@ -820,6 +851,29 @@ export function HomePage() {
             </div>
           </button>
         </div>
+
+        {/* ── Team quick-switch pills (multi-team accounts only) ── */}
+        {switchableTeams && switchableTeams.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5">
+            {switchableTeams.map((t) => {
+              const active = t.id === defaultTeamId;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => handleSwitchTeam(t)}
+                  aria-pressed={active}
+                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+                    active
+                      ? 'bg-primary text-white'
+                      : 'bg-surface text-slate-400 hover:text-white hover:bg-slate-700/60'
+                  }`}
+                >
+                  {t.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* ── Season record card (shown when default team + season set) ── */}
         {seasonRecord && (
