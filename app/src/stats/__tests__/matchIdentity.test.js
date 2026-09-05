@@ -143,6 +143,73 @@ describe('planMatchDedup — Part B (scheduled + already played)', () => {
   });
 });
 
+// ── Part D: two "played" copies, only one with real stats ───────────────────
+
+describe('planMatchDedup — Part D (complete duplicate, one side stats-less)', () => {
+  it('drops the stats-less "played" copy and keeps the one with real stats', () => {
+    const empty = m({ id: 1, uid: 'uid-1', status: 'complete' });
+    const real  = m({ id: 2, uid: 'uid-2', status: 'complete' });
+    const { deletions } = plan([empty, real], [2]);
+    expect(deletions).toHaveLength(1);
+    expect(deletions[0].loserId).toBe(1);
+    expect(deletions[0].survivorId).toBe(2);
+    expect(deletions[0].reason).toBe('complete-duplicate-no-stats');
+  });
+
+  it('works when one side is "in_progress" instead of "complete"', () => {
+    const empty = m({ id: 1, uid: 'uid-1', status: 'in_progress' });
+    const real  = m({ id: 2, uid: 'uid-2', status: 'complete' });
+    expect(plan([empty, real], [2]).deletions).toHaveLength(1);
+  });
+
+  it('never deletes the copy that actually has stats', () => {
+    const empty = m({ id: 1, uid: 'uid-1', status: 'complete' });
+    const real  = m({ id: 2, uid: 'uid-2', status: 'complete' });
+    const { deletions } = plan([empty, real], [2]);
+    expect(deletions.some((d) => d.loserId === 2)).toBe(false);
+  });
+
+  it('leaves both alone when neither side has stats (Part A handles pure placeholders, not this)', () => {
+    const a = m({ id: 1, uid: 'uid-1', status: 'complete' });
+    const b = m({ id: 2, uid: 'uid-2', status: 'complete' });
+    expect(plan([a, b], []).deletions).toHaveLength(0);
+  });
+
+  it('leaves both alone when both sides have stats (ambiguous — manual review instead)', () => {
+    const a = m({ id: 1, uid: 'uid-1', status: 'complete' });
+    const b = m({ id: 2, uid: 'uid-2', status: 'complete' });
+    expect(plan([a, b], [1, 2]).deletions).toHaveLength(0);
+  });
+
+  it('leaves a group of three alone (ambiguous, not a clean 1-empty/1-real pair)', () => {
+    const a = m({ id: 1, uid: 'uid-1', status: 'complete' });
+    const b = m({ id: 2, uid: 'uid-2', status: 'complete' });
+    const c = m({ id: 3, uid: 'uid-3', status: 'complete' });
+    expect(plan([a, b, c], [2]).deletions).toHaveLength(0);
+  });
+
+  it('respects an explicit time disagreement (two different games, not a duplicate)', () => {
+    const empty = m({ id: 1, uid: 'uid-1', status: 'complete', match_time: '09:00' });
+    const real  = m({ id: 2, uid: 'uid-2', status: 'complete', match_time: '14:00' });
+    expect(plan([empty, real], [2]).deletions).toHaveLength(0);
+  });
+
+  it('does not pair up copies on different days', () => {
+    const empty = m({ id: 1, uid: 'uid-1', status: 'complete', date: '2026-09-04T12:00:00.000Z' });
+    const real  = m({ id: 2, uid: 'uid-2', status: 'complete', date: '2026-09-05T12:00:00.000Z' });
+    expect(plan([empty, real], [2]).deletions).toHaveLength(0);
+  });
+
+  it('does not touch a genuine scheduled placeholder that has nothing to do with the played pair', () => {
+    const scheduled = m({ id: 1, uid: 'uid-1', status: 'scheduled', opponent_name: 'Other Team' });
+    const empty     = m({ id: 2, uid: 'uid-2', status: 'complete' });
+    const real      = m({ id: 3, uid: 'uid-3', status: 'complete' });
+    const { deletions } = plan([scheduled, empty, real], [3]);
+    expect(deletions).toHaveLength(1);
+    expect(deletions[0].loserId).toBe(2);
+  });
+});
+
 // ── Part C: "TBD" tournament slots that got assigned ─────────────────────────
 
 describe('planMatchDedup — Part C (TBD tournament slots)', () => {

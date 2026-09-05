@@ -158,6 +158,35 @@ export function planMatchDedup(matches, hasStats) {
     }
   }
 
+  // ── Part D: two "played" copies of one game, only one carries real stats ──
+  // A sync race or a duplicate entry (e.g. a score typed in via "log result
+  // only" before the same game got scored live on another device) can leave
+  // two non-placeholder rows for one finished game — one with real
+  // sets/contacts, one empty. When exactly two played rows share season +
+  // opponent + day (and don't actively disagree on time) and exactly one of
+  // them has stats, the empty one is the leftover — drop it, keep the one
+  // with data. Groups of more than two, or pairs where both/neither side has
+  // stats, are left alone (could be a real doubleheader or an honest scoring
+  // conflict) — those still go to the manual review screen.
+  const playedRemaining = played.filter((r) => !consumed.has(r.id));
+  for (const m of playedRemaining) {
+    if (consumed.has(m.id)) continue;
+    const cluster = playedRemaining.filter((r) =>
+      !consumed.has(r.id) &&
+      r.season_id === m.season_id &&
+      norm(r.opponent_name) === norm(m.opponent_name) &&
+      day(r.date) === day(m.date) &&
+      (!r.match_time || !m.match_time || r.match_time === m.match_time)
+    );
+    if (cluster.length !== 2) continue;
+    const withStats = cluster.filter((r) => hasStats(r.id));
+    if (withStats.length !== 1) continue;
+    const survivor = withStats[0];
+    const loser = cluster.find((r) => r.id !== survivor.id);
+    deletions.push({ loserId: loser.id, survivorId: survivor.id, reason: 'complete-duplicate-no-stats' });
+    consumed.add(loser.id);
+  }
+
   // ── Part A: fold placeholders that are indistinguishable from each other ──
   const groups = new Map();
   for (const p of placeholders) {
