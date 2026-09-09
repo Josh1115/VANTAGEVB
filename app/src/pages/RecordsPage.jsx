@@ -127,7 +127,18 @@ function makeHistoricalRows(historicalAll, playerLookup = null) {
   };
 }
 
-async function computeLeaderboards(tab, teamId, currentSeasonId) {
+// The "active" season — used to decide which season records still glow orange
+// as current. It's the most recent season not marked ended. The stored
+// DEFAULT_SEASON_ID is deliberately NOT consulted here: it tracks which season
+// the coach is working in and can point at a past season, which would wrongly
+// keep last year's records flagged as active once a new season is underway.
+function pickActiveSeason(seasons) {
+  return [...seasons]
+    .filter(s => s.status !== 'ended')
+    .sort((a, b) => String(b.year).localeCompare(String(a.year)))[0] ?? null;
+}
+
+async function computeLeaderboards(tab, teamId) {
   const statsForTab = tab === 'team_season' ? TEAM_SEASON_STATS : RECORD_STATS;
 
   const historicalAll = await db.historical_records
@@ -281,8 +292,10 @@ async function computeLeaderboards(tab, teamId, currentSeasonId) {
     return Object.fromEntries(statsForTab.map(s => [s.key, mergeAndRank([], historicalRows(s.key))]));
   }
 
-  const currentSeasonEnded = seasons.find(s => s.id === currentSeasonId)?.status === 'ended';
-  const currentSeasonYear  = seasons.find(s => s.id === currentSeasonId)?.year ?? null;
+  const activeSeason       = pickActiveSeason(seasons);
+  const currentSeasonId    = activeSeason?.id ?? null;
+  const currentSeasonEnded = activeSeason == null; // no open season → nothing is "current"
+  const currentSeasonYear  = activeSeason?.year ?? null;
   const playerLookup = { nameToPlayerId, activePlayerIds, currentSeasonYear, currentSeasonEnded };
   const historicalRows = makeHistoricalRows(historicalAll, playerLookup);
 
@@ -1255,15 +1268,11 @@ export function RecordsPage() {
   const currentSeasonLeaders = useLiveQuery(async () => {
     if (!teamId || tab !== 'season') return null;
 
-    const storedSeasonId = getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID);
     const allSeasons = await db.seasons.where('team_id').equals(teamId).toArray();
     if (!allSeasons.length) return null;
-    let season = storedSeasonId ? allSeasons.find(s => s.id === storedSeasonId) : null;
-    if (!season || season.status === 'ended') {
-      season = allSeasons
-        .filter(s => s.status !== 'ended')
-        .sort((a, b) => String(b.year).localeCompare(String(a.year)))[0] ?? null;
-    }
+    // Same rule as the record highlight (pickActiveSeason): newest un-ended
+    // season, ignoring the stored default which can point at a past season.
+    const season = pickActiveSeason(allSeasons);
     if (!season) return null;
     const seasonId = season.id;
 
@@ -1352,7 +1361,7 @@ export function RecordsPage() {
     setLoading(true);
     setBoards(null);
     setComputeError(false);
-    computeLeaderboards(tab, teamId, getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID))
+    computeLeaderboards(tab, teamId)
       .then(result => { if (!cancelled) setBoards(result); })
       .catch(() => { if (!cancelled) setComputeError(true); })
       .finally(() => { if (!cancelled) setLoading(false); });
