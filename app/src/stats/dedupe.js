@@ -45,16 +45,27 @@ export function pickDefaultPlayerWinner(group) {
 export async function mergePlayerGroup(group, winnerId) {
   const loserIds = group.map(p => p.id).filter(id => id !== winnerId);
   if (!loserIds.length) return;
+  const loserSet = new Set(loserIds);
 
   await db.transaction('rw', [db.players, db.lineups, db.contacts, db.substitutions, db.saved_lineups], async () => {
     await db.lineups.where('player_id').anyOf(loserIds).modify({ player_id: winnerId });
     await db.contacts.where('player_id').anyOf(loserIds).modify({ player_id: winnerId });
-    await db.substitutions.where('player_in_id').anyOf(loserIds).modify({ player_in_id: winnerId });
-    await db.substitutions.where('player_out_id').anyOf(loserIds).modify({ player_out_id: winnerId });
+
+    // substitutions reference players by player_in / player_out (older synced
+    // rows may carry the _id suffix too). None of these are indexed columns, so
+    // scan-and-fix rather than .where() — a .where() on an unindexed keyPath
+    // throws "KeyPath ... is not indexed".
+    const subs = await db.substitutions.toArray();
+    for (const sub of subs) {
+      const patch = {};
+      for (const f of ['player_in', 'player_out', 'player_in_id', 'player_out_id']) {
+        if (sub[f] != null && loserSet.has(Number(sub[f]))) patch[f] = winnerId;
+      }
+      if (Object.keys(patch).length) await db.substitutions.update(sub.id, patch);
+    }
 
     // saved_lineups stores player ids inline (serve order array + libero slots),
     // not as an indexed column, so it needs a manual scan-and-fix.
-    const loserSet = new Set(loserIds);
     const savedLineups = await db.saved_lineups.toArray();
     for (const sl of savedLineups) {
       let changed = false;
@@ -320,6 +331,8 @@ export async function findLikelyDuplicateMatchPairs() {
         pairs.push({
           pairKey:      matchPairKey(a, b),
           teamName:     team?.name ?? 'Unknown team',
+          teamGender:   team?.gender ?? null,
+          teamLevel:    team?.level ?? null,
           seasonYear:   season?.year ?? '?',
           defaultKeep:  pickDefaultMatchSurvivor(infoA, infoB).id,
           matches:      [infoA, infoB],

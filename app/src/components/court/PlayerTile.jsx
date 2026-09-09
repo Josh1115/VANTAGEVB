@@ -123,6 +123,11 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   const [passBadge,          setPassBadge]          = useState(null); // null | { rating, key }
   const passRingTimer  = useRef(null);
   const passBadgeTimer = useRef(null);
+  // Snapshot of the on-court lineup at the instant a KILL is tapped — captured
+  // BEFORE addPoint() rotates + libero-swaps the lineup on the side-out. The
+  // assist picker must offer whoever was actually on court for that rally (e.g.
+  // the libero or a front-row middle who just rotated out), not the next rotation.
+  const preKillLineupRef = useRef(null);
 
   useEffect(() => () => { clearTimeout(passRingTimer.current); clearTimeout(passBadgeTimer.current); }, []);
 
@@ -177,6 +182,11 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
     // Read fresh state at tap time (not stale render-time value) so the contact
     // lands in the correct rally bucket even if state changed since last render.
     const currentRally = useMatchStore.getState().rallyCount;
+    // Capture who was on court for this rally before addPoint() rotates the
+    // lineup — the assist picker reads this snapshot (see preKillLineupRef).
+    if (action === ACTION.ATTACK && result === RESULT.KILL) {
+      preKillLineupRef.current = useMatchStore.getState().lineup;
+    }
     addPoint(SIDE.US);
     try {
       return await recordContact({ player_id: slot.playerId, action, result, rally_number: currentRally, _causedPoint: SIDE.US, ...extra });
@@ -234,19 +244,25 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
     []
   );
 
+  // Lineup as it was during the rally that produced the pending kill — falls
+  // back to the live lineup if no snapshot was taken.
+  const assistLineup = preKillLineupRef.current ?? lineup;
+
   const handleAssistSelect = (assistPlayerId) => {
     if (pendingKillId) recordAssistForKill(pendingKillId, assistPlayerId);
     setAssistPickerOpen(false);
     setPendingKillId(null);
+    preKillLineupRef.current = null;
   };
 
   const handleAssistDismiss = () => {
     if (pendingKillId) {
-      const setter = lineup.find((sl) => sl.positionLabel === 'S' && sl.playerId && sl.playerId !== slot?.playerId);
+      const setter = assistLineup.find((sl) => sl.positionLabel === 'S' && sl.playerId && sl.playerId !== slot?.playerId);
       if (setter) recordAssistForKill(pendingKillId, setter.playerId);
     }
     setAssistPickerOpen(false);
     setPendingKillId(null);
+    preKillLineupRef.current = null;
   };
 
   const tileStats = useMemo(() => {
@@ -649,7 +665,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
       <AssistPickerModal
         open={assistPickerOpen}
         attackerPlayerId={slot?.playerId}
-        lineup={lineup}
+        lineup={assistLineup}
         liberoId={liberoId}
         playerNicknames={playerNicknames}
         nameFormat={nameFormat}

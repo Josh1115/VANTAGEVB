@@ -14,6 +14,17 @@ function fmtDate(d) {
   return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+const GENDER_LABELS = { F: 'Girls', M: 'Boys', Mixed: 'Mixed' };
+const LEVEL_LABELS  = { varsity: 'Varsity', jv: 'JV', jv2: 'JV2', soph: 'Sophomore', frosh_soph: 'Frosh/Soph', frosh: 'Freshman', club: 'Club' };
+
+// "Girls Varsity", "Boys JV", etc. — disambiguates same-named teams (e.g. a
+// school's boys and girls varsity squads) in the duplicate-match review.
+function teamDescriptor({ teamGender, teamLevel }) {
+  return [GENDER_LABELS[teamGender] ?? teamGender, LEVEL_LABELS[teamLevel] ?? teamLevel]
+    .filter(Boolean)
+    .join(' ');
+}
+
 // One reviewed pair of possibly-duplicate matches. The coach either keeps one
 // (which deletes the other, after a confirm that spells out what's lost) or
 // marks them as genuinely different games.
@@ -45,7 +56,9 @@ function MatchPairRow({ pair, onResolved }) {
 
   return (
     <div className="bg-slate-900 border border-amber-700/40 rounded-xl p-3 space-y-2">
-      <p className="text-xs font-semibold text-slate-400">{pair.teamName} · {pair.seasonYear}</p>
+      <p className="text-xs font-semibold text-slate-400">
+        {[pair.teamName, teamDescriptor(pair), pair.seasonYear].filter(Boolean).join(' · ')}
+      </p>
 
       <div className="flex flex-col gap-1.5">
         {pair.matches.map(mm => (
