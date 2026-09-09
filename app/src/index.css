@@ -223,6 +223,16 @@
   animation: brand-glow-pulse 1.8s ease-in-out infinite;
 }
 
+/* Slow green border flicker for a "return sub" suggestion tile */
+@keyframes return-suggest-pulse {
+  0%, 100% { border-color: rgba(52,211,153,0.30); box-shadow: 0 0 0 1px rgba(52,211,153,0.10); }
+  50%      { border-color: rgba(52,211,153,0.95); box-shadow: 0 0 9px 1px rgba(52,211,153,0.45); }
+}
+
+.return-suggest {
+  animation: return-suggest-pulse 2s ease-in-out infinite;
+}
+
 @keyframes section-twinkle {
   0%, 100% { text-shadow: 0 0 6px rgba(232,83,11,0.55), 0 0 14px rgba(232,83,11,0.2); }
   18%       { text-shadow: 0 0 12px #e8530b, 0 0 24px rgba(232,83,11,0.55), 0 0 38px rgba(232,83,11,0.2); }

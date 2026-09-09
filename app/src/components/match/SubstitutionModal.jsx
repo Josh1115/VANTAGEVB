@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -21,7 +21,7 @@ function SectionLabel({ children, color = 'blue' }) {
 }
 
 // Court tile grid — picks from `slots`, highlights selected, excludes locked ids
-function PlayerOutGrid({ slots, selected, onSelect, lockedIds = [], exhaustedIds = [], liberoId, editingPosFor, onEditPos, setPositionLabel, color = 'blue' }) {
+function PlayerOutGrid({ slots, selected, onSelect, lockedIds = [], exhaustedIds = [], liberoId, editingPosFor, onEditPos, setPositionLabel, suggestedId, color = 'blue' }) {
   const selBg    = color === 'amber' ? 'bg-amber-500 border-amber-500'       : 'bg-primary border-primary';
   const selText  = color === 'amber' ? 'text-black'                          : 'text-white';
   const selSub   = color === 'amber' ? 'text-amber-900'                      : 'text-blue-200';
@@ -34,15 +34,18 @@ function PlayerOutGrid({ slots, selected, onSelect, lockedIds = [], exhaustedIds
         const disabled    = isLibero || isLocked;
         const sel         = selected === sl.playerId;
         const editingPos  = editingPosFor === sl.playerId;
+        const isSuggested = suggestedId === sl.playerId && !sel && !disabled;
         return (
           <div key={sl.playerId} className={`rounded border transition-colors
             ${editingPos
               ? 'col-span-3 bg-slate-800 border-amber-500/60'
               : sel
                 ? `${selBg}`
-                : disabled
-                  ? 'bg-slate-800/40 border-slate-800'
-                  : 'bg-slate-700 border-slate-600'
+                : isSuggested
+                  ? 'return-suggest bg-emerald-500/10 border-emerald-400/50'
+                  : disabled
+                    ? 'bg-slate-800/40 border-slate-800'
+                    : 'bg-slate-700 border-slate-600'
             }`}
           >
             <div className="flex items-center gap-1">
@@ -50,12 +53,13 @@ function PlayerOutGrid({ slots, selected, onSelect, lockedIds = [], exhaustedIds
                 onPointerDown={(e) => { e.preventDefault(); if (!disabled) onSelect(sl.playerId); }}
                 disabled={disabled}
                 className={`flex-1 px-2 py-1.5 text-xs font-bold text-left
-                  ${disabled ? 'text-slate-600 cursor-not-allowed' : sel ? selText : 'text-slate-200'}`}
+                  ${disabled ? 'text-slate-600 cursor-not-allowed' : sel ? selText : isSuggested ? 'text-emerald-100' : 'text-slate-200'}`}
               >
-                <span className={`block text-[1.3vmin] ${sel ? selSub : 'text-slate-400'}`}>
+                <span className={`block text-[1.3vmin] ${sel ? selSub : isSuggested ? 'text-emerald-300' : 'text-slate-400'}`}>
                   S{sl.position}{sl.positionLabel && !editingPos && ` · ${sl.positionLabel}`}
                 </span>
                 #{sl.jersey} {sl.playerName}
+                {isSuggested && <span className="block text-[10px] text-emerald-300 font-semibold mt-0.5">↩ Return sub</span>}
                 {isLocked && <span className="block text-[10px] text-slate-500 mt-0.5">In use</span>}
                 {isExhausted && !isLocked && <span className="block text-[10px] text-red-500 font-semibold mt-0.5">Sub used</span>}
               </button>
@@ -90,18 +94,16 @@ function PlayerOutGrid({ slots, selected, onSelect, lockedIds = [], exhaustedIds
 }
 
 // Bench tile grid
-function PlayerInGrid({ bench, selected, onSelect, disabled: globalDisabled, subPairs, outSlotIdx, exhaustedIds = [], color = 'blue' }) {
+function PlayerInGrid({ bench, selected, onSelect, disabled: globalDisabled, suggestedId, exhaustedIds = [], color = 'blue' }) {
   const selBg   = color === 'amber' ? 'bg-amber-500 border-amber-500 text-black' : 'bg-primary border-primary text-white';
-  const pairRing = color === 'amber' ? 'bg-amber-900/30 text-amber-100 border-amber-400 ring-2 ring-amber-400/50 hover:bg-amber-900/50'
-                                     : 'bg-emerald-900/30 text-emerald-100 border-emerald-400 ring-2 ring-emerald-400/50 hover:bg-emerald-900/50';
-  const retLabel = color === 'amber' ? 'text-amber-400' : 'text-emerald-400';
+  const pairCls = 'return-suggest bg-emerald-500/10 text-emerald-100 border-emerald-400/50 hover:bg-emerald-500/20';
   if (bench.length === 0) return <p className="text-xs text-slate-500">No bench players available.</p>;
   return (
     <div className="grid grid-cols-3 gap-1.5">
       {bench.map((p) => {
         const isExhausted = exhaustedIds.includes(p.id);
         const sel         = selected === p.id;
-        const isPaired    = outSlotIdx !== -1 && subPairs[p.id] === outSlotIdx;
+        const isPaired    = suggestedId === p.id;
         return (
           <button
             key={p.id}
@@ -110,16 +112,16 @@ function PlayerInGrid({ bench, selected, onSelect, disabled: globalDisabled, sub
             className={`px-2 py-1.5 rounded text-xs font-bold border transition-colors text-left relative
               ${sel
                 ? selBg
-                : globalDisabled
-                  ? 'bg-slate-700 text-slate-400 border-slate-600'
-                  : isPaired
-                    ? pairRing
+                : isPaired
+                  ? pairCls
+                  : globalDisabled
+                    ? 'bg-slate-700 text-slate-400 border-slate-600'
                     : 'bg-slate-700 text-slate-200 border-slate-600 hover:bg-slate-600'
               }`}
           >
             #{p.jersey_number} {p.name}
             <span className="block text-[1.3vmin] text-slate-400">{p.position}</span>
-            {isPaired && <span className={`block text-[10px] font-semibold mt-0.5 ${retLabel}`}>↩ Return</span>}
+            {isPaired && <span className="block text-[10px] font-semibold mt-0.5 text-emerald-300">↩ Return sub</span>}
             {isExhausted && !isPaired && <span className="block text-[10px] text-yellow-500/80 font-semibold mt-0.5">Sub used</span>}
           </button>
         );
@@ -154,7 +156,7 @@ export function SubstitutionModal({ onClose }) {
   const libero2Id          = useMatchStore((s) => s.libero2Id);
   const subsUsed           = useMatchStore((s) => s.subsUsed);
   const maxSubsPerSet      = useMatchStore((s) => s.maxSubsPerSet);
-  const subPairs           = useMatchStore((s) => s.subPairs);
+  const currentSetId       = useMatchStore((s) => s.currentSetId);
   const exhaustedPlayerIds = useMatchStore((s) => s.exhaustedPlayerIds);
   const substitutePlayer   = useMatchStore((s) => s.substitutePlayer);
   const setPositionLabel   = useMatchStore((s) => s.setPositionLabel);
@@ -180,6 +182,22 @@ export function SubstitutionModal({ onClose }) {
     [teamId]
   );
 
+  // Every real sub made this set, used to pair a player with whoever they swapped
+  // with. Keyed by player id (identity-based, so it survives rotations).
+  const subRows = useLiveQuery(
+    () => currentSetId ? db.substitutions.where('set_id').equals(currentSetId).toArray() : [],
+    [currentSetId]
+  );
+  const partnerMap = useMemo(() => {
+    const m = {};
+    for (const r of subRows ?? []) {
+      if (r.is_correction || r.libero_swap) continue;
+      (m[r.player_out] ??= new Set()).add(r.player_in);
+      (m[r.player_in]  ??= new Set()).add(r.player_out);
+    }
+    return m;
+  }, [subRows]);
+
   const subsLeft = maxSubsPerSet - subsUsed;
   const atMax    = !isCorrection && subsLeft <= 0;
 
@@ -192,8 +210,15 @@ export function SubstitutionModal({ onClose }) {
   // Bench for sub 2: same base, but exclude sub 1's incoming player
   const bench2 = bench1.filter((p) => p.id !== inPlayerId);
 
-  const outSlotIdx1 = outPlayerId  ? lineup.findIndex((sl) => sl.playerId === outPlayerId)  : -1;
-  const outSlotIdx2 = outPlayerId2 ? lineup.findIndex((sl) => sl.playerId === outPlayerId2) : -1;
+  // The lists each grid actually shows (mirrors the JSX filters below)
+  const bench1Avail = bench1.filter((p) => p.id !== inPlayerId2);
+  const bench2Avail = bench2.filter((p) => p.id !== inPlayerId);
+
+  // Green "return sub" suggestion — the partner of whichever half is picked.
+  const suggestedInId1  = outPlayerId  ? (bench1Avail.find((p) => partnerMap[outPlayerId]?.has(p.id))?.id ?? null) : null;
+  const suggestedOutId1 = inPlayerId   ? (lineup.find((sl) => sl.playerId && partnerMap[inPlayerId]?.has(sl.playerId))?.playerId ?? null) : null;
+  const suggestedInId2  = outPlayerId2 ? (bench2Avail.find((p) => partnerMap[outPlayerId2]?.has(p.id))?.id ?? null) : null;
+  const suggestedOutId2 = inPlayerId2  ? (lineup.find((sl) => sl.playerId && partnerMap[inPlayerId2]?.has(sl.playerId))?.playerId ?? null) : null;
 
 
   // Clear sub-1 bench selection when court selection changes
@@ -320,6 +345,7 @@ export function SubstitutionModal({ onClose }) {
               editingPosFor={editingPosFor}
               onEditPos={setEditingPosFor}
               setPositionLabel={setPositionLabel}
+              suggestedId={suggestedOutId1}
               color="blue"
             />
           </div>
@@ -337,15 +363,14 @@ export function SubstitutionModal({ onClose }) {
           <div>
             <p className="text-xs text-slate-400 mb-1.5 font-semibold uppercase tracking-wide">
               Player In
-              {!outPlayerId && <span className="ml-2 text-slate-600 normal-case font-normal">← select a player out first</span>}
+              {!outPlayerId && <span className="ml-2 text-slate-600 normal-case font-normal">tap a name here or above — the return partner turns green</span>}
             </p>
             <PlayerInGrid
-              bench={bench1.filter((p) => p.id !== inPlayerId2)}
+              bench={bench1Avail}
               selected={inPlayerId}
               onSelect={(id) => { setInPlayerId(id); setError(''); }}
-              disabled={!outPlayerId}
-              subPairs={subPairs}
-              outSlotIdx={outSlotIdx1}
+              disabled={false}
+              suggestedId={suggestedInId1}
               exhaustedIds={exhaustedPlayerIds}
               color="blue"
             />
@@ -386,6 +411,7 @@ export function SubstitutionModal({ onClose }) {
                 editingPosFor={null}
                 onEditPos={null}
                 setPositionLabel={setPositionLabel}
+                suggestedId={suggestedOutId2}
                 color="amber"
               />
             </div>
@@ -403,15 +429,14 @@ export function SubstitutionModal({ onClose }) {
             <div>
               <p className="text-xs text-slate-400 mb-1.5 font-semibold uppercase tracking-wide">
                 Player In
-                {!outPlayerId2 && <span className="ml-2 text-slate-600 normal-case font-normal">← select a player out first</span>}
+                {!outPlayerId2 && <span className="ml-2 text-slate-600 normal-case font-normal">tap a name here or above — the return partner turns green</span>}
               </p>
               <PlayerInGrid
-                bench={bench2.filter((p) => p.id !== inPlayerId)}
+                bench={bench2Avail}
                 selected={inPlayerId2}
                 onSelect={(id) => { setInPlayerId2(id); setError(''); }}
-                disabled={!outPlayerId2}
-                subPairs={subPairs}
-                outSlotIdx={outSlotIdx2}
+                disabled={false}
+                suggestedId={suggestedInId2}
                 exhaustedIds={exhaustedPlayerIds}
                 color="amber"
               />
