@@ -35,6 +35,7 @@ export const STORAGE_KEYS = {
   SERVE_ZONE_PROMPT:    'vbstat_serve_zone_prompt',
   ARCHIVED_OPPONENTS:   'vbstat_archived_opponents',
   PROFILE_CACHE:        'vbstat_profile_cache',
+  PROJECTED_SEASON_MATCHES: 'vbstat_projected_season_matches',
 };
 
 export function getStorageItem(key, defaultValue = null) {

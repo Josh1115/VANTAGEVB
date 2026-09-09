@@ -7,7 +7,8 @@ import { ACCENT_COLORS } from '../../constants';
 import { STORAGE_KEYS } from '../../utils/storage';
 import {
   useTrimSetting, useNullableIntSetting, useStrSetting,
-  useSidelineMode, useAccentColor,
+  useSidelineMode, useAccentColor, useProjectedSeasonMatches,
+  DEFAULT_PROJECTED_MATCHES,
 } from '../../hooks/useSettingsStorage';
 
 export function PersonalizationTab() {
@@ -18,6 +19,8 @@ export function PersonalizationTab() {
   const [defaultTeamId,   saveDefaultTeam]   = useNullableIntSetting(STORAGE_KEYS.DEFAULT_TEAM_ID);
   const [defaultSeasonId, saveDefaultSeason] = useNullableIntSetting(STORAGE_KEYS.DEFAULT_SEASON_ID);
   const [scoreDetail,  saveScoreDetail] = useStrSetting(STORAGE_KEYS.SCORE_DETAIL, 'sets');
+  const [projectedMatches, saveProjectedMatches] = useProjectedSeasonMatches();
+  const [projectedMatchesDraft, setProjectedMatchesDraft] = useState(String(projectedMatches));
   const [sidelineMode, saveSidelineMode] = useSidelineMode();
   const [accent,       saveAccent]       = useAccentColor();
 
@@ -150,6 +153,29 @@ export function PersonalizationTab() {
         </div>
       )}
 
+      {/* Projected season length */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Projected Season Length</label>
+        <div className="text-xs text-slate-400 mb-2">
+          Number of matches in a full season. On a player's profile, Season Stats shows a
+          projected-totals row extrapolated to this many matches. Default {DEFAULT_PROJECTED_MATCHES}.
+        </div>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={200}
+          value={projectedMatchesDraft}
+          onChange={(e) => setProjectedMatchesDraft(e.target.value)}
+          onBlur={() => {
+            saveProjectedMatches(projectedMatchesDraft);
+            const saved = Math.max(1, Math.min(200, Math.round(Number(projectedMatchesDraft)) || DEFAULT_PROJECTED_MATCHES));
+            setProjectedMatchesDraft(String(saved));
+          }}
+          className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
+        />
+      </div>
+
       {/* Match card score display */}
       <div>
         <div className="text-sm font-medium mb-0.5">Match Card Scores</div>
@@ -261,6 +287,8 @@ export function PersonalizationTab() {
               saveDefaultSeason(null);
             }
             saveScoreDetail('sets');
+            saveProjectedMatches(DEFAULT_PROJECTED_MATCHES);
+            setProjectedMatchesDraft(String(DEFAULT_PROJECTED_MATCHES));
             saveSidelineMode(false);
             saveAccent('orange');
             setConfirmResetPersonalization(false);

@@ -8,7 +8,7 @@ import { StatGlossaryDrawer } from './StatGlossaryDrawer';
  * columns: [{ key, label, fmt?, defaultDesc? }]
  * rows:    [{ id, name, ...statValues }]
  */
-export function StatTable({ columns, rows, totalsRow, onRowClick, onNameClick, selectedRowId, showGlossary = false }) {
+export function StatTable({ columns, rows, totalsRow, totalsRowLabel, onRowClick, onNameClick, selectedRowId, showGlossary = false }) {
   const [sortKey,      setSortKey]      = useState(columns[1]?.key ?? columns[0].key);
   const [desc,         setDesc]         = useState(true);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
@@ -110,18 +110,33 @@ export function StatTable({ columns, rows, totalsRow, onRowClick, onNameClick, s
         </tbody>
         {totalsRow && (
           <tfoot>
-            <tr className="border-t-2 border-slate-600 bg-slate-800/70">
-              {columns.map((col) => (
-                <td
-                  key={col.key}
-                  className={clsx(
-                    'px-8 py-2 tabular-nums font-bold',
-                    col.key === 'name' ? 'text-left text-slate-300 sticky left-0 z-10 bg-slate-800' : 'text-center text-white',
-                  )}
-                >
-                  {col.fmt ? col.fmt(totalsRow[col.key]) : (totalsRow[col.key] ?? '—')}
-                </td>
-              ))}
+            <tr className={clsx(
+              'border-t-2 border-slate-600 bg-slate-800/70',
+              totalsRowLabel != null && 'italic',
+            )}>
+              {columns.map((col, i) => {
+                // When a label is supplied, the first cell shows it instead of
+                // that column's value (used for the projected-totals row, where
+                // the stat tables have no 'name' column to hang a label on).
+                const showLabel = i === 0 && totalsRowLabel != null;
+                return (
+                  <td
+                    key={col.key}
+                    className={clsx(
+                      'px-8 py-2 font-bold',
+                      showLabel
+                        ? 'text-left text-slate-300 whitespace-nowrap sticky left-0 z-10 bg-slate-800'
+                        : col.key === 'name'
+                          ? 'text-left text-slate-300 tabular-nums sticky left-0 z-10 bg-slate-800'
+                          : 'text-center text-white tabular-nums',
+                    )}
+                  >
+                    {showLabel
+                      ? totalsRowLabel
+                      : col.fmt ? col.fmt(totalsRow[col.key]) : (totalsRow[col.key] ?? '—')}
+                  </td>
+                );
+              })}
             </tr>
           </tfoot>
         )}

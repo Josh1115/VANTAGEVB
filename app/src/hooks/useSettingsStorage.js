@@ -13,6 +13,7 @@ import {
 
 export const DEFAULT_MAX_SUBS = 18;
 export const DEFAULT_FORMAT   = FORMAT.BEST_OF_3;
+export const DEFAULT_PROJECTED_MATCHES = 35;
 
 export function useToggleSetting(key, defaultVal = false) {
   const [val, setVal] = useState(() => defaultVal ? getBoolStorageDefaultTrue(key) : getBoolStorage(key));
@@ -75,6 +76,21 @@ export function useNullableIntSetting(key) {
 export function useLastSetScore() {
   const [val, setVal] = useState(() => getIntStorage(STORAGE_KEYS.LAST_SET_SCORE, 15));
   const save = (n) => { setStorageItem(STORAGE_KEYS.LAST_SET_SCORE, n); setVal(n); };
+  return [val, save];
+}
+
+// Full-season match count used to extrapolate a player's season totals on the
+// player profile (Season Stats → each sub-tab shows a projected row).
+export function useProjectedSeasonMatches() {
+  const [val, setVal] = useState(() => {
+    const saved = getIntStorage(STORAGE_KEYS.PROJECTED_SEASON_MATCHES);
+    return !isNaN(saved) && saved > 0 ? saved : DEFAULT_PROJECTED_MATCHES;
+  });
+  const save = (next) => {
+    const n = Math.max(1, Math.min(200, Math.round(Number(next)) || DEFAULT_PROJECTED_MATCHES));
+    setStorageItem(STORAGE_KEYS.PROJECTED_SEASON_MATCHES, n);
+    setVal(n);
+  };
   return [val, save];
 }
 

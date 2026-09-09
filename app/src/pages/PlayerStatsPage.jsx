@@ -19,6 +19,8 @@ import {
 } from '../stats/queries';
 import { TAB_COLUMNS, SERVING_COLS } from '../stats/columns';
 import { fmtCount, fmtHitting, fmtPassRating, fmtPct, fmtVER } from '../stats/formatters';
+import { PROJECTION_MIN_MATCHES, buildProjectedRow } from '../stats/projection';
+import { useProjectedSeasonMatches } from '../hooks/useSettingsStorage';
 import { PageHeader } from '../components/layout/PageHeader';
 import { TabBar } from '../components/ui/Tab';
 import { StatTable } from '../components/stats/StatTable';
@@ -561,6 +563,15 @@ export function PlayerStatsPage() {
     [statTab, servingCols]
   );
 
+  const [projectedMatches] = useProjectedSeasonMatches();
+  const teamMatchesPlayed = matches?.length ?? 0;
+  const projectedRow = useMemo(() => {
+    if (!stats?.playerRow || teamMatchesPlayed < PROJECTION_MIN_MATCHES) return null;
+    if ((stats.playerRow.mp ?? 0) < 1) return null;
+    const factor = projectedMatches / teamMatchesPlayed;
+    return buildProjectedRow(stats.playerRow, currentCols, factor, projectedMatches);
+  }, [stats, currentCols, projectedMatches, teamMatchesPlayed]);
+
   const playerAwardGroups = useMemo(() => {
     if (!allTeamWinners?.length || !player?.name || !awardTypes?.length) return [];
     const normalized = player.name.trim().toLowerCase();
@@ -636,7 +647,17 @@ export function PlayerStatsPage() {
             )}
 
             <div className="px-2 py-3">
-              <StatTable columns={currentCols} rows={statRow} />
+              <StatTable
+                columns={currentCols}
+                rows={statRow}
+                totalsRow={projectedRow ?? undefined}
+                totalsRowLabel={projectedRow ? `Proj. (${projectedMatches})` : undefined}
+              />
+              {projectedRow && (
+                <p className="px-8 pt-1 text-[10px] text-slate-500">
+                  Projected totals = current pace over {projectedMatches} matches ({teamMatchesPlayed} played so far). Adjust in Settings → Personalization.
+                </p>
+              )}
             </div>
             <PerGameTrendGraph key={`${statTab}-${serveView}`} rows={byGameRows} statTab={statTab} serveView={serveView} initialKey={statParamEntry?.trendKey} />
           </div>
