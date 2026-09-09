@@ -42,6 +42,18 @@ export function useAccentColor() {
   return [accent, save];
 }
 
+// Court View: 'smart' | 'base' | 'simple'. Migrates the old on/off
+// "Simple Rotation View" toggle for anyone who had it turned on.
+export function useCourtViewMode() {
+  const [val, setVal] = useState(() => {
+    const saved = getStorageItem(STORAGE_KEYS.COURT_VIEW_MODE);
+    if (saved === 'smart' || saved === 'base' || saved === 'simple') return saved;
+    return getBoolStorage(STORAGE_KEYS.SIMPLE_ROTATION_VIEW) ? 'simple' : 'smart';
+  });
+  const save = (v) => { setStorageItem(STORAGE_KEYS.COURT_VIEW_MODE, v); setVal(v); };
+  return [val, save];
+}
+
 export function useStrSetting(key, dflt) {
   const [val, setVal] = useState(() => getStorageItem(key, dflt));
   const save = (v) => { setStorageItem(key, v); setVal(v); };

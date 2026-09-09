@@ -50,9 +50,15 @@ const JERSEY_COLORS = [
   { id: 'pink',   label: 'Pink',   bg: '#db2777', border: '#ec4899' },
 ];
 
+const COURT_VIEW_OPTIONS = [
+  { id: 'smart',  label: 'Smart',  desc: 'Players slide into serve-receive and on-court positions automatically' },
+  { id: 'base',   label: 'Base',   desc: 'Serving order until the ball is live, then simple base positions, then back' },
+  { id: 'simple', label: 'Simple', desc: 'Players never move — always raw serving order' },
+];
+
 export function MenuDrawer({
   onClose, flipLayout = false, onFlipLayout,
-  simpleRotationView = false, onSimpleRotationView,
+  courtViewMode = 'smart', onCourtViewMode,
   teamName, opponentName, onEndMatch,
 }) {
   const {
@@ -200,20 +206,26 @@ export function MenuDrawer({
           </button>
         </div>
 
-        {/* ── Simple Rotation View ── */}
-        <div className="flex items-center justify-between py-3 mb-3 border-t border-slate-700">
-          <div>
-            <div className="text-sm font-medium text-white">Simple Rotation View</div>
-            <div className="text-xs text-slate-400 mt-0.5">Keep players in their basic rotation slots — no serve-receive or on-court movement</div>
+        {/* ── Court View ── */}
+        <div className="py-3 mb-3 border-t border-slate-700">
+          <div className="text-sm font-medium text-white">Court View</div>
+          <div className="mt-2 flex gap-1.5">
+            {COURT_VIEW_OPTIONS.map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => onCourtViewMode?.(id)}
+                aria-pressed={courtViewMode === id}
+                className={`flex-1 px-2 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
+                  courtViewMode === id
+                    ? 'bg-primary/20 border-primary text-white'
+                    : 'bg-bg border-slate-700 text-slate-300 hover:border-slate-500'
+                }`}
+              >{label}</button>
+            ))}
           </div>
-          <button
-            onClick={onSimpleRotationView}
-            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${simpleRotationView ? 'bg-primary' : 'bg-slate-600'}`}
-            aria-checked={simpleRotationView}
-            role="switch"
-          >
-            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${simpleRotationView ? 'translate-x-5' : ''}`} />
-          </button>
+          <div className="text-xs text-slate-400 mt-2">
+            {COURT_VIEW_OPTIONS.find((o) => o.id === courtViewMode)?.desc}
+          </div>
         </div>
 
         <div className="space-y-3">

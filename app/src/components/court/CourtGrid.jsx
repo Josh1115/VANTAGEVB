@@ -104,8 +104,8 @@ function getBaseDisplayOrder(lineup) {
     return result;
   }
 
-  const frontSorted = sortRow(frontRow, [['OH'], ['MB'], ['OPP', 'S']]);
-  const backSorted  = sortRow(backRow,  [['MB', 'L'], ['OH'], ['S', 'OPP']]);
+  const frontSorted = sortRow(frontRow, [['OH'], ['MB', 'MH'], ['OPP', 'RS', 'S']]);
+  const backSorted  = sortRow(backRow,  [['L', 'MB'], ['OH'], ['OPP', 'RS', 'S']]);
   return [...frontSorted, ...backSorted];
 }
 
@@ -287,7 +287,11 @@ function PerfectPassBadge({ x, y }) {
   );
 }
 
-export const CourtGrid = memo(function CourtGrid({ aceZoneHints = {}, simpleRotationView = false }) {
+// courtViewMode:
+//   'smart'  — players slide into serve-receive / on-court base positions automatically
+//   'base'   — serving order until the ball is live, then simple base positions, then back
+//   'simple' — players never move from serving order
+export const CourtGrid = memo(function CourtGrid({ aceZoneHints = {}, courtViewMode = 'smart' }) {
   const {
     lineup, committedContacts, currentSetId, rallyPhase, serveSide,
     rotationNum, liberoId, serveReceiveFormations,
@@ -410,7 +414,11 @@ export const CourtGrid = memo(function CourtGrid({ aceZoneHints = {}, simpleRota
   const subTimersRef   = useRef([]);
 
   const cells = useMemo(() => {
-    if (!simpleRotationView) {
+    // 'base' — serving order everywhere except the live portion of a rally
+    if (courtViewMode === 'base') {
+      return inRally ? getBaseDisplayOrder(lineup) : GRID_ORDER.map((i) => lineup[i]);
+    }
+    if (courtViewMode === 'smart') {
       if (inRally) return getBaseDisplayOrder(lineup);
       if (inServeReceive) {
         const custom = serveReceiveFormations?.[rotationNum];
@@ -422,8 +430,9 @@ export const CourtGrid = memo(function CourtGrid({ aceZoneHints = {}, simpleRota
         return getServeReceiveDisplayOrder(lineup);
       }
     }
+    // 'simple' — never move
     return GRID_ORDER.map((i) => lineup[i]);
-  }, [lineup, inRally, inServeReceive, serveReceiveFormations, rotationNum, simpleRotationView]);
+  }, [lineup, inRally, inServeReceive, serveReceiveFormations, rotationNum, courtViewMode]);
 
   // Sub flash + ghost — runs after cells is computed
   useEffect(() => {

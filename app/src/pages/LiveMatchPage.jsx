@@ -13,7 +13,7 @@ import { useWakeLock } from '../hooks/useWakeLock';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlan } from '../hooks/usePlan';
 import { haptic } from '../utils/haptic';
-import { STORAGE_KEYS, getBoolStorage, setBoolStorage, getStorageItem } from '../utils/storage';
+import { STORAGE_KEYS, getBoolStorage, setBoolStorage, getStorageItem, setStorageItem } from '../utils/storage';
 import { autoSaveBackup, exportBackup } from '../stats/backup';
 import { ScoreHeader } from '../components/match/ScoreHeader';
 import { CourtGrid } from '../components/court/CourtGrid';
@@ -75,7 +75,12 @@ export function LiveMatchPage() {
   const [seasonId,            setSeasonId]            = useState(null);
   const [hasFamilyScope,      setHasFamilyScope]      = useState(false);
   const [flipLayout,          setFlipLayout]          = useState(() => getBoolStorage(STORAGE_KEYS.FLIP_LAYOUT));
-  const [simpleRotationView,  setSimpleRotationView]  = useState(() => getBoolStorage(STORAGE_KEYS.SIMPLE_ROTATION_VIEW));
+  const [courtViewMode,       setCourtViewMode]       = useState(() => {
+    const saved = getStorageItem(STORAGE_KEYS.COURT_VIEW_MODE);
+    if (saved === 'smart' || saved === 'base' || saved === 'simple') return saved;
+    // migrate the old on/off "Simple Rotation View" toggle
+    return getBoolStorage(STORAGE_KEYS.SIMPLE_ROTATION_VIEW) ? 'simple' : 'smart';
+  });
 
   const handleToggleFlip = useCallback(() => {
     setFlipLayout((prev) => {
@@ -85,12 +90,9 @@ export function LiveMatchPage() {
     });
   }, []);
 
-  const handleToggleSimpleRotationView = useCallback(() => {
-    setSimpleRotationView((prev) => {
-      const next = !prev;
-      setBoolStorage(STORAGE_KEYS.SIMPLE_ROTATION_VIEW, next);
-      return next;
-    });
+  const handleCourtViewMode = useCallback((mode) => {
+    setCourtViewMode(mode);
+    setStorageItem(STORAGE_KEYS.COURT_VIEW_MODE, mode);
   }, []);
 
   const {
@@ -607,7 +609,7 @@ export function LiveMatchPage() {
           hasFamilyScope={hasFamilyScope}
         />
         <div className="flex flex-row flex-1 min-h-0">
-          <CourtGrid aceZoneHints={aceZoneHints} simpleRotationView={simpleRotationView} />
+          <CourtGrid aceZoneHints={aceZoneHints} courtViewMode={courtViewMode} />
           <OppScoringColumn />
         </div>
       </div>
@@ -655,8 +657,8 @@ export function LiveMatchPage() {
           onClose={() => setMenuOpen(false)}
           flipLayout={flipLayout}
           onFlipLayout={handleToggleFlip}
-          simpleRotationView={simpleRotationView}
-          onSimpleRotationView={handleToggleSimpleRotationView}
+          courtViewMode={courtViewMode}
+          onCourtViewMode={handleCourtViewMode}
           teamName={teamName}
           opponentName={opponentName}
           onEndMatch={async (winner) => {

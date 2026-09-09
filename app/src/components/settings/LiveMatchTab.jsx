@@ -1,6 +1,12 @@
 import { STORAGE_KEYS } from '../../utils/storage';
 import { previewSound } from '../../utils/sound';
-import { useToggleSetting, useStrSetting } from '../../hooks/useSettingsStorage';
+import { useToggleSetting, useStrSetting, useCourtViewMode } from '../../hooks/useSettingsStorage';
+
+const COURT_VIEW_OPTIONS = [
+  { id: 'smart',  label: 'Smart',  desc: 'Players slide into serve-receive and on-court positions automatically' },
+  { id: 'base',   label: 'Base',   desc: 'Serving order until the ball is live, then simple base positions, then back' },
+  { id: 'simple', label: 'Simple', desc: 'Players never move — always raw serving order' },
+];
 
 const ROSTER_SORT_OPTIONS = [
   { id: 'jersey',    label: 'Jersey #',    example: '#12'  },
@@ -42,7 +48,7 @@ export function LiveMatchTab() {
   const [hapticOn,   saveHaptic]     = useToggleSetting(STORAGE_KEYS.HAPTIC);
   const [soundsOn,   saveSounds]     = useToggleSetting(STORAGE_KEYS.SOUNDS);
   const [flipLayout, saveFlipLayout] = useToggleSetting(STORAGE_KEYS.FLIP_LAYOUT);
-  const [simpleRotationView, saveSimpleRotationView] = useToggleSetting(STORAGE_KEYS.SIMPLE_ROTATION_VIEW);
+  const [courtViewMode, saveCourtViewMode] = useCourtViewMode();
   const [serveZonePrompt, saveServeZonePrompt] = useToggleSetting(STORAGE_KEYS.SERVE_ZONE_PROMPT, true);
   const [playerNameFormat, savePlayerNameFormat] = useStrSetting(STORAGE_KEYS.PLAYER_NAME_FORMAT, 'initial_last');
   const [rosterSort,       saveRosterSort]       = useStrSetting(STORAGE_KEYS.ROSTER_SORT, 'jersey');
@@ -114,7 +120,29 @@ export function LiveMatchTab() {
 
       <ToggleRow label="Flip Team Layout" description="Show your team on the right side of the scoreboard" checked={flipLayout} onChange={saveFlipLayout} />
 
-      <ToggleRow label="Simple Rotation View" description="Keep players fixed in their basic rotation slots instead of moving to serve-receive or on-court positions — shows raw serve order and overlap at a glance" checked={simpleRotationView} onChange={saveSimpleRotationView} />
+      {/* Court view */}
+      <div className="py-3 first:pt-0 last:pb-0">
+        <div className="text-sm font-medium mb-0.5">Court View</div>
+        <div className="text-xs text-slate-400 mb-3">How players are arranged on the court during a live match</div>
+        <div className="flex gap-2">
+          {COURT_VIEW_OPTIONS.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => saveCourtViewMode(id)}
+              className={`flex-1 px-2 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                courtViewMode === id
+                  ? 'bg-primary/20 border-primary text-white'
+                  : 'bg-bg border-slate-700 text-slate-300 hover:border-slate-500'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="text-xs text-slate-400 mt-2">
+          {COURT_VIEW_OPTIONS.find((o) => o.id === courtViewMode)?.desc}
+        </div>
+      </div>
 
     </div>
   );
