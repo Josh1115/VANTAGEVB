@@ -11,7 +11,7 @@ import { computeMatchStats,
          aggregateXKTeamStats, computeWinCorrelation, pickMetricVal,
          computeTimeoutEffectiveness } from '../stats/engine';
 import { getRalliesForMatch, getRalliesForMatches, findOrCreateOpponent } from '../stats/queries';
-import { exportMatchCSV, exportMaxPrepsCSV, maxPrepsFilename, addPageHeader } from '../stats/export';
+import { exportMatchCSV, exportMaxPrepsCSV, maxPrepsFilename, exportBoxScorePDF, boxScoreFilename, addPageHeader } from '../stats/export';
 import { fmtHitting, fmtPassRating, fmtPct, fmtCount, fmtDate } from '../stats/formatters';
 import { ROTATION_COLS, ROTATION_STAT_KEYS, withMinMax, SERVING_COLS, TAB_COLUMNS, ISOOS_COLS, ISOOS_STAT_KEYS, TRANS_COLS, TRANS_STAT_KEYS, RUN_COLS, RUN_STAT_KEYS } from '../stats/columns';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -1433,6 +1433,19 @@ export function MatchSummaryPage() {
     exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, uuid, maxPrepsFilename(match));
   }
 
+  // Media-ready one-page box score PDF: active roster (by jersey #) + team totals,
+  // always the full match regardless of any on-screen per-set filter.
+  function handleBoxScore() {
+    if (!stats || !match) return;
+    const roster = playerList
+      .filter((p) => p.is_active)
+      .sort((a, b) => (Number(a.jersey_number) || 0) - (Number(b.jersey_number) || 0));
+    exportBoxScorePDF(
+      match, sets, teamColors?.orgName ?? '',
+      roster, stats.players, stats.team, boxScoreFilename(match),
+    );
+  }
+
   async function captureCard() {
     const html2canvas = html2canvasRef.current ?? (await import('html2canvas')).default;
     const canvas = await html2canvas(shareCardRef.current, {
@@ -1602,6 +1615,9 @@ export function MatchSummaryPage() {
               </Button>
               <Button size="sm" variant="secondary" disabled={!stats} onClick={handleMaxPreps}>
                 MaxPreps
+              </Button>
+              <Button size="sm" variant="secondary" disabled={!stats} onClick={handleBoxScore}>
+                Box Score
               </Button>
               <Button size="sm" variant="secondary" disabled={!stats || sharingCard} onClick={handleShareCard}>
                 {sharingCard ? '…' : '📲 Share'}

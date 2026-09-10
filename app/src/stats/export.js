@@ -309,3 +309,140 @@ export function exportMatchPDF(matchMeta, playerStats, teamStats, rotationStats,
   addPageFooters(doc);
   doc.save(filename);
 }
+
+// ── Box Score PDF ─────────────────────────────────────────────────────────────
+// A single-page, media-ready box score: a header (matchup, result, every set's
+// score, date) followed by one table — one row per active roster player, a
+// fixed set of stat columns, and a TEAM totals row at the bottom.
+// Column order is fixed by request and must not be reordered:
+//   SA, ACE, SE, APR, ATT, K, AE, K%, HIT%, BLK (solo+assist), DIG, AST
+
+const BOX_SCORE_COLUMNS = [
+  { key: 'sa',      label: 'SA'   },
+  { key: 'ace',     label: 'ACE'  },
+  { key: 'se',      label: 'SE'   },
+  { key: 'apr',     label: 'APR',  fmt: fmtPassRating },
+  { key: 'ta',      label: 'ATT'  },
+  { key: 'k',       label: 'K'    },
+  { key: 'ae',      label: 'AE'   },
+  { key: 'k_pct',   label: 'K%',   fmt: fmtPct },
+  { key: 'hit_pct', label: 'HIT%', fmt: fmtHitting },
+  { key: 'blk',     label: 'BLK'  },
+  { key: 'dig',     label: 'DIG'  },
+  { key: 'ast',     label: 'AST'  },
+];
+
+// Descriptive download name, e.g. "vantage-vs-madison-2026-08-25-boxscore.pdf".
+export function boxScoreFilename(match) {
+  const opp = (match?.opponent_name ?? 'opponent')
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .toLowerCase() || 'opponent';
+  const date = match?.date ? String(match.date).slice(0, 10) : 'undated';
+  return `vantage-vs-${opp}-${date}-boxscore.pdf`;
+}
+
+// Pure: turn a roster + already-computed stats into printable box-score rows.
+//   roster      — [{ id, name, jersey_number }], already filtered to active
+//                 players and sorted however they should appear.
+//   playerStats — computePlayerStats() output, keyed by player id.
+//   teamStats   — computeTeamStats() output (true team totals from the engine).
+// A player with no recorded stats this match gets an all-"-" row. The TEAM row
+// is the engine's own totals, not a re-sum of the shown rows (an archived player
+// who played still counts toward the team but has no row).
+export function buildBoxScoreRows(roster, playerStats, teamStats) {
+  const value = (s, key) =>
+    key === 'blk' ? (s?.bs ?? 0) + (s?.ba ?? 0) : s?.[key];
+
+  // A hyphen (not an em dash) so the standard PDF font renders it cleanly.
+  const cell = (col, val) => {
+    if (val == null || (typeof val === 'number' && isNaN(val))) return '-';
+    return col.fmt ? col.fmt(val) : fmtCount(val);
+  };
+
+  const players = (roster ?? []).map((p) => {
+    const jersey = (p.jersey_number ?? '') === '' ? '' : `#${p.jersey_number} `;
+    const name = `${jersey}${p.name ?? `#${p.id}`}`;
+    const s = playerStats?.[p.id] ?? playerStats?.[String(p.id)];
+    if (!s) return { name, cells: BOX_SCORE_COLUMNS.map(() => '-') };
+    return { name, cells: BOX_SCORE_COLUMNS.map((col) => cell(col, value(s, col.key))) };
+  });
+
+  const team = {
+    name: 'TEAM',
+    cells: BOX_SCORE_COLUMNS.map((col) => cell(col, value(teamStats ?? {}, col.key))),
+  };
+
+  return { columns: BOX_SCORE_COLUMNS, players, team };
+}
+
+export function exportBoxScorePDF(match, sets, teamName, roster, playerStats, teamStats, filename = 'box-score.pdf') {
+  const pdfFormat = (navigator.language ?? '').startsWith('en-US') ? 'letter' : 'a4';
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: pdfFormat });
+
+  const opp = match?.opponent_name ?? 'Opponent';
+  const sep = match?.location === 'away' ? '@' : 'vs.';
+  const matchup = teamName ? `${teamName} ${sep} ${opp}` : `${sep} ${opp}`;
+
+  addPageHeader(doc, 'BOX SCORE', '');
+
+  const w = doc.internal.pageSize.getWidth();
+  const cx = w / 2;
+
+  const ourSets = match?.our_sets_won ?? 0;
+  const oppSets = match?.opp_sets_won ?? 0;
+  const result = ourSets > oppSets ? 'Win' : (oppSets > ourSets ? 'Loss' : 'Tie');
+  const setScores = (sets ?? [])
+    .filter((s) => s.status === 'complete')
+    .map((s) => `${s.our_score ?? 0}-${s.opp_score ?? 0}`)
+    .join(', ');
+
+  // Big, centered match header — matchup headline then every detail, labeled.
+  doc.setTextColor(...DARK);
+  doc.setFont('helvetica', 'bold');
+  let titleSize = 22;
+  doc.setFontSize(titleSize);
+  while (doc.getTextWidth(matchup) > w - 24 && titleSize > 12) {
+    doc.setFontSize(--titleSize);
+  }
+  doc.text(matchup, cx, 45, { align: 'center' });
+
+  doc.setFontSize(13);
+  doc.text(`Result:  ${result}  (${ourSets}-${oppSets})`, cx, 54, { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.text(`Set Scores:  ${setScores || '-'}`, cx, 61, { align: 'center' });
+
+  doc.setTextColor(...MUTED);
+  doc.setFontSize(10);
+  doc.text(`Date:  ${fmtDate(match?.date)}`, cx, 68, { align: 'center' });
+
+  const { columns, players, team } = buildBoxScoreRows(roster, playerStats, teamStats);
+
+  autoTable(doc, {
+    startY: 75,
+    head: [
+      [
+        { content: '' },
+        { content: 'SERVING',   colSpan: 3, styles: { halign: 'center' } },
+        { content: 'PASS',      colSpan: 1, styles: { halign: 'center' } },
+        { content: 'ATTACKING', colSpan: 5, styles: { halign: 'center' } },
+        { content: '',          colSpan: 3 },
+      ],
+      ['Player', ...columns.map((c) => c.label)],
+    ],
+    body: players.map((r) => [r.name, ...r.cells]),
+    foot: [[team.name, ...team.cells]],
+    styles: { fillColor: SURFACE, textColor: WHITE, fontSize: 8, halign: 'center' },
+    columnStyles: { 0: { halign: 'left', cellWidth: 42, fontStyle: 'bold' } },
+    headStyles: { fillColor: PRIMARY, textColor: WHITE, fontStyle: 'bold' },
+    footStyles: { fillColor: DARK, textColor: WHITE, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: DARK },
+    theme: 'grid',
+  });
+
+  addPageFooters(doc);
+  doc.save(filename);
+}
