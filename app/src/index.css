@@ -233,6 +233,19 @@
   animation: return-suggest-pulse 2s ease-in-out infinite;
 }
 
+/* Subtle glow/flash on a progress bar's filled portion.
+   Uses a brightness pulse (not box-shadow) because the bar and its
+   parent both use overflow-hidden, which would clip a glow that
+   bleeds outside the bar's own edges. */
+@keyframes progress-fill-glow {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.5); }
+}
+
+.progress-fill-glow {
+  animation: progress-fill-glow 1.6s ease-in-out infinite;
+}
+
 @keyframes section-twinkle {
   0%, 100% { text-shadow: 0 0 6px rgba(232,83,11,0.55), 0 0 14px rgba(232,83,11,0.2); }
   18%       { text-shadow: 0 0 12px #e8530b, 0 0 24px rgba(232,83,11,0.55), 0 0 38px rgba(232,83,11,0.2); }

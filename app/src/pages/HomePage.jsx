@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { MATCH_STATUS } from '../constants';
-import { fmtDate, fmtHitting, fmtPct, fmtSetScores } from '../stats/formatters';
+import { fmtDate, fmtHitting, fmtPct } from '../stats/formatters';
 import { computePlayerStats, computeTeamStats } from '../stats/engine';
 import { deleteMatch } from '../stats/queries';
 import { useUiStore, selectShowToast } from '../store/uiStore';
@@ -66,17 +66,18 @@ function computeTodayDisplay() {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 
-function SetPips({ ourSets, oppSets }) {
+function SetPips({ ourSets, oppSets, big }) {
   const our = ourSets ?? 0;
   const opp = oppSets ?? 0;
-  if (our + opp === 0) return <span className="text-xs text-slate-500 font-mono">–</span>;
+  const dotSize = big ? 'w-3.5 h-3.5' : 'w-2.5 h-2.5';
+  if (our + opp === 0) return <span className={`text-slate-500 font-mono ${big ? 'text-sm' : 'text-xs'}`}>–</span>;
   return (
     <div className="flex gap-1 items-center">
       {Array.from({ length: our }).map((_, i) => (
-        <span key={`o${i}`} className="w-2.5 h-2.5 rounded-full bg-primary" />
+        <span key={`o${i}`} className={`${dotSize} rounded-full bg-primary`} />
       ))}
       {Array.from({ length: opp }).map((_, i) => (
-        <span key={`t${i}`} className="w-2.5 h-2.5 rounded-full bg-slate-600" />
+        <span key={`t${i}`} className={`${dotSize} rounded-full bg-slate-600`} />
       ))}
     </div>
   );
@@ -358,22 +359,43 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
                         {match.status === MATCH_STATUS.COMPLETE && (() => {
                           const won = (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
                           return (
-                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${won ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
-                              {won ? 'W' : 'L'}
-                            </span>
+                            <>
+                              <span className={`text-sm font-black px-1.5 py-0.5 rounded ${won ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
+                                {won ? 'W' : 'L'}
+                              </span>
+                              <span className="text-sm font-semibold text-slate-400">({match.our_sets_won ?? 0}-{match.opp_sets_won ?? 0})</span>
+                            </>
                           );
                         })()}
                         {scoreDetail === 'scores' && match.sets?.length
-                          ? <span className="text-xs font-mono text-slate-300">{fmtSetScores(match.sets)}</span>
-                          : <SetPips ourSets={match.our_sets_won} oppSets={match.opp_sets_won} />
+                          ? (
+                            <>
+                              {match.status === MATCH_STATUS.COMPLETE && <span className="text-sm text-slate-500">|</span>}
+                              <span className={`font-mono text-slate-300 inline-flex items-center gap-1 ${match.status === MATCH_STATUS.COMPLETE ? 'text-sm' : 'text-xs'}`}>
+                                {match.sets.map((s, i) => (
+                                  <span key={i} className="inline-flex items-center gap-1">
+                                    {i > 0 && <span className="text-slate-500">·</span>}
+                                    <span className="flex flex-col items-center">
+                                      <span>{s.our_score ?? 0}-{s.opp_score ?? 0}</span>
+                                      <span className={`w-3 h-px mt-0.5 rounded-full ${(s.our_score ?? 0) > (s.opp_score ?? 0) ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                    </span>
+                                  </span>
+                                ))}
+                              </span>
+                              {match.status === MATCH_STATUS.COMPLETE && <span className="text-sm text-slate-500">|</span>}
+                            </>
+                          )
+                          : <SetPips ourSets={match.our_sets_won} oppSets={match.opp_sets_won} big={match.status === MATCH_STATUS.COMPLETE} />
                         }
                       </div>
-                      <div className={`text-xs flex items-center gap-1 ${match.status === MATCH_STATUS.IN_PROGRESS ? 'text-primary' : 'text-slate-400'}`}>
-                        {match.status === MATCH_STATUS.IN_PROGRESS && (
-                          <span className="serve-pulse inline-block w-1.5 h-1.5 rounded-full bg-primary" />
-                        )}
-                        {match.status === MATCH_STATUS.IN_PROGRESS ? 'Live' : match.status === MATCH_STATUS.COMPLETE ? 'Final' : 'Setup'}
-                      </div>
+                      {match.status !== MATCH_STATUS.COMPLETE && (
+                        <div className={`text-xs flex items-center gap-1 ${match.status === MATCH_STATUS.IN_PROGRESS ? 'text-primary' : 'text-slate-400'}`}>
+                          {match.status === MATCH_STATUS.IN_PROGRESS && (
+                            <span className="serve-pulse inline-block w-1.5 h-1.5 rounded-full bg-primary" />
+                          )}
+                          {match.status === MATCH_STATUS.IN_PROGRESS ? 'Live' : 'Setup'}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -428,7 +450,7 @@ export function HomePage() {
     const v = getStorageItem(STORAGE_KEYS.MATCH_VIEW_DEFAULT, 'closest');
     return v === 'recent' ? 'closest' : v;
   });
-  const scoreDetail  = getStorageItem(STORAGE_KEYS.SCORE_DETAIL, 'sets');
+  const scoreDetail  = getStorageItem(STORAGE_KEYS.SCORE_DETAIL, 'scores');
   const playoffLabel = getPlayoffLabel();
 
   // ── Schedule-edit modal ────────────────────────────────────────────────────
@@ -611,6 +633,24 @@ export function HomePage() {
       seasonYear:       season.year,
     };
   }, [defaultTeamId, defaultSeasonId]);
+
+  // ── Season progress bar: animate fill-in on first load ─────────────────────
+  // Triggers once the real season data actually arrives (it loads from the
+  // database asynchronously) rather than on a fixed timer after mount — a
+  // fixed timer risked flipping to "ready" before the data existed, so the
+  // bar would just appear already-filled with nothing to animate from.
+  const [progressBarReady, setProgressBarReady] = useState(false);
+  const progressBarSeenRef = useRef(false);
+  useEffect(() => {
+    if (!seasonRecord?.matchProgress || seasonRecord.matchProgress.total <= 0) return;
+    if (progressBarSeenRef.current) return; // only animate the very first time it loads
+    progressBarSeenRef.current = true;
+    setProgressBarReady(false);
+    const raf1 = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setProgressBarReady(true));
+    });
+    return () => cancelAnimationFrame(raf1);
+  }, [seasonRecord]);
 
   const nextMatch = useLiveQuery(async () => {
     if (!defaultSeasonId) return null;
@@ -870,8 +910,8 @@ export function HomePage() {
           >
             <span className="text-4xl inline-block">🛠️</span>
             <div>
-              <div className="font-bold text-base text-white">Tools</div>
-              <div className="text-xs text-orange-100/80">Practice utilities</div>
+              <div className="font-bold text-base text-white">Practice Tools</div>
+              <div className="text-xs text-orange-100/80">Features for Practice!</div>
             </div>
           </button>
         </div>
@@ -884,11 +924,11 @@ export function HomePage() {
               // "Girls […] | […] Boys"); every other group labels on the left.
               const labelAfter = gi === teamPillGroups.length - 1 && teamPillGroups.length > 1;
               const label = group.label && (
-                <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{group.label}</span>
+                <span className="text-[11px] font-bold uppercase tracking-wide text-white">{group.label}</span>
               );
               return (
                 <div key={group.label ?? gi} className="flex flex-wrap items-center justify-center gap-2">
-                  {gi > 0 && <span className="text-slate-600 font-bold px-0.5 select-none">|</span>}
+                  {gi > 0 && <span className="text-white font-bold px-0.5 select-none">|</span>}
                   {!labelAfter && label}
                   {group.teams.map((t) => {
                     const active = t.id === defaultTeamId;
@@ -926,8 +966,8 @@ export function HomePage() {
                 >
                   {seasonRecord.teamName}
                 </span>
-                <span className="text-slate-600 mx-2">·</span>
-                <span className="text-[15px] text-slate-400 font-semibold">{seasonRecord.seasonName}</span>
+                <span className="text-white font-black text-xl mx-2">·</span>
+                <span className="text-[15px] text-white font-semibold uppercase">{seasonRecord.seasonName}</span>
               </div>
               <button
                 onClick={() => setRankModalOpen(true)}
@@ -1034,7 +1074,7 @@ export function HomePage() {
               </span>
               <span className="text-white font-black">·</span>
               <span className="text-white font-semibold">
-                {seasonRecord.last5W}–{seasonRecord.last5L} <span className="text-white">L{seasonRecord.last5Count || 5}</span>
+                {seasonRecord.last5W}–{seasonRecord.last5L} <span className="text-white">LAST {seasonRecord.last5Count || 5}</span>
               </span>
             </div>
 
@@ -1047,8 +1087,8 @@ export function HomePage() {
                 </div>
                 <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-primary rounded-full transition-all duration-700"
-                    style={{ width: `${(seasonRecord.matchProgress.completed / seasonRecord.matchProgress.total) * 100}%` }}
+                    className="h-full bg-primary rounded-full transition-all duration-[2000ms] ease-out progress-fill-glow"
+                    style={{ width: progressBarReady ? `${(seasonRecord.matchProgress.completed / seasonRecord.matchProgress.total) * 100}%` : '0%' }}
                   />
                 </div>
               </div>
@@ -1060,9 +1100,9 @@ export function HomePage() {
         {seasonLeaders?.teamStats && (
           <div className="grid grid-cols-3 gap-2 animate-slide-up-fade" style={{ animationDelay: '220ms' }}>
             {[
-              { label: 'HIT%', val: fmtHitting(seasonLeaders.teamStats.hit_pct), stat: 'hit_pct', deltaVal: seasonLeaders.teamDeltas?.hit_pct, fmt: v => fmtHitting(Math.abs(v)) },
               { label: 'SRV%', val: fmtPct(seasonLeaders.teamStats.si_pct),      stat: 'si_pct',  deltaVal: seasonLeaders.teamDeltas?.si_pct,  fmt: v => fmtPct(Math.abs(v))     },
               { label: 'ACE%', val: fmtPct(seasonLeaders.teamStats.ace_pct),     stat: 'ace_pct', deltaVal: seasonLeaders.teamDeltas?.ace_pct, fmt: v => fmtPct(Math.abs(v))     },
+              { label: 'HIT%', val: fmtHitting(seasonLeaders.teamStats.hit_pct), stat: 'hit_pct', deltaVal: seasonLeaders.teamDeltas?.hit_pct, fmt: v => fmtHitting(Math.abs(v)) },
             ].map(({ label, val, stat, deltaVal, fmt }) => (
               <button
                 key={label}
@@ -1070,10 +1110,10 @@ export function HomePage() {
                 disabled={!defaultSeasonId}
                 className="bg-surface rounded-xl p-3 text-center active:scale-95 transition-transform disabled:active:scale-100"
               >
-                <div className="text-[10px] font-black uppercase tracking-wider text-white">{label}</div>
-                <div className="text-xl font-black text-primary tabular-nums mt-0.5">{val}</div>
+                <div className="text-xs font-black uppercase tracking-wider text-white">{label}</div>
+                <div className="text-2xl font-black text-primary tabular-nums mt-0.5">{val}</div>
                 {deltaVal != null && deltaVal !== 0 && (
-                  <span className={`flex items-center justify-center gap-px text-[8px] font-bold leading-none tabular-nums mt-0.5 ${deltaVal > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <span className={`flex items-center justify-center gap-px text-[9px] font-bold leading-none tabular-nums mt-0.5 ${deltaVal > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {deltaVal > 0 ? '▲' : '▼'}{fmt(deltaVal)}
                   </span>
                 )}
@@ -1132,7 +1172,7 @@ export function HomePage() {
                         <>
                           <span className="text-xl font-black text-primary tabular-nums leading-none">{fmt ? fmt(leader.val) : leader.val}</span>
                           <Delta val={ld?.[key]} fmt={fmt} />
-                          <span className="text-[10px] font-semibold text-slate-300 leading-tight text-center break-words w-full">{leader.name}</span>
+                          <span className="text-[10px] font-semibold text-white leading-tight text-center break-words w-full">{leader.name}</span>
                         </>
                       ) : (
                         <span className="text-xl font-black text-slate-600 leading-none">—</span>
@@ -1182,10 +1222,10 @@ export function HomePage() {
             onClick={() => navigate('/opponents')}
             className={`group card-top-glow bg-primary/90 hover:bg-primary rounded-xl p-3 text-left flex items-center gap-2.5 active:scale-[0.97] transition-[transform,background-color] duration-75 ${nextMatch ? 'flex-1' : 'w-full'}`}
           >
-            <span className="text-2xl inline-block transition-transform duration-75 group-active:-translate-y-1 group-active:scale-125">🔭</span>
+            <span className="text-2xl inline-block transition-transform duration-75 group-active:-translate-y-1 group-active:scale-125">🔍</span>
             <div className="min-w-0">
-              <div className="font-semibold text-sm text-white">Opponents</div>
-              <div className="text-[11px] text-orange-100/80 truncate">Scouting & history</div>
+              <div className="font-semibold text-base text-white">Scouting & Opponents</div>
+              <div className="text-xs text-orange-100/80 truncate">Historical opponent trends</div>
             </div>
             <span className="text-orange-100/70 ml-auto">›</span>
           </button>
@@ -1201,14 +1241,14 @@ export function HomePage() {
                 const day = d ? d.getDate() : '—';
                 return (
                   <div className="flex-shrink-0 w-9 h-9 rounded-md overflow-hidden border border-slate-600 flex flex-col">
-                    <div className="bg-primary text-white text-[8px] font-black tracking-wider text-center leading-none py-0.5">{mon}</div>
-                    <div className="flex-1 bg-slate-800 flex items-center justify-center text-sm font-black text-white leading-none tabular-nums">{day}</div>
+                    <div className="bg-primary text-white text-[9px] font-black tracking-wider text-center leading-none py-0.5">{mon}</div>
+                    <div className="flex-1 bg-slate-800 flex items-center justify-center text-base font-black text-white leading-none tabular-nums">{day}</div>
                   </div>
                 );
               })()}
               <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 leading-none mb-0.5">Next</div>
-                <div className="font-semibold text-sm truncate">
+                <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 leading-none mb-0.5">Next</div>
+                <div className="font-semibold text-base truncate">
                   {nextMatch.opponent_name ?? 'TBD'}
                   {nextMatch.opponent_maxpreps_rank != null && (
                     <span className="text-slate-400 font-normal"> #{nextMatch.opponent_maxpreps_rank}</span>
@@ -1222,7 +1262,7 @@ export function HomePage() {
                 </div>
                 <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                   {nextMatch.location && (
-                    <span className={`text-[9px] font-bold px-1 py-0.5 rounded uppercase ${
+                    <span className={`text-[10px] font-bold px-1 py-0.5 rounded uppercase ${
                       nextMatch.location === 'home' ? 'bg-emerald-900/50 text-emerald-400' :
                       nextMatch.location === 'away' ? 'bg-red-900/50 text-red-400' :
                                                       'bg-slate-700 text-slate-400'
@@ -1231,13 +1271,13 @@ export function HomePage() {
                     </span>
                   )}
                   {nextMatch.conference && (
-                    <span className={`text-[9px] font-bold px-1 py-0.5 rounded uppercase ${
+                    <span className={`text-[10px] font-bold px-1 py-0.5 rounded uppercase ${
                       nextMatch.conference === 'conference' ? 'bg-blue-900/50 text-blue-400' : 'bg-slate-700 text-slate-400'
                     }`}>
                       {nextMatch.conference === 'conference' ? 'CON' : 'NC'}
                     </span>
                   )}
-                  <span className={`text-[11px] truncate ${
+                  <span className={`text-xs truncate ${
                     nextMatchDayLabel === 'TODAY' ? 'font-black text-primary' :
                     nextMatchDayLabel === 'TOMORROW' ? 'font-bold text-amber-400' :
                     'text-slate-400'
@@ -1552,24 +1592,43 @@ export function HomePage() {
                         {match.status === MATCH_STATUS.COMPLETE && (() => {
                           const won = (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
                           return (
-                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${won ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
-                              {won ? 'W' : 'L'}
-                            </span>
+                            <>
+                              <span className={`text-sm font-black px-1.5 py-0.5 rounded ${won ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
+                                {won ? 'W' : 'L'}
+                              </span>
+                              <span className="text-sm font-semibold text-slate-400">({match.our_sets_won ?? 0}-{match.opp_sets_won ?? 0})</span>
+                            </>
                           );
                         })()}
                         {scoreDetail === 'scores' && match.sets?.length
-                          ? <span className="text-xs font-mono text-slate-300">{fmtSetScores(match.sets)}</span>
-                          : <SetPips ourSets={match.our_sets_won} oppSets={match.opp_sets_won} />
+                          ? (
+                            <>
+                              {match.status === MATCH_STATUS.COMPLETE && <span className="text-sm text-slate-500">|</span>}
+                              <span className={`font-mono text-slate-300 inline-flex items-center gap-1 ${match.status === MATCH_STATUS.COMPLETE ? 'text-sm' : 'text-xs'}`}>
+                                {match.sets.map((s, i) => (
+                                  <span key={i} className="inline-flex items-center gap-1">
+                                    {i > 0 && <span className="text-slate-500">·</span>}
+                                    <span className="flex flex-col items-center">
+                                      <span>{s.our_score ?? 0}-{s.opp_score ?? 0}</span>
+                                      <span className={`w-3 h-px mt-0.5 rounded-full ${(s.our_score ?? 0) > (s.opp_score ?? 0) ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                    </span>
+                                  </span>
+                                ))}
+                              </span>
+                              {match.status === MATCH_STATUS.COMPLETE && <span className="text-sm text-slate-500">|</span>}
+                            </>
+                          )
+                          : <SetPips ourSets={match.our_sets_won} oppSets={match.opp_sets_won} big={match.status === MATCH_STATUS.COMPLETE} />
                         }
                       </div>
-                      <div className={`text-xs flex items-center gap-1 ${match.status === MATCH_STATUS.IN_PROGRESS ? 'text-primary' : 'text-slate-400'}`}>
-                        {match.status === MATCH_STATUS.IN_PROGRESS && (
-                          <span className="serve-pulse inline-block w-1.5 h-1.5 rounded-full bg-primary" />
-                        )}
-                        {match.status === MATCH_STATUS.IN_PROGRESS ? 'Live'
-                          : match.status === MATCH_STATUS.COMPLETE ? 'Final'
-                          : 'Setup'}
-                      </div>
+                      {match.status !== MATCH_STATUS.COMPLETE && (
+                        <div className={`text-xs flex items-center gap-1 ${match.status === MATCH_STATUS.IN_PROGRESS ? 'text-primary' : 'text-slate-400'}`}>
+                          {match.status === MATCH_STATUS.IN_PROGRESS && (
+                            <span className="serve-pulse inline-block w-1.5 h-1.5 rounded-full bg-primary" />
+                          )}
+                          {match.status === MATCH_STATUS.IN_PROGRESS ? 'Live' : 'Setup'}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

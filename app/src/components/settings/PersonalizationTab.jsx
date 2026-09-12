@@ -18,7 +18,7 @@ export function PersonalizationTab() {
   const [winMessage,   saveWinMessage]  = useTrimSetting(STORAGE_KEYS.WIN_MESSAGE);
   const [defaultTeamId,   saveDefaultTeam]   = useNullableIntSetting(STORAGE_KEYS.DEFAULT_TEAM_ID);
   const [defaultSeasonId, saveDefaultSeason] = useNullableIntSetting(STORAGE_KEYS.DEFAULT_SEASON_ID);
-  const [scoreDetail,  saveScoreDetail] = useStrSetting(STORAGE_KEYS.SCORE_DETAIL, 'sets');
+  const [scoreDetail,  saveScoreDetail] = useStrSetting(STORAGE_KEYS.SCORE_DETAIL, 'scores');
   const [projectedMatches, saveProjectedMatches] = useProjectedSeasonMatches();
   const [projectedMatchesDraft, setProjectedMatchesDraft] = useState(String(projectedMatches));
   const [sidelineMode, saveSidelineMode] = useSidelineMode();
