@@ -5,7 +5,7 @@ import { useMatchStats } from '../../hooks/useMatchStats';
 import { useWinProbability } from '../../hooks/useWinProbability';
 import { SIDE, FORMAT, NFHS } from '../../constants';
 import { LiberoBox } from './LiberoBox';
-import { fmtWinProb } from '../../stats/formatters';
+import { fmtWinProb, fmtHitting } from '../../stats/formatters';
 
 const HOLD_MS = 3000;
 
@@ -94,6 +94,7 @@ function RunStrip({ teamStats: t, oppStats: o, currentRun, teamName, opponentNam
     ['SE',   n(t.se)],
     ['K',    n(t.k)],
     ['AE',   n(t.ae)],
+    ['HIT%', fmtHitting(t.hit_pct)],
     ['BLK',  n(t.bs) + n(t.ba) * 0.5],
     ['APR',  dec1(t.apr)],
   ];
@@ -502,6 +503,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
               className={`block text-[5.85vmin] font-black tabular-nums leading-[1] score-pop ${flipped ? `text-slate-100 ${theirScoreCls}` : `text-amber-400 ${ourScoreCls}`}`}
               style={{
                 fontFamily: "'Orbitron', sans-serif",
+                letterSpacing: '0.45vmin',
                 textShadow: flipped
                   ? '0 0 10px rgba(255,255,255,0.55), 0 0 28px rgba(255,255,255,0.2)'
                   : '0 0 14px #f59e0b, 0 0 36px #f59e0b55',
@@ -538,6 +540,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
               className={`block text-[5.85vmin] font-black tabular-nums leading-[1] score-pop ${flipped ? `text-amber-400 ${ourScoreCls}` : `text-slate-100 ${theirScoreCls}`}`}
               style={{
                 fontFamily: "'Orbitron', sans-serif",
+                letterSpacing: '0.45vmin',
                 textShadow: flipped
                   ? '0 0 14px #f59e0b, 0 0 36px #f59e0b55'
                   : '0 0 10px rgba(255,255,255,0.55), 0 0 28px rgba(255,255,255,0.2)',

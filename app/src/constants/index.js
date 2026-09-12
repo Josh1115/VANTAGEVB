@@ -222,8 +222,10 @@ export const MATCH_DUPE_REVIEW_WINDOW_HOURS = 48;
 // The three loop bugs are now fixed (2026-08-31): removeTombstonedMatches uses
 // cascadeDeleteMatchRow (no re-tombstone); applyBackupData drops stale local
 // tombstones for matches present in the restored payload; resolveDuplicateMatch
-// deletes the loser without a tombstone. Still left OFF pending real-device
-// verification of restore + dedupe before automatic sync is switched back on.
+// deletes the loser and records a tombstone keyed to that row's own uid (2026-09-12)
+// — precise enough to never also match the surviving copy, unlike the shared
+// natural key. Still left OFF pending real-device verification of restore +
+// dedupe before automatic sync is switched back on.
 // While false, cloud sync only happens on an explicit "Save to Cloud" /
 // "Restore from Cloud" tap.
 export const AUTO_SYNC_ENABLED = false;

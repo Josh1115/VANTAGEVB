@@ -69,15 +69,20 @@ export function ChampionshipBannersSection({ titledSeasons, orgName, primaryColo
       <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 text-center">Titles &amp; Championships</p>
       <div className="flex flex-wrap gap-5 justify-center">
         {titledSeasons.map((s, idx) => (
-          <ChampionshipBanner
+          <div
             key={`${s.year}-${s.title}-${idx}`}
-            title={s.title}
-            year={s.year}
-            orgName={orgName}
-            primaryColorId={primaryColorId}
-            secondaryColorId={secondaryColorId}
-            className={bannerClassName}
-          />
+            className="animate-slide-up-fade"
+            style={{ animationDelay: `${idx * 70}ms` }}
+          >
+            <ChampionshipBanner
+              title={s.title}
+              year={s.year}
+              orgName={orgName}
+              primaryColorId={primaryColorId}
+              secondaryColorId={secondaryColorId}
+              className={bannerClassName}
+            />
+          </div>
         ))}
       </div>
     </div>

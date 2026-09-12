@@ -1,6 +1,6 @@
 import { db } from '../db/schema';
 import { cascadeDeleteMatchRow } from './queries';
-import { clearMatchTombstone } from './merge';
+import { clearMatchTombstone, addTombstone, tombstoneKeyForMatchUid } from './merge';
 import { MATCH_DUPE_REVIEW_WINDOW_HOURS } from '../constants';
 
 // One-time cleanup for duplicates created by the bug fixed in stats/merge.js
@@ -343,16 +343,21 @@ export async function findLikelyDuplicateMatchPairs() {
   return pairs;
 }
 
-// Resolve one reviewed pair: delete the losing copy WITHOUT writing a tombstone.
-// A natural-key delete-marker (season + opponent + date) can match the SURVIVING
-// copy on another device — the two copies duplicated precisely because their
-// keys drifted — and remove it on the next sync, which is how a dedupe merge
-// could destroy the match the coach chose to keep. Worst case the loser
-// reappears from an older cloud backup and the coach merges it again; no data is
-// lost. Also clear any pre-existing marker sharing the survivor's key so a
-// stale one from an earlier delete doesn't remove it later.
+// Resolve one reviewed pair: delete the losing copy and record a tombstone
+// keyed to ITS OWN uid (not the natural key of season + opponent + date). A
+// natural-key delete-marker can't be used here — it would also match the
+// SURVIVING copy on another device (the two copies duplicated precisely
+// because their natural keys collided) and could remove it on the next sync,
+// destroying the match the coach chose to keep. A uid belongs to exactly one
+// row, so this note can only ever apply to the loser: it's what makes the
+// delete stick instead of the loser reappearing from an older cloud backup or
+// another device on every future sync (see merge.js's tombstoneKeyForMatchUid
+// and the match-uid checks in parseMergePreviewFromData / executeMerge). Also
+// clear any pre-existing marker sharing the survivor's own key so a stale one
+// from an earlier delete doesn't remove it later.
 export async function resolveDuplicateMatch(loserId, survivorId) {
-  const survivor = await db.matches.get(survivorId);
+  const [loser, survivor] = await Promise.all([db.matches.get(loserId), db.matches.get(survivorId)]);
   await cascadeDeleteMatchRow(loserId);
+  if (loser?.uid) await addTombstone('match-uid', tombstoneKeyForMatchUid(loser.uid));
   if (survivor) await clearMatchTombstone(survivor);
 }

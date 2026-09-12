@@ -138,6 +138,18 @@ export function tombstoneKeyForMatch(orgName, team, seasonYear, match) {
   return `${norm(orgName)}|${nkTeam(team)}|${String(seasonYear ?? '')}|${nkMatch(match)}`;
 }
 
+// A tombstone for one EXACT match row, keyed by its permanent `uid` instead of
+// the natural key above. Written only by the duplicate-finder (stats/dedupe.js
+// resolveDuplicateMatch) when it deletes a losing duplicate: the natural key
+// (season + opponent + date) is shared by BOTH the loser and the survivor —
+// that's the definition of "these two look like duplicates" — so a natural-key
+// tombstone can't mark just the loser without also risking deleting the
+// survivor on a later sync. A uid belongs to exactly one row, so this note can
+// never be confused with any other match, including its own former twin.
+export function tombstoneKeyForMatchUid(uid) {
+  return uid;
+}
+
 // Records a delete. De-duped on (type, key) so re-deleting something that's
 // already gone (e.g. via a stale UI state) doesn't pile up duplicate rows.
 export async function addTombstone(type, key) {
@@ -219,6 +231,7 @@ export async function parseMergePreviewFromData(data) {
   const exSeasonById  = new Map(exSeasons.map(s => [s.id, s]));
   const tombstoneSet  = new Set(exTombstones.map(t => `${t.type}::${t.key}`));
   const matchTombByKey = new Map(exTombstones.filter(t => t.type === 'match').map(t => [t.key, t]));
+  const matchUidTombByKey = new Map(exTombstones.filter(t => t.type === 'match-uid').map(t => [t.key, t]));
 
   const exContactsByMatch = new Map();
   for (const c of exContacts) {
@@ -295,6 +308,12 @@ export async function parseMergePreviewFromData(data) {
       if (season && team && org) {
         const tomb = matchTombByKey.get(tombstoneKeyForMatch(org.name, team, season.year, m));
         if (tomb && !isMatchTombstoneOutdated(tomb, m)) continue;
+      }
+      // Same check, but for a duplicate-finder delete recorded against this
+      // exact incoming row's own uid (see tombstoneKeyForMatchUid above).
+      if (m.uid) {
+        const uidTomb = matchUidTombByKey.get(m.uid);
+        if (uidTomb && !isMatchTombstoneOutdated(uidTomb, m)) continue;
       }
       newMatches.push(info);
     } else {
@@ -397,6 +416,7 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
     const allTombRows  = await db.tombstones.toArray();
     const tombstoneSet  = new Set(allTombRows.map(t => `${t.type}::${t.key}`));
     const matchTombByKey = new Map(allTombRows.filter(t => t.type === 'match').map(t => [t.key, t]));
+    const matchUidTombByKey = new Map(allTombRows.filter(t => t.type === 'match-uid').map(t => [t.key, t]));
 
     // Drop a stale match tombstone (locally + from the working sets) once the
     // user has re-created the game it was blocking. Returns true when dropped.
@@ -406,6 +426,18 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
       await db.tombstones.delete(tomb.id);
       matchTombByKey.delete(key);
       tombstoneSet.delete(`match::${key}`);
+      return true;
+    }
+
+    // Same as above, for a duplicate-finder delete recorded against one exact
+    // row's own uid rather than the shared natural key (see
+    // tombstoneKeyForMatchUid).
+    async function dropUidTombstoneIfOutdated(uid, match) {
+      const tomb = matchUidTombByKey.get(uid);
+      if (!tomb || !isMatchTombstoneOutdated(tomb, match)) return false;
+      await db.tombstones.delete(tomb.id);
+      matchUidTombByKey.delete(uid);
+      tombstoneSet.delete(`match-uid::${uid}`);
       return true;
     }
 
@@ -542,10 +574,17 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
       const orgName = team ? orgNameById.get(team.org_id) : null;
       if (!season || !team || orgName == null) continue;
       const key = tombstoneKeyForMatch(orgName, team, season.year, m);
-      if (!matchTombByKey.has(key)) continue;
-      // The user re-created this game after the delete — drop the stale marker
-      // and keep the match instead of deleting it again.
-      if (await dropTombstoneIfOutdated(key, m)) continue;
+      const hasKeyTomb = matchTombByKey.has(key);
+      const hasUidTomb = !!m.uid && matchUidTombByKey.has(m.uid);
+      if (!hasKeyTomb && !hasUidTomb) continue;
+      // The user re-created this game after the delete — drop the stale marker(s)
+      // and keep the match instead of deleting it again. The two tombstone kinds
+      // are independent notes on the same row (one by shared natural key, one by
+      // this row's own uid), so both are checked and both must clear before the
+      // match is spared.
+      const keyStillApplies = hasKeyTomb && !(await dropTombstoneIfOutdated(key, m));
+      const uidStillApplies = hasUidTomb && !(await dropUidTombstoneIfOutdated(m.uid, m));
+      if (!keyStillApplies && !uidStillApplies) continue;
       await cascadeDeleteMatchRow(m.id);
       const dk = `${m.season_id}|${nkMatch(m)}`;
       const dlist = (exMatchByKey.get(dk) ?? []).filter(x => x.id !== m.id);
@@ -601,6 +640,13 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
             matchesTombstoned++;
             continue;
           }
+        }
+        // Same check for a duplicate-finder delete recorded against this exact
+        // incoming row's own uid — this is what makes that delete stick instead
+        // of the loser coming back on the next sync (see tombstoneKeyForMatchUid).
+        if (impMatch.uid && matchUidTombByKey.has(impMatch.uid) && !(await dropUidTombstoneIfOutdated(impMatch.uid, impMatch))) {
+          matchesTombstoned++;
+          continue;
         }
       }
 
