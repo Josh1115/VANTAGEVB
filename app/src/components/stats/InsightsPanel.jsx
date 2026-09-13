@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { computeWinCorrelation, computeSeasonStats, pickMetricVal } from '../../stats/engine';
+import { fmtVER } from '../../stats/formatters';
 import { Drawer } from '../ui/Drawer';
 
 const INSIGHTS_GLOSSARY = [
-  { abbr: 'Win Factors',  full: 'Ranked by impact',         def: 'Metrics are sorted by how strongly they separate your wins from losses. The #1 stat has the biggest gap between your win average and loss average — focus here first.' },
+  { abbr: 'Win Factors',  full: 'Ranked by impact',         def: 'Metrics are sorted by how strongly they separate your wins from losses. The #1 stat has the biggest gap between your win average and loss average — focus here first. Close matches (decided by one set) count more toward these averages than lopsided sweeps, since close matches show what winning actually takes.' },
+  { abbr: 'Confidence',   full: 'How much to trust this',   def: 'Based on how many wins and losses this is built from (whichever pile is smaller). Fewer than 5 matches on the smaller side = Low confidence, 5–9 = Medium, 10+ = High. Low confidence means the pattern could just be luck — treat it as a hint, not a fact, until more matches come in.' },
   { abbr: 'Win Factor %', full: 'Share of win/loss gap',    def: 'What percentage of total win/loss separation this metric accounts for across all tracked stats. A 28% win factor means this stat explains more of your outcomes than most others.' },
   { abbr: 'Colors',       full: 'Green / Amber / Red',      def: 'Green = currently at or near win-level performance. Amber = close, worth monitoring. Red = currently tracking closer to your loss average — prioritize improvement here.' },
   { abbr: 'APR',          full: 'Pass Rating',               def: 'Average pass quality on a 0–3 scale (0 = no attack opportunity, 3 = perfect). Higher APR gives your setter more options and leads to better offensive efficiency.' },
@@ -18,6 +20,7 @@ const INSIGHTS_GLOSSARY = [
   { abbr: 'ACE%',         full: 'Ace %',                     def: 'Percentage of serves resulting in an ace. Aces score directly and disrupt the opponent\'s serve receive system, compounding into more favorable attack opportunities.' },
   { abbr: 'SE%',          full: 'Serve Error %',             def: 'Percentage of serves that result in an error. Lower is better — serve errors are free points for the opponent with no defensive effort required.' },
   { abbr: 'BLK/Set',      full: 'Blocks per Set',            def: 'Blocks (solo + 0.5 × block assist) per set. Strong blocking directly scores points and suppresses opponent hitting efficiency over time.' },
+  { abbr: 'Player Win Factors', full: 'Players who swing outcomes', def: 'Ranks players by how much their overall rating (VER) differs between matches you won and matches you lost. VER already adjusts for position, so a libero and an outside hitter can be compared on the same scale. Only players with at least 2 matches in both your wins and your losses are shown, to avoid one big game looking like a pattern.' },
 ];
 
 const pctFmt = (v) => v != null ? `${Math.round(v * 100)}%` : '—';
@@ -39,12 +42,17 @@ const INSIGHT_METRICS = [
 
 // currentStats: optional pre-computed stats object shaped like computeSeasonStats output.
 //   When provided, the season-level fetch is skipped and currentLabel is used for the middle column.
-export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'THIS SEASON' }) {
+// filters: optional, same shape as computeSeasonStats' filters (conference, location, matchType,
+//   result, matchIds, dateFrom/dateTo) — narrows which matches the win/loss comparison is built
+//   from, e.g. so a "Last 5" or "Conference only" filter on the page also reshapes Insights.
+export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'THIS SEASON', filters = null, playerNames = null }) {
   const [data,         setData]         = useState(null);
   const [allStats,     setAllStats]     = useState(null);
   const [loading,      setLoading]      = useState(false);
   const [barsReady,    setBarsReady]    = useState(false);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
+
+  const filterKey = JSON.stringify(filters ?? {});
 
   useEffect(() => {
     if (!seasonId) return;
@@ -52,14 +60,15 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
     setAllStats(null);
     setLoading(true);
     setBarsReady(false);
+    const activeFilters = filterKey ? JSON.parse(filterKey) : {};
     const tasks = currentStats
-      ? [computeWinCorrelation(Number(seasonId))]
-      : [computeWinCorrelation(Number(seasonId)), computeSeasonStats(Number(seasonId), {})];
+      ? [computeWinCorrelation(Number(seasonId), activeFilters)]
+      : [computeWinCorrelation(Number(seasonId), activeFilters), computeSeasonStats(Number(seasonId), activeFilters)];
     Promise.all(tasks)
       .then(([corr, season]) => { setData(corr); setAllStats(season ?? null); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [seasonId]);
+  }, [seasonId, filterKey]);
 
   useEffect(() => {
     if (!data) return;
@@ -105,6 +114,13 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
 
   const totalImpact = scoredMetrics.reduce((sum, m) => sum + Math.max(0, m.impactScore), 0);
 
+  const minMatches = Math.min(win.matches, loss.matches);
+  const confidence = minMatches >= 10
+    ? { label: 'High confidence',   cls: 'bg-emerald-400/10 text-emerald-400 border-emerald-400/30' }
+    : minMatches >= 5
+    ? { label: 'Medium confidence', cls: 'bg-amber-400/10 text-amber-400 border-amber-400/30' }
+    : { label: 'Low confidence',    cls: 'bg-red-400/10 text-red-400 border-red-400/30' };
+
   const RANK_STYLES = [
     { badge: '#1', cls: 'bg-amber-400/20 text-amber-300 border border-amber-400/40' },
     { badge: '#2', cls: 'bg-slate-400/20 text-slate-300 border border-slate-400/40' },
@@ -119,6 +135,9 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
           <p className="text-xs text-slate-600 mt-0.5">
             Ranked by impact — stats that most separate your {win.matches}W from your {loss.matches}L.
           </p>
+          <span className={`inline-block mt-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md border tracking-wide ${confidence.cls}`}>
+            {confidence.label} · {win.matches}W / {loss.matches}L
+          </span>
         </div>
         <button
           onClick={() => setGlossaryOpen(true)}
@@ -226,6 +245,86 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
           );
         })}
       </div>
+
+      {playerNames && Object.keys(playerNames).length > 0 && (() => {
+        const allPlayerIds = new Set([
+          ...Object.keys(win.players ?? {}),
+          ...Object.keys(loss.players ?? {}),
+        ]);
+        const scoredPlayers = Array.from(allPlayerIds).map((pid) => {
+          const winRow  = win.players?.[pid];
+          const lossRow = loss.players?.[pid];
+          const winVal  = winRow?.ver ?? null;
+          const lossVal = lossRow?.ver ?? null;
+          const enoughSample = (winRow?.matchesPlayed ?? 0) >= 2 && (lossRow?.matchesPlayed ?? 0) >= 2;
+          if (winVal == null || lossVal == null || !enoughSample) return null;
+          return { pid, winVal, lossVal, impactScore: Math.abs(winVal - lossVal) };
+        }).filter(Boolean)
+          .sort((a, b) => b.impactScore - a.impactScore)
+          .slice(0, 5);
+
+        if (!scoredPlayers.length) return null;
+
+        return (
+          <div className="space-y-2.5 pt-1">
+            <div className="px-1">
+              <p className="text-xs font-black tracking-widest text-slate-500 uppercase">Player Win Factors</p>
+              <p className="text-xs text-slate-600 mt-0.5">
+                Whose overall rating (VER) swings the most between your wins and losses.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-2.5">
+              {scoredPlayers.map(({ pid, winVal, lossVal }) => {
+                const currentVal = displayStats?.players?.[pid]?.ver ?? null;
+                const range = winVal - lossVal;
+                const pos = currentVal != null && range !== 0 ? (currentVal - lossVal) / range : null;
+                const statusColor = pos == null ? 'text-slate-500'
+                  : pos >= 0.65 ? 'text-emerald-400'
+                  : pos >= 0.35 ? 'text-amber-400'
+                  : 'text-red-400';
+                const barPct = pos != null ? Math.max(0, Math.min(100, Math.round(pos * 100))) : null;
+                const name = playerNames[pid] ?? `#${pid}`;
+                return (
+                  <div key={pid} className="bg-surface rounded-xl p-3.5 border border-slate-700/40">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-black uppercase tracking-wide text-slate-300">{name}</span>
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">VER</span>
+                    </div>
+
+                    <div className="flex items-end gap-4 mb-2.5">
+                      <div className="flex-1 text-center">
+                        <div className="text-lg font-black text-red-400 tabular-nums leading-none">{fmtVER(lossVal)}</div>
+                        <div className="text-[10px] text-red-900 font-bold mt-0.5 tracking-wide">LOSS AVG</div>
+                      </div>
+                      <div className="flex-1 text-center">
+                        <div className={`text-lg font-black tabular-nums leading-none ${statusColor}`}>
+                          {currentVal != null ? fmtVER(currentVal) : '—'}
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-bold mt-0.5 tracking-wide">{currentLabel}</div>
+                      </div>
+                      <div className="flex-1 text-center">
+                        <div className="text-lg font-black text-emerald-400 tabular-nums leading-none">{fmtVER(winVal)}</div>
+                        <div className="text-[10px] text-emerald-700 font-bold mt-0.5 tracking-wide">WIN AVG</div>
+                      </div>
+                    </div>
+
+                    {barPct != null && (
+                      <div className="h-1.5 rounded-full bg-slate-700 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-[width] duration-700 ease-out ${
+                            barPct >= 65 ? 'bg-emerald-500' : barPct >= 35 ? 'bg-amber-500' : 'bg-red-500'
+                          }`}
+                          style={{ width: barsReady ? `${barPct}%` : '0%' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

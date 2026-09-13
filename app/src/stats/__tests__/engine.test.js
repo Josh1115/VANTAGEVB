@@ -17,6 +17,9 @@ import {
   computePQ,
   computeSetWinProb,
   computeMatchWinProb,
+  matchCloseness,
+  weightedMergeStats,
+  filterMatches,
 } from '../engine';
 import {
   fmt,
@@ -1341,5 +1344,113 @@ describe('VER position multipliers', () => {
     // computeTeamStats with setsPlayed=0 exercises this path:
     const stats = computeTeamStats([], 0);
     expect(stats.ver).toBeNull();
+  });
+});
+
+describe('matchCloseness', () => {
+  it('weights a one-set-margin match (e.g. 3-2) highest', () => {
+    expect(matchCloseness(3, 2)).toBe(1.5);
+    expect(matchCloseness(2, 3)).toBe(1.5);
+  });
+
+  it('weights a two-set-margin match (e.g. 3-1) medium', () => {
+    expect(matchCloseness(3, 1)).toBe(1.0);
+  });
+
+  it('weights a sweep (e.g. 3-0) lowest', () => {
+    expect(matchCloseness(3, 0)).toBe(0.6);
+  });
+
+  it('treats a 2-0 sweep (best-of-3) the same as a 3-1 (both margin 2)', () => {
+    expect(matchCloseness(2, 0)).toBe(1.0);
+  });
+
+  it('does not crash on missing set counts, and returns a valid weight', () => {
+    expect(matchCloseness(undefined, undefined)).toBe(1.5);
+  });
+});
+
+describe('weightedMergeStats', () => {
+  it('produces a plain weighted average for equal weights', () => {
+    const result = weightedMergeStats([{ apr: 2.0 }, { apr: 3.0 }], [1, 1]);
+    expect(result.apr).toBeCloseTo(2.5);
+  });
+
+  it('lets a heavier-weighted match pull the average toward it', () => {
+    // match A (weight 1.5, apr 2.0) and match B (weight 0.6, apr 3.0)
+    // expected = (2.0*1.5 + 3.0*0.6) / (1.5+0.6) = 4.8 / 2.1
+    const result = weightedMergeStats([{ apr: 2.0 }, { apr: 3.0 }], [1.5, 0.6]);
+    expect(result.apr).toBeCloseTo(4.8 / 2.1);
+  });
+
+  it('skips null/undefined values instead of treating them as 0', () => {
+    const result = weightedMergeStats([{ apr: 2.0 }, { apr: null }], [1, 5]);
+    expect(result.apr).toBe(2.0);
+  });
+
+  it('is null for a field that is missing from every input', () => {
+    const result = weightedMergeStats([{ apr: null }, { apr: undefined }], [1, 1]);
+    expect(result.apr).toBeNull();
+  });
+
+  it('recurses into nested plain objects (e.g. isOos.total.is.win_pct shape)', () => {
+    const a = { total: { is: { win_pct: 0.6 } } };
+    const b = { total: { is: { win_pct: 0.4 } } };
+    const result = weightedMergeStats([a, b], [1, 1]);
+    expect(result.total.is.win_pct).toBeCloseTo(0.5);
+  });
+
+  it('falls back to the first non-null value for non-numeric fields', () => {
+    const result = weightedMergeStats([{ label: 'A' }, { label: 'B' }], [1, 1]);
+    expect(result.label).toBe('A');
+  });
+});
+
+describe('filterMatches', () => {
+  const M = (overrides) => ({
+    id: 1, our_sets_won: 3, opp_sets_won: 0, conference: 'conference',
+    location: 'home', match_type: 'reg-season', date: '2026-01-01',
+    ...overrides,
+  });
+
+  it('returns every match unchanged when no filters are given', () => {
+    const matches = [M({ id: 1 }), M({ id: 2 })];
+    expect(filterMatches(matches, {})).toEqual(matches);
+    expect(filterMatches(matches)).toEqual(matches);
+  });
+
+  it('filters by conference', () => {
+    const matches = [M({ id: 1, conference: 'conference' }), M({ id: 2, conference: 'non-con' })];
+    expect(filterMatches(matches, { conference: 'non-con' }).map(m => m.id)).toEqual([2]);
+  });
+
+  it('filters by location', () => {
+    const matches = [M({ id: 1, location: 'home' }), M({ id: 2, location: 'away' })];
+    expect(filterMatches(matches, { location: 'away' }).map(m => m.id)).toEqual([2]);
+  });
+
+  it('filters by an explicit list of match ids', () => {
+    const matches = [M({ id: 1 }), M({ id: 2 }), M({ id: 3 })];
+    expect(filterMatches(matches, { matchIds: [1, 3] }).map(m => m.id)).toEqual([1, 3]);
+  });
+
+  it('filters by win/loss result', () => {
+    const matches = [M({ id: 1, our_sets_won: 3, opp_sets_won: 1 }), M({ id: 2, our_sets_won: 1, opp_sets_won: 3 })];
+    expect(filterMatches(matches, { result: 'win' }).map(m => m.id)).toEqual([1]);
+    expect(filterMatches(matches, { result: 'loss' }).map(m => m.id)).toEqual([2]);
+  });
+
+  it('filters by a date range', () => {
+    const matches = [M({ id: 1, date: '2026-01-01' }), M({ id: 2, date: '2026-02-15' }), M({ id: 3, date: '2026-03-01' })];
+    expect(filterMatches(matches, { dateFrom: '2026-02-01', dateTo: '2026-02-28' }).map(m => m.id)).toEqual([2]);
+  });
+
+  it('combines multiple filters with AND logic', () => {
+    const matches = [
+      M({ id: 1, conference: 'conference', location: 'home' }),
+      M({ id: 2, conference: 'conference', location: 'away' }),
+      M({ id: 3, conference: 'non-con',    location: 'home' }),
+    ];
+    expect(filterMatches(matches, { conference: 'conference', location: 'home' }).map(m => m.id)).toEqual([1]);
   });
 });

@@ -439,6 +439,21 @@ export function ReportsPage() {
   }
   const hasFilters = Object.keys(activeFilters).length > 0;
 
+  // Short label for the Insights panel's middle column, describing whatever
+  // filter is currently active on the page so Insights matches what's on screen.
+  const insightsLabel = selectedMatchIds?.length ? 'SELECTED'
+    : result === 'l5'   ? 'LAST 5'
+    : result === 'l10'  ? 'LAST 10'
+    : result === 'h1'   ? '1ST HALF'
+    : result === 'h2'   ? '2ND HALF'
+    : result === 'win'  ? 'WINS'
+    : result === 'loss' ? 'LOSSES'
+    : conference === 'conference' ? 'CONFERENCE'
+    : conference === 'non-con'    ? 'NON-CONF'
+    : location ? location.toUpperCase()
+    : matchTypes.length ? 'FILTERED'
+    : 'THIS SEASON';
+
   // Short date label for match chips — "3/15". Parse date parts directly to avoid UTC-to-local
   // timezone shift that causes date-only ISO strings (midnight UTC) to display one day early.
   const fmtShortDate = (iso) => {
@@ -1742,7 +1757,13 @@ export function ReportsPage() {
 
             {/* ── Opp Stats ────────────────────────────────────────────── */}
             {tab === 'insights' && (
-              <InsightsPanel seasonId={selectedSeasonId} />
+              <InsightsPanel
+                seasonId={selectedSeasonId}
+                currentStats={stats}
+                currentLabel={insightsLabel}
+                filters={activeFilters}
+                playerNames={playerNames}
+              />
             )}
 
             {tab === 'oppo' && stats?.opp && (

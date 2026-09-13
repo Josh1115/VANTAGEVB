@@ -2,7 +2,7 @@ import {
   getContactsForMatch, getRalliesForMatch, getSetsPlayedCount,
   getContactsForMatches, getMatchesForSeason, getRalliesForMatches,
   getPlayerPositionsForMatches, getBatchSetsPlayedCount, getOppScoredForMatches,
-  getOurScoredForMatches, getTimeoutsForMatches,
+  getOurScoredForMatches, getTimeoutsForMatches, getRalliesForMatchesWithMatchId,
 } from './queries';
 import { POSITION_MULTIPLIERS, MATCH_STATUS } from '../constants';
 
@@ -968,8 +968,34 @@ export async function computeMatchStats(matchId) {
 }
 
 /**
+ * Applies the standard season-stats filters to a matches array. Shared by
+ * computeSeasonStats and computeWinCorrelation so a filter (conference, home/away,
+ * match type, a specific set of matches, or a date range) behaves identically
+ * everywhere it's used.
+ * Filters: { matchIds: number[], conference: 'conference'|'non-con',
+ *            location: 'home'|'away'|'neutral', matchType: string[],
+ *            result: 'win'|'loss', dateFrom: 'YYYY-MM-DD', dateTo: 'YYYY-MM-DD' }
+ */
+export function filterMatches(matches, filters = {}) {
+  const hasFilter = filters.matchIds?.length || filters.conference || filters.location
+    || filters.matchType?.length || filters.result || filters.dateFrom || filters.dateTo;
+  if (!hasFilter) return matches;
+  return matches.filter(m => {
+    if (filters.matchIds?.length  && !filters.matchIds.includes(m.id)) return false;
+    if (filters.conference        && m.conference !== filters.conference) return false;
+    if (filters.location          && m.location   !== filters.location)  return false;
+    if (filters.matchType?.length && !filters.matchType.includes(m.match_type ?? 'reg-season')) return false;
+    if (filters.result === 'win'  && !((m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0))) return false;
+    if (filters.result === 'loss' && !((m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0))) return false;
+    if (filters.dateFrom          && !(m.date && m.date >= filters.dateFrom)) return false;
+    if (filters.dateTo            && !(m.date && m.date <= filters.dateTo)) return false;
+    return true;
+  });
+}
+
+/**
  * Fetches and aggregates all stats for an entire season.
- * Optional filters: { conference: 'conference'|'non-con', location: 'home'|'away'|'neutral', matchType: string, result: 'win'|'loss' }
+ * Optional filters — see filterMatches() above for the full shape.
  * Returns { players, team, rotation, freeball, setsPlayed, matchCount, totalMatchCount }
  * or null if no matches exist, or { empty: true, totalMatchCount } if filters exclude all matches.
  */
@@ -979,17 +1005,7 @@ export async function computeSeasonStats(seasonId, filters = {}) {
 
   const totalMatchCount = matches.length;
 
-  if (filters.matchIds?.length || filters.conference || filters.location || filters.matchType?.length || filters.result) {
-    matches = matches.filter(m => {
-      if (filters.matchIds?.length  && !filters.matchIds.includes(m.id)) return false;
-      if (filters.conference        && m.conference !== filters.conference) return false;
-      if (filters.location          && m.location   !== filters.location)  return false;
-      if (filters.matchType?.length && !filters.matchType.includes(m.match_type ?? 'reg-season')) return false;
-      if (filters.result === 'win'  && !((m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0))) return false;
-      if (filters.result === 'loss' && !((m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0))) return false;
-      return true;
-    });
-  }
+  matches = filterMatches(matches, filters);
 
   if (!matches.length) return { empty: true, totalMatchCount };
 
@@ -1676,21 +1692,108 @@ export function computeTimeoutEffectiveness(timeouts, rallies) {
   };
 }
 
+// How much a single match should count when comparing "how we play when we win"
+// vs. "how we play when we lose". A match decided by just one set (e.g. 3-2) is a
+// dogfight where execution mattered — it tells you more about what winning takes
+// than a lopsided sweep does, so it gets more weight in the comparison.
+export function matchCloseness(ourSets, oppSets) {
+  const margin = Math.abs((ourSets ?? 0) - (oppSets ?? 0));
+  if (margin <= 1) return 1.5; // e.g. 3-2 — went the distance
+  if (margin === 2) return 1.0; // e.g. 3-1
+  return 0.6;                   // e.g. 3-0 sweep
+}
+
+// Merges an array of same-shaped stat objects (e.g. one per match) into a single
+// object where every numeric field becomes the weight-average of that field
+// across the inputs (entries missing a value are simply skipped for that field).
+// Recurses into nested plain objects (e.g. isOos.total.is.*) so it works for any
+// of the stat shapes this engine produces without needing to know their fields.
+export function weightedMergeStats(objs, weights) {
+  const isPlainObj = (v) => v != null && typeof v === 'object' && !Array.isArray(v);
+  const keys = new Set();
+  for (const o of objs) if (isPlainObj(o)) for (const k of Object.keys(o)) keys.add(k);
+  const out = {};
+  for (const k of keys) {
+    const vals = objs.map(o => o?.[k]);
+    if (vals.some(isPlainObj)) {
+      out[k] = weightedMergeStats(vals.map(v => (isPlainObj(v) ? v : {})), weights);
+    } else if (vals.some(v => typeof v === 'number' && !Number.isNaN(v))) {
+      let sumW = 0, sumWV = 0;
+      vals.forEach((v, i) => {
+        if (typeof v !== 'number' || Number.isNaN(v)) return;
+        sumW += weights[i];
+        sumWV += v * weights[i];
+      });
+      out[k] = sumW > 0 ? sumWV / sumW : null;
+    } else {
+      out[k] = vals.find(v => v != null) ?? null;
+    }
+  }
+  return out;
+}
+
 /**
- * Splits a season's stats into win-game and loss-game buckets to show
- * which metrics correlate with winning for this specific team.
+ * Splits a season's matches into win-game and loss-game buckets to show which
+ * metrics correlate with winning for this specific team. Each match's stats are
+ * weighted by how close the match was (see matchCloseness) so a handful of
+ * blowouts can't drown out what actually separates your close wins from your
+ * close losses.
+ * Optional filters (same shape as filterMatches/computeSeasonStats) narrow which
+ * matches are considered — e.g. { matchIds: last5Ids } to compare recent form
+ * only, or { conference: 'conference' } for conference games only.
  * Returns null when < 2 wins or < 2 losses exist (insufficient sample).
  */
-export async function computeWinCorrelation(seasonId) {
-  const [winStats, lossStats] = await Promise.all([
-    computeSeasonStats(seasonId, { result: 'win' }),
-    computeSeasonStats(seasonId, { result: 'loss' }),
+export async function computeWinCorrelation(seasonId, filters = {}) {
+  const allMatches = (await getMatchesForSeason(Number(seasonId)))
+    .filter(m => m.status !== MATCH_STATUS.SCHEDULED);
+  const matches = filterMatches(allMatches, filters);
+  const winMatches  = matches.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0));
+  const lossMatches = matches.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0));
+  if (winMatches.length < 2 || lossMatches.length < 2) return null;
+
+  const matchIds = [...winMatches, ...lossMatches].map(m => m.id);
+  const [contacts, rallies, setsPerMatch, playerPositions] = await Promise.all([
+    getContactsForMatches(matchIds),
+    getRalliesForMatchesWithMatchId(matchIds),
+    getBatchSetsPlayedCount(matchIds),
+    getPlayerPositionsForMatches(matchIds),
   ]);
-  if (!winStats || !lossStats || winStats.empty || lossStats.empty) return null;
-  if ((winStats.matchCount ?? 0) < 2 || (lossStats.matchCount ?? 0) < 2) return null;
+
+  const contactsByMatch = {};
+  for (const c of contacts) (contactsByMatch[c.match_id] ??= []).push(c);
+  const ralliesByMatch = {};
+  for (const r of rallies) (ralliesByMatch[r.match_id] ??= []).push(r);
+
+  const computeGroup = (group) => {
+    const perMatchStats = group.map((m) => {
+      const mContacts = contactsByMatch[m.id] ?? [];
+      const mRallies  = ralliesByMatch[m.id] ?? [];
+      return {
+        team:         computeTeamStats(mContacts, setsPerMatch[m.id] ?? 1),
+        rotation:     computeRotationStats(mRallies),
+        isOos:        computeISvsOOS(mContacts, mRallies),
+        pointQuality: computePointQuality(mContacts),
+        players:      computePlayerStats(mContacts, setsPerMatch[m.id] ?? 1, playerPositions),
+      };
+    });
+    const weights = group.map(m => matchCloseness(m.our_sets_won, m.opp_sets_won));
+    const merged = weightedMergeStats(perMatchStats, weights);
+
+    // How many matches in this group each player actually appeared in — used so a
+    // single big match doesn't get mistaken for a real win/loss pattern for that player.
+    const appearances = {};
+    for (const ps of perMatchStats) {
+      for (const pid of Object.keys(ps.players)) appearances[pid] = (appearances[pid] ?? 0) + 1;
+    }
+    for (const pid of Object.keys(merged.players ?? {})) {
+      merged.players[pid].matchesPlayed = appearances[pid] ?? 0;
+    }
+    return merged;
+  };
+
   return {
-    win:  { team: winStats.team,  rotation: winStats.rotation,  isOos: winStats.isOos,  pointQuality: winStats.pointQuality,  matches: winStats.matchCount  },
-    loss: { team: lossStats.team, rotation: lossStats.rotation, isOos: lossStats.isOos, pointQuality: lossStats.pointQuality, matches: lossStats.matchCount },
+    win:  { ...computeGroup(winMatches),  matches: winMatches.length  },
+    loss: { ...computeGroup(lossMatches), matches: lossMatches.length },
   };
 }
 
@@ -1699,6 +1802,12 @@ export function pickMetricVal(src, key, d) {
   if (src === 'isOos_is')     return d?.isOos?.total?.is?.[key];
   if (src === 'pointQuality') return d?.pointQuality?.[key];
   return d?.team?.[key];
+}
+
+// Reads one field off one player's row inside a computeWinCorrelation win/loss bucket
+// (i.e. d.players[playerId][key]). Mirrors pickMetricVal's shape for the team-level case.
+export function pickPlayerVal(playerId, key, d) {
+  return d?.players?.[playerId]?.[key];
 }
 
 export function computeRallyHistogram(contacts) {
