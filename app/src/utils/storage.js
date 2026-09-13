@@ -36,6 +36,7 @@ export const STORAGE_KEYS = {
   ARCHIVED_OPPONENTS:   'vbstat_archived_opponents',
   PROFILE_CACHE:        'vbstat_profile_cache',
   PROJECTED_SEASON_MATCHES: 'vbstat_projected_season_matches',
+  LAST_CLOUD_SYNC:      'vbstat_last_cloud_sync',
 };
 
 export function getStorageItem(key, defaultValue = null) {

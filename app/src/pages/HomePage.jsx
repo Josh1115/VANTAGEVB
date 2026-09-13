@@ -24,6 +24,20 @@ import { DashboardHeader } from '../components/home/DashboardHeader';
 import { RankEditModal } from '../components/home/RankEditModal';
 import { EditScheduledMatchModal } from '../components/home/EditScheduledMatchModal';
 
+// "5 minutes ago" / "3 hours ago" / "2 days ago" style relative timestamp,
+// for showing when the last cloud sync happened.
+function fmtRelativeTime(ms) {
+  if (!ms) return null;
+  const diffSec = Math.round((Date.now() - ms) / 1000);
+  if (diffSec < 60) return 'just now';
+  const diffMin = Math.round(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} min${diffMin === 1 ? '' : 's'} ago`;
+  const diffHr = Math.round(diffMin / 60);
+  if (diffHr < 24) return `${diffHr} hour${diffHr === 1 ? '' : 's'} ago`;
+  const diffDay = Math.round(diffHr / 24);
+  return `${diffDay} day${diffDay === 1 ? '' : 's'} ago`;
+}
+
 // Converts "HH:MM" (24h) → "H:MM AM/PM"
 function fmtTime(t) {
   if (!t) return '';
@@ -420,6 +434,10 @@ export function HomePage() {
   const { session, profile, refreshProfile } = useAuth();
   const { teamsAllowed, matchLimit, isMaster } = usePlan();
   const [cloudSaving, setCloudSaving] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState(() => {
+    const raw = getStorageItem(STORAGE_KEYS.LAST_CLOUD_SYNC);
+    return raw ? Number(raw) : null;
+  });
 
   // ── One-time "2026 season kickoff" popup ──────────────────────────────────
   // Shows once per account, on the first dashboard visit on/after Aug 13 2026.
@@ -439,6 +457,9 @@ export function HomePage() {
     setCloudSaving(true);
     try {
       await syncWithCloud(supabase, session, { teamsAllowed, matchLimit, isMaster });
+      const now = Date.now();
+      setStorageItem(STORAGE_KEYS.LAST_CLOUD_SYNC, now);
+      setLastSyncedAt(now);
       showToast('Saved to cloud — close the app so other devices pick it up.', 'success');
     } catch (e) {
       showToast(e.message ?? 'Cloud save failed', 'error');
@@ -1671,8 +1692,11 @@ export function HomePage() {
             >
               {cloudSaving ? 'Syncing…' : 'Sync Now'}
             </Button>
+            <p className="text-[11px] text-slate-500 text-center mt-1">
+              {lastSyncedAt ? `Last synced ${fmtRelativeTime(lastSyncedAt)}` : 'Not yet synced to the cloud'}
+            </p>
             <p className="text-[11px] text-amber-500 text-center mt-1">
-              After syncing, fully close the app so other devices can see this update.
+              Close Vantage on other device before syncing!
             </p>
           </div>
         )}

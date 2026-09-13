@@ -37,9 +37,11 @@ export function DashboardHeader() {
     setTimeout(() => setNetRippling(false), 800);
   }
 
-  // Auto-fire a single ball periodically
+  // Auto-fire a single ball periodically. Skipped while the tab/app isn't
+  // visible (e.g. backgrounded on a phone) — purely decorative, so there's
+  // no reason to keep animating and waking the timer when no one can see it.
   useEffect(() => {
-    const trigger = () => fireBall(null, 50);
+    const trigger = () => { if (!document.hidden) fireBall(null, 50); };
     const first   = setTimeout(trigger, 2500);
     const interval = setInterval(trigger, 15000);
     return () => { clearTimeout(first); clearInterval(interval); };
