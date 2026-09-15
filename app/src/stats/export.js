@@ -112,7 +112,22 @@ const PRIMARY = [249, 115, 22];  // orange-500
 const WHITE = [255, 255, 255];
 const MUTED = [148, 163, 184];   // slate-400
 
-export function addPageHeader(doc, title, subtitle) {
+// Same wordmark image used on the dashboard, loaded once and reused for every
+// header drawn afterward (a multi-page export calls addPageHeader per page).
+let logoImagePromise = null;
+function loadLogoImage() {
+  if (!logoImagePromise) {
+    logoImagePromise = new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = '/logo.png';
+    });
+  }
+  return logoImagePromise;
+}
+
+export async function addPageHeader(doc, title, subtitle) {
   const w = doc.internal.pageSize.getWidth();
   doc.setFillColor(...DARK);
   doc.rect(0, 0, w, 30, 'F');
@@ -125,14 +140,29 @@ export function addPageHeader(doc, title, subtitle) {
   doc.setFont('helvetica', 'normal');
   doc.text(subtitle, 14, 22);
 
-  doc.setTextColor(...WHITE);
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.text('VANTAGE', w - 14, 13, { align: 'right' });
-  doc.setTextColor(...PRIMARY);
-  doc.setFontSize(6);
-  doc.setFont('helvetica', 'normal');
-  doc.text('VOLLEYBALL ANALYTICS', w - 14, 18, { align: 'right' });
+  // Real logo wordmark + TM, matching the dashboard's branding — falls back to
+  // the old plain-text mark if the image can't load (e.g. fully offline).
+  try {
+    const img = await loadLogoImage();
+    const logoH = 9;
+    const logoW = logoH * (img.naturalWidth / img.naturalHeight);
+    const logoX = w - 14 - logoW;
+    const logoY = 9;
+    doc.addImage(img, 'PNG', logoX, logoY, logoW, logoH);
+    doc.setTextColor(...MUTED);
+    doc.setFontSize(4.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text('TM', logoX + logoW + 1, logoY + 3);
+  } catch {
+    doc.setTextColor(...WHITE);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('VANTAGE', w - 14, 13, { align: 'right' });
+    doc.setTextColor(...PRIMARY);
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'normal');
+    doc.text('VOLLEYBALL ANALYTICS', w - 14, 18, { align: 'right' });
+  }
 }
 
 function addPageFooters(doc) {
@@ -152,7 +182,7 @@ function addPageFooters(doc) {
   }
 }
 
-export function exportMatchPDF(matchMeta, playerStats, teamStats, rotationStats, playerNames, perSetStats = [], filename = 'match-stats.pdf') {
+export async function exportMatchPDF(matchMeta, playerStats, teamStats, rotationStats, playerNames, perSetStats = [], filename = 'match-stats.pdf') {
   // Use A4 for non-US locales, letter for US
   const pdfFormat = (navigator.language ?? '').startsWith('en-US') ? 'letter' : 'a4';
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: pdfFormat });
@@ -160,7 +190,7 @@ export function exportMatchPDF(matchMeta, playerStats, teamStats, rotationStats,
   const subtitle = fmtDate(matchMeta.date);
 
   // ── Page 1: Match header + team totals ──────────────────────────────────────
-  addPageHeader(doc, title, subtitle);
+  await addPageHeader(doc, title, subtitle);
 
   // Set scores
   if (matchMeta.sets?.length) {
@@ -377,7 +407,7 @@ export function buildBoxScoreRows(roster, playerStats, teamStats) {
   return { columns: BOX_SCORE_COLUMNS, players, team };
 }
 
-export function exportBoxScorePDF(match, sets, teamName, roster, playerStats, teamStats, filename = 'box-score.pdf') {
+export async function exportBoxScorePDF(match, sets, teamName, roster, playerStats, teamStats, filename = 'box-score.pdf') {
   const pdfFormat = (navigator.language ?? '').startsWith('en-US') ? 'letter' : 'a4';
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: pdfFormat });
 
@@ -385,7 +415,7 @@ export function exportBoxScorePDF(match, sets, teamName, roster, playerStats, te
   const sep = match?.location === 'away' ? '@' : 'vs.';
   const matchup = teamName ? `${teamName} ${sep} ${opp}` : `${sep} ${opp}`;
 
-  addPageHeader(doc, 'BOX SCORE', '');
+  await addPageHeader(doc, 'BOX SCORE', '');
 
   const w = doc.internal.pageSize.getWidth();
   const cx = w / 2;

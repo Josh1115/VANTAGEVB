@@ -1409,7 +1409,7 @@ export function MatchSummaryPage() {
         } else {
           doc.addPage(pageFormat, 'p');
         }
-        addPageHeader(doc, `vs. ${match.opponent_name ?? 'Opponent'}`,
+        await addPageHeader(doc, `vs. ${match.opponent_name ?? 'Opponent'}`,
           `${t.label}  ·  ${match.date ? fmtDate(match.date) : ''}`);
         doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', MARGIN, HEADER_H + 2, imgWidthMM, imgHeightMM);
         setPdfProgress(i + 1);
@@ -1435,12 +1435,12 @@ export function MatchSummaryPage() {
 
   // Media-ready one-page box score PDF: active roster (by jersey #) + team totals,
   // always the full match regardless of any on-screen per-set filter.
-  function handleBoxScore() {
+  async function handleBoxScore() {
     if (!stats || !match) return;
     const roster = playerList
       .filter((p) => p.is_active)
       .sort((a, b) => (Number(a.jersey_number) || 0) - (Number(b.jersey_number) || 0));
-    exportBoxScorePDF(
+    await exportBoxScorePDF(
       match, sets, teamColors?.orgName ?? '',
       roster, stats.players, stats.team, boxScoreFilename(match),
     );
