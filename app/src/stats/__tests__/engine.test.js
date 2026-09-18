@@ -19,6 +19,9 @@ import {
   computeMatchWinProb,
   matchCloseness,
   weightedMergeStats,
+  weightedVarianceStats,
+  pickMetricVal,
+  pickMetricVar,
   filterMatches,
 } from '../engine';
 import {
@@ -1403,6 +1406,49 @@ describe('weightedMergeStats', () => {
   it('falls back to the first non-null value for non-numeric fields', () => {
     const result = weightedMergeStats([{ label: 'A' }, { label: 'B' }], [1, 1]);
     expect(result.label).toBe('A');
+  });
+});
+
+describe('weightedVarianceStats', () => {
+  it('is zero when every match has the identical value', () => {
+    const objs = [{ apr: 2.0 }, { apr: 2.0 }, { apr: 2.0 }];
+    const means = weightedMergeStats(objs, [1, 1, 1]);
+    const variance = weightedVarianceStats(objs, [1, 1, 1], means);
+    expect(variance.apr).toBe(0);
+  });
+
+  it('is greater than zero when values swing match-to-match', () => {
+    const objs = [{ apr: 1.0 }, { apr: 3.0 }, { apr: 2.0 }];
+    const means = weightedMergeStats(objs, [1, 1, 1]);
+    const variance = weightedVarianceStats(objs, [1, 1, 1], means);
+    expect(variance.apr).toBeGreaterThan(0);
+  });
+
+  it('recurses to match the shape of the means tree (e.g. team.k_pct)', () => {
+    const objs = [{ team: { k_pct: 0.3 } }, { team: { k_pct: 0.5 } }];
+    const means = weightedMergeStats(objs, [1, 1]);
+    const variance = weightedVarianceStats(objs, [1, 1], means);
+    // mean = 0.4, deviations are ±0.1 with equal weight -> variance = 0.01
+    expect(variance.team.k_pct).toBeCloseTo(0.01);
+  });
+
+  it('is null for a field the means tree does not have a numeric value for', () => {
+    const objs = [{ apr: null }, { apr: undefined }];
+    const means = weightedMergeStats(objs, [1, 1]);
+    const variance = weightedVarianceStats(objs, [1, 1], means);
+    expect(variance.apr).toBeNull();
+  });
+});
+
+describe('pickMetricVar', () => {
+  it('reads the matching field out of the .variance tree instead of the group itself', () => {
+    const group = { team: { k_pct: 0.4 }, variance: { team: { k_pct: 0.01 } } };
+    expect(pickMetricVal(undefined, 'k_pct', group)).toBe(0.4);
+    expect(pickMetricVar(undefined, 'k_pct', group)).toBe(0.01);
+  });
+
+  it('returns undefined when there is no variance tree', () => {
+    expect(pickMetricVar(undefined, 'k_pct', { team: { k_pct: 0.4 } })).toBeUndefined();
   });
 });
 

@@ -538,7 +538,9 @@ const ShareCard = ({ cardRef, match, sets, stats, teamColors, seasonRecord, play
         display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '12px 20px',
         background: `linear-gradient(90deg, ${SHARE_ORANGE_START} 0%, ${SHARE_ORANGE_END} 100%)`,
       }}>
-        <div style={{ fontSize: 11.5, color: '#fff', letterSpacing: '0.14em', fontWeight: 400 }}>VANTAGEVB.NET</div>
+        <div style={{ fontSize: 11.5, color: '#fff', letterSpacing: '0.14em', fontWeight: 400 }}>
+          VANTAGEVB.NET<span style={{ fontSize: 7, verticalAlign: 'super', marginLeft: 1 }}>™</span>
+        </div>
       </div>
     </div>
   );

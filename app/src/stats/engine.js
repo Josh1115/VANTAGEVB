@@ -1732,6 +1732,35 @@ export function weightedMergeStats(objs, weights) {
   return out;
 }
 
+// Companion to weightedMergeStats: given the same objs/weights and the means
+// weightedMergeStats already produced, computes the weighted variance of every
+// numeric leaf (how much that field actually bounces around match-to-match).
+// A metric that swings wildly is a noisy signal — a raw win/loss gap on it
+// means less than the same-size gap on a metric that barely moves.
+export function weightedVarianceStats(objs, weights, means) {
+  const isPlainObj = (v) => v != null && typeof v === 'object' && !Array.isArray(v);
+  if (!isPlainObj(means)) return {};
+  const out = {};
+  for (const k of Object.keys(means)) {
+    const meanVal = means[k];
+    const vals = objs.map(o => o?.[k]);
+    if (isPlainObj(meanVal)) {
+      out[k] = weightedVarianceStats(vals.map(v => (isPlainObj(v) ? v : {})), weights, meanVal);
+    } else if (typeof meanVal === 'number') {
+      let sumW = 0, sumWSq = 0;
+      vals.forEach((v, i) => {
+        if (typeof v !== 'number' || Number.isNaN(v)) return;
+        sumW += weights[i];
+        sumWSq += weights[i] * (v - meanVal) ** 2;
+      });
+      out[k] = sumW > 0 ? sumWSq / sumW : null;
+    } else {
+      out[k] = null;
+    }
+  }
+  return out;
+}
+
 /**
  * Splits a season's matches into win-game and loss-game buckets to show which
  * metrics correlate with winning for this specific team. Each match's stats are
@@ -1778,6 +1807,7 @@ export async function computeWinCorrelation(seasonId, filters = {}) {
     });
     const weights = group.map(m => matchCloseness(m.our_sets_won, m.opp_sets_won));
     const merged = weightedMergeStats(perMatchStats, weights);
+    merged.variance = weightedVarianceStats(perMatchStats, weights, merged);
 
     // How many matches in this group each player actually appeared in — used so a
     // single big match doesn't get mistaken for a real win/loss pattern for that player.
@@ -1802,6 +1832,13 @@ export function pickMetricVal(src, key, d) {
   if (src === 'isOos_is')     return d?.isOos?.total?.is?.[key];
   if (src === 'pointQuality') return d?.pointQuality?.[key];
   return d?.team?.[key];
+}
+
+// Same field lookup as pickMetricVal, but reads from a computeWinCorrelation
+// group's .variance tree (which mirrors the group's own shape) instead of the
+// group itself — i.e. "how much does this metric vary?" rather than "what is it?".
+export function pickMetricVar(src, key, d) {
+  return pickMetricVal(src, key, d?.variance);
 }
 
 // Reads one field off one player's row inside a computeWinCorrelation win/loss bucket

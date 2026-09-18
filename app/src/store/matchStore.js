@@ -1692,6 +1692,29 @@ export const useMatchStore = create((set, get) => ({
     }
   },
 
+  // Directly correct a completed set's final score (e.g. it actually ended 24-26, not 25-23)
+  // without touching any stats, contacts, or lineups. Recounts match set-wins in case the
+  // winner of the set changes as a result.
+  correctSetScore: async (setId, ourScore, oppScore) => {
+    const setRow = await db.sets.get(setId);
+    if (!setRow) return;
+    const winner = ourScore > oppScore ? SIDE.US : oppScore > ourScore ? SIDE.THEM : null;
+    await db.sets.update(setId, { our_score: ourScore, opp_score: oppScore, winner });
+
+    if (setRow.match_id) {
+      const allComplete = await db.sets
+        .where('match_id').equals(setRow.match_id)
+        .filter((row) => row.status === SET_STATUS.COMPLETE)
+        .toArray();
+      const newSetsUs   = allComplete.filter((row) => row.winner === SIDE.US).length;
+      const newSetsThem = allComplete.filter((row) => row.winner === SIDE.THEM).length;
+      await db.matches.update(setRow.match_id, {
+        our_sets_won: newSetsUs,
+        opp_sets_won: newSetsThem,
+      });
+    }
+  },
+
   // Finalize a revised set — called by LiveMatchPage when the re-entered set ends.
   // Recounts set wins from DB rather than incrementing to handle any result change.
   finishRevisedSet: async (winner) => {

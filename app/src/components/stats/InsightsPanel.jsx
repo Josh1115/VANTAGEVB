@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { computeWinCorrelation, computeSeasonStats, pickMetricVal } from '../../stats/engine';
+import { computeWinCorrelation, computeSeasonStats, pickMetricVal, pickMetricVar } from '../../stats/engine';
 import { fmtVER } from '../../stats/formatters';
 import { Drawer } from '../ui/Drawer';
 
 const INSIGHTS_GLOSSARY = [
-  { abbr: 'Win Factors',  full: 'Ranked by impact',         def: 'Metrics are sorted by how strongly they separate your wins from losses. The #1 stat has the biggest gap between your win average and loss average — focus here first. Close matches (decided by one set) count more toward these averages than lopsided sweeps, since close matches show what winning actually takes.' },
-  { abbr: 'Confidence',   full: 'How much to trust this',   def: 'Based on how many wins and losses this is built from (whichever pile is smaller). Fewer than 5 matches on the smaller side = Low confidence, 5–9 = Medium, 10+ = High. Low confidence means the pattern could just be luck — treat it as a hint, not a fact, until more matches come in.' },
+  { abbr: 'Win Factors',  full: 'Ranked by impact',         def: 'Metrics are sorted by how strongly they separate your wins from losses, relative to how much that stat normally bounces around match-to-match. A big gap on a stat that\'s usually steady ranks higher than the same-size gap on a stat that swings wildly anyway — a jumpy stat isn\'t a real pattern just because it looks big. Close matches (decided by one set) count more toward these averages than lopsided sweeps, since close matches show what winning actually takes.' },
+  { abbr: 'Confidence',   full: 'How much to trust this',   def: 'Based on how many wins and losses this is built from (whichever pile is smaller). Fewer than 5 matches on the smaller side = Low confidence, 5–9 = Medium, 10+ = High. At Low confidence the ranking, colors, and Win Factor % are hidden and replaced with "Limited data" — there just isn\'t enough evidence yet to call it a real pattern instead of luck.' },
   { abbr: 'Win Factor %', full: 'Share of win/loss gap',    def: 'What percentage of total win/loss separation this metric accounts for across all tracked stats. A 28% win factor means this stat explains more of your outcomes than most others.' },
   { abbr: 'Colors',       full: 'Green / Amber / Red',      def: 'Green = currently at or near win-level performance. Amber = close, worth monitoring. Red = currently tracking closer to your loss average — prioritize improvement here.' },
   { abbr: 'APR',          full: 'Pass Rating',               def: 'Average pass quality on a 0–3 scale (0 = no attack opportunity, 3 = perfect). Higher APR gives your setter more options and leads to better offensive efficiency.' },
@@ -99,27 +99,39 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
   const { win, loss } = data;
   const displayStats = currentStats ?? allStats;
 
-  // Compute impact score for each metric: how much does this stat separate wins from losses?
-  const scoredMetrics = INSIGHT_METRICS.map((metric) => {
-    const { key, src, higherBetter } = metric;
-    const winVal  = pickMetricVal(src, key, win);
-    const lossVal = pickMetricVal(src, key, loss);
-    if (winVal == null || lossVal == null) return { ...metric, winVal, lossVal, impactScore: -1 };
-    const wv  = higherBetter ? winVal  : -winVal;
-    const lv  = higherBetter ? lossVal : -lossVal;
-    const avg = (Math.abs(wv) + Math.abs(lv)) / 2;
-    const impactScore = avg > 0 ? Math.abs(wv - lv) / avg : 0;
-    return { ...metric, winVal, lossVal, impactScore };
-  }).sort((a, b) => b.impactScore - a.impactScore);
-
-  const totalImpact = scoredMetrics.reduce((sum, m) => sum + Math.max(0, m.impactScore), 0);
-
   const minMatches = Math.min(win.matches, loss.matches);
   const confidence = minMatches >= 10
     ? { label: 'High confidence',   cls: 'bg-emerald-400/10 text-emerald-400 border-emerald-400/30' }
     : minMatches >= 5
     ? { label: 'Medium confidence', cls: 'bg-amber-400/10 text-amber-400 border-amber-400/30' }
     : { label: 'Low confidence',    cls: 'bg-red-400/10 text-red-400 border-red-400/30' };
+  const isLowConfidence = confidence.label === 'Low confidence';
+
+  // Compute impact score for each metric: how much does this stat separate wins from
+  // losses, relative to how much it normally moves around from match to match? A stat
+  // that's naturally noisy (high variance) needs a bigger gap to count as a real signal
+  // than a stat that's normally rock-steady — this is an effect-size (Cohen's-d-style)
+  // comparison, not just a raw percent difference of the two averages.
+  const scoredMetrics = INSIGHT_METRICS.map((metric) => {
+    const { key, src } = metric;
+    const winVal  = pickMetricVal(src, key, win);
+    const lossVal = pickMetricVal(src, key, loss);
+    if (winVal == null || lossVal == null) return { ...metric, winVal, lossVal, impactScore: -1 };
+    const winVar  = pickMetricVar(src, key, win)  ?? 0;
+    const lossVar = pickMetricVar(src, key, loss) ?? 0;
+    const gap = Math.abs(winVal - lossVal);
+    const pooledSd = Math.sqrt((winVar + lossVar) / 2);
+    // Floor the denominator relative to the metric's own scale — with only a
+    // couple of matches per side, a variance of exactly 0 is a sample-size
+    // artifact, not proof the stat is perfectly consistent, so don't let it
+    // blow the score up to infinity.
+    const scale = (Math.abs(winVal) + Math.abs(lossVal)) / 2 || 1;
+    const denom = Math.max(pooledSd, scale * 0.05);
+    const impactScore = gap / denom;
+    return { ...metric, winVal, lossVal, impactScore };
+  }).sort((a, b) => b.impactScore - a.impactScore);
+
+  const totalImpact = scoredMetrics.reduce((sum, m) => sum + Math.max(0, m.impactScore), 0);
 
   const RANK_STYLES = [
     { badge: '#1', cls: 'bg-amber-400/20 text-amber-300 border border-amber-400/40' },
@@ -177,17 +189,19 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
           const range = wv - lv;
           const pos = nv != null && range !== 0 ? (nv - lv) / range : null;
 
-          const statusColor = pos == null ? 'text-slate-500'
+          const statusColor = isLowConfidence ? 'text-slate-500'
+            : pos == null ? 'text-slate-500'
             : pos >= 0.65 ? 'text-emerald-400'
             : pos >= 0.35 ? 'text-amber-400'
             : 'text-red-400';
-          const statusLabel = pos == null ? '—'
+          const statusLabel = isLowConfidence ? 'Limited data'
+            : pos == null ? '—'
             : pos >= 0.65 ? '✓ On track'
             : pos >= 0.35 ? 'Watch this'
             : '✗ Focus here';
 
           const barPct = pos != null ? Math.max(0, Math.min(100, Math.round(pos * 100))) : null;
-          const rank   = RANK_STYLES[idx];
+          const rank   = isLowConfidence ? null : RANK_STYLES[idx];
 
           return (
             <div key={key} className="bg-surface rounded-xl p-3.5 border border-slate-700/40">
@@ -224,7 +238,8 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
                 <div className="h-1.5 rounded-full bg-slate-700 overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-[width] duration-700 ease-out ${
-                      barPct >= 65 ? 'bg-emerald-500' : barPct >= 35 ? 'bg-amber-500' : 'bg-red-500'
+                      isLowConfidence ? 'bg-slate-500'
+                        : barPct >= 65 ? 'bg-emerald-500' : barPct >= 35 ? 'bg-amber-500' : 'bg-red-500'
                     }`}
                     style={{ width: barsReady ? `${barPct}%` : '0%' }}
                   />
@@ -232,15 +247,19 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
               )}
 
               {/* Value of hitting the goal */}
-              {(() => {
-                const share = totalImpact > 0 ? Math.round((impactScore / totalImpact) * 100) : 0;
-                return (
-                  <div className="mt-3 pt-3 border-t border-slate-700/50">
-                    <span className="text-[13.8px] font-bold text-white uppercase tracking-wide">Win Factor: </span>
-                    <span className="text-[13.8px] font-black text-blue-400">{share}%</span>
-                  </div>
-                );
-              })()}
+              <div className="mt-3 pt-3 border-t border-slate-700/50">
+                {isLowConfidence ? (
+                  <span className="text-[13px] font-semibold text-slate-500">Not enough matches yet for a reliable Win Factor</span>
+                ) : (() => {
+                  const share = totalImpact > 0 ? Math.round((impactScore / totalImpact) * 100) : 0;
+                  return (
+                    <>
+                      <span className="text-[13.8px] font-bold text-white uppercase tracking-wide">Win Factor: </span>
+                      <span className="text-[13.8px] font-black text-blue-400">{share}%</span>
+                    </>
+                  );
+                })()}
+              </div>
             </div>
           );
         })}
