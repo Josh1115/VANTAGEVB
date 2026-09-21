@@ -5,7 +5,7 @@ import { Drawer } from '../ui/Drawer';
 
 const INSIGHTS_GLOSSARY = [
   { abbr: 'Win Factors',  full: 'Ranked by impact',         def: 'Metrics are sorted by how strongly they separate your wins from losses, relative to how much that stat normally bounces around match-to-match. A big gap on a stat that\'s usually steady ranks higher than the same-size gap on a stat that swings wildly anyway — a jumpy stat isn\'t a real pattern just because it looks big. Close matches (decided by one set) count more toward these averages than lopsided sweeps, since close matches show what winning actually takes.' },
-  { abbr: 'Confidence',   full: 'How much to trust this',   def: 'Based on how many wins and losses this is built from (whichever pile is smaller). Fewer than 5 matches on the smaller side = Low confidence, 5–9 = Medium, 10+ = High. At Low confidence the ranking, colors, and Win Factor % are hidden and replaced with "Limited data" — there just isn\'t enough evidence yet to call it a real pattern instead of luck.' },
+  { abbr: 'Confidence',   full: 'How much to trust this',   def: 'Based on how many matches this is built from. Fewer than 5 total matches = Low confidence. Otherwise it\'s Medium, or High once both your wins and your losses have 10+ matches. Insights still calculate normally at Low confidence (once you have at least 2 wins and 2 losses) — the badge is just a heads-up that a small sample can be luck.' },
   { abbr: 'Win Factor %', full: 'Share of win/loss gap',    def: 'What percentage of total win/loss separation this metric accounts for across all tracked stats. A 28% win factor means this stat explains more of your outcomes than most others.' },
   { abbr: 'Colors',       full: 'Green / Amber / Red',      def: 'Green = currently at or near win-level performance. Amber = close, worth monitoring. Red = currently tracking closer to your loss average — prioritize improvement here.' },
   { abbr: 'APR',          full: 'Pass Rating',               def: 'Average pass quality on a 0–3 scale (0 = no attack opportunity, 3 = perfect). Higher APR gives your setter more options and leads to better offensive efficiency.' },
@@ -100,12 +100,12 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
   const displayStats = currentStats ?? allStats;
 
   const minMatches = Math.min(win.matches, loss.matches);
-  const confidence = minMatches >= 10
+  const totalMatches = win.matches + loss.matches;
+  const confidence = totalMatches < 5
+    ? { label: 'Low confidence',    cls: 'bg-red-400/10 text-red-400 border-red-400/30' }
+    : minMatches >= 10
     ? { label: 'High confidence',   cls: 'bg-emerald-400/10 text-emerald-400 border-emerald-400/30' }
-    : minMatches >= 5
-    ? { label: 'Medium confidence', cls: 'bg-amber-400/10 text-amber-400 border-amber-400/30' }
-    : { label: 'Low confidence',    cls: 'bg-red-400/10 text-red-400 border-red-400/30' };
-  const isLowConfidence = confidence.label === 'Low confidence';
+    : { label: 'Medium confidence', cls: 'bg-amber-400/10 text-amber-400 border-amber-400/30' };
 
   // Compute impact score for each metric: how much does this stat separate wins from
   // losses, relative to how much it normally moves around from match to match? A stat
@@ -189,19 +189,17 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
           const range = wv - lv;
           const pos = nv != null && range !== 0 ? (nv - lv) / range : null;
 
-          const statusColor = isLowConfidence ? 'text-slate-500'
-            : pos == null ? 'text-slate-500'
+          const statusColor = pos == null ? 'text-slate-500'
             : pos >= 0.65 ? 'text-emerald-400'
             : pos >= 0.35 ? 'text-amber-400'
             : 'text-red-400';
-          const statusLabel = isLowConfidence ? 'Limited data'
-            : pos == null ? '—'
+          const statusLabel = pos == null ? '—'
             : pos >= 0.65 ? '✓ On track'
             : pos >= 0.35 ? 'Watch this'
             : '✗ Focus here';
 
           const barPct = pos != null ? Math.max(0, Math.min(100, Math.round(pos * 100))) : null;
-          const rank   = isLowConfidence ? null : RANK_STYLES[idx];
+          const rank   = RANK_STYLES[idx];
 
           return (
             <div key={key} className="bg-surface rounded-xl p-3.5 border border-slate-700/40">
@@ -238,8 +236,7 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
                 <div className="h-1.5 rounded-full bg-slate-700 overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-[width] duration-700 ease-out ${
-                      isLowConfidence ? 'bg-slate-500'
-                        : barPct >= 65 ? 'bg-emerald-500' : barPct >= 35 ? 'bg-amber-500' : 'bg-red-500'
+                      barPct >= 65 ? 'bg-emerald-500' : barPct >= 35 ? 'bg-amber-500' : 'bg-red-500'
                     }`}
                     style={{ width: barsReady ? `${barPct}%` : '0%' }}
                   />
@@ -248,9 +245,7 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
 
               {/* Value of hitting the goal */}
               <div className="mt-3 pt-3 border-t border-slate-700/50">
-                {isLowConfidence ? (
-                  <span className="text-[13px] font-semibold text-slate-500">Not enough matches yet for a reliable Win Factor</span>
-                ) : (() => {
+                {(() => {
                   const share = totalImpact > 0 ? Math.round((impactScore / totalImpact) * 100) : 0;
                   return (
                     <>
