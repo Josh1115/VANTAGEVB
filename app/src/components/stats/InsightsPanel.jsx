@@ -4,8 +4,8 @@ import { fmtVER } from '../../stats/formatters';
 import { Drawer } from '../ui/Drawer';
 
 const INSIGHTS_GLOSSARY = [
-  { abbr: 'Win Factors',  full: 'Ranked by impact',         def: 'Metrics are sorted by how strongly they separate your wins from losses, relative to how much that stat normally bounces around match-to-match. A big gap on a stat that\'s usually steady ranks higher than the same-size gap on a stat that swings wildly anyway — a jumpy stat isn\'t a real pattern just because it looks big. Close matches (decided by one set) count more toward these averages than lopsided sweeps, since close matches show what winning actually takes.' },
-  { abbr: 'Confidence',   full: 'How much to trust this',   def: 'Based on how many matches this is built from. Fewer than 5 total matches = Low confidence. Otherwise it\'s Medium, or High once both your wins and your losses have 10+ matches. Insights still calculate normally at Low confidence (once you have at least 2 wins and 2 losses) — the badge is just a heads-up that a small sample can be luck.' },
+  { abbr: 'Win Factors',  full: 'Ranked by impact',         def: 'Metrics are sorted by how strongly they separate the sets you win from the sets you lose, relative to how much that stat normally bounces around set-to-set. A big gap on a stat that\'s usually steady ranks higher than the same-size gap on a stat that swings wildly anyway — a jumpy stat isn\'t a real pattern just because it looks big. Close sets (like 27-25) count more toward these averages than blowout sets, since close sets show what winning actually takes. This looks at individual sets, not whole matches — a set you won inside a match you lost still counts as a win here.' },
+  { abbr: 'Confidence',   full: 'How much to trust this',   def: 'Based on how many sets this is built from. Fewer than 5 total sets = Low confidence. Otherwise it\'s Medium, or High once both your winning sets and your losing sets have 10+ each. Insights still calculate normally at Low confidence (once you have at least 2 winning sets and 2 losing sets) — the badge is just a heads-up that a small sample can be luck.' },
   { abbr: 'Win Factor %', full: 'Share of win/loss gap',    def: 'What percentage of total win/loss separation this metric accounts for across all tracked stats. A 28% win factor means this stat explains more of your outcomes than most others.' },
   { abbr: 'Colors',       full: 'Green / Amber / Red',      def: 'Green = currently at or near win-level performance. Amber = close, worth monitoring. Red = currently tracking closer to your loss average — prioritize improvement here.' },
   { abbr: 'APR',          full: 'Pass Rating',               def: 'Average pass quality on a 0–3 scale (0 = no attack opportunity, 3 = perfect). Higher APR gives your setter more options and leads to better offensive efficiency.' },
@@ -20,7 +20,7 @@ const INSIGHTS_GLOSSARY = [
   { abbr: 'ACE%',         full: 'Ace %',                     def: 'Percentage of serves resulting in an ace. Aces score directly and disrupt the opponent\'s serve receive system, compounding into more favorable attack opportunities.' },
   { abbr: 'SE%',          full: 'Serve Error %',             def: 'Percentage of serves that result in an error. Lower is better — serve errors are free points for the opponent with no defensive effort required.' },
   { abbr: 'BLK/Set',      full: 'Blocks per Set',            def: 'Blocks (solo + 0.5 × block assist) per set. Strong blocking directly scores points and suppresses opponent hitting efficiency over time.' },
-  { abbr: 'Player Win Factors', full: 'Players who swing outcomes', def: 'Ranks players by how much their overall rating (VER) differs between matches you won and matches you lost. VER already adjusts for position, so a libero and an outside hitter can be compared on the same scale. Only players with at least 2 matches in both your wins and your losses are shown, to avoid one big game looking like a pattern.' },
+  { abbr: 'Player Win Factors', full: 'Players who swing outcomes', def: 'Ranks players by how much their overall rating (VER) differs between sets you won and sets you lost. VER already adjusts for position, so a libero and an outside hitter can be compared on the same scale. Only players with at least 2 sets in both your wins and your losses are shown, to avoid one big set looking like a pattern.' },
 ];
 
 const pctFmt = (v) => v != null ? `${Math.round(v * 100)}%` : '—';
@@ -51,6 +51,7 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
   const [loading,      setLoading]      = useState(false);
   const [barsReady,    setBarsReady]    = useState(false);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
+  const [openHintKey,  setOpenHintKey]  = useState(null);
 
   const filterKey = JSON.stringify(filters ?? {});
 
@@ -92,23 +93,23 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
     <div className="text-center py-12 px-4">
       <div className="text-3xl mb-3">📊</div>
       <p className="text-slate-400 font-semibold">Not enough data yet</p>
-      <p className="text-slate-600 text-sm mt-1">Need at least 2 wins and 2 losses to show win correlations.</p>
+      <p className="text-slate-600 text-sm mt-1">Need at least 2 won sets and 2 lost sets to show win correlations.</p>
     </div>
   );
 
   const { win, loss } = data;
   const displayStats = currentStats ?? allStats;
 
-  const minMatches = Math.min(win.matches, loss.matches);
-  const totalMatches = win.matches + loss.matches;
-  const confidence = totalMatches < 5
+  const minSets = Math.min(win.sets, loss.sets);
+  const totalSets = win.sets + loss.sets;
+  const confidence = totalSets < 5
     ? { label: 'Low confidence',    cls: 'bg-red-400/10 text-red-400 border-red-400/30' }
-    : minMatches >= 10
+    : minSets >= 10
     ? { label: 'High confidence',   cls: 'bg-emerald-400/10 text-emerald-400 border-emerald-400/30' }
     : { label: 'Medium confidence', cls: 'bg-amber-400/10 text-amber-400 border-amber-400/30' };
 
-  // Compute impact score for each metric: how much does this stat separate wins from
-  // losses, relative to how much it normally moves around from match to match? A stat
+  // Compute impact score for each metric: how much does this stat separate winning sets from
+  // losing sets, relative to how much it normally moves around from set to set? A stat
   // that's naturally noisy (high variance) needs a bigger gap to count as a real signal
   // than a stat that's normally rock-steady — this is an effect-size (Cohen's-d-style)
   // comparison, not just a raw percent difference of the two averages.
@@ -145,10 +146,10 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
         <div>
           <p className="text-xs font-black tracking-widest text-slate-500 uppercase">Win Factors</p>
           <p className="text-xs text-slate-600 mt-0.5">
-            Ranked by impact — stats that most separate your {win.matches}W from your {loss.matches}L.
+            Ranked by impact — stats that most separate the sets you win from the sets you lose ({win.sets}W / {loss.sets}L sets).
           </p>
           <span className={`inline-block mt-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md border tracking-wide ${confidence.cls}`}>
-            {confidence.label} · {win.matches}W / {loss.matches}L
+            {confidence.label} · {win.sets}W / {loss.sets}L sets
           </span>
         </div>
         <button
@@ -247,10 +248,27 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
               <div className="mt-3 pt-3 border-t border-slate-700/50">
                 {(() => {
                   const share = totalImpact > 0 ? Math.round((impactScore / totalImpact) * 100) : 0;
+                  const hintOpen = openHintKey === key;
                   return (
                     <>
-                      <span className="text-[13.8px] font-bold text-white uppercase tracking-wide">Win Factor: </span>
-                      <span className="text-[13.8px] font-black text-blue-400">{share}%</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[13.8px] font-bold text-white uppercase tracking-wide">Win Factor: </span>
+                        <span className="text-[13.8px] font-black text-blue-400">{share}%</span>
+                        <button
+                          type="button"
+                          onClick={() => setOpenHintKey(hintOpen ? null : key)}
+                          className="w-4 h-4 rounded-full border border-slate-600 text-slate-500 hover:text-white hover:border-slate-400 text-[9px] font-black flex items-center justify-center transition-colors shrink-0"
+                          aria-label="What does Win Factor mean?"
+                          aria-expanded={hintOpen}
+                        >
+                          i
+                        </button>
+                      </div>
+                      {hintOpen && (
+                        <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                          Of every stat tracked, this one explains {share}% of the gap between your wins and losses — the higher the number, the more this stat matters to winning.
+                        </p>
+                      )}
                     </>
                   );
                 })()}
@@ -270,7 +288,7 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
           const lossRow = loss.players?.[pid];
           const winVal  = winRow?.ver ?? null;
           const lossVal = lossRow?.ver ?? null;
-          const enoughSample = (winRow?.matchesPlayed ?? 0) >= 2 && (lossRow?.matchesPlayed ?? 0) >= 2;
+          const enoughSample = (winRow?.setsPlayed ?? 0) >= 2 && (lossRow?.setsPlayed ?? 0) >= 2;
           if (winVal == null || lossVal == null || !enoughSample) return null;
           return { pid, winVal, lossVal, impactScore: Math.abs(winVal - lossVal) };
         }).filter(Boolean)

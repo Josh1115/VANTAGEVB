@@ -340,29 +340,10 @@ export function SetLineupPage() {
           libero2Id={libero2Id}
           setLibero2Id={setLibero2Id}
           players={players}
+          setNumber={setNumber}
+          servingSide={servingSide}
+          setServingSide={setServingSide}
         />
-
-        {/* Serve / Serve-Rec */}
-        <div>
-          <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
-            Set {setNumber} Start
-          </label>
-          <div className="flex gap-2">
-            {[SIDE.US, SIDE.THEM].map((side) => (
-              <button
-                key={side}
-                onClick={() => setServingSide(side)}
-                className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors
-                  ${servingSide === side
-                    ? 'bg-primary text-white border-primary'
-                    : 'bg-surface text-slate-300 border-slate-600 hover:border-slate-400'
-                  }`}
-              >
-                {side === SIDE.US ? 'Serving' : 'Serve Rec'}
-              </button>
-            ))}
-          </div>
-        </div>
 
         {error && <p className="text-red-400 text-sm">{error}</p>}
 

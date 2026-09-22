@@ -63,6 +63,12 @@ export const getContactsForMatches = (matchIds) =>
 export const getMatchesForSeason = (seasonId) =>
   db.matches.where('season_id').equals(seasonId).toArray();
 
+// Raw set rows (id, match_id, winner, our_score, opp_score, status) for the given matches
+export const getSetsForMatches = async (matchIds) => {
+  if (!matchIds.length) return [];
+  return db.sets.where('match_id').anyOf(matchIds).toArray();
+};
+
 // Sum of opp_score across all complete sets for the given matches
 export const getOppScoredForMatches = async (matchIds) => {
   if (!matchIds.length) return 0;

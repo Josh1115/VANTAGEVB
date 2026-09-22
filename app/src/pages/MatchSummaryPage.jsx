@@ -709,7 +709,7 @@ function MatchInsightsPanel({ matchStats, seasonId }) {
     <div className="text-center py-12 px-4">
       <div className="text-3xl mb-3">📊</div>
       <p className="text-slate-400 font-semibold">Not enough data yet</p>
-      <p className="text-slate-600 text-sm mt-1">Need at least 2 wins and 2 losses to show win correlations.</p>
+      <p className="text-slate-600 text-sm mt-1">Need at least 2 won sets and 2 lost sets to show win correlations.</p>
     </div>
   );
 
@@ -720,7 +720,7 @@ function MatchInsightsPanel({ matchStats, seasonId }) {
       <div className="px-1">
         <p className="text-xs font-black tracking-widest text-slate-500 uppercase">Win Correlation</p>
         <p className="text-xs text-slate-600 mt-0.5">
-          This match vs your averages in {win.matches}W / {loss.matches}L.
+          This match vs your averages in {win.sets}W / {loss.sets}L sets.
         </p>
       </div>
 

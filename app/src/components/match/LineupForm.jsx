@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { CourtZonePicker, ROMAN, rotationFromStartZone } from '../court/CourtZonePicker';
 import { getStorageItem, STORAGE_KEYS } from '../../utils/storage';
+import { SIDE } from '../../constants';
 
 const POSITION_OPTIONS = ['OH', 'OPP', 'MB', 'S', 'L', 'DS', 'RS'];
 
@@ -20,8 +21,13 @@ const POSITION_OPTIONS = ['OH', 'OPP', 'MB', 'S', 'L', 'DS', 'RS'];
  *   libero2Id         — string, second dressed libero player id ('' = none) — IHSA two-libero rule
  *   setLibero2Id      — setter for libero2Id
  *   players           — Player[] from DB (active roster)
+ *   setNumber         — optional, number shown in the "Set N Start" serve/receive label
+ *   servingSide       — optional, SIDE.US/SIDE.THEM — who starts the set serving.
+ *                       Only rendered (right under the rotation picker) when this
+ *                       and setServingSide are both provided.
+ *   setServingSide    — optional setter for servingSide
  */
-export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions, startZone, setStartZone, liberoId, setLiberoId, libero2Id, setLibero2Id, players }) {
+export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions, startZone, setStartZone, liberoId, setLiberoId, libero2Id, setLibero2Id, players, setNumber, servingSide, setServingSide }) {
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [dragOverIdx, setDragOverIdx] = useState(null);
   const containerRef = useRef(null);
@@ -286,6 +292,30 @@ export function LineupForm({ lineup, setLineup, slotPositions, setSlotPositions,
             })}
           </div>
         </div>
+
+        {setServingSide && (
+          <div className="mt-3">
+            <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+              {setNumber ? `Set ${setNumber} Start` : 'Set Start'}
+            </label>
+            <div className="flex gap-2">
+              {[SIDE.US, SIDE.THEM].map((side) => (
+                <button
+                  key={side}
+                  type="button"
+                  onClick={() => setServingSide(side)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors
+                    ${servingSide === side
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-surface text-slate-300 border-slate-600 hover:border-slate-400'
+                    }`}
+                >
+                  {side === SIDE.US ? 'Serving' : 'Serve Rec'}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {(() => {
           const rotNum = rotationFromStartZone(startZone);

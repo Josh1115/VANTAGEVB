@@ -433,7 +433,7 @@ export const LiveStatsModal = memo(function LiveStatsModal({ open, onClose, team
             <div className="flex items-baseline justify-between">
               <p className="text-xs font-black tracking-widest text-slate-500 uppercase">Live Insights</p>
               {winCorr && (
-                <p className="text-[10px] text-slate-600">{winCorr.win.matches}W · {winCorr.loss.matches}L baseline</p>
+                <p className="text-[10px] text-slate-600">{winCorr.win.sets}W · {winCorr.loss.sets}L sets baseline</p>
               )}
             </div>
 
