@@ -3,9 +3,8 @@ import {
   getContactsForMatches, getMatchesForSeason, getRalliesForMatches,
   getPlayerPositionsForMatches, getBatchSetsPlayedCount, getOppScoredForMatches,
   getOurScoredForMatches, getTimeoutsForMatches, getRalliesForMatchesWithMatchId,
-  getSetsForMatches,
 } from './queries';
-import { POSITION_MULTIPLIERS, MATCH_STATUS, SIDE } from '../constants';
+import { POSITION_MULTIPLIERS, MATCH_STATUS } from '../constants';
 
 // ── Internal helpers ────────────────────────────────────────────────────────
 
@@ -1678,7 +1677,7 @@ export function computeTimeoutEffectiveness(timeouts, rallies) {
     const setRallies = bySet[to.set_id] ?? [];
     // Find the 3 rallies immediately after this timeout
     const after = setRallies
-      .filter(r => r.rally_number > to.rally_number)
+      .filter(r => r.rally_number >= to.rally_number)
       .slice(0, 3);
     for (const r of after) {
       result[side].total3++;
@@ -1702,17 +1701,6 @@ export function matchCloseness(ourSets, oppSets) {
   if (margin <= 1) return 1.5; // e.g. 3-2 — went the distance
   if (margin === 2) return 1.0; // e.g. 3-1
   return 0.6;                   // e.g. 3-0 sweep
-}
-
-// Same idea as matchCloseness, but for a single set's final score. A set that
-// went to extra points or was decided by just a couple points (e.g. 27-25)
-// tells you more about what winning a set takes than a lopsided 25-10 sweep,
-// so it gets more weight in the win/loss comparison.
-export function setCloseness(ourScore, oppScore) {
-  const margin = Math.abs((ourScore ?? 0) - (oppScore ?? 0));
-  if (margin <= 2) return 1.5; // e.g. 25-23, 27-25 — went the distance
-  if (margin <= 6) return 1.0; // e.g. 25-19
-  return 0.6;                  // e.g. 25-12 blowout
 }
 
 // Merges an array of same-shaped stat objects (e.g. one per match) into a single
@@ -1774,72 +1762,68 @@ export function weightedVarianceStats(objs, weights, means) {
 }
 
 /**
- * Splits a season's individual SETS (not matches) into win-set and loss-set
- * buckets to show which metrics correlate with winning a set for this specific
- * team. A set you won inside a match you ultimately lost still counts toward
- * the win bucket, and vice versa — this is about what it takes to win a set,
- * not a whole match. Each set's stats are weighted by how close the set was
- * (see setCloseness) so a handful of blowout sets can't drown out what
- * actually separates your close wins from your close losses.
+ * Splits a season's matches into win-game and loss-game buckets to show which
+ * metrics correlate with winning for this specific team. Each match's stats are
+ * weighted by how close the match was (see matchCloseness) so a handful of
+ * blowouts can't drown out what actually separates your close wins from your
+ * close losses.
  * Optional filters (same shape as filterMatches/computeSeasonStats) narrow which
  * matches are considered — e.g. { matchIds: last5Ids } to compare recent form
  * only, or { conference: 'conference' } for conference games only.
- * Returns null when < 2 winning sets or < 2 losing sets exist (insufficient sample).
+ * Returns null when < 2 wins or < 2 losses exist (insufficient sample).
  */
 export async function computeWinCorrelation(seasonId, filters = {}) {
   const allMatches = (await getMatchesForSeason(Number(seasonId)))
     .filter(m => m.status !== MATCH_STATUS.SCHEDULED);
   const matches = filterMatches(allMatches, filters);
-  const matchIds = matches.map(m => m.id);
+  const winMatches  = matches.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0));
+  const lossMatches = matches.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0));
+  if (winMatches.length < 2 || lossMatches.length < 2) return null;
 
-  const [contacts, rallies, playerPositions, allSets] = await Promise.all([
+  const matchIds = [...winMatches, ...lossMatches].map(m => m.id);
+  const [contacts, rallies, setsPerMatch, playerPositions] = await Promise.all([
     getContactsForMatches(matchIds),
     getRalliesForMatchesWithMatchId(matchIds),
+    getBatchSetsPlayedCount(matchIds),
     getPlayerPositionsForMatches(matchIds),
-    getSetsForMatches(matchIds),
   ]);
 
-  const completeSets = allSets.filter(s => s.status === 'complete' && s.winner);
-  const winSets  = completeSets.filter(s => s.winner === SIDE.US);
-  const lossSets = completeSets.filter(s => s.winner === SIDE.THEM);
-  if (winSets.length < 2 || lossSets.length < 2) return null;
-
-  const contactsBySet = {};
-  for (const c of contacts) (contactsBySet[c.set_id] ??= []).push(c);
-  const ralliesBySet = {};
-  for (const r of rallies) (ralliesBySet[r.set_id] ??= []).push(r);
+  const contactsByMatch = {};
+  for (const c of contacts) (contactsByMatch[c.match_id] ??= []).push(c);
+  const ralliesByMatch = {};
+  for (const r of rallies) (ralliesByMatch[r.match_id] ??= []).push(r);
 
   const computeGroup = (group) => {
-    const perSetStats = group.map((s) => {
-      const sContacts = contactsBySet[s.id] ?? [];
-      const sRallies  = ralliesBySet[s.id] ?? [];
+    const perMatchStats = group.map((m) => {
+      const mContacts = contactsByMatch[m.id] ?? [];
+      const mRallies  = ralliesByMatch[m.id] ?? [];
       return {
-        team:         computeTeamStats(sContacts, 1),
-        rotation:     computeRotationStats(sRallies),
-        isOos:        computeISvsOOS(sContacts, sRallies),
-        pointQuality: computePointQuality(sContacts),
-        players:      computePlayerStats(sContacts, 1, playerPositions),
+        team:         computeTeamStats(mContacts, setsPerMatch[m.id] ?? 1),
+        rotation:     computeRotationStats(mRallies),
+        isOos:        computeISvsOOS(mContacts, mRallies),
+        pointQuality: computePointQuality(mContacts),
+        players:      computePlayerStats(mContacts, setsPerMatch[m.id] ?? 1, playerPositions),
       };
     });
-    const weights = group.map(s => setCloseness(s.our_score, s.opp_score));
-    const merged = weightedMergeStats(perSetStats, weights);
-    merged.variance = weightedVarianceStats(perSetStats, weights, merged);
+    const weights = group.map(m => matchCloseness(m.our_sets_won, m.opp_sets_won));
+    const merged = weightedMergeStats(perMatchStats, weights);
+    merged.variance = weightedVarianceStats(perMatchStats, weights, merged);
 
-    // How many sets in this group each player actually appeared in — used so a
-    // single big set doesn't get mistaken for a real win/loss pattern for that player.
+    // How many matches in this group each player actually appeared in — used so a
+    // single big match doesn't get mistaken for a real win/loss pattern for that player.
     const appearances = {};
-    for (const ps of perSetStats) {
+    for (const ps of perMatchStats) {
       for (const pid of Object.keys(ps.players)) appearances[pid] = (appearances[pid] ?? 0) + 1;
     }
     for (const pid of Object.keys(merged.players ?? {})) {
-      merged.players[pid].setsPlayed = appearances[pid] ?? 0;
+      merged.players[pid].matchesPlayed = appearances[pid] ?? 0;
     }
     return merged;
   };
 
   return {
-    win:  { ...computeGroup(winSets),  sets: winSets.length  },
-    loss: { ...computeGroup(lossSets), sets: lossSets.length },
+    win:  { ...computeGroup(winMatches),  matches: winMatches.length  },
+    loss: { ...computeGroup(lossMatches), matches: lossMatches.length },
   };
 }
 

@@ -45,10 +45,10 @@ function LiberoSlot({ player, isActive, canSwap, onTap, replacedName, replacedJe
     <button
       disabled={disabled}
       onPointerDown={(e) => { e.preventDefault(); onTap(); }}
-      className={`flex flex-col items-center justify-center gap-0.5 px-2 py-1 min-w-[12.96vmin] rounded border leading-none transition-colors ${borderColor} ${fillColor}`}
+      className={`flex flex-col items-center justify-center gap-0.5 px-2 py-1 min-w-[12.31vmin] rounded border leading-none transition-colors ${borderColor} ${fillColor}`}
     >
       <span className="text-[1.8vmin] font-black tracking-wide">{isActive ? 'LIB N/A' : 'LIB READY'}</span>
-      <span className="text-[1.5vmin] font-semibold truncate max-w-[12.96vmin]">
+      <span className="text-[1.5vmin] font-semibold truncate max-w-[12.31vmin]">
         #{shownJersey} {fmtPlayerName(shownName, playerNicknames[shownId] ?? '', nameFormat)}
       </span>
     </button>

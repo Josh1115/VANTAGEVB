@@ -1042,11 +1042,13 @@ export function ReportsPage() {
                       const pPts   = (r.k ?? 0) + (r.ace ?? 0) + (r.bs ?? 0) + (r.ba ?? 0);
                       const pFault = (r.se ?? 0) + (r.ae ?? 0) + (r.net ?? 0) + (r.lift ?? 0)
                                    + (r.bhe ?? 0) + (r.fbe ?? 0) + (r.p0 ?? 0);
+                      const ptPct    = teamPts > 0 ? (pPts   / teamPts) * 100 : null;
+                      const faultPct = oppPts  > 0 ? (pFault / oppPts)  * 100 : null;
                       return {
                         id: r.id, name: r.name,
                         pPts, pFault,
-                        ptPct:    teamPts > 0 ? (pPts   / teamPts) * 100 : null,
-                        faultPct: oppPts  > 0 ? (pFault / oppPts)  * 100 : null,
+                        ptPct, faultPct,
+                        netPct: ptPct != null ? ptPct - (faultPct ?? 0) : null,
                       };
                     })
                     .sort((a, b) => {
@@ -1064,19 +1066,22 @@ export function ReportsPage() {
                         <button className={`flex-1 text-left ${hdrCls('name')}`} onClick={() => toggleSort('name')}>
                           Player{sortArrow('name')}
                         </button>
-                        <div className="grid grid-cols-2 gap-6 shrink-0 w-[220px]">
+                        <div className="grid grid-cols-3 gap-4 shrink-0 w-[300px]">
                           <button className={`text-right ${hdrCls('ptPct')}`} onClick={() => toggleSort('ptPct')}>
                             % Team Pts{sortArrow('ptPct')}
                           </button>
                           <button className={`text-right ${hdrCls('faultPct')}`} onClick={() => toggleSort('faultPct')}>
                             % Opp Pts{sortArrow('faultPct')}
                           </button>
+                          <button className={`text-right ${hdrCls('netPct')}`} onClick={() => toggleSort('netPct')}>
+                            Net %{sortArrow('netPct')}
+                          </button>
                         </div>
                       </div>
                       {rows.map(r => (
                         <div key={r.id} className="flex items-center gap-2 px-1">
                           <span className="flex-1 text-xs text-slate-300 truncate">{r.name}</span>
-                          <div className="grid grid-cols-2 gap-6 shrink-0 w-[220px]">
+                          <div className="grid grid-cols-3 gap-4 shrink-0 w-[300px]">
                             <div className="text-right">
                               <span className="text-xs font-bold text-emerald-400">
                                 {r.ptPct != null ? r.ptPct.toFixed(1) + '%' : '—'}
@@ -1093,11 +1098,16 @@ export function ReportsPage() {
                                 {r.pFault}/{oppPts}
                               </span>
                             </div>
+                            <div className="text-right">
+                              <span className={`text-xs font-bold ${r.netPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {r.netPct != null ? (r.netPct > 0 ? '+' : '') + r.netPct.toFixed(1) + '%' : '—'}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       ))}
                       <p className="text-[10px] text-slate-600 text-center pt-1">
-                        Team Pts: K+ACE+BLK &nbsp;·&nbsp; Opp Pts: SE+AE+NET+L+BHE+DROP+P0
+                        Team Pts: K+ACE+BLK &nbsp;·&nbsp; Opp Pts: SE+AE+NET+L+BHE+DROP+P0 &nbsp;·&nbsp; Net %: Team − Opp
                       </p>
                     </div>
                   );
