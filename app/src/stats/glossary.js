@@ -54,6 +54,7 @@ export const STAT_GLOSSARY = {
   ae:           { abbr: 'AE',       full: 'Attack Errors',              def: 'Attacks that result in a point for the opponent (out, blocked).' },
   hit_pct:      { abbr: 'HIT%',     full: 'Hitting Percentage',         def: '(K − AE) ÷ TA. Ranges −1.000 to 1.000. The primary attacking efficiency stat.\n\nFeeds into VER at ×13.3 (before the final ÷4 scale), on top of — not instead of — the raw K/AE counts already in the formula. This rewards efficiency independent of volume: a high-volume hitter still scores highest overall, but two hitters with the same net kills get separated by how efficient they were.' },
   k_pct:        { abbr: 'K%',       full: 'Kill Percentage',            def: 'K ÷ TA. Kill rate, ignoring errors.' },
+  att_k:        { abbr: 'ATT:K',    full: 'Attempts Per Kill',          def: 'TA ÷ K. How many swings it takes to get one kill — lower is better.' },
   kps:          { abbr: 'KPS',      full: 'Kills Per Set',              def: 'K ÷ SP.' },
   aeps:         { abbr: 'AE/S',     full: 'Attack Errors Per Set',      def: 'AE ÷ SP.' },
 

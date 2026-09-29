@@ -208,6 +208,7 @@ function deriveStats(p, sp, posLabel = null) {
     ae_bra_pct: div(p.ae_bra, p.ae),
     hit_pct: hitPct,
     k_pct:   div(p.k,  p.ta),
+    att_k:   div(p.ta, p.k),
     kps:     div(p.k,  sp),
     aeps:    div(p.ae, sp),
 

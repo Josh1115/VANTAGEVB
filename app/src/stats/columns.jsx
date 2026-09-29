@@ -94,6 +94,7 @@ export const TAB_COLUMNS = {
     { key: 'kps',       label: 'KPS',   fmt: fmtRate    },
     { key: 'k_pct',     label: 'K%',    fmt: fmtPct     },
     { key: 'hit_pct',   label: 'HIT%',  fmt: fmtHitting },
+    { key: 'att_k',     label: 'ATT:K', fmt: fmtRate    },
     { key: 'k_pure',     label: 'PURE',    fmt: fmtCount   },
     { key: 'k_pure_pct', label: 'PURE%',   fmt: fmtPct     },
     { key: 'k_tool',     label: 'TOOL',    fmt: fmtCount   },

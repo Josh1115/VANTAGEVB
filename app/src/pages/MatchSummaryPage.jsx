@@ -1164,6 +1164,7 @@ export function MatchSummaryPage() {
         fbs,
         hit_pct:   ta > 0 ? (k - ae) / ta : null,
         k_pct:     ta > 0 ? k / ta : null,
+        att_k:     k > 0 ? ta / k : null,
         kps:       sp > 0 ? k / sp : null,
         pos_label: null, pos_mult: null, ver: teamVer,
       },

@@ -140,6 +140,8 @@ describe('computePlayerStats', () => {
     expect(p1.ae).toBe(1);
     // HIT% = (2-1)/4 = 0.25
     expect(p1.hit_pct).toBeCloseTo(0.25);
+    // ATT:K = 4/2 = 2.00
+    expect(p1.att_k).toBeCloseTo(2);
   });
 
   it('hitting% is negative when errors exceed kills', () => {
@@ -158,6 +160,12 @@ describe('computePlayerStats', () => {
     const contacts = [contact({ action: 'serve', result: 'ace' })];
     const { p1 } = computePlayerStats(contacts, 1);
     expect(p1.hit_pct).toBeNull();
+  });
+
+  it('ATT:K is null when there are attempts but no kills', () => {
+    const contacts = [contact({ action: 'attack', result: 'error' })];
+    const { p1 } = computePlayerStats(contacts, 1);
+    expect(p1.att_k).toBeNull();
   });
 
   it('accumulates block stats', () => {
