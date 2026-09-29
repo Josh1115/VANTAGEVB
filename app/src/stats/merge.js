@@ -1,5 +1,6 @@
 import { db } from '../db/schema';
 import { planMatchDedup, convergedPlaceholderUid } from './matchIdentity';
+import { MATCH_STATUS } from '../constants';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -288,6 +289,7 @@ export async function parseMergePreviewFromData(data) {
       oppSetsWon:   m.opp_sets_won  ?? 0,
       contactCount: impContactsByMatch.get(m.id) ?? 0,
       status:       m.status,
+      updatedAt:    m.updated_at ?? '',
       seasonYear,
     };
 
@@ -328,6 +330,7 @@ export async function parseMergePreviewFromData(data) {
           oppSetsWon:   exMatch.opp_sets_won  ?? 0,
           contactCount: exContactsByMatch.get(exMatch.id) ?? 0,
           status:       exMatch.status,
+          updatedAt:    exMatch.updated_at ?? '',
           seasonYear,
         },
       });
@@ -335,6 +338,18 @@ export async function parseMergePreviewFromData(data) {
   }
 
   return { valid: true, error: null, newMatches, conflicts, _data: data };
+}
+
+// Automatic (unattended) sync's answer for one preview conflict. Default to
+// keeping the local copy so a match being scored here is never overwritten.
+// Exceptions, both only when this device's copy is an untouched "scheduled"
+// placeholder (nothing recorded, nothing to lose): take the incoming copy if it
+// has real progress, or if it's also scheduled but was edited more recently
+// (e.g. opponent record / rank / time filled in on another device).
+export function autoSyncDecision(c) {
+  if (c.current.status !== MATCH_STATUS.SCHEDULED) return 'keep';
+  if (c.imported.status !== MATCH_STATUS.SCHEDULED) return 'replace';
+  return (c.imported.updatedAt ?? '') > (c.current.updatedAt ?? '') ? 'replace' : 'keep';
 }
 
 // ── Phase 2 — Execute ─────────────────────────────────────────────────────────

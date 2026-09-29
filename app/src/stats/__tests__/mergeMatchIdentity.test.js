@@ -29,6 +29,7 @@ const {
   uidClaimedMatchIds,
   indexMatchesByKey,
   remapPlayerKeys,
+  autoSyncDecision,
 } = await import('../merge');
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -220,5 +221,44 @@ describe('parseMergePreviewFromData — same-key matches', () => {
 
     expect(preview.newMatches).toHaveLength(0);
     expect(preview.conflicts.map(c => c.importedId)).toEqual([1]);
+  });
+});
+
+// ── Unattended sync: which copy of a paired match wins ──────────────────────
+
+describe('autoSyncDecision (future-match edits reach other devices)', () => {
+  const local = match({ id: 7, uid: 'm-1', opponent_name: 'Barrington', opponent_record: null,
+    opponent_maxpreps_rank: null, updated_at: '2026-09-20T10:00:00.000Z' });
+  const decide = async (cloudMatch, localMatch = local) => {
+    store.matches = [localMatch];
+    const preview = await parseMergePreviewFromData(backup([cloudMatch]));
+    expect(preview.conflicts).toHaveLength(1);
+    return autoSyncDecision(preview.conflicts[0]);
+  };
+
+  it('takes the other device\'s newer record + rank on a scheduled match', async () => {
+    const cloud = { ...local, id: 99, opponent_record: '12-3', opponent_maxpreps_rank: 45,
+      updated_at: '2026-09-21T10:00:00.000Z' };
+    expect(await decide(cloud)).toBe('replace');
+  });
+
+  it('keeps this device\'s copy when it is the newer scheduled edit', async () => {
+    const cloud = { ...local, id: 99, updated_at: '2026-09-19T10:00:00.000Z' };
+    expect(await decide(cloud)).toBe('keep');
+  });
+
+  it('keeps an identical scheduled copy (no pointless replace)', async () => {
+    expect(await decide({ ...local, id: 99 })).toBe('keep');
+  });
+
+  it('never overwrites a match already being scored here, even by a newer copy', async () => {
+    const live = { ...local, status: 'in_progress' };
+    const cloud = { ...local, id: 99, updated_at: '2026-09-25T10:00:00.000Z' };
+    expect(await decide(cloud, live)).toBe('keep');
+  });
+
+  it('still takes a started/finished copy over a local scheduled placeholder', async () => {
+    const cloud = { ...local, id: 99, status: 'complete', updated_at: '2026-09-01T00:00:00.000Z' };
+    expect(await decide(cloud)).toBe('replace');
   });
 });
