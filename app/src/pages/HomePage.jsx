@@ -620,6 +620,8 @@ export function HomePage() {
       .first();
     const wins   = matches.filter(isWin).length;
     const losses = matches.length - wins;
+    const setsW  = matches.reduce((n, m) => n + (m.our_sets_won ?? 0), 0);
+    const setsL  = matches.reduce((n, m) => n + (m.opp_sets_won ?? 0), 0);
     const homeW  = matches.filter(m => m.location === 'home'    &&  isWin(m)).length;
     const homeL  = matches.filter(m => m.location === 'home'    && !isWin(m)).length;
     const awayW  = matches.filter(m => m.location === 'away'    &&  isWin(m)).length;
@@ -642,6 +644,8 @@ export function HomePage() {
       seasonName: season.name ?? String(season.year),
       wins, losses, total: matches.length,
       winPct:  matches.length ? wins / matches.length : null,
+      setsW, setsL,
+      setWinPct: setsW + setsL ? setsW / (setsW + setsL) : null,
       homeW, homeL, awayW, awayL, neutW, neutL, confW, confL, tourneyW, tourneyL, last5W, last5L, last5Count: last5.length,
       matchProgress: { completed: progressCompleted, total: progressMatches.length },
       stateRank:        historyEntry?.state_rank         ?? null,
@@ -1065,6 +1069,20 @@ export function HomePage() {
                 </div>
                 <div className="text-[15px] font-black tracking-[0.2em] text-red-800 mt-2">LOSSES</div>
               </button>
+            </div>
+
+            {/* Sets row — season-total sets won / lost */}
+            <div className="px-4 py-2 border-t border-slate-700/60 flex items-center justify-center gap-3 text-xs">
+              <span className="font-black tracking-[0.2em] text-white">SETS</span>
+              <span className="font-black tabular-nums">
+                <span className="text-emerald-400">{seasonRecord.setsW}</span>
+                <span className="text-slate-400">–</span>
+                <span className="text-red-400">{seasonRecord.setsL}</span>
+              </span>
+              <span className="text-slate-400 font-black">·</span>
+              <span className="font-black text-primary">
+                {fmtPct(seasonRecord.setWinPct)} SET WIN
+              </span>
             </div>
 
             {/* Stats row — always shows every stat, even at 0-0 / no data, so the
