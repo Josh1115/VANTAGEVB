@@ -1089,7 +1089,7 @@ export function HomePage() {
                 layout doesn't jump around as a season fills in. */}
             <div className="px-4 py-2.5 border-t border-slate-700/60 flex items-center justify-center gap-3 flex-wrap text-xs">
               <span className="font-black text-primary">
-                {fmtPct(seasonRecord.winPct)} WIN
+                {fmtPct(seasonRecord.winPct)} MATCH WIN
               </span>
               <span className="text-slate-400 font-black">·</span>
               <span className="text-white font-semibold">
