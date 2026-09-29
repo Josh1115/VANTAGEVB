@@ -645,7 +645,6 @@ export function HomePage() {
       wins, losses, total: matches.length,
       winPct:  matches.length ? wins / matches.length : null,
       setsW, setsL,
-      setWinPct: setsW + setsL ? setsW / (setsW + setsL) : null,
       homeW, homeL, awayW, awayL, neutW, neutL, confW, confL, tourneyW, tourneyL, last5W, last5L, last5Count: last5.length,
       matchProgress: { completed: progressCompleted, total: progressMatches.length },
       stateRank:        historyEntry?.state_rank         ?? null,
@@ -1078,10 +1077,6 @@ export function HomePage() {
                 <span className="text-emerald-400">{seasonRecord.setsW}</span>
                 <span className="text-slate-400">–</span>
                 <span className="text-red-400">{seasonRecord.setsL}</span>
-              </span>
-              <span className="text-slate-400 font-black">·</span>
-              <span className="font-black text-primary">
-                {fmtPct(seasonRecord.setWinPct)} SET WIN
               </span>
             </div>
 
