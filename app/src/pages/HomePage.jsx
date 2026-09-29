@@ -1071,7 +1071,7 @@ export function HomePage() {
             </div>
 
             {/* Sets row — season-total sets won / lost */}
-            <div className="px-4 py-2 border-t border-slate-700/60 flex items-center justify-center gap-3 text-xs">
+            <div className="px-4 py-2 border-t border-slate-700/60 flex flex-col items-center justify-center gap-0.5 text-xs">
               <span className="font-black tracking-[0.2em] text-white">SETS</span>
               <span className="font-black tabular-nums">
                 <span className="text-emerald-400">{seasonRecord.setsW}</span>
