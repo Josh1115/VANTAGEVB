@@ -6,6 +6,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { MATCH_STATUS } from '../constants';
 import { fmtDate, fmtHitting, fmtPct } from '../stats/formatters';
+import { currentStreak, seasonOpener } from '../utils/seasonSummary';
 import { computePlayerStats, computeTeamStats } from '../stats/engine';
 import { deleteMatch } from '../stats/queries';
 import { useUiStore, selectShowToast } from '../store/uiStore';
@@ -633,6 +634,10 @@ export function HomePage() {
     const tourneyW = matches.filter(m => m.match_type === 'tourney' &&  isWin(m)).length;
     const tourneyL = matches.filter(m => m.match_type === 'tourney' && !isWin(m)).length;
     const last5  = [...matches].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+    const streak = currentStreak(matches);
+    // Season opener shown while nothing has been played yet.
+    const opener = matches.length ? null : seasonOpener(allSeasonMatches, MATCH_STATUS.COMPLETE);
+    const org = team?.org_id ? await db.organizations.get(team.org_id).catch(() => null) : null;
     const last5W = last5.filter(isWin).length;
     const last5L = last5.length - last5W;
     // Progress bar only tracks the regular-season slate (reg-season + tourney),
@@ -647,6 +652,9 @@ export function HomePage() {
       setsW, setsL,
       homeW, homeL, awayW, awayL, neutW, neutL, confW, confL, tourneyW, tourneyL, last5W, last5L, last5Count: last5.length,
       matchProgress: { completed: progressCompleted, total: progressMatches.length },
+      streak,
+      opener: opener ? { opponent: opener.opponent_name ?? 'TBD', date: opener.date, location: opener.location ?? null } : null,
+      logoUrl: org?.logo_data_url ?? null,
       stateRank:        historyEntry?.state_rank         ?? null,
       nationalRank:     historyEntry?.national_rank      ?? null,
       classRank:        historyEntry?.class_rank         ?? null,
@@ -983,67 +991,79 @@ export function HomePage() {
           <div className="bg-surface rounded-xl overflow-hidden animate-slide-up-fade card-top-glow" style={{ animationDelay: '200ms' }}>
             {/* Header */}
             <div className="px-4 py-2 border-b border-slate-700/60 text-center">
-              <div>
+              <div className="flex items-center justify-center gap-2">
+                {seasonRecord.logoUrl && (
+                  <img src={seasonRecord.logoUrl} alt="" className="h-7 w-7 rounded object-contain shrink-0" />
+                )}
                 <span
                   className="text-[17.5px] font-black tracking-widest text-white uppercase"
                   style={{ fontFamily: "'Orbitron', sans-serif" }}
                 >
                   {seasonRecord.teamName}
                 </span>
-                <span className="text-white font-black text-xl mx-2">·</span>
+                <span className="text-white font-black text-xl">·</span>
                 <span className="text-[15px] text-white font-semibold uppercase">{seasonRecord.seasonName}</span>
               </div>
-              <button
-                onClick={() => setRankModalOpen(true)}
-                className="mt-0.5 w-full text-center hover:opacity-80 active:opacity-60 transition-opacity"
-                title="Tap to update rankings"
-              >
-                <span className="text-[15px] font-black text-amber-400 tracking-wide">
-                  CLASS: {seasonRecord.classRank != null ? `#${seasonRecord.classRank}` : '–'}
-                </span>
-                {(() => {
-                  // Class rank is free text (usually a number) — only show a
-                  // delta when both this and the previous value are numeric.
-                  const cur  = Number(seasonRecord.classRank);
-                  const prev = Number(seasonRecord.prevClassRank);
-                  if (seasonRecord.classRank == null || seasonRecord.prevClassRank == null) return null;
-                  if (!Number.isFinite(cur) || !Number.isFinite(prev) || prev === cur) return null;
-                  const delta = prev - cur;
+              {(() => {
+                // Only rankings that have a value are shown; delta arrow when the
+                // previous value is known and numeric.
+                const ranks = [
+                  { label: 'CLASS',                         cur: seasonRecord.classRank,    prev: seasonRecord.prevClassRank },
+                  { label: seasonRecord.teamState ?? 'STATE', cur: seasonRecord.stateRank,    prev: seasonRecord.prevStateRank },
+                  { label: 'NATIONAL',                      cur: seasonRecord.nationalRank, prev: seasonRecord.prevNationalRank },
+                ].filter((r) => r.cur != null && r.cur !== '');
+                if (!ranks.length) {
                   return (
-                    <span className={`text-[12.5px] font-bold ml-1 ${delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      ({delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`})
-                    </span>
+                    <button
+                      onClick={() => setRankModalOpen(true)}
+                      className="mt-1 text-[12.5px] font-bold text-amber-400/80 tracking-wide hover:text-amber-300 active:opacity-60 transition-colors"
+                    >
+                      + Add rankings
+                    </button>
                   );
-                })()}
-                <span className="text-slate-600 mx-2">·</span>
-                <span className="text-[15px] font-black text-amber-400 tracking-wide">
-                  {seasonRecord.teamState ?? 'STATE'}: {seasonRecord.stateRank != null ? `#${seasonRecord.stateRank}` : '–'}
-                </span>
-                {seasonRecord.stateRank != null && seasonRecord.prevStateRank != null && seasonRecord.prevStateRank !== seasonRecord.stateRank && (() => {
-                  const delta = seasonRecord.prevStateRank - seasonRecord.stateRank;
-                  return (
-                    <span className={`text-[12.5px] font-bold ml-1 ${delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      ({delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`})
-                    </span>
-                  );
-                })()}
-                <span className="text-slate-600 mx-2">·</span>
-                <span className="text-[15px] font-black text-amber-400 tracking-wide">
-                  NATIONAL: {seasonRecord.nationalRank != null ? `#${seasonRecord.nationalRank}` : '–'}
-                </span>
-                {seasonRecord.nationalRank != null && seasonRecord.prevNationalRank != null && seasonRecord.prevNationalRank !== seasonRecord.nationalRank && (() => {
-                  const delta = seasonRecord.prevNationalRank - seasonRecord.nationalRank;
-                  return (
-                    <span className={`text-[12.5px] font-bold ml-1 ${delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      ({delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`})
-                    </span>
-                  );
-                })()}
-              </button>
+                }
+                return (
+                  <button
+                    onClick={() => setRankModalOpen(true)}
+                    className="mt-0.5 w-full flex items-center justify-center flex-wrap gap-x-2 hover:opacity-80 active:opacity-60 transition-opacity"
+                    title="Tap to update rankings"
+                  >
+                    {ranks.map((r, idx) => {
+                      const cur = Number(r.cur), prev = Number(r.prev);
+                      const delta = r.prev != null && Number.isFinite(cur) && Number.isFinite(prev) ? prev - cur : 0;
+                      return (
+                        <span key={r.label} className="flex items-center">
+                          {idx > 0 && <span className="text-slate-600 mr-2">·</span>}
+                          <span className="text-[15px] font-black text-amber-400 tracking-wide">{r.label}: #{r.cur}</span>
+                          {delta !== 0 && (
+                            <span className={`text-[12.5px] font-bold ml-1 ${delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                              ({delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`})
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })}
+                    <svg aria-hidden="true" viewBox="0 0 20 20" className="w-3.5 h-3.5 fill-slate-400 ml-1">
+                      <path d="M13.6 2.6a2 2 0 0 1 2.8 2.8l-9.5 9.5-3.7.9.9-3.7 9.5-9.5Z" />
+                    </svg>
+                  </button>
+                );
+              })()}
             </div>
 
             {/* W / L numbers */}
-            <div className="grid grid-cols-2 divide-x divide-slate-700/60">
+            <div className="relative grid grid-cols-2 divide-x divide-slate-700/60">
+              {seasonRecord.streak && (
+                <span
+                  className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none px-2 py-0.5 rounded-full text-[11px] font-black tracking-[0.15em] tabular-nums border ${
+                    seasonRecord.streak.win
+                      ? 'bg-emerald-950 border-emerald-600/70 text-emerald-300'
+                      : 'bg-red-950 border-red-600/70 text-red-300'}`}
+                  title={`${seasonRecord.streak.count}-match ${seasonRecord.streak.win ? 'winning' : 'losing'} streak`}
+                >
+                  {seasonRecord.streak.win ? 'W' : 'L'}{seasonRecord.streak.count}
+                </span>
+              )}
               <button
                 className="py-5 text-center hover:bg-emerald-900/20 active:bg-emerald-900/30 transition-colors"
                 onClick={() => navigate('/reports?result=win')}
@@ -1080,8 +1100,23 @@ export function HomePage() {
               </span>
             </div>
 
+            {/* Before the first match: the season opener instead of a row of 0–0s */}
+            {seasonRecord.total === 0 && seasonRecord.opener && (
+              <div className="px-4 py-2.5 border-t border-slate-700/60 text-center text-xs">
+                <span className="font-black tracking-[0.2em] text-primary">SEASON OPENER</span>
+                <span className="text-slate-400 font-black mx-2">·</span>
+                <span className="text-white font-semibold">
+                  vs {seasonRecord.opener.opponent}
+                  {' · '}
+                  {new Date(seasonRecord.opener.date).toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })}
+                  {seasonRecord.opener.location && ` · ${seasonRecord.opener.location[0].toUpperCase()}${seasonRecord.opener.location.slice(1)}`}
+                </span>
+              </div>
+            )}
+
             {/* Stats row — always shows every stat, even at 0-0 / no data, so the
                 layout doesn't jump around as a season fills in. */}
+            {!(seasonRecord.total === 0 && seasonRecord.opener) && (
             <div className="px-4 py-2.5 border-t border-slate-700/60 flex items-center justify-center gap-3 flex-wrap text-xs">
               <span className="font-black text-primary">
                 {fmtPct(seasonRecord.winPct)} MATCH WIN
@@ -1111,6 +1146,7 @@ export function HomePage() {
                 {seasonRecord.last5W}–{seasonRecord.last5L} <span className="text-white">LAST {seasonRecord.last5Count || 5}</span>
               </span>
             </div>
+            )}
 
             {/* Season progress bar */}
             {seasonRecord.matchProgress.total > 0 && (
