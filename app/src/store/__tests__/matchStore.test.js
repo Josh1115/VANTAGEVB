@@ -512,4 +512,17 @@ describe('substitutePlayer — player the libero replaced', () => {
     await st.getState().swapLibero(libero); // libero out — P5 restored
     expect(st.getState().lineup.map((s) => s.playerId)).toEqual([1, 2, 3, 4, 5, 6]);
   });
+
+  it('still allows subbing that player back in once the libero has left the court', async () => {
+    const st = useMatchStore;
+    st.getState().resetMatch();
+    const lineup = Array.from({ length: 6 }, (_, i) => ({ position: i + 1, serveOrder: i + 1, playerId: i + 1, playerName: `P${i + 1}`, jersey: String(i + 1), positionLabel: 'OH' }));
+    st.setState({ lineup, currentSetId: 1, maxSubsPerSet: 18, subsUsed: 0, liberoId: 99, liberoName: 'Libby', liberoJersey: '9' });
+    await st.getState().swapLibero({ id: 99, name: 'Libby', jersey_number: 9 }, 4); // libero in for P5
+    st.getState().rotateForward();
+    st.getState().rotateForward(); // P5's slot reaches the front row — libero auto-swaps out
+    expect(st.getState().liberoOnCourt).toBe(false);
+    expect(await st.getState().substitutePlayer(5, { id: 7, name: 'P7', jersey_number: 7 })).toBe(true);
+    expect(await st.getState().substitutePlayer(7, { id: 5, name: 'P5', jersey_number: 5 })).toBe(true);
+  });
 });
