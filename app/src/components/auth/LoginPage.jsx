@@ -719,18 +719,6 @@ export function LoginPage({ onSignup }) {
                 </p>
               </div>
 
-              {/* ── Feature Card: FamilyScope ── */}
-              <div className="w-full mt-8">
-                <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">
-                  FAMILYSCOPE
-                </p>
-                <img loading="lazy" src="/screenshots/FamilyScope.png" alt="FamilyScope parent view" className="w-full rounded-xl" />
-
-                <p className="text-sm text-slate-400 mt-3">
-                  FamilyScope gives parents and fans a live, read-only view of the match right on their phone — no app download, no account required. Share a QR code or link before tip-off and they'll see the live score, set-by-set results, a real-time action feed updated after every rally, and the full box score. You stay focused on the sideline; they stay connected to every point.
-                </p>
-              </div>
-
               {/* ── Feature Card: Teams Page ── */}
               <div className="w-full mt-8">
                 <p className="text-[16px] font-black uppercase leading-none tracking-[0.15em] mb-3 text-white">

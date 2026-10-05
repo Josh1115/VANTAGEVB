@@ -5,8 +5,6 @@ import { db } from '../db/schema';
 import { useMatchStore, reconstructSetState } from '../store/matchStore';
 import { useShallow } from 'zustand/react/shallow';
 import { computePlayerStats, computeTeamStats, computeSeasonStats } from '../stats/engine';
-import { computeMatchSnapshot } from '../utils/pvSnapshot';
-import { publishPvStats } from '../utils/supabase';
 import { SET_STATUS, FORMAT, SIDE, MATCH_STATUS } from '../constants';
 import { useRecordAlerts } from '../hooks/useRecordAlerts';
 import { useWakeLock } from '../hooks/useWakeLock';
@@ -73,7 +71,6 @@ export function LiveMatchPage() {
   const [aceZoneHints,        setAceZoneHints]        = useState({}); // { [playerId]: { [zone]: count } }
   const [seasonRotation,      setSeasonRotation]      = useState(null);
   const [seasonId,            setSeasonId]            = useState(null);
-  const [hasFamilyScope,      setHasFamilyScope]      = useState(false);
   const [flipLayout,          setFlipLayout]          = useState(() => getBoolStorage(STORAGE_KEYS.FLIP_LAYOUT));
   const [courtViewMode,       setCourtViewMode]       = useState(() => {
     const saved = getStorageItem(STORAGE_KEYS.COURT_VIEW_MODE);
@@ -99,18 +96,14 @@ export function LiveMatchPage() {
     recordHomeRotError,
     resetMatch,
     setMatch, setLineup, setPlayerNicknames, setLibero, setLibero2, swapLibero,
-    startBroadcast, stopBroadcast,
     endSet, endMatch, finishRevisedSet, clearPendingSetWin,
     confirmServeZone, dismissServeZoneModal, loadServeReticles, loadSetFormationData,
     pendingSetWin, ourScore, oppScore, ourSetsWon, oppSetsWon, ourTimeouts, oppTimeouts, format,
     pendingServeContact, serveReticles,
-    teamId, lineup, setNumber, currentRun, broadcastEnabled,
+    teamId, lineup, setNumber, currentRun,
   } = useMatchStore(useShallow((s) => ({
     recordHomeRotError:   s.recordHomeRotError,
     resetMatch:           s.resetMatch,
-    startBroadcast:       s.startBroadcast,
-    stopBroadcast:        s.stopBroadcast,
-    broadcastEnabled:     s.broadcastEnabled,
     setMatch:             s.setMatch,
     setLineup:            s.setLineup,
     setPlayerNicknames:   s.setPlayerNicknames,
@@ -193,25 +186,6 @@ export function LiveMatchPage() {
     try { return localStorage.getItem(STORAGE_KEYS.WAKE_LOCK) === '1'; } catch { return false; }
   }, []);
   useWakeLock(wakeLockEnabled);
-
-  // Reconnect broadcast if network comes back after going offline mid-match
-  useEffect(() => {
-    if (!ready) return;
-    const handleOnline = async () => {
-      const s = useMatchStore.getState();
-      if (s.broadcastEnabled) return;
-      const match = await db.matches.get(matchId).catch(() => null);
-      if (!match?.pv_token) return;
-      startBroadcast(match.pv_token, session?.access_token);
-    };
-    const handleOffline = () => stopBroadcast();
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [ready, matchId, startBroadcast, stopBroadcast, session]);
 
   // Haptic feedback on score change
   const prevScoreRef = useRef({ our: ourScore, opp: oppScore });
@@ -429,23 +403,9 @@ export function LiveMatchPage() {
       }
 
       if (match.season_id) setSeasonId(match.season_id);
-      setHasFamilyScope(!!match.pv_token && navigator.onLine);
       loadSetFormationData(currentSet);
       setReady(true);
       await loadServeReticles(currentSet.id);
-
-      // Auto-broadcast: publish snapshot + start live feed if online
-      if (match.pv_token && navigator.onLine) {
-        try {
-          const snapshot = await computeMatchSnapshot(matchId);
-          if (snapshot) {
-            await publishPvStats(match.pv_token, team?.name ?? '', snapshot, session?.access_token);
-          }
-        } catch {
-          // non-critical — silent fail
-        }
-        startBroadcast(match.pv_token, session?.access_token);
-      }
 
       // Load ace zone hints + season rotation baseline (non-critical, fires after UI is ready)
       if (match.season_id) {
@@ -605,8 +565,6 @@ export function LiveMatchPage() {
           onAssignLibero={!liberoPlayer ? () => { setLiberoPickerSlot(1); setLiberoPickerOpen(true); } : undefined}
           onAssignLibero2={liberoPlayer && !liberoPlayer2 ? () => { setLiberoPickerSlot(2); setLiberoPickerOpen(true); } : undefined}
           flipLayout={flipLayout}
-          broadcastEnabled={broadcastEnabled}
-          hasFamilyScope={hasFamilyScope}
         />
         <div className="flex flex-row flex-1 min-h-0">
           <CourtGrid aceZoneHints={aceZoneHints} courtViewMode={courtViewMode} />
@@ -663,7 +621,6 @@ export function LiveMatchPage() {
           opponentName={opponentName}
           onEndMatch={async (winner) => {
             await endMatch(winner);
-            stopBroadcast();
             autoSaveBackup('match_end', { session, teamsAllowed, matchLimit, isMaster }).catch(() => {});
             setExportPromptNav(() => () => {
               if (winner === SIDE.US) {
@@ -764,7 +721,6 @@ export function LiveMatchPage() {
                 navigate(`/matches/${matchIdParam}/summary`);
               } else if (isMatchOver) {
                 await endMatch(pendingSetWin);
-                stopBroadcast();
                 autoSaveBackup('match_end', { session, teamsAllowed, matchLimit, isMaster }).catch(() => {});
                 clearPendingSetWin();
                 const winner = pendingSetWin;

@@ -33,7 +33,6 @@ const ServeReceivePage = lazy(() => import('./pages/tools/ServeReceivePage').the
 const ServeTrackerPage = lazy(() => import('./pages/tools/ServeTrackerPage').then(m => ({ default: m.ServeTrackerPage })));
 const PracticeGamePage = lazy(() => import('./pages/tools/PracticeGamePage').then(m => ({ default: m.PracticeGamePage })));
 const SetterReadsPage  = lazy(() => import('./pages/tools/SetterReadsPage').then(m => ({ default: m.SetterReadsPage })));
-const FamilyScopeViewPage  = lazy(() => import('./pages/ParentViewPage').then(m => ({ default: m.FamilyScopeViewPage })));
 const TermsPage                = lazy(() => import('./pages/TermsPage').then(m => ({ default: m.TermsPage })));
 const PrivacyPolicyPage        = lazy(() => import('./pages/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
 const HelpServeReceivePage     = lazy(() => import('./pages/HelpServeReceivePage').then(m => ({ default: m.HelpServeReceivePage })));
@@ -66,11 +65,6 @@ function S({ children }) {
 }
 
 export const router = createBrowserRouter([
-  // Public FamilyScope view — outside the main Layout (no navbar)
-  {
-    path: '/fs/:token',
-    element: <S><FamilyScopeViewPage /></S>,
-  },
   {
     path: '/',
     element: <Layout />,

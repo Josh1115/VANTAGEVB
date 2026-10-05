@@ -32,7 +32,6 @@ export function TermsContent() {
           <li>Serve receive pattern design and rotation optimization tools</li>
           <li>Practice tools including serve tracking and serve receive drills</li>
           <li>All-time records tracking for individual players, teams, and programs</li>
-          <li>FamilyScope live sharing — a real-time, read-only view for parents and fans</li>
           <li>Cloud backup and multi-device data sync</li>
           <li>Data export in CSV, PDF, and JSON formats</li>
         </ul>
@@ -83,10 +82,10 @@ export function TermsContent() {
         </p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li><span className="text-white font-semibold">On your device</span> — all match contacts, rosters, stats, and settings are stored in your device's local browser storage (IndexedDB). This is the primary data store and works offline.</li>
-          <li><span className="text-white font-semibold">In the cloud (Supabase)</span> — your account profile, subscription status, cloud backups you initiate, and FamilyScope shared snapshots are stored on Supabase servers located in the United States.</li>
+          <li><span className="text-white font-semibold">In the cloud (Supabase)</span> — your account profile, subscription status, and cloud backups you initiate are stored on Supabase servers located in the United States.</li>
         </ul>
         <p>
-          Data stored on Supabase is protected by row-level security — only your account can read or write your own data, except for FamilyScope share links which are intentionally accessible to anyone with the link.
+          Data stored on Supabase is protected by row-level security — only your account can read or write your own data.
         </p>
         <p>
           We do not sell, rent, or share your personal data or coaching data with third parties, except as required by law or to operate the App (Supabase for auth/storage, Stripe for payments).
@@ -96,22 +95,7 @@ export function TermsContent() {
         </p>
       </Section>
 
-      <Section title="6. FamilyScope Live Sharing">
-        <p>
-          FamilyScope allows you to share a live, read-only view of a match with parents and fans via a unique link or QR code. When FamilyScope is active:
-        </p>
-        <ul className="list-disc list-inside space-y-1 ml-2">
-          <li>Live score, rally-by-rally updates, and box score data are transmitted to Supabase and made available to anyone who holds the share link</li>
-          <li>The share link is publicly accessible — treat it like a semi-public URL</li>
-          <li>You can regenerate the link at any time to revoke access for previous recipients</li>
-          <li>You are responsible for deciding what data to share and with whom</li>
-        </ul>
-        <p>
-          Do not include sensitive or private information (such as player addresses or medical information) in any field that may appear in a FamilyScope share.
-        </p>
-      </Section>
-
-      <Section title="7. Intellectual Property">
+      <Section title="6. Intellectual Property">
         <p>
           The App, including its design, code, statistical algorithms (including the Vantage Stat Engine and VER metric), graphics, and all associated content, is proprietary and protected by applicable intellectual property laws. You may not:
         </p>
@@ -125,7 +109,7 @@ export function TermsContent() {
         </p>
       </Section>
 
-      <Section title="8. Acceptable Use">
+      <Section title="7. Acceptable Use">
         <p>You agree to use the App only for lawful purposes. You may not use the App to:</p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>Record or distribute information about minors in a manner that violates applicable privacy laws</li>
@@ -136,7 +120,7 @@ export function TermsContent() {
         </ul>
       </Section>
 
-      <Section title="9. Data Loss and Backup">
+      <Section title="8. Data Loss and Backup">
         <p>
           Local device data can be lost due to events outside our control, including browser data being cleared, device failure, app reinstallation, or storage quota being exceeded. Cloud backups reduce this risk but are not a guarantee against all loss scenarios.
         </p>
@@ -148,7 +132,7 @@ export function TermsContent() {
         </p>
       </Section>
 
-      <Section title="10. Disclaimer of Warranties">
+      <Section title="9. Disclaimer of Warranties">
         <p>
           THE APP IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. TO THE FULLEST EXTENT PERMITTED BY LAW, THE DEVELOPERS DISCLAIM ALL WARRANTIES, INCLUDING BUT NOT LIMITED TO:
         </p>
@@ -163,7 +147,7 @@ export function TermsContent() {
         </p>
       </Section>
 
-      <Section title="11. Limitation of Liability">
+      <Section title="10. Limitation of Liability">
         <p>
           TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE DEVELOPERS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO:
         </p>
@@ -171,7 +155,7 @@ export function TermsContent() {
           <li>Loss of data or statistics</li>
           <li>Loss of revenue or business opportunity</li>
           <li>Decisions made based on App analytics or statistics</li>
-          <li>Service interruptions affecting FamilyScope live sharing or cloud sync</li>
+          <li>Service interruptions affecting cloud sync</li>
           <li>Any other damages arising from use or inability to use the App</li>
         </ul>
         <p>
@@ -179,18 +163,18 @@ export function TermsContent() {
         </p>
       </Section>
 
-      <Section title="12. Third-Party Services">
+      <Section title="11. Third-Party Services">
         <p>
           Vantage integrates with the following third-party services, each governed by their own terms of service and privacy policies:
         </p>
         <ul className="list-disc list-inside space-y-1 ml-2">
-          <li><span className="text-white font-semibold">Supabase</span> — provides account authentication, cloud data storage, and real-time FamilyScope sharing. Data processed by Supabase is subject to Supabase's Privacy Policy.</li>
+          <li><span className="text-white font-semibold">Supabase</span> — provides account authentication, and cloud data storage. Data processed by Supabase is subject to Supabase's Privacy Policy.</li>
           <li><span className="text-white font-semibold">Stripe</span> — processes all subscription payments. Payment card data is handled entirely by Stripe and is never stored by us. Use of Stripe is subject to Stripe's Services Agreement.</li>
           <li><span className="text-white font-semibold">MaxPreps</span> — the App supports optional stat export in a MaxPreps-compatible format. Exported files must be manually uploaded by you. The App does not communicate directly with MaxPreps servers.</li>
         </ul>
       </Section>
 
-      <Section title="13. Changes to These Terms">
+      <Section title="12. Changes to These Terms">
         <p>
           We reserve the right to update or modify these Terms at any time. Changes will be reflected by an updated "Last updated" date at the top of this page. For material changes, we will make reasonable efforts to notify registered users via email or an in-app notice.
         </p>
@@ -199,13 +183,13 @@ export function TermsContent() {
         </p>
       </Section>
 
-      <Section title="14. Governing Law">
+      <Section title="13. Governing Law">
         <p>
           These Terms shall be governed by and construed in accordance with the laws of the State of Illinois, United States, without regard to conflict of law principles. Any disputes arising from these Terms or your use of the App shall be subject to the exclusive jurisdiction of the courts of competent jurisdiction in Illinois.
         </p>
       </Section>
 
-      <Section title="15. Contact">
+      <Section title="14. Contact">
         <p>
           If you have questions about these Terms, your account, billing, or data deletion requests, contact us at:
         </p>

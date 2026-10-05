@@ -41,7 +41,7 @@ export function PrivacyPolicyContent() {
 
         <p className="text-white font-semibold mt-2">Coaching Data You Enter</p>
         <p>
-          All team names, player names, jersey numbers, match statistics, rotation configurations, and related coaching data are entered by you. This data is stored locally on your device (in your browser's IndexedDB storage) and, if you use cloud backup or FamilyScope, also on Supabase servers. We do not access, analyze, or sell this data.
+          All team names, player names, jersey numbers, match statistics, rotation configurations, and related coaching data are entered by you. This data is stored locally on your device (in your browser's IndexedDB storage) and, if you use cloud backup, also on Supabase servers. We do not access, analyze, or sell this data.
         </p>
 
         <p className="text-white font-semibold mt-2">Subscription and Billing Information</p>
@@ -71,7 +71,7 @@ export function PrivacyPolicyContent() {
         <p>We use the information we collect only to:</p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>Authenticate your account and maintain your session</li>
-          <li>Store and sync your coaching data when you use cloud backup or FamilyScope</li>
+          <li>Store and sync your coaching data when you use cloud backup</li>
           <li>Manage your subscription and grant access to paid features</li>
           <li>Respond to support requests you send to vantagevb@gmail.com</li>
           <li>Send transactional emails (account confirmation, password reset) via Supabase</li>
@@ -82,12 +82,12 @@ export function PrivacyPolicyContent() {
       <Section title="6. How Your Data Is Stored">
         <p className="text-white font-semibold">On Your Device (Primary Storage)</p>
         <p>
-          All match contacts, rosters, statistics, and app settings are stored in your browser's local IndexedDB storage. This data never leaves your device unless you explicitly use cloud backup or FamilyScope. It is not accessible to us. Clearing your browser data or uninstalling the app will permanently delete this local data.
+          All match contacts, rosters, statistics, and app settings are stored in your browser's local IndexedDB storage. This data never leaves your device unless you explicitly use cloud backup. It is not accessible to us. Clearing your browser data or uninstalling the app will permanently delete this local data.
         </p>
 
         <p className="text-white font-semibold mt-2">In the Cloud (Supabase)</p>
         <p>
-          Your account profile and subscription status are stored on Supabase servers located in the United States. Cloud backups and FamilyScope shared snapshots are also stored on Supabase and are protected by row-level security — only your authenticated account can read or write your own data, except for FamilyScope links which are intentionally accessible to anyone who holds the link.
+          Your account profile and subscription status are stored on Supabase servers located in the United States. Cloud backups are also stored on Supabase and are protected by row-level security — only your authenticated account can read or write your own data.
         </p>
       </Section>
 
@@ -99,7 +99,7 @@ export function PrivacyPolicyContent() {
           We do not independently identify, contact, or process data about individual student athletes. You are responsible for ensuring your use of the App complies with all applicable laws and institutional policies governing student data, including FERPA (Family Educational Rights and Privacy Act) and any applicable state privacy laws.
         </p>
         <p>
-          We recommend using jersey numbers rather than full names where possible, and using the FamilyScope feature only to share information you are authorized to disclose.
+          We recommend using jersey numbers rather than full names where possible.
         </p>
       </Section>
 
@@ -107,7 +107,7 @@ export function PrivacyPolicyContent() {
         <p>Vantage uses the following third-party services. Each governs its own data practices:</p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>
-            <span className="text-white font-semibold">Supabase</span> — account authentication, cloud storage, and FamilyScope real-time sharing. Data processed by Supabase is subject to Supabase's Privacy Policy and is stored in the United States.
+            <span className="text-white font-semibold">Supabase</span> — account authentication and cloud storage. Data processed by Supabase is subject to Supabase's Privacy Policy and is stored in the United States.
           </li>
           <li>
             <span className="text-white font-semibold">Stripe</span> — subscription payment processing. Payment card data is handled entirely by Stripe and is never transmitted to or stored by us.
@@ -125,11 +125,6 @@ export function PrivacyPolicyContent() {
         <p className="text-white font-semibold mt-2">Cloud data</p>
         <p>
           Your Supabase account record and any cloud backups are retained while your account is active. To request deletion of your account and all associated cloud data, email vantagevb@gmail.com. We will process deletion requests within 30 days.
-        </p>
-
-        <p className="text-white font-semibold mt-2">FamilyScope snapshots</p>
-        <p>
-          FamilyScope shared snapshots are stored on Supabase for the duration of an active match share session. You can revoke a share link at any time from within the App, which removes the snapshot from Supabase.
         </p>
       </Section>
 

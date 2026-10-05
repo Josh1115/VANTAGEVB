@@ -38,7 +38,6 @@ export const ALL_FEATURES = [
   'Vantage Point - Full Live Match Stat Entry',
   'Complete Access To Records, History, And Stats Pages',
   'Detailed Player & Team Analysis',
-  'Family Scope - Live Gamecast-Like Sharing',
   'Rotation Analysis & Optimization',
   'Opponent Scouting & Tracking',
   'Practice Tools',

@@ -18,7 +18,6 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { TabBar } from '../components/ui/Tab';
 import { Button } from '../components/ui/Button';
 import { Spinner } from '../components/ui/Spinner';
-import { PvShareSheet } from '../components/parentvantage/PvShareSheet';
 import { StatTable } from '../components/stats/StatTable';
 import { ServeReticlePlot, PlayerServePlacementCard } from '../components/stats/ServeReticlePlot';
 import { RotationSpotlight } from '../components/stats/RotationSpotlight';
@@ -818,7 +817,6 @@ export function MatchSummaryPage() {
   const [boxScoreSet, setBoxScoreSet] = useState(null);
   const [statsVersion, setStatsVersion] = useState(0);
   const [showCorrections, setShowCorrections] = useState(false);
-  const [showPvShare,     setShowPvShare]     = useState(false);
   const [editOpen,      setEditOpen]      = useState(false);
   const [editForm, setEditForm] = useState({
     opp: '', oppAbbr: '', oppRecord: '', date: '', loc: 'home',
@@ -1628,11 +1626,6 @@ export function MatchSummaryPage() {
               <Button size="sm" variant="secondary" disabled={!stats || sharingCard} onClick={handleDownloadCard}>
                 {sharingCard ? '…' : '⬇ Card'}
               </Button>
-              {match?.pv_token && (
-                <Button size="sm" variant="secondary" onClick={() => setShowPvShare(true)}>
-                  FamilyScope
-                </Button>
-              )}
               <Button size="sm" variant="secondary" disabled={!stats} onClick={() => setShowCorrections(true)}>
                 ✎ Correct
               </Button>
@@ -2597,15 +2590,6 @@ export function MatchSummaryPage() {
           players={playerList}
           onClose={() => setBoxScoreSet(null)}
           onSaved={() => { setBoxScoreSet(null); setStatsVersion((v) => v + 1); }}
-        />
-      )}
-
-      {showPvShare && match?.pv_token && (
-        <PvShareSheet
-          match={match}
-          teamName={match.team_name ?? null}
-          logoDataUrl={teamColors?.logoDataUrl ?? null}
-          onClose={() => setShowPvShare(false)}
         />
       )}
 

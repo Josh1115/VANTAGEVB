@@ -5,80 +5,12 @@ export const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-// ── FamilyScope HUB helpers ───────────────────────────────────────────────────
-//
-// pv_stats has no client-readable SELECT policy — reads go through the
-// get_pv_stats RPC (SECURITY DEFINER, looks up by token) and live updates go
-// over Realtime Broadcast on a channel named after the token, not Postgres
-// Changes. Both mean a caller can only ever act on the one token they already
-// have; they can't enumerate every team's data via a filter-less REST call
-// the way the old public-SELECT + Postgres Changes setup allowed.
-
-function pvChannel(token) {
-  return supabase.channel(`pv-changes-${token}`);
-}
-
-// Raw REST call (not supabase-js) using an access token already held in React
-// state, so this never triggers supabase-js's getSession()/__loadSession()
-// chain — which can spuriously fire SIGNED_OUT on iOS Safari and cause these
-// writes to be rejected by the "authenticated only" RLS policy on pv_stats.
-async function pvStatsRequest(method, query, body, accessToken) {
-  const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/pv_stats${query}`;
-  const res = await fetch(url, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-      Prefer: method === 'POST' ? 'resolution=merge-duplicates,return=minimal' : 'return=minimal',
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`pv_stats ${method} failed: ${res.status}`);
-}
-
-export async function publishPvStats(token, teamName, payload, accessToken) {
-  await pvStatsRequest(
-    'POST',
-    '?on_conflict=token',
-    { token, team_name: teamName, payload, updated_at: new Date().toISOString() },
-    accessToken
-  );
-  pvChannel(token).httpSend('update', { payload }).catch(() => {});
-}
-
-export async function fetchPvStats(token) {
-  const { data, error } = await supabase.rpc('get_pv_stats', { p_token: token });
-  if (error) return null;
-  return data;
-}
-
 // ── Marketing program counter ─────────────────────────────────────────────────
 
 export async function fetchProgramCount(state = 'IL') {
   const { data, error } = await supabase.rpc('get_program_count', { p_state: state });
   if (error) return null;
   return data;
-}
-
-// Writes lightweight live score state to the DB after each point.
-// Authenticated coach only — RLS rejects anon/wrong-owner writes.
-export async function updatePvLiveScore(token, liveState, accessToken) {
-  await pvStatsRequest(
-    'PATCH',
-    `?token=eq.${encodeURIComponent(token)}`,
-    { live_score: liveState, updated_at: new Date().toISOString() },
-    accessToken
-  );
-  pvChannel(token).httpSend('update', { live_score: liveState }).catch(() => {});
-}
-
-// Subscribe to live broadcast updates for a specific token.
-export function subscribePvChanges(token, onUpdate) {
-  const channel = pvChannel(token)
-    .on('broadcast', { event: 'update' }, ({ payload }) => onUpdate(payload))
-    .subscribe();
-  return channel;
 }
 
 // ── Trial match-slot enforcement ────────────────────────────────────────────

@@ -254,7 +254,7 @@ function firstInitialLastName(full) {
   return `${parts[0][0]}. ${parts.slice(1).join(' ')}`;
 }
 
-export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlayer2, teamName, opponentName, onTimeoutCalled, onAssignLibero, onAssignLibero2, flipLayout = false, broadcastEnabled = false, hasFamilyScope = false }) {
+export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlayer2, teamName, opponentName, onTimeoutCalled, onAssignLibero, onAssignLibero2, flipLayout = false }) {
   const flipped = flipLayout;
   const {
     ourScore, oppScore, ourSetsWon, oppSetsWon, setNumber, serveSide,
@@ -387,24 +387,11 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
         style={{ height: 'calc(10vmin + env(safe-area-inset-top))', paddingTop: 'env(safe-area-inset-top)', background: '#08090b', borderBottom: '1px solid rgba(232,83,11,0.2)' }}
       >
 
-        {/* ── Far left: pills row (FamScope / ROT / NXT SRV) sitting directly above
+        {/* ── Far left: pills row (ROT / NXT SRV) sitting directly above
              the sets-won box + timeout circles + sub counter ── */}
         <div className="flex flex-col items-start justify-center shrink-0">
           {/* Pills row — left edge lines up with the sets-won box below it */}
           <div className="mb-[0.4vmin] flex items-center gap-[0.6vmin]">
-            {(broadcastEnabled || hasFamilyScope) && (
-              broadcastEnabled ? (
-                <div className="flex items-center gap-[0.6vmin] bg-slate-800/90 border border-slate-600/60 text-slate-400 text-[1.2vmin] font-bold px-[1.2vmin] py-[0.3vmin] rounded-full pointer-events-none">
-                  <span className="w-[1vmin] h-[1vmin] rounded-full bg-red-500 animate-pulse shrink-0" />
-                  FamScope
-                </div>
-              ) : (
-                <div className="flex items-center gap-[0.6vmin] bg-slate-800/90 border border-slate-600/60 text-slate-400 text-[1.2vmin] font-bold px-[1.2vmin] py-[0.3vmin] rounded-full pointer-events-none">
-                  <span className="w-[1vmin] h-[1vmin] flex items-center justify-center text-slate-500 shrink-0 leading-none" style={{ fontSize: '0.9vmin' }}>✕</span>
-                  FamScope
-                </div>
-              )
-            )}
             <div className="flex items-center gap-[0.4vmin] bg-purple-950/40 border border-purple-700/60 text-purple-400 text-[1.2vmin] font-bold px-[1.2vmin] py-[0.3vmin] rounded pointer-events-none">
               ROT - <span className="tabular-nums">{rotationNum}</span>
             </div>
@@ -573,7 +560,6 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
 
         {/* ── Far right: their timeouts + THEM sets won  (swaps when flipped) ── */}
         <div className="flex flex-col items-end justify-center shrink-0">
-          {(broadcastEnabled || hasFamilyScope) && <div className="mb-[0.4vmin] invisible text-[1.2vmin] py-[0.3vmin]">·</div>}
           <div className="flex items-center gap-1 shrink-0">
             {flipped ? (
               // Flipped: show our corner on the right

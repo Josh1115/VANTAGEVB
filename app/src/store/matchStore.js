@@ -458,10 +458,6 @@ const INITIAL_STATE = {
   plannedSubs:            [],   // [{ rotation, player_out_so, player_in_id }]
   _undoInFlight:          false, // guard against concurrent undo taps
   _hblkInFlight:          false, // guard against concurrent HBLK double-taps
-
-  broadcastEnabled:       false,
-  _pvToken:               null,
-  _pvAccessToken:         null,
 };
 
 export const useMatchStore = create((set, get) => ({
@@ -476,43 +472,6 @@ export const useMatchStore = create((set, get) => ({
     set(INITIAL_STATE);
   },
 
-  startBroadcast: (token, accessToken) => {
-    set({ broadcastEnabled: true, _pvToken: token, _pvAccessToken: accessToken });
-  },
-
-  stopBroadcast: () => {
-    set({ broadcastEnabled: false, _pvToken: null, _pvAccessToken: null });
-  },
-
-  broadcastUpdate: async () => {
-    const s = get();
-    if (!s.broadcastEnabled || !s._pvToken) return;
-    const { updatePvLiveScore, publishPvStats } = await import('../utils/supabase');
-    updatePvLiveScore(s._pvToken, {
-      ourScore:    s.ourScore,
-      oppScore:    s.oppScore,
-      ourSetsWon:  s.ourSetsWon,
-      oppSetsWon:  s.oppSetsWon,
-      setNumber:   s.setNumber,
-      serveSide:   s.serveSide,
-      rallyCount:  s.rallyCount,
-      lastFeedItem: s.lastFeedItem,
-      lineup:      s.lineup.map(sl => ({
-        position:  sl.position,
-        playerId:  sl.playerId,
-        name:      sl.playerName,
-        jersey:    sl.jersey,
-        posLabel:  sl.positionLabel,
-      })),
-      ts: Date.now(),
-    }, s._pvAccessToken).catch(() => {});
-    // Re-publish full snapshot so FamilyScope player stats stay live.
-    if (s.matchId) {
-      const { computeMatchSnapshot } = await import('../utils/pvSnapshot');
-      const snapshot = await computeMatchSnapshot(s.matchId).catch(() => null);
-      if (snapshot) publishPvStats(s._pvToken, snapshot.ourTeam?.name ?? '', snapshot, s._pvAccessToken).catch(() => {});
-    }
-  },
   setLineup:          (lineup, rotationNum) => set({ lineup, ...(rotationNum !== undefined ? { rotationNum } : {}) }),
   setPlayerNicknames: (map)    => set({ playerNicknames: map }),
   setTeamJerseyColor:   (color) => {
@@ -659,8 +618,6 @@ export const useMatchStore = create((set, get) => ({
 
     const winner = checkSetWin(ourScore, oppScore, setNumber, s.format, s.lastSetScore);
     if (winner) set({ pendingSetWin: winner });
-
-    get().broadcastUpdate();
 
     // 3. Persist rally to DB — best effort. The score is already committed to
     //   Zustand state above and must NOT be rolled back on failure: a dropped
@@ -1572,7 +1529,6 @@ export const useMatchStore = create((set, get) => ({
         oppSetsWon:    newSetsThem,
         pendingSetWin: null,
       });
-      get().broadcastUpdate();
     } catch (err) {
       useUiStore.getState().showToast('Failed to end set. Please try again.', 'error');
       throw err;

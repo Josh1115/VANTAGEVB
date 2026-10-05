@@ -12,7 +12,6 @@ import { serveOrderToZone, rotationFromStartZone } from '../components/court/Cou
 import { matchDateISO, todayLocalDateStr, todayMatchDateISO, matchDay } from '../utils/matchDate';
 import { LineupForm } from '../components/match/LineupForm';
 import { usePlan } from '../hooks/usePlan';
-import { PvShareSheet } from '../components/parentvantage/PvShareSheet';
 import { supabase, consumeMatchSlotStrict } from '../utils/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { autoSaveBackup } from '../stats/backup';
@@ -75,8 +74,6 @@ export function MatchSetupPage() {
   const [matchTime, setMatchTime] = useState('');
   const [saving,         setSaving]         = useState(false);
   const [error,          setError]          = useState('');
-  const [pvShareMatch,   setPvShareMatch]   = useState(null);
-  const [pvNav,          setPvNav]          = useState(null);
   const [loadPickerOpen, setLoadPickerOpen] = useState(false);
   const [manualEntry,    setManualEntry]    = useState(false);
   const [manualSets,     setManualSets]     = useState([{ ourScore: '', oppScore: '' }]);
@@ -107,10 +104,6 @@ export function MatchSetupPage() {
     [selectedSeason?.team_id]
   );
 
-  const orgLogoDataUrl = useLiveQuery(
-    () => selectedTeam?.org_id ? db.organizations.get(selectedTeam.org_id).then(o => o?.logo_data_url ?? null) : Promise.resolve(null),
-    [selectedTeam?.org_id]
-  );
 
   const players = useLiveQuery(
     () => selectedSeason
@@ -308,8 +301,7 @@ export function MatchSetupPage() {
       const savedMatch = await db.matches.get(matchId);
       // Undo any "deleted" marker for this same game so the next sync keeps it.
       if (savedMatch) await clearMatchTombstone(savedMatch);
-      setPvShareMatch(savedMatch);
-      setPvNav(`/matches/${matchId}/summary`);
+      navigate(`/matches/${matchId}/summary`);
       // Push right away instead of waiting for the next app-open/manual sync —
       // fire-and-forget, same pattern as the live-scoring finish flow.
       autoSaveBackup('match_end', { session, teamsAllowed, matchLimit, isMaster }).catch(() => {});
@@ -508,8 +500,7 @@ export function MatchSetupPage() {
       const savedMatch = await db.matches.get(effectiveMatchId);
       // Undo any "deleted" marker for this same game so the next sync keeps it.
       if (savedMatch) await clearMatchTombstone(savedMatch);
-      setPvShareMatch(savedMatch);
-      setPvNav(`/matches/${effectiveMatchId}/live`);
+      navigate(`/matches/${effectiveMatchId}/live`);
     } catch (err) {
       if (err.code === 'MATCH_LIMIT') { setError(err.message || 'This season has reached its match limit.'); return; }
       showToast('Failed to create match. Try again.', 'error');
@@ -1061,17 +1052,6 @@ export function MatchSetupPage() {
           </Button>
         )}
       </div>
-
-      {pvShareMatch && pvNav && (
-        <PvShareSheet
-          match={pvShareMatch}
-          teamName={selectedSeason?.teamName ?? null}
-          logoDataUrl={orgLogoDataUrl ?? null}
-          onClose={() => { setPvShareMatch(null); navigate(pvNav); }}
-          onContinue={() => { setPvShareMatch(null); navigate(pvNav); }}
-          continueLabel={pvNav.includes('/live') ? 'Start Match →' : 'View Summary →'}
-        />
-      )}
     </div>
   );
 }

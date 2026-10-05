@@ -16,7 +16,6 @@ import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { SwipeableMatchCard } from '../ui/SwipeableMatchCard';
 import { PostSeasonModal } from '../shared/PostSeasonModal';
 import { applyInferredSeasonFinish } from '../../utils/seasonUtils';
-import { PvShareSheet } from '../parentvantage/PvShareSheet';
 import { ScheduleImportModal } from '../match/ScheduleImportModal';
 import { usePlan } from '../../hooks/usePlan';
 import { consumeMatchSlotStrict } from '../../utils/supabase';
@@ -54,12 +53,6 @@ export function SeasonScheduleTab({ seasonId }) {
     return { season, team, matches, playerNames, playerJerseys };
   }, [seasonId]);
 
-  const orgLogoDataUrl = useLiveQuery(
-    () => data?.team?.org_id
-      ? db.organizations.get(data.team.org_id).then(o => o?.logo_data_url ?? null)
-      : Promise.resolve(null),
-    [data?.team?.org_id]
-  );
 
   const historyEntry = useLiveQuery(
     () => data?.season
@@ -116,7 +109,6 @@ export function SeasonScheduleTab({ seasonId }) {
 
   const [confirmDelete,    setConfirmDelete]    = useState(null);
   const [confirmEndSeason, setConfirmEndSeason] = useState(false);
-  const [pvShareMatch,     setPvShareMatch]     = useState(null);
   const [showPostSeason,   setShowPostSeason]   = useState(false);
   const [showImport,       setShowImport]       = useState(false);
   const [schedOpen,        setSchedOpen]        = useState(false);
@@ -187,7 +179,7 @@ export function SeasonScheduleTab({ seasonId }) {
   }, [data]);
 
   if (!data) return null;
-  const { season, team, matches, playerNames, playerJerseys } = data;
+  const { season, matches, playerNames, playerJerseys } = data;
 
   const classification = season.classification ?? null;
   const classRank      = historyEntry?.class_rank   ?? null;
@@ -671,15 +663,6 @@ export function SeasonScheduleTab({ seasonId }) {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {match.pv_token && (
-                          <button
-                            onClick={() => setPvShareMatch(match)}
-                            className="text-xs font-semibold px-2.5 py-1 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
-                            title="Share on FamilyScope"
-                          >
-                            FamScope
-                          </button>
-                        )}
                         <button
                           onClick={() => openEditMatch(match)}
                           className="text-xs font-semibold px-2.5 py-1 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
@@ -738,15 +721,6 @@ export function SeasonScheduleTab({ seasonId }) {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {match.pv_token && (
-                        <button
-                          onClick={e => { e.stopPropagation(); setPvShareMatch(match); }}
-                          className="text-xs font-bold px-2 py-1 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
-                          title="Share on FamilyScope"
-                        >
-                          FamScope
-                        </button>
-                      )}
                       {match.status === MATCH_STATUS.COMPLETE && (
                         <button
                           onClick={e => handleMaxPreps(e, match.id)}
@@ -834,15 +808,6 @@ export function SeasonScheduleTab({ seasonId }) {
           teamId={season.team_id}
           year={season.year}
           onClose={() => setShowPostSeason(false)}
-        />
-      )}
-
-      {pvShareMatch && (
-        <PvShareSheet
-          match={pvShareMatch}
-          teamName={team?.name}
-          logoDataUrl={orgLogoDataUrl ?? null}
-          onClose={() => setPvShareMatch(null)}
         />
       )}
 
