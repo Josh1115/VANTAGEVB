@@ -526,3 +526,32 @@ describe('substitutePlayer — player the libero replaced', () => {
     expect(await st.getState().substitutePlayer(7, { id: 5, name: 'P5', jersey_number: 5 })).toBe(true);
   });
 });
+
+describe('undo after a manual rotation', () => {
+  const setup = () => {
+    const st = useMatchStore;
+    st.getState().resetMatch();
+    const lineup = Array.from({ length: 6 }, (_, i) => ({ position: i + 1, serveOrder: i + 1, playerId: i + 1, playerName: `P${i + 1}`, jersey: String(i + 1), positionLabel: 'OH' }));
+    st.setState({ lineup, currentSetId: 1, maxSubsPerSet: 18, subsUsed: 0, liberoId: 99, liberoName: 'Libby', liberoJersey: '9' });
+    return st;
+  };
+  const ids = (st) => st.getState().lineup.map((s) => s.playerId);
+
+  it('undoing a sub removes the incoming player, not whoever now stands in their old slot', async () => {
+    const st = setup();
+    await st.getState().substitutePlayer(2, { id: 7, name: 'P7', jersey_number: 7 });
+    st.getState().rotateForward();
+    await st.getState().undoLast();
+    expect(ids(st)).toEqual([2, 3, 4, 5, 6, 1]);
+  });
+
+  it('undoing a libero swap keeps the manual rotation', async () => {
+    const st = setup();
+    await st.getState().swapLibero({ id: 99, name: 'Libby', jersey_number: 9 }, 5); // libero in for P6
+    st.getState().rotateForward();
+    await st.getState().undoLast();
+    expect(ids(st)).toEqual([2, 3, 4, 5, 6, 1]);
+    expect(st.getState().rotationNum).toBe(2);
+    expect(st.getState().liberoOnCourt).toBe(false);
+  });
+});

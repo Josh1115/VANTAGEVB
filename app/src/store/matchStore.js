@@ -863,8 +863,12 @@ export const useMatchStore = create((set, get) => ({
 
       case 'sub': {
         await db.substitutions.delete(action.subId);
+        // Find the incoming player by id — a manual ROT FWD/BACK since the sub
+        // isn't on the undo stack, so the original slot index may be stale.
+        const inIdx   = action.inPlayerId != null ? s.lineup.findIndex((sl) => sl.playerId === action.inPlayerId) : -1;
+        const undoIdx = inIdx !== -1 ? inIdx : action.slotIdx;
         const newLineup = s.lineup.map((sl, i) =>
-          i === action.slotIdx
+          i === undoIdx
             ? { ...sl, playerId: action.prevPlayerId, playerName: action.prevName, jersey: action.prevJersey, positionLabel: action.prevPositionLabel }
             : sl
         );
@@ -881,10 +885,22 @@ export const useMatchStore = create((set, get) => ({
 
       case 'libero_swap': {
         await db.substitutions.delete(action.subId);
+        // Swap back in place rather than restoring the whole snapshot — a manual
+        // ROT FWD/BACK since the swap isn't on the undo stack, and the snapshot
+        // would silently undo it. If the incoming player has already left the
+        // court (libero auto-swapped out), the court is already right.
+        let undoLineup = action.prevLineup;
+        if (action.inPlayerId !== undefined) {
+          const inIdx = s.lineup.findIndex((sl) => sl.playerId === action.inPlayerId);
+          const o     = action.outSlot;
+          undoLineup  = inIdx === -1 || !o ? s.lineup : s.lineup.map((sl, i) => i === inIdx
+            ? { ...sl, playerId: o.playerId, playerName: o.playerName, jersey: o.jersey, positionLabel: o.positionLabel }
+            : sl);
+        }
         set({
           actionHistory:               rest,
           liberoOnCourt:               action.prevLiberoOnCourt,
-          lineup:                      action.prevLineup,
+          lineup:                      undoLineup,
           ...(action.prevLiberoId !== undefined && {
             liberoId:      action.prevLiberoId,
             liberoName:    action.prevLiberoName,
@@ -1192,6 +1208,7 @@ export const useMatchStore = create((set, get) => ({
       type:                    'sub',
       subId:                   subDbId,
       slotIdx:                 slotIdx,
+      inPlayerId:              inPlayer.id,
       prevPlayerId:            outPlayer.playerId,
       prevName:                outPlayer.playerName,
       prevJersey:              outPlayer.jersey,
@@ -1374,6 +1391,8 @@ export const useMatchStore = create((set, get) => ({
     pushAction(get, set, {
       type:                    'libero_swap',
       subId:                   subDbId,
+      inPlayerId:              subPlayerIn,
+      outSlot:                 prevLineup.find((sl) => sl.playerId === subPlayerOut) ?? null,
       prevLiberoOnCourt:       prevLiberoOnCourt,
       prevLineup:              prevLineup,
       prevLiberoId:            prevLiberoId,
