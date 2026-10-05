@@ -1136,6 +1136,10 @@ export const useMatchStore = create((set, get) => ({
     const alreadyOnCourt = s.lineup.some((sl) => sl.playerId === inPlayer.id);
     if (alreadyOnCourt) return false;
 
+    // The player the libero replaced comes back when the libero swaps out, so
+    // subbing them in elsewhere would put them on court twice.
+    if (inPlayer.id === s.liberoReplacedPlayerId) return false;
+
     // Note: exhaustedPlayerIds is tracked for display only — no hard block on re-subs.
 
     const outPlayer             = s.lineup[slotIdx];

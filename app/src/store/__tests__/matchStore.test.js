@@ -498,3 +498,18 @@ describe('substitutePlayer — correction mode', () => {
     );
   });
 });
+
+describe('substitutePlayer — player the libero replaced', () => {
+  it('blocks subbing them in elsewhere so the libero swapping out cannot put them on court twice', async () => {
+    const st = useMatchStore;
+    st.getState().resetMatch();
+    const lineup = Array.from({ length: 6 }, (_, i) => ({ position: i + 1, serveOrder: i + 1, playerId: i + 1, playerName: `P${i + 1}`, jersey: String(i + 1), positionLabel: 'OH' }));
+    st.setState({ lineup, currentSetId: 1, maxSubsPerSet: 18, subsUsed: 0, liberoId: 99, liberoName: 'Libby', liberoJersey: '9' });
+    const libero = { id: 99, name: 'Libby', jersey_number: 9 };
+    await st.getState().swapLibero(libero, 4); // libero in for P5 (back row)
+    const ok = await st.getState().substitutePlayer(6, { id: 5, name: 'P5', jersey_number: 5 });
+    expect(ok).toBe(false);
+    await st.getState().swapLibero(libero); // libero out — P5 restored
+    expect(st.getState().lineup.map((s) => s.playerId)).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+});
