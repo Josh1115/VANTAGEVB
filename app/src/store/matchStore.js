@@ -238,6 +238,10 @@ export function reconstructSetState({
           liberoReplacedJersey        = p?.jersey_number ?? '';
           liberoReplacedPositionLabel = outSlotLabel || p?.position || '';
         }
+      } else if (row.auto_swap) {
+        // Rotation auto-swap-out: live play keeps the pairing so the libero
+        // auto-returns when that player rotates to the back row again.
+        liberoOnCourt = false;
       } else {
         liberoOnCourt               = false;
         liberoReplacedPlayerId      = null;
@@ -359,6 +363,7 @@ async function resolveLinkedPoint(s, action, rest) {
   const pa = rest[0];
   if (pa.type !== 'point_us' && pa.type !== 'point_them') return { finalRest: rest, pointUpdates: {} };
   if (pa.rallyId) await db.rallies.delete(pa.rallyId);
+  if (pa.type === 'point_us') await deleteAutoSwap(s.currentSetId, pa.autoSwapTs);
   const base = {
     rallyPhase:       pa.prevRallyPhase ?? 'pre_serve',
     serveSide:        pa.prevServeSide,
@@ -391,6 +396,34 @@ async function resolveLinkedPoint(s, action, rest) {
     finalRest: rest.slice(1),
     pointUpdates: { ...base, oppScore: Math.max(0, s.oppScore - 1) },
   };
+}
+
+// Rotation auto-swaps (autoSwapLibero) used to live only in memory, so a reload
+// replayed a wrong court. Persist each one as a libero_swap row tagged
+// auto_swap; undo finds it again by set + timestamp. Returns that timestamp,
+// or null when the rotation didn't swap anyone.
+function persistAutoSwap(s, beforeLineup, afterLineup) {
+  const idx = afterLineup.findIndex((sl, i) => sl.playerId !== beforeLineup[i]?.playerId);
+  if (idx === -1 || !s.currentSetId) return null;
+  const ts = Date.now();
+  db.substitutions.add({
+    set_id:            s.currentSetId,
+    rally_number:      s.rallyCount,
+    player_out:        beforeLineup[idx].playerId,
+    player_in:         afterLineup[idx].playerId,
+    position:          idx + 1,
+    libero_swap:       true,
+    auto_swap:         true,
+    in_position_label: afterLineup[idx].positionLabel,
+    timestamp:         ts,
+  }).catch(() => {});
+  return ts;
+}
+
+async function deleteAutoSwap(setId, ts) {
+  if (!setId || ts == null) return;
+  await db.substitutions.where('set_id').equals(setId)
+    .filter((r) => r.auto_swap === true && r.timestamp === ts).delete();
 }
 
 // Snapshot taken before a manual rotation — everything that changes the lineup
@@ -435,6 +468,19 @@ export function describeUndo(s, action, rest) {
     case 'rotate':         return action.dir === 'back' ? 'Undid ROT BACK' : 'Undid ROT FWD';
     default:               return 'Undid last action';
   }
+}
+
+function manualRotate(get, set, dir) {
+  const s = get();
+  const lineup = dir === 'fwd' ? rotateFwd(s.lineup) : rotateBwd(s.lineup);
+  const rotationNum = dir === 'fwd' ? (s.rotationNum % 6) + 1 : ((s.rotationNum - 2 + 6) % 6) + 1;
+  const swapped = s.liberoId ? autoSwapLibero(s, lineup) : { lineup };
+  const autoSwapTs = swapped.lineup !== lineup ? persistAutoSwap(s, lineup, swapped.lineup) : null;
+  set({
+    actionHistory: [{ ...rotateUndoEntry(s, dir), autoSwapTs }, ...s.actionHistory],
+    rotationNum,
+    ...swapped,
+  });
 }
 
 const pushAction = (get, set, entry) => {
@@ -536,22 +582,8 @@ export const useMatchStore = create((set, get) => ({
   // moment that player's slot is manually rotated into the back row.
   // Both go on the undo stack so a mis-tap can be undone, and so undoing an
   // earlier sub/libero swap never sees a lineup that moved behind its back.
-  rotateForward: () => set((s) => {
-    const lineup = rotateFwd(s.lineup);
-    const rotationNum = (s.rotationNum % 6) + 1;
-    return {
-      actionHistory: [rotateUndoEntry(s, 'fwd'), ...s.actionHistory],
-      ...(s.liberoId ? { rotationNum, ...autoSwapLibero(s, lineup) } : { lineup, rotationNum }),
-    };
-  }),
-  rotateBackward: () => set((s) => {
-    const lineup = rotateBwd(s.lineup);
-    const rotationNum = ((s.rotationNum - 2 + 6) % 6) + 1;
-    return {
-      actionHistory: [rotateUndoEntry(s, 'back'), ...s.actionHistory],
-      ...(s.liberoId ? { rotationNum, ...autoSwapLibero(s, lineup) } : { lineup, rotationNum }),
-    };
-  }),
+  rotateForward:  () => manualRotate(get, set, 'fwd'),
+  rotateBackward: () => manualRotate(get, set, 'back'),
 
   setPositionLabel: (playerId, label) => set((s) => ({
     lineup: s.lineup.map((sl) =>
@@ -612,6 +644,7 @@ export const useMatchStore = create((set, get) => ({
         };
     const { lineup: finalLineup, liberoOnCourt, liberoReplacedPlayerId,
             liberoReplacedName, liberoReplacedJersey, liberoReplacedPositionLabel } = liberoState;
+    const autoSwapTs = finalLineup !== newLineup ? persistAutoSwap(s, newLineup, finalLineup) : null;
 
     // ── Action history entry (for undo) ───────────────────────────────────
     const actionKey = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -627,6 +660,7 @@ export const useMatchStore = create((set, get) => ({
         prevLineup:                  lineup,
         prevRotation:                rotationNum,
         prevRun,
+        autoSwapTs,
         prevLiberoOnCourt:               s.liberoOnCourt,
         prevLiberoReplacedPlayerId:      s.liberoReplacedPlayerId,
         prevLiberoReplacedName:          s.liberoReplacedName,
@@ -817,6 +851,7 @@ export const useMatchStore = create((set, get) => ({
 
       case 'point_us': {
         if (action.rallyId) await db.rallies.delete(action.rallyId);
+        await deleteAutoSwap(s.currentSetId, action.autoSwapTs);
         set({
           actionHistory:    rest,
           ourScore:         Math.max(0, s.ourScore - 1),
@@ -941,6 +976,7 @@ export const useMatchStore = create((set, get) => ({
       }
 
       case 'rotate': {
+        await deleteAutoSwap(s.currentSetId, action.autoSwapTs);
         set({
           actionHistory:               rest,
           lineup:                      action.prevLineup,

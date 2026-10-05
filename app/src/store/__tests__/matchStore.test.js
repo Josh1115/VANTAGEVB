@@ -21,6 +21,7 @@ vi.mock('../../db/schema', () => ({
     substitutions: {
       add:    vi.fn().mockResolvedValue(7),
       delete: vi.fn().mockResolvedValue(undefined),
+      where:  vi.fn(() => ({ equals: () => ({ filter: () => ({ delete: vi.fn().mockResolvedValue(0) }) }) })),
     },
     sets: {
       update: vi.fn().mockResolvedValue(undefined),
@@ -42,7 +43,7 @@ vi.mock('../../utils/storage', () => ({
 
 // ── Subject under test ───────────────────────────────────────────────────────
 
-import { useMatchStore, describeUndo } from '../matchStore';
+import { useMatchStore, describeUndo, reconstructSetState } from '../matchStore';
 import { db } from '../../db/schema';
 import { SIDE } from '../../constants';
 
@@ -608,5 +609,34 @@ describe('manual rotation undo + undo message', () => {
     expect(describeUndo(s, { type: 'contact', contactId: 3, causedPoint: 'us' }, [{ type: 'point_us' }])).toBe('Undid ATTACK KILL — P2 + point');
     expect(describeUndo(s, { type: 'sub', inPlayerId: 4, prevName: 'P9' }, [])).toBe('Undid sub: P4 in for P9');
     expect(describeUndo(s, { type: 'rotate', dir: 'back' }, [])).toBe('Undid ROT BACK');
+  });
+});
+
+describe('rotation auto-swaps are saved so a reload rebuilds the same court', () => {
+  it('live court and reloaded court match after the libero auto-swaps out', async () => {
+    const st = useMatchStore;
+    st.getState().resetMatch();
+    const lineup = Array.from({ length: 6 }, (_, i) => ({ position: i + 1, serveOrder: i + 1, playerId: i + 1, playerName: `P${i + 1}`, jersey: String(i + 1), positionLabel: i === 4 ? 'MB' : 'OH' }));
+    st.setState({ lineup, rotationNum: 1, matchId: 1, currentSetId: 50, serveSide: SIDE.THEM, maxSubsPerSet: 18, subsUsed: 0, liberoId: 99, liberoName: 'Libby', liberoJersey: '9' });
+    db.substitutions.add.mockClear();
+
+    await st.getState().swapLibero({ id: 99, name: 'Libby', jersey_number: 9 }, 4); // libero in for P5
+    await st.getState().addPoint(SIDE.US); // sideout — rotate; P5's slot reaches the front row
+    const live = st.getState();
+    expect(live.liberoOnCourt).toBe(false);
+
+    const saved = db.substitutions.add.mock.calls.map(([row]) => row);
+    expect(saved.filter((r) => r.auto_swap)).toHaveLength(1);
+
+    const players = { 1: { id: 1 }, 2: { id: 2 }, 3: { id: 3 }, 4: { id: 4 }, 5: { id: 5, name: 'P5' }, 6: { id: 6 }, 99: { id: 99, name: 'Libby' } };
+    const reloaded = reconstructSetState({
+      setRow: { id: 50, set_number: 1 }, allSets: [{ id: 50, set_number: 1, status: 'in_progress' }],
+      rallies: [{ id: 1, set_id: 50, serve_side: SIDE.THEM, point_winner: SIDE.US, our_rotation: 1 }],
+      timeoutRows: [], subRows: saved, baseLineup: lineup, baseRotation: 1, playersById: players,
+      format: 'best_of_3', lastSetScore: 15, libero1Id: 99,
+    });
+    expect(reloaded.lineup.map((s) => s.playerId)).toEqual(live.lineup.map((s) => s.playerId));
+    expect(reloaded.liberoOnCourt).toBe(false);
+    expect(reloaded.liberoReplacedPlayerId).toBe(5); // libero still comes back when P5 reaches the back row
   });
 });
