@@ -393,6 +393,50 @@ async function resolveLinkedPoint(s, action, rest) {
   };
 }
 
+// Snapshot taken before a manual rotation — everything that changes the lineup
+// is on the undo stack, so restoring it on undo is exact.
+const rotateUndoEntry = (s, dir) => ({
+  type:                            'rotate',
+  dir,
+  prevLineup:                      s.lineup,
+  prevRotation:                    s.rotationNum,
+  prevLiberoOnCourt:               s.liberoOnCourt,
+  prevLiberoReplacedPlayerId:      s.liberoReplacedPlayerId,
+  prevLiberoReplacedName:          s.liberoReplacedName,
+  prevLiberoReplacedJersey:        s.liberoReplacedJersey,
+  prevLiberoReplacedPositionLabel: s.liberoReplacedPositionLabel,
+});
+
+// Short "what did UNDO just reverse" message for the toast.
+export function describeUndo(s, action, rest) {
+  const nameOf = (id) => s.lineup.find((sl) => sl.playerId === id)?.playerName
+    || s.playerNicknames?.[id] || '';
+  const pointToo = action.causedPoint && ['point_us', 'point_them'].includes(rest[0]?.type) ? ' + point' : '';
+  switch (action.type) {
+    case 'contact': {
+      const c = s.committedContacts.find((x) => x.id === action.contactId);
+      if (!c) return `Undid stat${pointToo}`;
+      const what = [c.action, c.result].filter(Boolean).join(' ').replace(/_/g, ' ').toUpperCase();
+      const who  = nameOf(c.player_id);
+      return `Undid ${what}${who ? ` — ${who}` : ''}${pointToo}`;
+    }
+    case 'blocked_attack': return `Undid blocked attack${pointToo}`;
+    case 'hblk_contact':   return `Undid block${pointToo}`;
+    case 'opp_contact':    return `Undid opponent stat${pointToo}`;
+    case 'point_us':       return 'Undid point for us';
+    case 'point_them':     return 'Undid opponent point';
+    case 'timeout':        return 'Undid timeout';
+    case 'sub': {
+      const inName = nameOf(action.inPlayerId);
+      return inName && action.prevName ? `Undid sub: ${inName} in for ${action.prevName}` : 'Undid substitution';
+    }
+    case 'libero_swap':    return 'Undid libero swap';
+    case 'fudge':          return 'Undid score adjustment';
+    case 'rotate':         return action.dir === 'back' ? 'Undid ROT BACK' : 'Undid ROT FWD';
+    default:               return 'Undid last action';
+  }
+}
+
 const pushAction = (get, set, entry) => {
   const prev = get().actionHistory;
   set({ actionHistory: [entry, ...prev] });
@@ -490,15 +534,23 @@ export const useMatchStore = create((set, get) => ({
   // Manual rotation nudges also need to trigger the libero auto-swap check —
   // e.g. a pending libero (queued for a front-row player) becomes due the
   // moment that player's slot is manually rotated into the back row.
+  // Both go on the undo stack so a mis-tap can be undone, and so undoing an
+  // earlier sub/libero swap never sees a lineup that moved behind its back.
   rotateForward: () => set((s) => {
     const lineup = rotateFwd(s.lineup);
     const rotationNum = (s.rotationNum % 6) + 1;
-    return s.liberoId ? { rotationNum, ...autoSwapLibero(s, lineup) } : { lineup, rotationNum };
+    return {
+      actionHistory: [rotateUndoEntry(s, 'fwd'), ...s.actionHistory],
+      ...(s.liberoId ? { rotationNum, ...autoSwapLibero(s, lineup) } : { lineup, rotationNum }),
+    };
   }),
   rotateBackward: () => set((s) => {
     const lineup = rotateBwd(s.lineup);
     const rotationNum = ((s.rotationNum - 2 + 6) % 6) + 1;
-    return s.liberoId ? { rotationNum, ...autoSwapLibero(s, lineup) } : { lineup, rotationNum };
+    return {
+      actionHistory: [rotateUndoEntry(s, 'back'), ...s.actionHistory],
+      ...(s.liberoId ? { rotationNum, ...autoSwapLibero(s, lineup) } : { lineup, rotationNum }),
+    };
   }),
 
   setPositionLabel: (playerId, label) => set((s) => ({
@@ -694,6 +746,7 @@ export const useMatchStore = create((set, get) => ({
     const s = get();
     if (!s.actionHistory.length) { set({ _undoInFlight: false }); return; }
     const [action, ...rest] = s.actionHistory;
+    const undoMessage = describeUndo(s, action, rest);
 
     try {
 
@@ -886,7 +939,23 @@ export const useMatchStore = create((set, get) => ({
         }
         break;
       }
+
+      case 'rotate': {
+        set({
+          actionHistory:               rest,
+          lineup:                      action.prevLineup,
+          rotationNum:                 action.prevRotation,
+          liberoOnCourt:               action.prevLiberoOnCourt,
+          liberoReplacedPlayerId:      action.prevLiberoReplacedPlayerId,
+          liberoReplacedName:          action.prevLiberoReplacedName,
+          liberoReplacedJersey:        action.prevLiberoReplacedJersey,
+          liberoReplacedPositionLabel: action.prevLiberoReplacedPositionLabel,
+        });
+        break;
+      }
     }
+
+    useUiStore.getState().showToast(undoMessage, 'info');
 
     } finally {
       set({ _undoInFlight: false });

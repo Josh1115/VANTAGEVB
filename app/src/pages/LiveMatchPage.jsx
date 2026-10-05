@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { findLineupProblem } from '../utils/lineupCheck';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { db } from '../db/schema';
@@ -51,6 +52,7 @@ export function LiveMatchPage() {
   const [retryToken,   setRetryToken]   = useState(0);
   const [screenH,      setScreenH]      = useState(() => window.innerHeight);
   const [subOpen,      setSubOpen]      = useState(false);
+  const [subFixOpen,   setSubFixOpen]   = useState(false);
   const [menuOpen,     setMenuOpen]     = useState(false);
   const [statsOpen,    setStatsOpen]    = useState(false);
   const [summaryOpen,  setSummaryOpen]  = useState(false);
@@ -133,6 +135,7 @@ export function LiveMatchPage() {
     setNumber:            s.setNumber,
     currentRun:           s.currentRun,
   })));
+  const lineupProblem = useMemo(() => findLineupProblem(lineup), [lineup]);
   const records = useLiveQuery(
     () => teamId ? db.records.where('team_id').equals(teamId).toArray() : [],
     [teamId], []
@@ -566,6 +569,23 @@ export function LiveMatchPage() {
           onAssignLibero2={liberoPlayer && !liberoPlayer2 ? () => { setLiberoPickerSlot(2); setLiberoPickerOpen(true); } : undefined}
           flipLayout={flipLayout}
         />
+        {lineupProblem && (
+          <div role="alert" className="flex items-center justify-between gap-3 px-3 py-1.5 bg-red-950/80 border-y border-red-600/70 text-red-200 text-sm font-semibold">
+            <span>
+              {lineupProblem.type === 'duplicate'
+                ? `Lineup problem: ${lineupProblem.name || 'a player'}${lineupProblem.jersey !== '' ? ` (#${lineupProblem.jersey})` : ''} is on the court twice.`
+                : `Lineup problem: the court has ${lineupProblem.count} spots instead of 6.`}
+            </span>
+            {lineupProblem.type === 'duplicate' && (
+              <button
+                onClick={() => setSubFixOpen(true)}
+                className="shrink-0 px-3 py-1 rounded-md bg-red-600 text-white text-xs font-bold hover:brightness-110"
+              >
+                Fix with correction sub
+              </button>
+            )}
+          </div>
+        )}
         <div className="flex flex-row flex-1 min-h-0">
           <CourtGrid aceZoneHints={aceZoneHints} courtViewMode={courtViewMode} />
           <OppScoringColumn />
@@ -594,6 +614,7 @@ export function LiveMatchPage() {
       )}
 
       {subOpen          && <SubstitutionModal onClose={() => setSubOpen(false)} />}
+      {subFixOpen       && <SubstitutionModal initialCorrection onClose={() => setSubFixOpen(false)} />}
       {liberoPickerOpen && (
         <LiberoPickerModal
           slot={liberoPickerSlot}

@@ -42,7 +42,7 @@ vi.mock('../../utils/storage', () => ({
 
 // ── Subject under test ───────────────────────────────────────────────────────
 
-import { useMatchStore } from '../matchStore';
+import { useMatchStore, describeUndo } from '../matchStore';
 import { db } from '../../db/schema';
 import { SIDE } from '../../constants';
 
@@ -537,21 +537,76 @@ describe('undo after a manual rotation', () => {
   };
   const ids = (st) => st.getState().lineup.map((s) => s.playerId);
 
-  it('undoing a sub removes the incoming player, not whoever now stands in their old slot', async () => {
+  it('undoing ROT then a sub restores the original lineup', async () => {
     const st = setup();
     await st.getState().substitutePlayer(2, { id: 7, name: 'P7', jersey_number: 7 });
     st.getState().rotateForward();
+    await st.getState().undoLast(); // undoes the rotation
+    expect(ids(st)).toEqual([1, 7, 3, 4, 5, 6]);
+    await st.getState().undoLast(); // undoes the sub
+    expect(ids(st)).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it('undoing a sub finds the incoming player by id even if the lineup moved', async () => {
+    const st = setup();
+    await st.getState().substitutePlayer(2, { id: 7, name: 'P7', jersey_number: 7 });
+    st.setState({ lineup: [...st.getState().lineup.slice(1), st.getState().lineup[0]] }); // moved outside the undo stack
     await st.getState().undoLast();
     expect(ids(st)).toEqual([2, 3, 4, 5, 6, 1]);
   });
 
-  it('undoing a libero swap keeps the manual rotation', async () => {
+  it('undoing a libero swap after the lineup moved swaps back in place', async () => {
     const st = setup();
     await st.getState().swapLibero({ id: 99, name: 'Libby', jersey_number: 9 }, 5); // libero in for P6
-    st.getState().rotateForward();
+    st.setState({ lineup: [...st.getState().lineup.slice(1), st.getState().lineup[0]], rotationNum: 2 }); // moved outside the undo stack
     await st.getState().undoLast();
     expect(ids(st)).toEqual([2, 3, 4, 5, 6, 1]);
     expect(st.getState().rotationNum).toBe(2);
     expect(st.getState().liberoOnCourt).toBe(false);
+  });
+});
+
+describe('manual rotation undo + undo message', () => {
+  const setup = () => {
+    const st = useMatchStore;
+    st.getState().resetMatch();
+    const lineup = Array.from({ length: 6 }, (_, i) => ({ position: i + 1, serveOrder: i + 1, playerId: i + 1, playerName: `P${i + 1}`, jersey: String(i + 1), positionLabel: 'OH' }));
+    st.setState({ lineup, rotationNum: 1, currentSetId: 1, maxSubsPerSet: 18, subsUsed: 0, liberoId: 99, liberoName: 'Libby', liberoJersey: '9' });
+    return st;
+  };
+  const ids = (st) => st.getState().lineup.map((s) => s.playerId);
+
+  it('ROT FWD and ROT BACK can each be undone', async () => {
+    const st = setup();
+    st.getState().rotateForward();
+    st.getState().rotateForward();
+    st.getState().rotateBackward();
+    expect(st.getState().rotationNum).toBe(2);
+    await st.getState().undoLast();
+    expect(st.getState().rotationNum).toBe(3);
+    await st.getState().undoLast();
+    await st.getState().undoLast();
+    expect(st.getState().rotationNum).toBe(1);
+    expect(ids(st)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(st.getState().actionHistory).toHaveLength(0);
+  });
+
+  it('undoing a rotation that auto-swapped the libero out puts the libero back', async () => {
+    const st = setup();
+    await st.getState().swapLibero({ id: 99, name: 'Libby', jersey_number: 9 }, 4); // libero in for P5
+    st.getState().rotateForward(); // libero's slot reaches the front row — auto-out
+    expect(st.getState().liberoOnCourt).toBe(false);
+    await st.getState().undoLast();
+    expect(st.getState().liberoOnCourt).toBe(true);
+    expect(ids(st)).toContain(99);
+    expect(ids(st)).not.toContain(5);
+  });
+
+  it('describes what UNDO reversed', () => {
+    const st = setup();
+    const s = { ...st.getState(), committedContacts: [{ id: 3, player_id: 2, action: 'attack', result: 'kill' }] };
+    expect(describeUndo(s, { type: 'contact', contactId: 3, causedPoint: 'us' }, [{ type: 'point_us' }])).toBe('Undid ATTACK KILL — P2 + point');
+    expect(describeUndo(s, { type: 'sub', inPlayerId: 4, prevName: 'P9' }, [])).toBe('Undid sub: P4 in for P9');
+    expect(describeUndo(s, { type: 'rotate', dir: 'back' }, [])).toBe('Undid ROT BACK');
   });
 });

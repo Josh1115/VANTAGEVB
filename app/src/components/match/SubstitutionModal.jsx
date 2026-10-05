@@ -149,7 +149,7 @@ function RoleChips({ value, onChange, color = 'blue' }) {
 
 // ─── Main modal ───────────────────────────────────────────────────────────────
 
-export function SubstitutionModal({ onClose }) {
+export function SubstitutionModal({ onClose, initialCorrection = false }) {
   const lineup             = useMatchStore((s) => s.lineup);
   const teamId             = useMatchStore((s) => s.teamId);
   const liberoId           = useMatchStore((s) => s.liberoId);
@@ -174,7 +174,7 @@ export function SubstitutionModal({ onClose }) {
   const [roleOverride2,  setRoleOverride2]  = useState('');
 
   // Correction — fixes a lineup mistake without spending a real substitution
-  const [isCorrection, setIsCorrection] = useState(false);
+  const [isCorrection, setIsCorrection] = useState(initialCorrection);
 
   const [error, setError] = useState('');
 

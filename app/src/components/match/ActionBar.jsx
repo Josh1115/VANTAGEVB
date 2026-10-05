@@ -82,6 +82,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
     else if (lastAction.type === 'sub')         undoLabel = 'SUB';
     else if (lastAction.type === 'libero_swap') undoLabel = 'LIB';
     else if (lastAction.type === 'fudge')       undoLabel = 'ADJ';
+    else if (lastAction.type === 'rotate')      undoLabel = 'ROT';
     else if (lastFeedItem?.label) {
       // Feed format: "[+1 ]LastName ActionDesc" — drop the +1 prefix and first word (last name)
       const stripped = lastFeedItem.label.replace(/^\+1 /, '');
