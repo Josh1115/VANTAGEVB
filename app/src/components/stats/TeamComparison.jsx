@@ -54,9 +54,9 @@ export function TeamComparison({ team, opp, teamName = 'Us', oppName = 'Opponent
           const raw2 = oppKey != null ? opp[oppKey] : null;
           const v1 = (!isRate && divisor > 1 && raw1 != null) ? raw1 / divisor : raw1;
           const v2 = (!isRate && divisor > 1 && raw2 != null) ? raw2 / divisor : raw2;
-          const useFmt = (!isRate && divisor > 1) ? fmtAvg1 : fmt;
-          const f1 = useFmt(v1);
-          const f2 = v2 != null ? useFmt(v2) : '—';
+          const fmtFn = (!isRate && divisor > 1) ? fmtAvg1 : fmt;
+          const f1 = fmtFn(v1);
+          const f2 = v2 != null ? fmtFn(v2) : '—';
           if (f1 === '—' && f2 === '—') return null;
           const n1 = v1 ?? 0;
           const n2 = v2 ?? 0;

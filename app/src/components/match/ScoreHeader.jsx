@@ -258,7 +258,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
   const flipped = flipLayout;
   const {
     ourScore, oppScore, ourSetsWon, oppSetsWon, setNumber, serveSide,
-    ourTimeouts, oppTimeouts, useTimeout, subsUsed, maxSubsPerSet, adjustScore,
+    ourTimeouts, oppTimeouts, callTimeout, subsUsed, maxSubsPerSet, adjustScore,
     currentRun, lastFeedItem, pointHistory, format, lastSetScore, rotationNum,
     committedRallies, lineup,
   } = useMatchStore(useShallow((s) => ({
@@ -270,7 +270,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
     serveSide:        s.serveSide,
     ourTimeouts:      s.ourTimeouts,
     oppTimeouts:      s.oppTimeouts,
-    useTimeout:       s.useTimeout,
+    callTimeout:      s.useTimeout,
     subsUsed:         s.subsUsed,
     maxSubsPerSet:    s.maxSubsPerSet,
     adjustScore:      s.adjustScore,
@@ -625,7 +625,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
                 <button
                   onPointerDown={(e) => {
                     e.preventDefault();
-                    useTimeout(timeoutConfirm === 'us' ? SIDE.US : SIDE.THEM);
+                    callTimeout(timeoutConfirm === 'us' ? SIDE.US : SIDE.THEM);
                     onTimeoutCalled?.();
                     setTimeoutConfirm(null);
                   }}
