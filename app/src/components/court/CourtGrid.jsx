@@ -577,7 +577,13 @@ export const CourtGrid = memo(function CourtGrid({ aceZoneHints = {}, courtViewM
             : 'h-full';
           return (
             <div
-              key={slot?.playerId ?? `empty-${gridIdx}`}
+              // A player duplicated in the lineup would repeat a key, and React then
+              // leaks extra tiles on every rotation — give the repeat its own key.
+              key={slot?.playerId == null
+                ? `empty-${gridIdx}`
+                : cells.findIndex((c) => c?.playerId === slot.playerId) !== gridIdx
+                  ? `dup-${slot.playerId}-${gridIdx}`
+                  : slot.playerId}
               className={`relative overflow-hidden${isSubFlash ? ' tile-sub-flash' : ''}`}
               ref={(el) => { if (el && slot?.playerId) playerRefs.current[slot.playerId] = el; }}
             >
