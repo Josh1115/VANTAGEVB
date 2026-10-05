@@ -189,6 +189,19 @@ export function reconstructSetState({
   let currentLibero2Name   = playersById?.[libero2Id]?.name ?? '';
   let currentLibero2Jersey = playersById?.[libero2Id]?.jersey_number ?? '';
   for (const row of allSubsOrdered) {
+    // Rotation auto-swaps (autoSwapLibero) are never persisted. If a libero-in
+    // row arrives while the replay still has the libero on court for someone
+    // else, the libero must have auto-swapped out in between — put the player
+    // they replaced back first, or the libero ends up on court twice.
+    if (row.libero_swap && row.in_position_label === 'L' && liberoOnCourt
+        && row.player_out !== libero1Id && row.player_out !== libero2Id) {
+      const lIdx = lineup.findIndex((sl) => sl.playerId === currentLiberoId);
+      if (lIdx !== -1 && liberoReplacedPlayerId) {
+        lineup = lineup.map((sl, i) => i === lIdx
+          ? { ...sl, playerId: liberoReplacedPlayerId, playerName: liberoReplacedName, jersey: liberoReplacedJersey, positionLabel: liberoReplacedPositionLabel }
+          : sl);
+      }
+    }
     const idx = lineup.findIndex((sl) => sl.playerId === row.player_out);
     const outSlotLabel = idx !== -1 ? lineup[idx].positionLabel : null;
     if (idx !== -1) {
@@ -242,6 +255,14 @@ export function reconstructSetState({
   }
   const rotOffset = ((rotationNum - baseRotation) % 6 + 6) % 6;
   for (let i = 0; i < rotOffset; i++) lineup = rotateFwd(lineup);
+  // Same unsaved auto-swap: a libero rotated into the front row was already
+  // swapped back out live, so mirror that here.
+  if (liberoOnCourt && currentLiberoId) {
+    ({ lineup, liberoOnCourt } = autoSwapLibero({
+      liberoOnCourt, liberoId: currentLiberoId, liberoName: currentLiberoName, liberoJersey: currentLiberoJersey,
+      liberoReplacedPlayerId, liberoReplacedName, liberoReplacedJersey, liberoReplacedPositionLabel,
+    }, lineup));
+  }
 
   let currentRun = { side: null, count: 0 };
   if (last) {

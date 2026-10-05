@@ -165,7 +165,7 @@ describe('reconstructSetState', () => {
   it('replays a direct libero-for-libero swap: keeps the true original replaced player, flips active libero id', () => {
     const playersById = {
       ...PLAYERS,
-      3:   { id: 3,   name: 'P3',       jersey_number: 3,  position: 'OH' }, // original back-row player from baseLineup
+      5:   { id: 5,   name: 'P5',       jersey_number: 5,  position: 'OH' }, // original back-row player from baseLineup
       101: { id: 101, name: 'Libero A', jersey_number: 11, position: 'L' },
       102: { id: 102, name: 'Libero B', jersey_number: 12, position: 'L' },
     };
@@ -174,16 +174,16 @@ describe('reconstructSetState', () => {
       libero1Id: 101,
       libero2Id: 102,
       subRows: [
-        // Libero A swaps in for the true original back-row player (slot 3)
-        { player_out: 3,   player_in: 101, position: 3, libero_swap: true, in_position_label: 'L', timestamp: 100 },
+        // Libero A swaps in for the true original back-row player (slot 5)
+        { player_out: 5,   player_in: 101, position: 5, libero_swap: true, in_position_label: 'L', timestamp: 100 },
         // Direct swap: Libero B takes over the on-court slot from Libero A
-        { player_out: 101, player_in: 102, position: 3, libero_swap: true, in_position_label: 'L', timestamp: 200 },
+        { player_out: 101, player_in: 102, position: 5, libero_swap: true, in_position_label: 'L', timestamp: 200 },
       ],
     }));
     expect(out.liberoOnCourt).toBe(true);
     expect(out.liberoId).toBe(102);              // B is now active
     expect(out.libero2Id).toBe(101);             // A is now the benched dressed libero
-    expect(out.liberoReplacedPlayerId).toBe(3);  // still the true original player, not Libero A
+    expect(out.liberoReplacedPlayerId).toBe(5);  // still the true original player, not Libero A
     expect(out.lineup.find((sl) => sl.playerId === 102)).toBeTruthy();
   });
 
@@ -238,5 +238,33 @@ describe('reconstructSetState', () => {
       rallies,
     }));
     expect(out.pendingSetWin).toBe('us');         // 15 points wins the decider
+  });
+
+  it('libero swapped in again after an unsaved rotation auto-swap-out is not on court twice', () => {
+    const out = reconstructSetState(base({
+      playersById: { ...PLAYERS, 5: { id: 5, name: 'P5', jersey_number: 5, position: 'MB' }, 101: { id: 101, name: 'Libero A', jersey_number: 11, position: 'L' } },
+      libero1Id: 101,
+      subRows: [
+        { player_out: 5, player_in: 101, position: 5, libero_swap: true, in_position_label: 'L', timestamp: 100 },
+        // (rotation auto-swapped the libero back out for P5 here — never saved)
+        { player_out: 6, player_in: 101, position: 6, libero_swap: true, in_position_label: 'L', timestamp: 200 },
+      ],
+    }));
+    expect(out.lineup.filter((sl) => sl.playerId === 101)).toHaveLength(1);
+    expect(out.lineup.find((sl) => sl.playerId === 5)).toBeTruthy();
+    expect(out.liberoReplacedPlayerId).toBe(6);
+  });
+
+  it('libero left in the front row after replaying rotations is swapped back out', () => {
+    const out = reconstructSetState(base({
+      playersById: { ...PLAYERS, 101: { id: 101, name: 'Libero A', jersey_number: 11, position: 'L' } },
+      libero1Id: 101,
+      // Libero in for P5 at rotation 1; after 2 rotations P5's slot is front row
+      rallies: [rally(1, 'them', 'us', 1), rally(2, 'them', 'us', 2)],
+      subRows: [{ player_out: 5, player_in: 101, position: 5, libero_swap: true, in_position_label: 'L', timestamp: 100 }],
+    }));
+    expect(out.lineup.find((sl) => sl.playerId === 101)).toBeFalsy();
+    expect(out.lineup.find((sl) => sl.playerId === 5)).toBeTruthy();
+    expect(out.liberoOnCourt).toBe(false);
   });
 });
