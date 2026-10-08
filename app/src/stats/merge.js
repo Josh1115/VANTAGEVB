@@ -352,6 +352,20 @@ export function autoSyncDecision(c) {
   return (c.imported.updatedAt ?? '') > (c.current.updatedAt ?? '') ? 'replace' : 'keep';
 }
 
+// Opponent record / MaxPreps rank are typed in on whichever device is handy,
+// but the paired-match decision keeps one whole copy — so a value entered on
+// the other device was dropped whenever the kept copy had it blank (e.g. the
+// game was started here first). Returns the fields `target` is missing that
+// `source` has. Fills blanks only; never overwrites a value.
+const OPP_INFO_FIELDS = ['opponent_record', 'opponent_maxpreps_rank'];
+export function blankOppInfo(target, source) {
+  const mods = {};
+  for (const f of OPP_INFO_FIELDS) {
+    if (target?.[f] == null && source?.[f] != null) mods[f] = source[f];
+  }
+  return mods;
+}
+
 // ── Phase 2 — Execute ─────────────────────────────────────────────────────────
 
 // decisions: { [importedMatchId]: 'keep' | 'replace' }
@@ -666,6 +680,11 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
         }
         if (exMatch) {
           matchIdMap.set(impMatch.id, exMatch.id);
+          const oppMods = blankOppInfo(exMatch, impMatch);
+          if (Object.keys(oppMods).length) {
+            if (exMatch.updated_at != null) oppMods.updated_at = exMatch.updated_at;
+            await db.matches.update(exMatch.id, oppMods);
+          }
           await backfillTimeouts(impMatch, exMatch.id);
         }
         continue;
@@ -711,6 +730,7 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
       // Insert match
       const matchToInsert  = { ...impMatch };
       delete matchToInsert.id;
+      if (decision === 'replace' && exMatch) Object.assign(matchToInsert, blankOppInfo(impMatch, exMatch));
       matchToInsert.season_id   = exSeasonId;
       matchToInsert.opponent_id = impMatch.opponent_id != null
         ? (oppMap.get(impMatch.opponent_id) ?? null)

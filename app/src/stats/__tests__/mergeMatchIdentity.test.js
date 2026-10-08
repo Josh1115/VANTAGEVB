@@ -30,6 +30,7 @@ const {
   indexMatchesByKey,
   remapPlayerKeys,
   autoSyncDecision,
+  blankOppInfo,
 } = await import('../merge');
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -260,5 +261,31 @@ describe('autoSyncDecision (future-match edits reach other devices)', () => {
   it('still takes a started/finished copy over a local scheduled placeholder', async () => {
     const cloud = { ...local, id: 99, status: 'complete', updated_at: '2026-09-01T00:00:00.000Z' };
     expect(await decide(cloud)).toBe('replace');
+  });
+});
+
+// ── Opponent record / rank survive whichever copy sync keeps ────────────────
+
+describe('blankOppInfo (record + rank carried across paired copies)', () => {
+  it('fills a blank record and rank from the other copy', () => {
+    expect(blankOppInfo({ opponent_record: null, opponent_maxpreps_rank: null },
+                        { opponent_record: '12-3', opponent_maxpreps_rank: 45 }))
+      .toEqual({ opponent_record: '12-3', opponent_maxpreps_rank: 45 });
+  });
+
+  it('never overwrites a value already present', () => {
+    expect(blankOppInfo({ opponent_record: '10-5', opponent_maxpreps_rank: 30 },
+                        { opponent_record: '12-3', opponent_maxpreps_rank: 45 }))
+      .toEqual({});
+  });
+
+  it('fills only the missing field', () => {
+    expect(blankOppInfo({ opponent_record: '10-5' }, { opponent_record: '12-3', opponent_maxpreps_rank: 45 }))
+      .toEqual({ opponent_maxpreps_rank: 45 });
+  });
+
+  it('treats rank 0 as a real value, and copies nothing from an empty source', () => {
+    expect(blankOppInfo({ opponent_maxpreps_rank: 0 }, { opponent_maxpreps_rank: 45 })).toEqual({});
+    expect(blankOppInfo({}, { opponent_record: null })).toEqual({});
   });
 });
