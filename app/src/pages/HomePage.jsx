@@ -424,16 +424,16 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
 }
 
 // ─── Win-streak sparkles ──────────────────────────────────────────────────────
-// Each gold star jumps to a random spot around the 44px streak circle every time
+// Each gold star jumps to a random spot around the 55px streak circle every time
 // its twinkle finishes, and the three run on different clocks, so the twinkles
 // land in no fixed order (a set order read as one star circling clockwise).
 const SPARKLE_DURATIONS = [2.1, 2.7, 3.3]; // seconds — mismatched so they drift apart
 
 function placeSparkle(el) {
   const angle  = Math.random() * Math.PI * 2;
-  const radius = 17 + Math.random() * 9;          // from the inner face out past the rim
-  el.style.left = `${22 + radius * Math.cos(angle) - 4.5}px`; // 4.5 = half the 9px glyph
-  el.style.top  = `${22 + radius * Math.sin(angle) - 4.5}px`;
+  const radius = 21 + Math.random() * 11;          // from the inner face out past the rim
+  el.style.left = `${27.5 + radius * Math.cos(angle) - 4.5}px`; // 4.5 = half the 9px glyph
+  el.style.top  = `${27.5 + radius * Math.sin(angle) - 4.5}px`;
 }
 
 function StreakSparkles() {
@@ -1084,7 +1084,7 @@ export function HomePage() {
             <div className="relative grid grid-cols-2 divide-x divide-slate-700/60">
               {seasonRecord.streak && (
                 <span
-                  className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none w-11 h-11 flex items-center justify-center rounded-full text-[11px] font-black tracking-[0.05em] tabular-nums border ${
+                  className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none w-[55px] h-[55px] flex items-center justify-center rounded-full text-[14px] font-black tracking-[0.05em] tabular-nums border ${
                     seasonRecord.streak.win
                       ? 'bg-emerald-950 border-emerald-600/70 text-emerald-300 streak-glow'
                       : 'bg-red-950 border-red-600/70 text-red-300'}`}
@@ -1151,29 +1151,29 @@ export function HomePage() {
               <span className="font-black text-primary">
                 {fmtPct(seasonRecord.winPct)} MATCH WIN
               </span>
-              <span className="text-slate-400 font-black">·</span>
+              <span className="text-blue-400 font-black">·</span>
               <span className="text-white font-semibold">
-                {seasonRecord.homeW}–{seasonRecord.homeL} <span className="text-white">HOME</span>
+                {seasonRecord.homeW}–{seasonRecord.homeL} <span className="text-orange-500">HOME</span>
               </span>
-              <span className="text-white font-black">·</span>
+              <span className="text-blue-400 font-black">·</span>
               <span className="text-white font-semibold">
-                {seasonRecord.awayW}–{seasonRecord.awayL} <span className="text-white">AWAY</span>
+                {seasonRecord.awayW}–{seasonRecord.awayL} <span className="text-orange-500">AWAY</span>
               </span>
-              <span className="text-white font-black">·</span>
+              <span className="text-blue-400 font-black">·</span>
               <span className="text-white font-semibold">
-                {seasonRecord.neutW}–{seasonRecord.neutL} <span className="text-white">NEUT</span>
+                {seasonRecord.neutW}–{seasonRecord.neutL} <span className="text-orange-500">NEUT</span>
               </span>
-              <span className="text-white font-black">·</span>
+              <span className="text-blue-400 font-black">·</span>
               <span className="text-white font-semibold">
-                {seasonRecord.confW}–{seasonRecord.confL} <span className="text-white">CONF</span>
+                {seasonRecord.confW}–{seasonRecord.confL} <span className="text-orange-500">CONF</span>
               </span>
-              <span className="text-white font-black">·</span>
+              <span className="text-blue-400 font-black">·</span>
               <span className="text-white font-semibold">
-                {seasonRecord.tourneyW}–{seasonRecord.tourneyL} <span className="text-white">TOURN</span>
+                {seasonRecord.tourneyW}–{seasonRecord.tourneyL} <span className="text-orange-500">TOURN</span>
               </span>
-              <span className="text-white font-black">·</span>
+              <span className="text-blue-400 font-black">·</span>
               <span className="text-white font-semibold">
-                {seasonRecord.last5W}–{seasonRecord.last5L} <span className="text-white">LAST {seasonRecord.last5Count || 5}</span>
+                {seasonRecord.last5W}–{seasonRecord.last5L} <span className="text-orange-500">LAST {seasonRecord.last5Count || 5}</span>
               </span>
             </div>
             )}
