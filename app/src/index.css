@@ -135,6 +135,33 @@
   100%       { filter: drop-shadow(0 0 0px transparent); }
 }
 
+/* Home season box — win-streak circle: gold sparkles + occasional soft glow */
+.streak-sparkle {
+  position: absolute;
+  font-size: 9px;
+  line-height: 1;
+  color: #fbbf24;
+  opacity: 0;
+  text-shadow: 0 0 4px rgba(251, 191, 36, 0.8);
+  animation: streak-sparkle 2.4s ease-in-out infinite;
+}
+@keyframes streak-sparkle {
+  0%, 100% { opacity: 0; transform: scale(0.3) rotate(0deg); }
+  15%      { opacity: 1; transform: scale(1.15) rotate(45deg); }
+  35%      { opacity: 0; transform: scale(0.5) rotate(90deg); }
+}
+.streak-glow {
+  animation: streak-glow 4s ease-in-out infinite;
+}
+@keyframes streak-glow {
+  0%, 60%, 100% { box-shadow: 0 0 0 transparent; }
+  75%           { box-shadow: 0 0 10px rgba(251, 191, 36, 0.45); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .streak-sparkle { animation: none; opacity: 0.8; }
+  .streak-glow    { animation: none; }
+}
+
 .stat-feed {
   animation: stat-flash 3s ease-in-out forwards;
   white-space: nowrap;

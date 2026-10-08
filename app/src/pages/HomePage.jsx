@@ -423,6 +423,35 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
   );
 }
 
+// ─── Win-streak sparkles ──────────────────────────────────────────────────────
+// Each gold star jumps to a random spot around the 44px streak circle every time
+// its twinkle finishes, and the three run on different clocks, so the twinkles
+// land in no fixed order (a set order read as one star circling clockwise).
+const SPARKLE_DURATIONS = [2.1, 2.7, 3.3]; // seconds — mismatched so they drift apart
+
+function placeSparkle(el) {
+  const angle  = Math.random() * Math.PI * 2;
+  const radius = 17 + Math.random() * 9;          // from the inner face out past the rim
+  el.style.left = `${22 + radius * Math.cos(angle) - 4.5}px`; // 4.5 = half the 9px glyph
+  el.style.top  = `${22 + radius * Math.sin(angle) - 4.5}px`;
+}
+
+function StreakSparkles() {
+  // Random start offsets picked once — re-picking on every Home re-render would
+  // restart the animations mid-twinkle.
+  const [delays] = useState(() => SPARKLE_DURATIONS.map((dur) => (Math.random() * dur).toFixed(2)));
+  return SPARKLE_DURATIONS.map((dur, i) => (
+    <span
+      key={dur}
+      aria-hidden="true"
+      className="streak-sparkle"
+      ref={(el) => { if (el && !el.style.left) placeSparkle(el); }}
+      style={{ animationDuration: `${dur}s`, animationDelay: `${delays[i]}s` }}
+      onAnimationIteration={(e) => placeSparkle(e.currentTarget)}
+    >✦</span>
+  ));
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function HomePage() {
@@ -1055,13 +1084,14 @@ export function HomePage() {
             <div className="relative grid grid-cols-2 divide-x divide-slate-700/60">
               {seasonRecord.streak && (
                 <span
-                  className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none px-2 py-0.5 rounded-full text-[11px] font-black tracking-[0.15em] tabular-nums border ${
+                  className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none w-11 h-11 flex items-center justify-center rounded-full text-[11px] font-black tracking-[0.05em] tabular-nums border ${
                     seasonRecord.streak.win
-                      ? 'bg-emerald-950 border-emerald-600/70 text-emerald-300'
+                      ? 'bg-emerald-950 border-emerald-600/70 text-emerald-300 streak-glow'
                       : 'bg-red-950 border-red-600/70 text-red-300'}`}
                   title={`${seasonRecord.streak.count}-match ${seasonRecord.streak.win ? 'winning' : 'losing'} streak`}
                 >
                   {seasonRecord.streak.win ? 'W' : 'L'}{seasonRecord.streak.count}
+                  {seasonRecord.streak.win && <StreakSparkles />}
                 </span>
               )}
               <button
