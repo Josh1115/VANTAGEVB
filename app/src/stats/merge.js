@@ -364,6 +364,8 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
   const impSubsBySet     = groupBy(data.substitutions  ?? [],  'set_id');
   const impRalliesBySet  = groupBy(data.rallies,               'set_id');
   const impContactsBySet = groupBy(data.contacts,              'set_id');
+  const impTimeoutsByMatch = groupBy(data.timeouts     ?? [],  'match_id');
+  const matchIdMap = new Map(); // imp match id → local match id (for scouting notes)
 
   const [exOrgs, exTeams, exSeasons, exPlayers, exOpps, exMatches] = await Promise.all([
     db.organizations.toArray(),
@@ -570,8 +572,31 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
         await db.lineups.where('set_id').anyOf(exSetIds).delete();
         await db.substitutions.where('set_id').anyOf(exSetIds).delete();
       }
+      await db.timeouts.where('match_id').equals(matchId).delete();
       await db.sets.where('match_id').equals(matchId).delete();
       await db.matches.delete(matchId);
+    }
+
+    // A match both devices already have keeps the local copy, but earlier
+    // versions of sync never carried timeouts — so a game recorded elsewhere can
+    // be sitting here with none. Back-fill them from the incoming copy (only when
+    // this device has zero for the match), pairing sets by set_number.
+    async function backfillTimeouts(impMatch, localMatchId) {
+      const impTos = impTimeoutsByMatch.get(impMatch.id) ?? [];
+      if (!impTos.length) return;
+      if (await db.timeouts.where('match_id').equals(localMatchId).count()) return;
+      const impSetNum = new Map((impSetsByMatch.get(impMatch.id) ?? []).map(s => [s.id, s.set_number]));
+      const localSets = await db.sets.where('match_id').equals(localMatchId).toArray();
+      const localSetByNum = new Map(localSets.map(s => [s.set_number, s.id]));
+      const rows = [];
+      for (const to of impTos) {
+        const setId = localSetByNum.get(impSetNum.get(to.set_id));
+        if (setId == null) continue;
+        const row = { ...to, match_id: localMatchId, set_id: setId };
+        delete row.id;
+        rows.push(row);
+      }
+      if (rows.length) await db.timeouts.bulkAdd(rows);
     }
 
     // ── 5b. Propagate remote deletions ────────────────────────────────────
@@ -639,6 +664,10 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
           exMatch.uid = convergedUid;
           exMatchByUid.set(convergedUid, exMatch);
         }
+        if (exMatch) {
+          matchIdMap.set(impMatch.id, exMatch.id);
+          await backfillTimeouts(impMatch, exMatch.id);
+        }
         continue;
       }
 
@@ -687,6 +716,12 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
         ? (oppMap.get(impMatch.opponent_id) ?? null)
         : null;
       const newMatchId = await db.matches.add(matchToInsert);
+      matchIdMap.set(impMatch.id, newMatchId);
+      // Scouting notes pinned to the replaced row follow the game to its new id
+      // (section 6b then sees them as already present instead of duplicating).
+      if (decision === 'replace' && exMatch) {
+        await db.opp_tendencies.where('match_id').equals(exMatch.id).modify({ match_id: newMatchId });
+      }
       if (decision == null) {
         matchesAdded++;
         const newPeak = (seasonEffectiveCounts.get(exSeasonId) ?? 0) + 1;
@@ -780,6 +815,47 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
         }
       }
       if (contactRows.length) await db.contacts.bulkAdd(contactRows);
+
+      // ── Timeouts ──────────────────────────────────────────────────────
+      const timeoutRows = [];
+      for (const to of impTimeoutsByMatch.get(impMatch.id) ?? []) {
+        const newSetId = localSetMap.get(to.set_id);
+        if (newSetId == null) continue;
+        const row = { ...to, match_id: newMatchId, set_id: newSetId };
+        delete row.id;
+        timeoutRows.push(row);
+      }
+      if (timeoutRows.length) await db.timeouts.bulkAdd(timeoutRows);
+    }
+
+    // ── 6b. Scouting notes (opp_tendencies) ────────────────────────────────
+    // No uid on these rows, so a note is "the same note" when opponent, game,
+    // category, text and creation time all line up after id translation.
+    if (Array.isArray(data.opp_tendencies)) {
+      const tendencyKey = (t) => `${t.opp_id}|${t.match_id ?? ''}|${t.type}|${t.value}|${t.created_at ?? ''}`;
+      const exKeys = new Set((await db.opp_tendencies.toArray()).map(tendencyKey));
+      const rows = [];
+      for (const t of data.opp_tendencies) {
+        const oppId = oppMap.get(t.opp_id);
+        if (oppId == null) continue;
+        let matchId = null;
+        if (t.match_id != null) {
+          matchId = matchIdMap.get(t.match_id);
+          if (matchId == null) continue; // its game wasn't imported (skipped/tombstoned)
+        }
+        const row = {
+          ...t,
+          opp_id:   oppId,
+          match_id: matchId,
+          team_id:  t.team_id != null ? (teamMap.get(t.team_id) ?? null) : null,
+        };
+        delete row.id;
+        const k = tendencyKey(row);
+        if (exKeys.has(k)) continue;
+        exKeys.add(k);
+        rows.push(row);
+      }
+      if (rows.length) await db.opp_tendencies.bulkAdd(rows);
     }
 
     // ── 7. Historical records ──────────────────────────────────────────────
@@ -1026,6 +1102,7 @@ export async function dedupeLocalMatches() {
         await db.lineups.where('set_id').anyOf(exSetIds).delete();
         await db.substitutions.where('set_id').anyOf(exSetIds).delete();
       }
+      await db.timeouts.where('match_id').equals(loserId).delete();
       await db.sets.where('match_id').equals(loserId).delete();
       await db.matches.delete(loserId);
     }

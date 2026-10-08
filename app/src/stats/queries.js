@@ -162,6 +162,7 @@ export async function cascadeDeleteMatchRow(matchId) {
     db.rallies.where('set_id').anyOf(setIds).delete(),
     db.lineups.where('set_id').anyOf(setIds).delete(),
     db.substitutions.where('set_id').anyOf(setIds).delete(),
+    db.timeouts.where('match_id').equals(matchId).delete(),
   ]);
   await db.sets.where('match_id').equals(matchId).delete();
   await db.matches.delete(matchId);
