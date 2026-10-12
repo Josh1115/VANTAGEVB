@@ -113,7 +113,7 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
 
   const allMatchRalliesFromDb = useLiveQuery(
     () => scope === 'match' && matchId
-      ? db.rallies.where('match_id').equals(matchId).toArray()
+      ? db.sets.where('match_id').equals(matchId).primaryKeys().then((ids) => db.rallies.where('set_id').anyOf(ids).toArray())
       : Promise.resolve(null),
     [scope, matchId]
   );
