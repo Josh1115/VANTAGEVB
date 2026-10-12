@@ -208,6 +208,18 @@
   animation: slide-up-fade var(--duration-base) var(--ease-out) backwards;
 }
 
+/* Undo toast pop. Only animates opacity/scale via `scale` (not `transform`)
+   so it doesn't fight the -translate-x-1/2 centering; `backwards` = no retained
+   transform afterwards (see note above). */
+@keyframes undo-pop {
+  0%   { opacity: 0; scale: 0.85; }
+  60%  { opacity: 1; scale: 1.06; }
+  100% { opacity: 1; scale: 1; }
+}
+.animate-undo-pop {
+  animation: undo-pop 260ms var(--ease-out) backwards;
+}
+
 /* ── Item 7: Match list slide-in-right ── */
 @keyframes slide-in-right {
   from { opacity: 0; transform: translateX(20px); }

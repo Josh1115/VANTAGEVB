@@ -991,7 +991,7 @@ export const useMatchStore = create((set, get) => ({
       }
     }
 
-    useUiStore.getState().showToast(undoMessage, 'info');
+    useUiStore.getState().showToast(undoMessage, 'undo');
 
     } finally {
       set({ _undoInFlight: false });

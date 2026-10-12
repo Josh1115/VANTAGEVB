@@ -8,8 +8,10 @@ export const useUiStore = create((set) => ({
 
   showToast: (message, variant = 'info') => {
     clearTimeout(toastTimerId);
-    set({ toast: { message, variant } });
-    toastTimerId = setTimeout(() => set({ toast: null }), 3000);
+    // id re-triggers the pop animation when the same message shows twice in a row.
+    set({ toast: { message, variant, id: Date.now() } });
+    // Undo toasts stay up longer — coaches glance back at the court mid-rally.
+    toastTimerId = setTimeout(() => set({ toast: null }), variant === 'undo' ? 4000 : 3000);
   },
 
   // Popup nudging a trial user to upgrade, shown when they hit their

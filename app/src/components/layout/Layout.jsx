@@ -258,7 +258,21 @@ export function Layout() {
       <TryoutsGoodLuckModal />
 
       {/* Toast */}
-      {toast && (
+      {/* Undo toast — loud amber, near the bottom by the Undo button so it isn't missed */}
+      {toast?.variant === 'undo' && (
+        <div
+          key={toast.id}
+          role="status"
+          className="animate-undo-pop fixed left-1/2 -translate-x-1/2 z-[9999] max-w-[92vw] flex items-center gap-2
+            px-5 py-3 rounded-xl bg-amber-400 text-black text-base font-bold shadow-2xl ring-2 ring-amber-200"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 5.5vmin + 1rem)' }}
+        >
+          <span className="text-xl leading-none" aria-hidden="true">↩</span>
+          <span className="truncate">{toast.message}</span>
+        </div>
+      )}
+
+      {toast && toast.variant !== 'undo' && (
         <div
           className={`fixed left-1/2 -translate-x-1/2 z-[9999] px-4 py-2 rounded-lg text-sm font-medium shadow-lg
             ${toast.variant === 'error' ? 'bg-red-600' : toast.variant === 'success' ? 'bg-green-600' : 'bg-slate-700'}`}
