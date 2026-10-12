@@ -23,6 +23,8 @@ export class ErrorBoundary extends Component {
 
   render() {
     if (!this.state.error) return this.props.children;
+    // Optional small fallback so one broken section doesn't take down the whole page.
+    if (this.props.fallback !== undefined) return this.props.fallback;
 
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-5 px-6 text-center">

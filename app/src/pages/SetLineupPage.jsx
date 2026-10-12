@@ -9,6 +9,8 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { serveOrderToZone, rotationFromStartZone } from '../components/court/CourtZonePicker';
 import { LineupForm } from '../components/match/LineupForm';
+import { ErrorBoundary } from '../components/ui/ErrorBoundary';
+import { LineupStatsBoard, LineupRotationBoard, LineupScoreLine, LineupSetRecap } from '../components/match/LineupStatsBoard';
 
 export function SetLineupPage() {
   const { matchId: matchIdParam } = useParams();
@@ -209,6 +211,14 @@ export function SetLineupPage() {
     }
   };
 
+  const showBoard = setNumber >= 2;
+  // If a stat box ever fails, show this instead — the lineup + Save keep working.
+  const boxFallback = (
+    <p className="bg-surface rounded-xl border border-slate-700 px-4 py-3 text-xs text-slate-400">
+      Couldn't load these stats. Your lineup still works.
+    </p>
+  );
+
   if (!setNumber) {
     return (
       <div className="h-screen bg-bg flex items-center justify-center">
@@ -218,10 +228,21 @@ export function SetLineupPage() {
   }
 
   return (
-    <div className="pb-8">
+    <div className={showBoard ? 'pb-8 lg:pb-0 lg:h-dvh lg:flex lg:flex-col' : 'pb-8'}>
       <PageHeader title={`Set ${setNumber} Lineup`} />
 
-      <div className="p-4 md:p-6 space-y-5 max-w-lg mx-auto">
+      <div className={showBoard
+        ? 'p-4 md:p-6 lg:py-0 max-w-lg lg:max-w-6xl lg:w-full mx-auto lg:flex-1 lg:min-h-0 lg:grid lg:grid-cols-[minmax(0,32rem)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:gap-6'
+        : 'p-4 md:p-6 max-w-lg mx-auto'}>
+      {showBoard && (
+        <div className="mb-5 lg:mb-0 lg:order-2 lg:h-full lg:overflow-y-auto lg:overscroll-contain lg:py-6 space-y-4">
+          <ErrorBoundary fallback={boxFallback}><LineupScoreLine matchId={matchId} setNumber={setNumber} /></ErrorBoundary>
+          <ErrorBoundary fallback={boxFallback}><LineupStatsBoard matchId={matchId} setNumber={setNumber} players={players} /></ErrorBoundary>
+          <ErrorBoundary fallback={boxFallback}><LineupRotationBoard matchId={matchId} setNumber={setNumber} players={players} /></ErrorBoundary>
+          <ErrorBoundary fallback={boxFallback}><LineupSetRecap matchId={matchId} setNumber={setNumber} players={players} /></ErrorBoundary>
+        </div>
+      )}
+      <div className={showBoard ? 'space-y-5 lg:order-1 lg:h-full lg:overflow-y-auto lg:overscroll-contain lg:py-6' : 'space-y-5'}>
 
         {/* Set selector — always 3 fixed buttons */}
         <div>
@@ -356,6 +377,7 @@ export function SetLineupPage() {
           {saving ? 'Saving…' : 'Save Lineup'}
         </Button>
 
+      </div>
       </div>
     </div>
   );
