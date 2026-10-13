@@ -12,6 +12,7 @@ export function RankEditModal({ seasonRecord, defaultTeamId, onClose }) {
   const [stateInput,    setStateInput]    = useState(seasonRecord?.stateRank    != null ? String(seasonRecord.stateRank)    : '');
   const [nationalInput, setNationalInput] = useState(seasonRecord?.nationalRank != null ? String(seasonRecord.nationalRank) : '');
   const [classInput,    setClassInput]    = useState(seasonRecord?.classRank ?? '');
+  const [seedInput,     setSeedInput]     = useState(seasonRecord?.playoffSeed ?? '');
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState('');
 
@@ -46,6 +47,7 @@ export function RankEditModal({ seasonRecord, defaultTeamId, onClose }) {
         state_rank:    newStateRank,
         national_rank: newNationalRank,
         class_rank:    newClassRank,
+        playoff_seed:  seedInput.trim().replace(/^#\s*/, '') || null,
         ...prevRanks,
       };
 
@@ -108,6 +110,18 @@ export function RankEditModal({ seasonRecord, defaultTeamId, onClose }) {
               className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
             />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Our Playoff Seed</label>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={seedInput}
+            onChange={(e) => setSeedInput(e.target.value)}
+            placeholder="ex: 4"
+            className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
+          />
         </div>
 
         {error && (

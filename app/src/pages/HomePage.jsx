@@ -690,6 +690,8 @@ export function HomePage() {
       prevStateRank:    historyEntry?.prev_state_rank    ?? null,
       prevNationalRank: historyEntry?.prev_national_rank ?? null,
       prevClassRank:    historyEntry?.prev_class_rank    ?? null,
+      // Stored as free text on HistoryPage ("#2"), so strip any leading "#".
+      playoffSeed:      String(historyEntry?.playoff_seed ?? '').replace(/^#\s*/, '').trim() || null,
       teamState:        team.state ?? null,
       seasonYear:       season.year,
     };
@@ -1028,6 +1030,12 @@ export function HomePage() {
                   className="text-[17.5px] font-black tracking-widest text-white uppercase"
                   style={{ fontFamily: "'Orbitron', sans-serif" }}
                 >
+                  {/* NCAA-style seed: small number ahead of the team name */}
+                  {seasonRecord.playoffSeed && (
+                    <span className="inline-flex items-center justify-center min-w-[28px] h-[28px] px-1 rounded-full border border-amber-400 text-[11px] font-bold text-amber-400 tracking-normal mr-1.5 align-middle" title="Playoff seed">
+                      #{seasonRecord.playoffSeed}
+                    </span>
+                  )}
                   {seasonRecord.teamName}
                 </span>
                 <span className="text-white font-black text-xl">·</span>
