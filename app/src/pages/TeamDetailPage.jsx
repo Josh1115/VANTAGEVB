@@ -22,6 +22,8 @@ import { RosterImportModal } from '../components/team/RosterImportModal';
 import { PostSeasonModal } from '../components/shared/PostSeasonModal';
 import { applyInferredSeasonFinish } from '../utils/seasonUtils';
 import { SeasonScheduleTab } from '../components/team/SeasonScheduleTab';
+import { groupRoster } from '../utils/rosterGroups';
+import { CourtRoster } from '../components/team/CourtRoster';
 
 const POS_COLOR = { S: 'blue', OH: 'orange', OPP: 'orange', MB: 'green', L: 'gray', DS: 'gray', RS: 'orange' };
 
@@ -94,6 +96,38 @@ function CoachModal({ season, onClose }) {
   );
 }
 
+const ROSTER_VIEWS = [
+  { value: 'number',   label: '# Number' },
+  { value: 'position', label: 'Position' },
+  { value: 'grade',    label: 'Grade' },
+];
+
+function RosterViewToggle({ value, onChange }) {
+  return (
+    <div className="flex bg-slate-800 rounded-lg p-0.5 mb-3">
+      {ROSTER_VIEWS.map(v => (
+        <button
+          key={v.value}
+          onClick={() => onChange(v.value)}
+          className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+            value === v.value ? 'bg-primary text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          {v.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function RosterGroupHeader({ label, count }) {
+  return (
+    <div className="text-xs font-bold uppercase tracking-wide text-slate-400 pt-1">
+      {label} <span className="text-slate-500">({count})</span>
+    </div>
+  );
+}
+
 export function TeamDetailPage() {
   const { teamId } = useParams();
   const navigate = useNavigate();
@@ -125,6 +159,13 @@ export function TeamDetailPage() {
 
   const [selectedSeasonId, setSelectedSeasonId] = useState(null);
   const [tab, setTab]             = useState('roster');
+  const [rosterView, setRosterViewState] = useState(() => {
+    try { return localStorage.getItem('vantage.rosterView') || 'number'; } catch { return 'number'; }
+  });
+  const setRosterView = (v) => {
+    setRosterViewState(v);
+    try { localStorage.setItem('vantage.rosterView', v); } catch { /* ignore */ }
+  };
   const [selectedSession, setSelectedSession] = useState(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showPlayerModal, setShowPlayerModal] = useState(false);
@@ -305,6 +346,8 @@ export function TeamDetailPage() {
             </div>
           )}
 
+          <RosterViewToggle value={rosterView} onChange={setRosterView} />
+
           {isCurrentSeason ? (
             <>
               <div className="flex justify-between items-center mb-3">
@@ -328,8 +371,19 @@ export function TeamDetailPage() {
                   action={<Button onClick={() => setShowPlayerModal(true)}>Add Player</Button>}
                 />
               ) : (
-                <div className="space-y-2">
-                  {activePlayers.map((player) => (
+                rosterView === 'position' ? (
+                  <CourtRoster
+                    groups={groupRoster(activePlayers, 'position')}
+                    onOpen={(p) => navigate(`/teams/${teamId}/players/${p.id}`)}
+                    onEdit={setEditPlayer}
+                    onDelete={setDeletePlayer}
+                  />
+                ) : (
+                <div className="space-y-5">
+                  {groupRoster(activePlayers, rosterView).map(g => (
+                    <div key={g.key} className="space-y-2">
+                      {g.label && <RosterGroupHeader label={g.label} count={g.players.length} />}
+                  {g.players.map((player) => (
                     <SwipeableMatchCard key={player.id} onDeleteConfirm={() => setDeletePlayer(player)}>
                       <div
                         className="group bg-surface rounded-xl px-4 py-3 flex items-center gap-3 cursor-pointer active:brightness-110"
@@ -377,7 +431,10 @@ export function TeamDetailPage() {
                       </div>
                     </SwipeableMatchCard>
                   ))}
+                  </div>
+                ))}
                 </div>
+              )
               )}
 
             </>
@@ -392,8 +449,17 @@ export function TeamDetailPage() {
                 description="No match contacts found for this season."
               />
             ) : (
-              <div className="space-y-2">
-                {historicalRoster.map((player) => (
+              rosterView === 'position' ? (
+                <CourtRoster
+                  groups={groupRoster(historicalRoster, 'position')}
+                  onOpen={(p) => navigate(`/teams/${teamId}/players/${p.id}`)}
+                />
+              ) : (
+              <div className="space-y-5">
+                {groupRoster(historicalRoster, rosterView).map(g => (
+                  <div key={g.key} className="space-y-2">
+                    {g.label && <RosterGroupHeader label={g.label} count={g.players.length} />}
+                {g.players.map((player) => (
                   <div
                     key={player.id}
                     className="bg-surface rounded-xl px-4 py-3 flex items-center gap-3 cursor-pointer active:brightness-110"
@@ -420,7 +486,10 @@ export function TeamDetailPage() {
                     </div>
                   </div>
                 ))}
+                </div>
+              ))}
               </div>
+              )
             )
           )}
         </div>
