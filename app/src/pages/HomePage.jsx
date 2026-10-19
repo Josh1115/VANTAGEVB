@@ -6,7 +6,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { MATCH_STATUS } from '../constants';
 import { fmtDate, fmtHitting, fmtPct } from '../stats/formatters';
-import { currentStreak, seasonOpener } from '../utils/seasonSummary';
+import { currentStreak, seasonOpener, sortByDateTime } from '../utils/seasonSummary';
 import { computePlayerStats, computeTeamStats } from '../stats/engine';
 import { deleteMatch } from '../stats/queries';
 import { useUiStore, selectShowToast } from '../store/uiStore';
@@ -46,16 +46,6 @@ function fmtTime(t) {
   const period = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 || 12;
   return `${h12}:${String(m).padStart(2, '0')} ${period}`;
-}
-
-// Sort matches by date, breaking same-day ties with match_time ("HH:MM" 24h). No time = sorts last within the day.
-function sortByDateTime(a, b) {
-  const da    = a.date?.slice(0, 10) ?? '';
-  const dateB = b.date?.slice(0, 10) ?? '';
-  if (da !== dateB) return da < dateB ? -1 : 1;
-  const ta = a.match_time ?? '99:99';
-  const tb = b.match_time ?? '99:99';
-  return ta < tb ? -1 : ta > tb ? 1 : 0;
 }
 
 // Returns 'TODAY' / 'TOMORROW' / null, comparing local calendar days (not raw ms)
@@ -252,6 +242,9 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
                         {match.match_type === 'ihsa-playoffs' && match.opponent_playoff_seed != null && (
                           <span className="text-slate-400 font-normal"> (#{match.opponent_playoff_seed})</span>
                         )}
+                        {match.opponent_record && (
+                          <span className="text-slate-400 font-normal"> ({match.opponent_record})</span>
+                        )}
                       </span>
                       {match.match_type === 'tourney' && match.tournament_name && (
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide">{match.tournament_name}</span>
@@ -326,6 +319,9 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
                         )}
                         {match.match_type === 'ihsa-playoffs' && match.opponent_playoff_seed != null && (
                           <span className="text-slate-400 font-normal"> (#{match.opponent_playoff_seed})</span>
+                        )}
+                        {match.opponent_record && (
+                          <span className="text-slate-400 font-normal"> ({match.opponent_record})</span>
                         )}
                       </span>
                       {match.match_type === 'tourney' && match.tournament_name && (
@@ -662,7 +658,7 @@ export function HomePage() {
     const confL   = matches.filter(m => m.conference === 'conference' && !isWin(m)).length;
     const tourneyW = matches.filter(m => m.match_type === 'tourney' &&  isWin(m)).length;
     const tourneyL = matches.filter(m => m.match_type === 'tourney' && !isWin(m)).length;
-    const last5  = [...matches].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+    const last5  = [...matches].sort(sortByDateTime).reverse().slice(0, 5);
     const streak = currentStreak(matches);
     // Season opener shown while nothing has been played yet.
     const opener = matches.length ? null : seasonOpener(allSeasonMatches, MATCH_STATUS.COMPLETE);
@@ -1649,6 +1645,9 @@ export function HomePage() {
                         )}
                         {match.match_type === 'ihsa-playoffs' && match.opponent_playoff_seed != null && (
                           <span className="text-slate-400 font-normal"> (#{match.opponent_playoff_seed})</span>
+                        )}
+                        {match.opponent_record && (
+                          <span className="text-slate-400 font-normal"> ({match.opponent_record})</span>
                         )}
                       </span>
                       {match.match_type === 'tourney' && match.tournament_name && (

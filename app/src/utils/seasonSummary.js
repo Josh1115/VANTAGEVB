@@ -2,9 +2,19 @@
 
 const isWin = (m) => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0);
 
+// Sort matches by date, breaking same-day ties with match_time ("HH:MM" 24h). No time = sorts last within the day.
+export function sortByDateTime(a, b) {
+  const da    = a.date?.slice(0, 10) ?? '';
+  const dateB = b.date?.slice(0, 10) ?? '';
+  if (da !== dateB) return da < dateB ? -1 : 1;
+  const ta = a.match_time ?? '99:99';
+  const tb = b.match_time ?? '99:99';
+  return ta < tb ? -1 : ta > tb ? 1 : 0;
+}
+
 // Current streak from completed matches: { win, count } or null if none played.
 export function currentStreak(completed) {
-  const byNewest = [...completed].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const byNewest = [...completed].sort(sortByDateTime).reverse();
   if (!byNewest.length) return null;
   const win = isWin(byNewest[0]);
   let count = 0;
