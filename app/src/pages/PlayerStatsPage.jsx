@@ -19,7 +19,7 @@ import {
 } from '../stats/queries';
 import { TAB_COLUMNS, SERVING_COLS } from '../stats/columns';
 import { fmtCount, fmtHitting, fmtPassRating, fmtPct, fmtVER } from '../stats/formatters';
-import { PROJECTION_MIN_MATCHES, buildProjectedRow } from '../stats/projection';
+import { PROJECTION_MIN_MATCHES, buildProjectedRow, buildCareerProjectedRow, SEASONS_LEFT_BY_GRADE } from '../stats/projection';
 import { useProjectedSeasonMatches } from '../hooks/useSettingsStorage';
 import { PageHeader } from '../components/layout/PageHeader';
 import { TabBar } from '../components/ui/Tab';
@@ -488,6 +488,27 @@ export function PlayerStatsPage() {
     [season?.id]
   );
 
+  // Career projection only applies to the newest season (the player's school
+  // year describes "now"); every other season of this team counts as past.
+  // undefined = still loading, null = no past stats.
+  const isLatestSeason = !!season && !!seasons?.length && season.id === Math.max(...seasons.map(s => s.id));
+  const [pastRow, setPastRow] = useState(undefined);
+  useEffect(() => {
+    if (!isLatestSeason) { setPastRow(null); return; }
+    let cancelled = false;
+    const pastSeasonIds = seasons.filter(s => s.id !== season.id).map(s => s.id);
+    db.matches.where('season_id').anyOf(pastSeasonIds)
+      .filter(m => m.match_type !== 'exhibition' && m.status !== 'scheduled')
+      .primaryKeys()
+      .then(async (ids) => {
+        if (!ids.length) return null;
+        const [contacts, positions] = await Promise.all([getContactsForMatches(ids), getPlayerPositionsForMatches(ids)]);
+        return computePlayerStats(contacts, 1, positions)[pid] ?? null;
+      })
+      .then(row => { if (!cancelled) setPastRow(row); });
+    return () => { cancelled = true; };
+  }, [isLatestSeason, seasons, season?.id, pid]);
+
   useEffect(() => {
     if (!matches?.length) {
       setStats(null);
@@ -572,6 +593,24 @@ export function PlayerStatsPage() {
     return buildProjectedRow(stats.playerRow, currentCols, factor, projectedMatches);
   }, [stats, currentCols, projectedMatches, teamMatchesPlayed]);
 
+  // Pre-app career totals typed in on the Records page (players.pre_vbstat_*) are
+  // added on top of in-app past seasons — same as the Records career board.
+  const pastWithPreApp = useMemo(() => {
+    if (pastRow === undefined || !player) return undefined;
+    const out = { ...(pastRow ?? {}) };
+    for (const key of ['k', 'ace', 'blk', 'ast', 'dig', 'sp']) {
+      const v = player[`pre_vbstat_${key}`];
+      if (v != null) out[key] = (out[key] ?? 0) + v;
+    }
+    return out;
+  }, [pastRow, player]);
+
+  const seasonsLeft = SEASONS_LEFT_BY_GRADE[player?.year];
+  const careerRow = useMemo(() => {
+    if (!projectedRow || !isLatestSeason || seasonsLeft == null || pastWithPreApp === undefined) return null;
+    return buildCareerProjectedRow(pastWithPreApp, projectedRow, currentCols, seasonsLeft);
+  }, [projectedRow, isLatestSeason, seasonsLeft, pastWithPreApp, currentCols]);
+
   const playerAwardGroups = useMemo(() => {
     if (!allTeamWinners?.length || !player?.name || !awardTypes?.length) return [];
     const normalized = player.name.trim().toLowerCase();
@@ -651,7 +690,8 @@ export function PlayerStatsPage() {
                 columns={currentCols}
                 rows={statRow}
                 totalsRow={projectedRow ?? undefined}
-                totalsRowLabel={projectedRow ? `Proj. (${projectedMatches})` : undefined}
+                totalsRowLabel={projectedRow ? `Season Proj (${projectedMatches})` : undefined}
+                extraTotalsRows={careerRow ? [{ row: careerRow, label: 'Career Proj' }] : undefined}
               />
               {projectedRow && (
                 <p className="px-8 pt-1 text-[10px] text-slate-500">

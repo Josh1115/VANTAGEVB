@@ -8,7 +8,7 @@ import { StatGlossaryDrawer } from './StatGlossaryDrawer';
  * columns: [{ key, label, fmt?, defaultDesc? }]
  * rows:    [{ id, name, ...statValues }]
  */
-export function StatTable({ columns, rows, totalsRow, totalsRowLabel, onRowClick, onNameClick, selectedRowId, showGlossary = false }) {
+export function StatTable({ columns, rows, totalsRow, totalsRowLabel, extraTotalsRows = [], onRowClick, onNameClick, selectedRowId, showGlossary = false }) {
   const [sortKey,      setSortKey]      = useState(columns[1]?.key ?? columns[0].key);
   const [desc,         setDesc]         = useState(true);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
@@ -90,7 +90,8 @@ export function StatTable({ columns, rows, totalsRow, totalsRowLabel, onRowClick
                   onClick={col.key === 'name' && onNameClick ? (e) => { e.stopPropagation(); onNameClick(row); } : undefined}
                   className={clsx(
                     'px-8 py-2 tabular-nums',
-                    col.key === 'name' ? 'text-left font-medium sticky left-0 z-10 bg-slate-900' : clsx('text-center', !col.cellClass && 'text-slate-300'),
+                    // Labelled totals rows are projections — the real row above gets bold white so it stands out.
+                    col.key === 'name' ? 'text-left font-medium sticky left-0 z-10 bg-slate-900' : clsx('text-center', totalsRowLabel != null ? 'font-bold' : '', !col.cellClass && (totalsRowLabel != null ? 'text-white' : 'text-slate-300')),
                     col.key === 'name' && onNameClick && 'cursor-pointer hover:text-primary transition-colors',
                     col.cellClass?.(row[col.key], row)
                   )}
@@ -110,34 +111,39 @@ export function StatTable({ columns, rows, totalsRow, totalsRowLabel, onRowClick
         </tbody>
         {totalsRow && (
           <tfoot>
-            <tr className={clsx(
-              'border-t-2 border-slate-600 bg-slate-800/70',
-              totalsRowLabel != null && 'italic',
+            {/* extraTotalsRows: further labelled rows ({ row, label }) under the totals row */}
+            {[{ row: totalsRow, label: totalsRowLabel }, ...extraTotalsRows].map(({ row: tRow, label: tLabel }, ti) => (
+            <tr key={ti} className={clsx(
+              'bg-slate-800/70',
+              ti === 0 ? 'border-t-2 border-slate-600' : 'border-t border-slate-700/60',
+              tLabel != null && 'italic',
             )}>
               {columns.map((col, i) => {
                 // When a label is supplied, the first cell shows it instead of
                 // that column's value (used for the projected-totals row, where
                 // the stat tables have no 'name' column to hang a label on).
-                const showLabel = i === 0 && totalsRowLabel != null;
+                const showLabel = i === 0 && tLabel != null;
                 return (
                   <td
                     key={col.key}
                     className={clsx(
-                      'px-8 py-2 font-bold',
+                      'px-8 py-2',
+                      tLabel != null ? 'font-normal' : 'font-bold',
                       showLabel
-                        ? 'text-left text-slate-300 whitespace-nowrap sticky left-0 z-10 bg-slate-800'
+                        ? 'text-left text-slate-400 whitespace-nowrap sticky left-0 z-10 bg-slate-800'
                         : col.key === 'name'
                           ? 'text-left text-slate-300 tabular-nums sticky left-0 z-10 bg-slate-800'
-                          : 'text-center text-white tabular-nums',
+                          : clsx('text-center tabular-nums', tLabel != null ? 'text-slate-400' : 'text-white'),
                     )}
                   >
                     {showLabel
-                      ? totalsRowLabel
-                      : col.fmt ? col.fmt(totalsRow[col.key]) : (totalsRow[col.key] ?? '—')}
+                      ? tLabel
+                      : col.fmt ? col.fmt(tRow[col.key]) : (tRow[col.key] ?? '—')}
                   </td>
                 );
               })}
             </tr>
+            ))}
           </tfoot>
         )}
       </table>

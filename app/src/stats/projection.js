@@ -21,3 +21,23 @@ export function buildProjectedRow(playerRow, columns, factor, projectedMatches) 
   }
   return out;
 }
+
+// Seasons remaining AFTER the current one, keyed by the player's school year.
+// Anything else (blank, middle school, etc.) gets no career projection.
+export const SEASONS_LEFT_BY_GRADE = { Freshman: 3, Sophomore: 2, Junior: 1, Senior: 0 };
+
+// A "what this player is on pace for over their whole career" row: past-season
+// totals plus this season's projected row repeated for this season and every
+// season left. Counting stats (incl. `mp`) are summed; rates are carried through
+// from the season projection unchanged.
+export function buildCareerProjectedRow(pastRow, seasonProjRow, columns, seasonsLeft) {
+  const out = { id: '__career_projected__' };
+  for (const col of columns) {
+    if (col.key === 'name') continue;
+    const v = seasonProjRow[col.key];
+    out[col.key] = ((col.key === 'mp' || isCountingCol(col)) && typeof v === 'number')
+      ? Math.round((pastRow?.[col.key] ?? 0) + v * (1 + seasonsLeft))
+      : v;
+  }
+  return out;
+}
