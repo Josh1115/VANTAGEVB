@@ -1351,7 +1351,15 @@ export function HomePage() {
                 );
               })()}
               <div className="min-w-0 flex-1">
-                <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 leading-none mb-0.5">Next</div>
+                <div className="flex items-center gap-1.5 min-w-0 mb-0.5">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 leading-none shrink-0">Next</span>
+                  {nextMatch.match_type === 'tourney' && nextMatch.tournament_name && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide leading-none truncate">{nextMatch.tournament_name}</span>
+                  )}
+                  {nextMatch.match_type === 'ihsa-playoffs' && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-900/50 text-cyan-400 uppercase tracking-wide leading-none truncate">{nextMatch.playoff_round || playoffLabel}</span>
+                  )}
+                </div>
                 <div className="font-semibold text-base truncate">
                   {nextMatch.opponent_name ?? 'TBD'}
                   {nextMatch.opponent_maxpreps_rank != null && (

@@ -24,13 +24,12 @@ function DiagEndSeasonLocations() {
       <rect x="152" y="110" width="152" height="18" rx="5" fill="rgba(239,68,68,0.12)" stroke="rgba(239,68,68,0.35)" strokeWidth="1" />
       <text x="228" y="122" fill={RED} fontSize="8" fontWeight="700" textAnchor="middle">End Season</text>
 
-      {/* --- Team Page seasons tab --- */}
+      {/* --- Team Page roster tab --- */}
       <rect x="8" y="140" width="304" height="50" rx="8" fill={SURFACE2} stroke={BORDER} strokeWidth="1" />
-      <text x="18" y="156" fill={TXT5} fontSize="7" fontWeight="700" letterSpacing="1">TEAM PAGE — SEASONS TAB</text>
-      <text x="18" y="172" fill={TXT} fontSize="9" fontWeight="700">2024–25</text>
-      <text x="70" y="172" fill={TXT5} fontSize="8">· 18 matches</text>
-      <rect x="234" y="163" width="66" height="16" rx="4" fill="rgba(239,68,68,0.12)" stroke="rgba(239,68,68,0.35)" strokeWidth="1" />
-      <text x="267" y="174" fill={RED} fontSize="7.5" fontWeight="700" textAnchor="middle">End</text>
+      <text x="18" y="156" fill={TXT5} fontSize="7" fontWeight="700" letterSpacing="1">TEAM PAGE — BELOW ROSTER</text>
+      <text x="18" y="172" fill={TXT4} fontSize="8">#12 · Smith</text>
+      <rect x="152" y="164" width="152" height="18" rx="5" fill="rgba(239,68,68,0.12)" stroke="rgba(239,68,68,0.35)" strokeWidth="1" />
+      <text x="228" y="176" fill={RED} fontSize="8" fontWeight="700" textAnchor="middle">End Season</text>
     </svg>
   );
 }
@@ -218,7 +217,7 @@ export function HelpEndSeasonPage() {
             {[
               ['History Page', 'Inside the CURRENT season card at the top of the History tab. Tap the red "End Season" button next to the CURRENT badge.'],
               ['Season Detail Page', 'Scroll to the very bottom of the season schedule. The button sits below the last match entry.'],
-              ['Team Page', 'Go to your team → tap the Seasons tab → tap "End" on the row for the current season.'],
+              ['Team Page', 'Go to your team → Roster tab → pick the current season at the top → scroll below the player list and tap "End Season".'],
             ].map(([place, desc]) => (
               <div key={place} className="flex gap-2">
                 <span className="text-sm font-semibold shrink-0 leading-relaxed" style={{ color: PRIMARY }}>{place}</span>

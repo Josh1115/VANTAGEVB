@@ -492,6 +492,16 @@ export function TeamDetailPage() {
               )
             )
           )}
+
+          {/* End Season — only for the selected season while it's still active */}
+          {selectedSeason && selectedSeason.status !== 'ended' && (
+            <button
+              onClick={() => setConfirmEndSeasonId(selectedSeason.id)}
+              className="w-full mt-6 py-2.5 rounded-xl border border-slate-600 text-slate-400 text-sm font-semibold hover:border-red-700/60 hover:text-red-400 hover:bg-red-900/10 transition-colors"
+            >
+              End Season
+            </button>
+          )}
         </div>
       )}
 
