@@ -847,6 +847,82 @@ export function computePointQuality(contacts) {
   };
 }
 
+// Sorts every rally by who served and how the point ended, as a share of that
+// rally type — e.g. sp.ace = 0.08 means 8% of our serves ended in an ace.
+// Explains *how* Serving Point % (sp) and Sideout % (so) were won or lost.
+// Each bucket's values sum to 1; the first matching reason wins.
+export function computePointPaths(contacts, rallies) {
+  const byRally = new Map();
+  for (const c of contacts) {
+    const key = `${c.set_id}_${c.rally_number}`;
+    if (!byRally.has(key)) byRally.set(key, []);
+    byRally.get(key).push(c);
+  }
+
+  const sp = { ace: 0, kill: 0, opp_err: 0, won_other: 0, se: 0, our_err: 0, opp_kill: 0, lost_other: 0 };
+  const so = { fbso: 0, kill: 0, opp_se: 0, opp_err: 0, won_other: 0, aced: 0, our_err: 0, opp_kill: 0, lost_other: 0 };
+  let spN = 0, soN = 0;
+
+  const has = (list, action, results) =>
+    list.some((c) => c.action === action && (!results || results.includes(c.result)));
+
+  for (const rally of rallies) {
+    const { serve_side, point_winner } = rally;
+    if ((serve_side !== 'us' && serve_side !== 'them') || (point_winner !== 'us' && point_winner !== 'them')) continue;
+
+    const cs     = (byRally.get(`${rally.set_id}_${rally.rally_number}`) ?? [])
+      .slice().sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+    const ours   = cs.filter((c) => !c.opponent_contact);
+    const theirs = cs.filter((c) =>  c.opponent_contact);
+    const won    = point_winner === 'us';
+
+    const ourEarned  = has(ours, 'attack', ['kill']) || has(ours, 'block', ['solo', 'assist']);
+    const ourErr     = has(ours, 'attack', ['error']) || has(ours, 'error')
+      || has(ours, 'set', ['ball_handling_error']) || ours.some((c) => c.result === 'free_ball_error');
+    const oppEarned  = has(theirs, 'attack', ['kill']) || has(theirs, 'block', ['solo', 'assist'])
+      || has(theirs, 'serve', ['ace']);
+    const oppErr     = has(theirs, 'attack', ['error']) || has(theirs, 'error')
+      || has(theirs, 'set', ['ball_handling_error']);
+
+    if (serve_side === 'us') {
+      spN++;
+      if (won) {
+        if      (has(ours, 'serve', ['ace'])) sp.ace++;
+        else if (ourEarned)                   sp.kill++;
+        else if (oppErr)                      sp.opp_err++;
+        else                                  sp.won_other++;
+      } else {
+        if      (has(ours, 'serve', ['error'])) sp.se++;
+        else if (ourErr)                        sp.our_err++;
+        else if (oppEarned)                     sp.opp_kill++;
+        else                                    sp.lost_other++;
+      }
+    } else {
+      soN++;
+      if (won) {
+        // First-ball sideout: our first swing after a playable pass, with no dig in between, is a kill
+        const pass     = ours.find((c) => c.action === 'pass' && parseInt(c.result, 10) >= 1);
+        const firstAtk = pass && ours.find((c) => (c.timestamp ?? 0) > (pass.timestamp ?? 0) && (c.action === 'attack' || c.action === 'dig'));
+        if      (has(theirs, 'serve', ['error']))                  so.opp_se++;
+        else if (firstAtk?.action === 'attack' && firstAtk.result === 'kill') so.fbso++;
+        else if (ourEarned)                                         so.kill++;
+        else if (oppErr)                                            so.opp_err++;
+        else                                                        so.won_other++;
+      } else {
+        if      (has(ours, 'pass', ['0'])) so.aced++;
+        else if (ourErr)                   so.our_err++;
+        else if (oppEarned)                so.opp_kill++;
+        else                               so.lost_other++;
+      }
+    }
+  }
+
+  const share = (counts, n) => Object.fromEntries(
+    Object.entries(counts).map(([k, v]) => [k, n > 0 ? v / n : null])
+  );
+  return { sp: share(sp, spN), so: share(so, soN) };
+}
+
 /**
  * Kill% and Hit% by pass rating (xK%, xHIT%) — per attacker.
  * For each rally containing a rated pass (1/2/3), finds the first attack
@@ -1803,6 +1879,7 @@ export async function computeWinCorrelation(seasonId, filters = {}) {
         rotation:     computeRotationStats(mRallies),
         isOos:        computeISvsOOS(mContacts, mRallies),
         pointQuality: computePointQuality(mContacts),
+        pointPaths:   computePointPaths(mContacts, mRallies),
         players:      computePlayerStats(mContacts, setsPerMatch[m.id] ?? 1, playerPositions),
       };
     });

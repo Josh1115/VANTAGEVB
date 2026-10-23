@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { computeWinCorrelation, computeSeasonStats, pickMetricVal, pickMetricVar } from '../../stats/engine';
-import { fmtVER } from '../../stats/formatters';
 import { Drawer } from '../ui/Drawer';
 
 const INSIGHTS_GLOSSARY = [
@@ -40,6 +39,100 @@ const INSIGHT_METRICS = [
   { label: 'Blocks / Set',         key: 'bps',         src: 'team',         fmt: (v) => v?.toFixed(2) ?? '—', higherBetter: true  },
 ];
 
+// Per-player skills tested against wins/losses. vol/min = the player must average at least
+// `min` of that volume stat per match in both wins and losses, so a libero's 3 swings
+// all season can't surface as a "hitting" factor.
+const PLAYER_SKILLS = [
+  { label: 'Kills / Set',         key: 'kps',     vol: 'ta',      min: 5,   fmt: (v) => v.toFixed(1), higherBetter: true  },
+  { label: 'Hitting Eff.',        key: 'hit_pct', vol: 'ta',      min: 8,   fmt: (v) => v.toFixed(3), higherBetter: true  },
+  { label: 'Attack Errors / Set', key: 'aeps',    vol: 'ta',      min: 5,   fmt: (v) => v.toFixed(1), higherBetter: false },
+  { label: 'Ace %',               key: 'ace_pct', vol: 'sa',      min: 5,   fmt: pctFmt,              higherBetter: true  },
+  { label: 'Serve Error %',       key: 'se_pct',  vol: 'sa',      min: 5,   fmt: pctFmt,              higherBetter: false },
+  { label: 'Pass Rating',         key: 'apr',     vol: 'pa',      min: 5,   fmt: (v) => v.toFixed(2), higherBetter: true  },
+  { label: 'Digs / Set',          key: 'dips',    vol: 'dig',     min: 1,   fmt: (v) => v.toFixed(1), higherBetter: true  },
+  { label: 'Blocks / Set',        key: 'bps',     vol: 'blk',     min: 0.5, fmt: (v) => v.toFixed(2), higherBetter: true  },
+  { label: 'Assists / Set',       key: 'aps',     vol: 'set_att', min: 10,  fmt: (v) => v.toFixed(1), higherBetter: true  },
+];
+
+// How much a stat separates wins from losses, relative to how much it normally moves
+// around from match to match (Cohen's-d-style effect size). The denominator is floored
+// relative to the metric's own scale — with only a couple of matches per side, a
+// variance of exactly 0 is a sample-size artifact, not proof the stat is perfectly
+// consistent, so don't let it blow the score up to infinity.
+function effectSize(winVal, lossVal, winVar, lossVar) {
+  const gap = Math.abs(winVal - lossVal);
+  const pooledSd = Math.sqrt(((winVar ?? 0) + (lossVar ?? 0)) / 2);
+  const scale = (Math.abs(winVal) + Math.abs(lossVal)) / 2 || 1;
+  return gap / Math.max(pooledSd, scale * 0.05);
+}
+
+// "How?" breakdown for the two rally-outcome metrics — maps an INSIGHT_METRICS key to
+// its computePointPaths bucket. good: true = more of this helps you win.
+const POINT_PATHS = {
+  bp_pct: {
+    bucket: 'sp', unit: 'of every 100 of your serves',
+    rows: [
+      { k: 'ace',        label: 'Aces',                           good: true  },
+      { k: 'kill',       label: 'Our kills & blocks in the rally', good: true  },
+      { k: 'opp_err',    label: 'Opponent errors',                good: true  },
+      { k: 'won_other',  label: 'Won (not tagged)',               good: true,  untagged: true },
+      { k: 'se',         label: 'Our serve errors',               good: false },
+      { k: 'our_err',    label: 'Our other errors',               good: false },
+      { k: 'opp_kill',   label: 'Opponent kills & blocks',        good: false },
+      { k: 'lost_other', label: 'Lost (not tagged)',              good: false, untagged: true },
+    ],
+  },
+  so_pct: {
+    bucket: 'so', unit: 'of every 100 opponent serves',
+    rows: [
+      { k: 'fbso',       label: 'First-ball kills (right off the pass)', good: true  },
+      { k: 'kill',       label: 'Kills & blocks later in the rally',     good: true  },
+      { k: 'opp_se',     label: 'Opponent missed serves',                good: true  },
+      { k: 'opp_err',    label: 'Opponent other errors',                 good: true  },
+      { k: 'won_other',  label: 'Won (not tagged)',                      good: true,  untagged: true },
+      { k: 'aced',       label: 'Aced / zero passes',                    good: false },
+      { k: 'our_err',    label: 'Our hitting & other errors',            good: false },
+      { k: 'opp_kill',   label: 'Opponent kills & blocks',               good: false },
+      { k: 'lost_other', label: 'Lost (not tagged)',                     good: false, untagged: true },
+    ],
+  },
+};
+
+function PointPathsBreakdown({ config, win, loss }) {
+  const per100 = (v) => (v == null ? null : Math.round(v * 100));
+  const rows = config.rows
+    .map((r) => ({ ...r, w: per100(win?.pointPaths?.[config.bucket]?.[r.k]), l: per100(loss?.pointPaths?.[config.bucket]?.[r.k]) }))
+    .filter((r) => r.w != null && r.l != null && (r.w > 0 || r.l > 0));
+  if (!rows.length) return <p className="text-xs text-slate-500 mt-2">Not enough tagged rallies yet.</p>;
+
+  // Headline = the tagged reason whose rate changed most between wins and losses
+  const top = rows.filter((r) => !r.untagged).sort((a, b) => Math.abs(b.w - b.l) - Math.abs(a.w - a.l))[0];
+  const diff = top ? top.w - top.l : 0;
+  const headline = !top || diff === 0
+    ? 'No single reason stands out — wins and losses ended points about the same way.'
+    : top.good
+      ? `Biggest difference: ${top.label.toLowerCase()} — ${top.w} in wins vs ${top.l} in losses (${config.unit}).`
+      : `Biggest difference: ${top.label.toLowerCase()} — ${top.l} in losses vs ${top.w} in wins (${config.unit}).`;
+
+  return (
+    <div className="mt-2.5 rounded-lg bg-slate-800/60 p-2.5">
+      <p className="text-xs text-white font-semibold leading-relaxed mb-2">{headline}</p>
+      <div className="flex text-[10px] font-bold tracking-wide text-slate-500 mb-1">
+        <span className="flex-1">HOW POINTS ENDED ({config.unit.toUpperCase()})</span>
+        <span className="w-10 text-right text-red-400">LOSS</span>
+        <span className="w-10 text-right text-emerald-400">WIN</span>
+      </div>
+      {rows.map((r) => (
+        <div key={r.k} className={`flex items-center text-xs py-0.5 ${r === top ? 'text-white font-bold' : 'text-slate-400'}`}>
+          <span className="flex-1">{r.good ? '＋' : '－'} {r.label}</span>
+          <span className="w-10 text-right tabular-nums">{r.l}</span>
+          <span className="w-10 text-right tabular-nums">{r.w}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // currentStats: optional pre-computed stats object shaped like computeSeasonStats output.
 //   When provided, the season-level fetch is skipped and currentLabel is used for the middle column.
 // filters: optional, same shape as computeSeasonStats' filters (conference, location, matchType,
@@ -52,6 +145,7 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
   const [barsReady,    setBarsReady]    = useState(false);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [openHintKey,  setOpenHintKey]  = useState(null);
+  const [openHowKey,   setOpenHowKey]   = useState(null);
 
   const filterKey = JSON.stringify(filters ?? {});
 
@@ -111,24 +205,13 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
   // Compute impact score for each metric: how much does this stat separate wins from
   // losses, relative to how much it normally moves around from match to match? A stat
   // that's naturally noisy (high variance) needs a bigger gap to count as a real signal
-  // than a stat that's normally rock-steady — this is an effect-size (Cohen's-d-style)
-  // comparison, not just a raw percent difference of the two averages.
+  // than a stat that's normally rock-steady.
   const scoredMetrics = INSIGHT_METRICS.map((metric) => {
     const { key, src } = metric;
     const winVal  = pickMetricVal(src, key, win);
     const lossVal = pickMetricVal(src, key, loss);
     if (winVal == null || lossVal == null) return { ...metric, winVal, lossVal, impactScore: -1 };
-    const winVar  = pickMetricVar(src, key, win)  ?? 0;
-    const lossVar = pickMetricVar(src, key, loss) ?? 0;
-    const gap = Math.abs(winVal - lossVal);
-    const pooledSd = Math.sqrt((winVar + lossVar) / 2);
-    // Floor the denominator relative to the metric's own scale — with only a
-    // couple of matches per side, a variance of exactly 0 is a sample-size
-    // artifact, not proof the stat is perfectly consistent, so don't let it
-    // blow the score up to infinity.
-    const scale = (Math.abs(winVal) + Math.abs(lossVal)) / 2 || 1;
-    const denom = Math.max(pooledSd, scale * 0.05);
-    const impactScore = gap / denom;
+    const impactScore = effectSize(winVal, lossVal, pickMetricVar(src, key, win), pickMetricVar(src, key, loss));
     return { ...metric, winVal, lossVal, impactScore };
   }).sort((a, b) => b.impactScore - a.impactScore);
 
@@ -244,6 +327,20 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
                 </div>
               )}
 
+              {POINT_PATHS[key] && (
+                <div className="mt-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setOpenHowKey(openHowKey === key ? null : key)}
+                    className="text-[11px] font-black uppercase tracking-wide text-blue-400 hover:text-blue-300"
+                    aria-expanded={openHowKey === key}
+                  >
+                    {openHowKey === key ? '▾' : '▸'} How did we win / lose these points?
+                  </button>
+                  {openHowKey === key && <PointPathsBreakdown config={POINT_PATHS[key]} win={win} loss={loss} />}
+                </div>
+              )}
+
               {/* Value of hitting the goal */}
               <div className="mt-3 pt-3 border-t border-slate-700/50">
                 {(() => {
@@ -283,15 +380,23 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
           ...Object.keys(win.players ?? {}),
           ...Object.keys(loss.players ?? {}),
         ]);
-        const scoredPlayers = Array.from(allPlayerIds).map((pid) => {
+        // One candidate per player × skill; the 5 strongest across the team are shown,
+        // so a player can appear twice if two of their skills both matter.
+        const scoredPlayers = Array.from(allPlayerIds).flatMap((pid) => {
           const winRow  = win.players?.[pid];
           const lossRow = loss.players?.[pid];
-          const winVal  = winRow?.ver ?? null;
-          const lossVal = lossRow?.ver ?? null;
           const enoughSample = (winRow?.matchesPlayed ?? 0) >= 2 && (lossRow?.matchesPlayed ?? 0) >= 2;
-          if (winVal == null || lossVal == null || !enoughSample) return null;
-          return { pid, winVal, lossVal, impactScore: Math.abs(winVal - lossVal) };
-        }).filter(Boolean)
+          if (!enoughSample) return [];
+          return PLAYER_SKILLS.map((skill) => {
+            const winVal  = winRow[skill.key];
+            const lossVal = lossRow[skill.key];
+            if (winVal == null || lossVal == null || winVal === lossVal) return null;
+            if ((winRow[skill.vol] ?? 0) < skill.min || (lossRow[skill.vol] ?? 0) < skill.min) return null;
+            const impactScore = effectSize(winVal, lossVal,
+              win.variance?.players?.[pid]?.[skill.key], loss.variance?.players?.[pid]?.[skill.key]);
+            return { ...skill, pid, winVal, lossVal, impactScore };
+          }).filter(Boolean);
+        })
           .sort((a, b) => b.impactScore - a.impactScore)
           .slice(0, 5);
 
@@ -302,12 +407,12 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
             <div className="px-1">
               <p className="text-xs font-black tracking-widest text-slate-500 uppercase">Player Win Factors</p>
               <p className="text-xs text-slate-600 mt-0.5">
-                Whose overall rating (VER) swings the most between your wins and losses.
+                Which player skills change the most between your wins and losses.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-2.5">
-              {scoredPlayers.map(({ pid, winVal, lossVal }) => {
-                const currentVal = displayStats?.players?.[pid]?.ver ?? null;
+              {scoredPlayers.map(({ pid, key, label, fmt, higherBetter, winVal, lossVal }) => {
+                const currentVal = displayStats?.players?.[pid]?.[key] ?? null;
                 const range = winVal - lossVal;
                 const pos = currentVal != null && range !== 0 ? (currentVal - lossVal) / range : null;
                 const statusColor = pos == null ? 'text-slate-500'
@@ -316,26 +421,31 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
                   : 'text-red-400';
                 const barPct = pos != null ? Math.max(0, Math.min(100, Math.round(pos * 100))) : null;
                 const name = playerNames[pid] ?? `#${pid}`;
+                // Expected direction = the stat is better in wins (e.g. more kills, fewer errors)
+                const expected = higherBetter ? winVal > lossVal : winVal < lossVal;
+                const sentence = expected
+                  ? `You tend to win when ${name} is at ${fmt(winVal)}, and lose when it's ${fmt(lossVal)}.`
+                  : `Surprisingly, ${name}'s ${label.toLowerCase()} has been better in losses than in wins.`;
                 return (
-                  <div key={pid} className="bg-surface rounded-xl p-3.5 border border-slate-700/40">
+                  <div key={`${pid}_${key}`} className="bg-surface rounded-xl p-3.5 border border-slate-700/40">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-black uppercase tracking-wide text-slate-300">{name}</span>
-                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">VER</span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">{label}</span>
                     </div>
 
                     <div className="flex items-end gap-4 mb-2.5">
                       <div className="flex-1 text-center">
-                        <div className="text-lg font-black text-red-400 tabular-nums leading-none">{fmtVER(lossVal)}</div>
+                        <div className="text-lg font-black text-red-400 tabular-nums leading-none">{fmt(lossVal)}</div>
                         <div className="text-[10px] text-red-900 font-bold mt-0.5 tracking-wide">LOSS AVG</div>
                       </div>
                       <div className="flex-1 text-center">
                         <div className={`text-lg font-black tabular-nums leading-none ${statusColor}`}>
-                          {currentVal != null ? fmtVER(currentVal) : '—'}
+                          {currentVal != null ? fmt(currentVal) : '—'}
                         </div>
                         <div className="text-[10px] text-slate-500 font-bold mt-0.5 tracking-wide">{currentLabel}</div>
                       </div>
                       <div className="flex-1 text-center">
-                        <div className="text-lg font-black text-emerald-400 tabular-nums leading-none">{fmtVER(winVal)}</div>
+                        <div className="text-lg font-black text-emerald-400 tabular-nums leading-none">{fmt(winVal)}</div>
                         <div className="text-[10px] text-emerald-700 font-bold mt-0.5 tracking-wide">WIN AVG</div>
                       </div>
                     </div>
@@ -350,6 +460,7 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
                         />
                       </div>
                     )}
+                    <p className="text-xs text-slate-400 mt-2.5 leading-relaxed">{sentence}</p>
                   </div>
                 );
               })}
