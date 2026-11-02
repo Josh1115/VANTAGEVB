@@ -948,7 +948,7 @@ export function HomePage() {
           {/* New Match */}
           <button
             onClick={() => navigate('/matches/new')}
-            className="group flex-1 card-top-glow btn-shimmer bg-primary/90 hover:bg-primary rounded-xl p-4 text-left flex items-center gap-3 transition-[transform,filter,background-color] duration-75 active:scale-[0.97] active:brightness-90 animate-slide-up-fade shadow-lg"
+            className="group flex-1 basis-0 min-w-0 card-top-glow btn-shimmer bg-primary/90 hover:bg-primary rounded-xl p-4 text-left flex items-center gap-3 transition-[transform,filter,background-color] duration-75 active:scale-[0.97] active:brightness-90 animate-slide-up-fade shadow-lg"
             style={{ animationDelay: '0ms' }}
           >
             <span className="text-4xl inline-block vb-ball-spin">🏐</span>
@@ -961,7 +961,7 @@ export function HomePage() {
           {/* Schedule Match — opens the default season's add-game form */}
           <button
             onClick={() => navigate(defaultSeasonId ? `/seasons/${defaultSeasonId}?schedule=1` : '/teams')}
-            className="group flex-1 bg-primary/90 hover:bg-primary rounded-xl p-4 text-left flex items-center gap-3 transition-[transform,background-color] duration-75 active:scale-[0.97] animate-slide-up-fade"
+            className="group flex-1 basis-0 min-w-0 bg-primary/90 hover:bg-primary rounded-xl p-4 text-left flex items-center gap-3 transition-[transform,background-color] duration-75 active:scale-[0.97] animate-slide-up-fade"
             style={{ animationDelay: '60ms' }}
           >
             <span className="text-4xl inline-block">📅</span>
