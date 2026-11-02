@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { MATCH_STATUS } from '../constants';
@@ -27,6 +27,7 @@ import { useUiStore, selectShowToast, selectShowUpgradeNudge } from '../store/ui
 export function SeasonDetailPage() {
   const { seasonId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const id = Number(seasonId);
   const playoffLabel = getPlayoffLabel();
   const { isMaster, plan, matchLimit } = usePlan();
@@ -117,6 +118,14 @@ export function SeasonDetailPage() {
 
   const [showImport, setShowImport] = useState(false);
   const [schedOpen,      setSchedOpen]      = useState(false);
+
+  // Dashboard "Schedule Match" button lands here with ?schedule=1 — open the add-game form
+  // once, then drop the param so Back/refresh doesn't reopen it.
+  useEffect(() => {
+    if (searchParams.get('schedule') !== '1') return;
+    setSchedOpen(true);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
   const [editMatchId,    setEditMatchId]    = useState(null);
   const [schedOpp,       setSchedOpp]       = useState('');
   const [schedOppAbbr,   setSchedOppAbbr]   = useState('');

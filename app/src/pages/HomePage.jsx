@@ -961,16 +961,16 @@ export function HomePage() {
             </div>
           </button>
 
-          {/* Tools */}
+          {/* Schedule Match — opens the default season's add-game form */}
           <button
-            onClick={() => navigate('/tools')}
+            onClick={() => navigate(defaultSeasonId ? `/seasons/${defaultSeasonId}?schedule=1` : '/teams')}
             className="group flex-1 bg-primary/90 hover:bg-primary rounded-xl p-4 text-left flex items-center gap-3 transition-[transform,background-color] duration-75 active:scale-[0.97] animate-slide-up-fade"
             style={{ animationDelay: '60ms' }}
           >
-            <span className="text-4xl inline-block">🛠️</span>
+            <span className="text-4xl inline-block">📅</span>
             <div>
-              <div className="font-bold text-base text-white">Practice Tools</div>
-              <div className="text-xs text-orange-100/80">Features for Practice!</div>
+              <div className="font-bold text-base text-white">Schedule Match</div>
+              <div className="text-xs text-orange-100/80">Add a game to your calendar</div>
             </div>
           </button>
         </div>
@@ -1764,6 +1764,17 @@ export function HomePage() {
             <div className="min-w-0">
               <div className="font-semibold text-sm text-white">Whiteboard</div>
               <div className="text-[11px] text-orange-100/80 truncate">Timeout draw & diagram</div>
+            </div>
+            <span className="text-orange-100/70 ml-auto">›</span>
+          </button>
+          <button
+            onClick={() => navigate('/tools')}
+            className="group flex-1 card-top-glow bg-primary/90 hover:bg-primary rounded-xl p-3 text-left flex items-center gap-2.5 active:scale-[0.97] transition-[transform,background-color] duration-75"
+          >
+            <span className="text-2xl inline-block transition-transform duration-75 group-active:-translate-y-1 group-active:scale-125">🛠️</span>
+            <div className="min-w-0">
+              <div className="font-semibold text-sm text-white">Practice Tools</div>
+              <div className="text-[11px] text-orange-100/80 truncate">Features for Practice!</div>
             </div>
             <span className="text-orange-100/70 ml-auto">›</span>
           </button>
