@@ -126,7 +126,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         onPointerDown={(e) => { e.preventDefault(); handleSub(); }}
         className={`${btnBase} ${subsMaxed ? 'bg-slate-800 text-slate-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
       >
-        <span className="text-[1.53vmin] leading-none">SUB</span>
+        <span className={`text-[1.53vmin] leading-none ${subsMaxed ? "" : "text-amber-400"}`}>MAKE SUB</span>
       </button>
 
       {/* Libero swap — always opens the swap picker (which libero, replacing whom) */}
