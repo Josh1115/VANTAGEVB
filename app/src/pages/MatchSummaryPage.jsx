@@ -821,7 +821,7 @@ export function MatchSummaryPage() {
   const [editForm, setEditForm] = useState({
     opp: '', oppAbbr: '', oppRecord: '', date: '', loc: 'home',
     conf: 'non-con', matchType: 'reg-season', tourneyName: '',
-    tourneyRound: 'pool', playoffRound: '', oppRank: '',
+    tourneyRound: 'pool', playoffRound: '', oppRank: '', oppSeed: '',
   });
   const [editSaving,    setEditSaving]    = useState(false);
   const [editResultOpen,   setEditResultOpen]   = useState(false);
@@ -1295,6 +1295,7 @@ export function MatchSummaryPage() {
       tourneyRound: match.tournament_round ?? 'pool',
       playoffRound: match.playoff_round ?? '',
       oppRank:      match.opponent_maxpreps_rank != null ? String(match.opponent_maxpreps_rank) : '',
+      oppSeed:      match.opponent_playoff_seed != null ? String(match.opponent_playoff_seed) : '',
     });
     setEditOpen(true);
   }
@@ -1319,6 +1320,7 @@ export function MatchSummaryPage() {
         tournament_name:  editForm.matchType === 'tourney' ? editForm.tourneyName.trim() || null : null,
         tournament_round: editForm.matchType === 'tourney' ? editForm.tourneyRound : null,
         playoff_round:    editForm.matchType === 'ihsa-playoffs' ? editForm.playoffRound.trim() || null : null,
+        opponent_playoff_seed: editForm.matchType === 'ihsa-playoffs' && String(editForm.oppSeed).trim() !== '' ? parseInt(editForm.oppSeed, 10) || null : null,
         opponent_maxpreps_rank: editForm.oppRank.trim() !== '' ? parseInt(editForm.oppRank, 10) || null : null,
       });
       setEditOpen(false);
@@ -2483,6 +2485,16 @@ export function MatchSummaryPage() {
                   value={editForm.playoffRound}
                   onChange={(e) => setEditForm(f => ({ ...f, playoffRound: e.target.value }))}
                   placeholder="ex: Regional, Sectional, Super-Sectional, State…"
+                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
+                />
+                <label className="block text-xs text-slate-400 mb-1 mt-3 font-semibold uppercase tracking-wide">Opponent Playoff Seed</label>
+                <input
+                  type="number"
+                  min="1"
+                  inputMode="numeric"
+                  value={editForm.oppSeed}
+                  onChange={(e) => setEditForm(f => ({ ...f, oppSeed: e.target.value }))}
+                  placeholder="ex: 3"
                   className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
                 />
               </div>
