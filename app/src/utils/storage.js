@@ -15,6 +15,7 @@ export const STORAGE_KEYS = {
   PLAYER_NAME_FORMAT: 'vbstat_player_name_format',
   SCORE_DETAIL:       'vbstat_score_detail',
   MATCH_VIEW_DEFAULT: 'vbstat_match_view_default',
+  RECENT_NEWEST_FIRST: 'vbstat_recent_newest_first',
   DEFAULT_TEAM_ID:    'vbstat_default_team_id',
   DEFAULT_SEASON_ID:  'vbstat_default_season_id',
   WAKE_LOCK:          'vbstat_wake_lock',

@@ -895,7 +895,12 @@ export function HomePage() {
   const storageEstimate = useStorageEstimate();
   const storageUsagePct = storageEstimate?.quota ? storageEstimate.usage / storageEstimate.quota : 0;
   const [guideVisible, setGuideVisible] = useState(() => !getBoolStorage(STORAGE_KEYS.HELP_GUIDE_SEEN));
-  const displayMatches = recentMatches ?? [];
+  // Recent view: optional flip so the newest match is on top (remembered per device)
+  const [recentNewestFirst, setRecentNewestFirst] = useState(() => getBoolStorage(STORAGE_KEYS.RECENT_NEWEST_FIRST));
+  const displayMatches = useMemo(() => {
+    const list = recentMatches ?? [];
+    return matchView !== 'schedule' && recentNewestFirst ? [...list].reverse() : list;
+  }, [recentMatches, matchView, recentNewestFirst]);
 
   function openEditMatch(match) {
     setEditingMatch(match);
@@ -1438,6 +1443,19 @@ export function HomePage() {
               Schedule
             </h2>
             <div className="flex items-center gap-2">
+              {matchView !== 'schedule' && (
+                <button
+                  onClick={() => { const next = !recentNewestFirst; setRecentNewestFirst(next); setBoolStorage(STORAGE_KEYS.RECENT_NEWEST_FIRST, next); }}
+                  className={`flex items-center justify-center w-7 h-7 rounded-lg bg-slate-800 transition-colors ${recentNewestFirst ? 'text-primary' : 'text-slate-400 hover:text-slate-200'}`}
+                  title={recentNewestFirst ? 'Newest on top — tap for oldest on top' : 'Oldest on top — tap for newest on top'}
+                  aria-label="Flip match order"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M7 4v16" /><path d="M3 8l4-4 4 4" />
+                    <path d="M17 20V4" /><path d="M13 16l4 4 4-4" />
+                  </svg>
+                </button>
+              )}
               <div className="flex bg-slate-800 rounded-lg p-0.5">
                 <button
                   onClick={() => { setMatchView('closest'); setStorageItem(STORAGE_KEYS.MATCH_VIEW_DEFAULT, 'closest'); }}
