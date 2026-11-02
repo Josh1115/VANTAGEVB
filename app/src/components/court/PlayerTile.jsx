@@ -1,8 +1,9 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useMatchStore } from '../../store/matchStore';
 import { useUiStore } from '../../store/uiStore';
 import { useShallow } from 'zustand/react/shallow';
-import { ACTION, RESULT, SERVE_TYPE, SIDE } from '../../constants';
+import { ACTION, RESULT, SERVE_TYPE, SIDE, POSITION_KEYS } from '../../constants';
 import { getStorageItem, STORAGE_KEYS } from '../../utils/storage';
 import { fmtPlayerName } from '../../stats/formatters';
 import { playSound } from '../../utils/sound';
@@ -111,6 +112,8 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   const numberColor  = LIGHT_JERSEYS.has(jerseyColor) ? '#1e293b' : '#f1f5f9';
   const jerseyRef   = useRef(null);
   const [serveType,          setServeType]          = useState(null);
+  const [posPickerOpen,      setPosPickerOpen]      = useState(false);
+  const setPositionLabel = useMatchStore((s) => s.setPositionLabel);
   const [receiveType,        setReceiveType]        = useState(null);
   const [serveRecorded,      setServeRecorded]      = useState(false);
   const [sePending,          setSePending]          = useState(false);
@@ -396,10 +399,16 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
           <span style={NAME_STYLE}>{fmtPlayerName(slot.playerName, playerNicknames[slot.playerId] ?? '', nameFormat)}</span>
         </span>
         <div className="absolute right-2 flex items-center gap-1">
-          {slot.positionLabel && (
-            <span className={`text-[1.7vmin] font-bold leading-none ${isServer ? 'text-orange-400' : 'text-slate-500'}`}>
-              {slot.positionLabel}
-            </span>
+          {slot.playerId && (
+            <button
+              type="button"
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setPosPickerOpen(true); }}
+              className={`text-[1.7vmin] font-bold leading-none underline decoration-dotted underline-offset-2 ${slot.positionLabel ? (isServer ? 'text-orange-400' : 'text-slate-500') : 'text-slate-700'}`}
+              title="Tap to change position"
+              aria-label="Change position"
+            >
+              {slot.positionLabel || 'POS'}
+            </button>
           )}
           <span className={`text-[1.7vmin] font-bold leading-none border rounded px-1 py-0.5 ${isServer ? 'text-orange-400 border-orange-500/60' : 'text-slate-500 border-slate-700'}`}>
             S{((rotationNum + (slot.position ?? 1) - 2) % 6) + 1}
@@ -672,6 +681,40 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
         onSelect={handleAssistSelect}
         onDismiss={handleAssistDismiss}
       />
+
+      {/* Position fix picker — portal so the tile's overflow-hidden can't clip it */}
+      {posPickerOpen && createPortal(
+        <div
+          className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center"
+          onPointerDown={(e) => { if (e.target === e.currentTarget) { e.preventDefault(); setPosPickerOpen(false); } }}
+        >
+          <div className="bg-slate-800 border border-slate-600 rounded-xl p-4 shadow-2xl max-w-[90vw]">
+            <p className="text-slate-300 text-sm font-bold mb-3 text-center">
+              #{slot.jersey} {slot.playerName} — position
+            </p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {POSITION_KEYS.map((pos) => (
+                <button
+                  key={pos}
+                  type="button"
+                  onPointerDown={(e) => { e.preventDefault(); if (pos !== slot.positionLabel) setPositionLabel(slot.playerId, pos); setPosPickerOpen(false); }}
+                  className={`min-w-[3.25rem] px-3 py-2 rounded-lg text-sm font-bold border transition-colors ${
+                    slot.positionLabel === pos
+                      ? 'bg-amber-500 text-black border-amber-400'
+                      : 'bg-slate-700 text-slate-200 border-slate-600 hover:border-amber-400'
+                  }`}
+                >{pos}</button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onPointerDown={(e) => { e.preventDefault(); setPosPickerOpen(false); }}
+              className="mt-3 w-full py-2 rounded-lg bg-slate-700 text-slate-300 text-sm font-bold hover:bg-slate-600"
+            >CANCEL</button>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 });

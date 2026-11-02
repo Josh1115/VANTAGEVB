@@ -585,11 +585,32 @@ export const useMatchStore = create((set, get) => ({
   rotateForward:  () => manualRotate(get, set, 'fwd'),
   rotateBackward: () => manualRotate(get, set, 'back'),
 
-  setPositionLabel: (playerId, label) => set((s) => ({
-    lineup: s.lineup.map((sl) =>
-      sl.playerId === playerId ? { ...sl, positionLabel: label } : sl
-    ),
-  })),
+  // Fix a player's position mid-set. Updates the live lineup AND saves it to
+  // the DB (starter → lineups row; subbed-in player → their latest sub row) so
+  // the correction survives a reload, syncs, and feeds position-based stats.
+  setPositionLabel: (playerId, label) => {
+    set((s) => ({
+      lineup: s.lineup.map((sl) =>
+        sl.playerId === playerId ? { ...sl, positionLabel: label } : sl
+      ),
+    }));
+    const setId = get().currentSetId;
+    if (!setId || !playerId) return;
+    (async () => {
+      try {
+        const starters = await db.lineups.where('set_id').equals(setId).filter((r) => r.player_id === playerId).toArray();
+        if (starters.length) {
+          await Promise.all(starters.map((r) => db.lineups.update(r.id, { position_label: label })));
+          return;
+        }
+        const subsIn = await db.substitutions.where('set_id').equals(setId).filter((r) => r.player_in === playerId).toArray();
+        const latest = subsIn.sort((a, b) => (a.rally_number ?? 0) - (b.rally_number ?? 0) || (a.id ?? 0) - (b.id ?? 0)).pop();
+        if (latest) await db.substitutions.update(latest.id, { in_position_label: label });
+      } catch (err) {
+        console.error('[setPositionLabel] failed to save position', err);
+      }
+    })();
+  },
 
   adjustScore: (side, delta) =>
     set((s) => {
