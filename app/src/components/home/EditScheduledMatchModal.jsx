@@ -68,7 +68,7 @@ export function EditScheduledMatchModal({ match, onClose, onDeleteRequested }) {
         className="fixed z-50 w-[calc(100%-2rem)] max-w-md max-h-[90dvh] overflow-y-auto bg-bg rounded-2xl p-6 space-y-4 shadow-2xl"
         style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
       >
-        <h2 className="text-lg font-bold">{match.status === 'scheduled' ? 'Edit Scheduled Game' : 'Edit Game'}</h2>
+        <h2 className="text-lg font-bold">Edit Scheduled Game</h2>
 
         {/* Opponent */}
         <div>
