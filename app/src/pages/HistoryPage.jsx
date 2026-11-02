@@ -908,8 +908,8 @@ function PlayoffRoundsDisplay({ entry }) {
                 {r.result}
               </span>
               <span className="text-slate-300 flex-1 truncate">
+                {r.opp_seed ? <span className="text-[11px] font-bold text-amber-400 mr-1" title="Playoff seed">{String(r.opp_seed).replace('#', '')}</span> : null}
                 {r.opponent || '—'}
-                {r.opp_seed ? <span className="text-slate-500 ml-1">(#{String(r.opp_seed).replace('#', '')})</span> : null}
               </span>
               {r.score && <span className="text-slate-400 font-mono shrink-0">{r.score}</span>}
             </div>

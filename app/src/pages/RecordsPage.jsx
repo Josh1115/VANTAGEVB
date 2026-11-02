@@ -1147,7 +1147,7 @@ function TourneyEntryCard({ entry, onEdit, onDelete }) {
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             {entry.seed != null && (
-              <span className="text-xs bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-semibold">#{entry.seed} seed</span>
+              <span className="text-xs bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-semibold">{entry.seed} seed</span>
             )}
             <span className={`text-xs px-2 py-0.5 rounded font-bold border ${
               isChamp

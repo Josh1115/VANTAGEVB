@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { PlayoffSeed } from '../components/ui/PlayoffSeed';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
@@ -685,6 +686,7 @@ export function SeasonDetailPage() {
                         <div>
                           <div className="font-semibold flex items-center gap-1.5 flex-wrap">
                             <span>
+                              <PlayoffSeed match={match} />
                               {match.opponent_name}
                               {match.opponent_maxpreps_rank != null && (
                                 <span className="text-slate-400 font-normal"> #{match.opponent_maxpreps_rank}</span>
@@ -767,6 +769,7 @@ export function SeasonDetailPage() {
                   >
                     <div>
                       <div className="font-semibold">
+                        <PlayoffSeed match={match} />
                         {match.opponent_name}
                         {match.opponent_maxpreps_rank != null && (
                           <span className="text-slate-400 font-normal"> #{match.opponent_maxpreps_rank}</span>

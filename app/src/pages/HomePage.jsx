@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { PlayoffSeed } from '../components/ui/PlayoffSeed';
 import { supabase } from '../utils/supabase';
 import { STORAGE_KEYS, getStorageItem, setStorageItem, getIntStorage, getPlayoffLabel, getBoolStorage, setBoolStorage } from '../utils/storage';
 import { useNavigate } from 'react-router-dom';
@@ -238,10 +239,8 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
                   <div>
                     <div className="font-semibold flex items-center gap-1.5 flex-wrap">
                       <span>
+                        <PlayoffSeed match={match} />
                         {match.opponent_name ?? 'vs. Unknown'}
-                        {match.match_type === 'ihsa-playoffs' && match.opponent_playoff_seed != null && (
-                          <span className="text-slate-400 font-normal"> (#{match.opponent_playoff_seed})</span>
-                        )}
                         {match.opponent_record && (
                           <span className="text-slate-400 font-normal"> ({match.opponent_record})</span>
                         )}
@@ -313,12 +312,10 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
                   <div>
                     <div className="font-semibold flex items-center gap-1.5 flex-wrap">
                       <span>
+                        <PlayoffSeed match={match} />
                         {match.opponent_name ?? 'vs. Unknown'}
                         {match.opponent_maxpreps_rank != null && (
                           <span className="text-slate-400 font-normal"> #{match.opponent_maxpreps_rank}</span>
-                        )}
-                        {match.match_type === 'ihsa-playoffs' && match.opponent_playoff_seed != null && (
-                          <span className="text-slate-400 font-normal"> (#{match.opponent_playoff_seed})</span>
                         )}
                         {match.opponent_record && (
                           <span className="text-slate-400 font-normal"> ({match.opponent_record})</span>
@@ -1029,7 +1026,7 @@ export function HomePage() {
                   {/* NCAA-style seed: small number ahead of the team name */}
                   {seasonRecord.playoffSeed && (
                     <span className="inline-flex items-center justify-center min-w-[28px] h-[28px] px-1 rounded-full border border-amber-400 text-[11px] font-bold text-amber-400 tracking-normal mr-1.5 align-middle" title="Playoff seed">
-                      #{seasonRecord.playoffSeed}
+                      {seasonRecord.playoffSeed}
                     </span>
                   )}
                   {seasonRecord.teamName}
@@ -1361,12 +1358,10 @@ export function HomePage() {
                   )}
                 </div>
                 <div className="font-semibold text-base truncate">
+                  <PlayoffSeed match={nextMatch} />
                   {nextMatch.opponent_name ?? 'TBD'}
                   {nextMatch.opponent_maxpreps_rank != null && (
                     <span className="text-slate-400 font-normal"> #{nextMatch.opponent_maxpreps_rank}</span>
-                  )}
-                  {nextMatch.match_type === 'ihsa-playoffs' && nextMatch.opponent_playoff_seed != null && (
-                    <span className="text-slate-400 font-normal"> (#{nextMatch.opponent_playoff_seed})</span>
                   )}
                   {nextMatch.opponent_record && (
                     <span className="text-slate-400 font-normal"> ({nextMatch.opponent_record})</span>
@@ -1558,12 +1553,10 @@ export function HomePage() {
                   <div>
                     <div className="font-semibold flex items-center gap-1.5 flex-wrap">
                       <span>
+                        <PlayoffSeed match={match} />
                         {match.opponent_name ?? 'vs. Unknown'}
                         {match.opponent_maxpreps_rank != null && (
                           <span className="text-slate-400 font-normal"> #{match.opponent_maxpreps_rank}</span>
-                        )}
-                        {match.match_type === 'ihsa-playoffs' && match.opponent_playoff_seed != null && (
-                          <span className="text-slate-400 font-normal"> (#{match.opponent_playoff_seed})</span>
                         )}
                         {match.opponent_record && (
                           <span className="text-slate-400 font-normal"> ({match.opponent_record})</span>
@@ -1647,12 +1640,10 @@ export function HomePage() {
                   <div>
                     <div className="font-semibold flex items-center gap-1.5 flex-wrap">
                       <span>
+                        <PlayoffSeed match={match} />
                         {match.opponent_name ?? 'vs. Unknown'}
                         {match.opponent_maxpreps_rank != null && (
                           <span className="text-slate-400 font-normal"> #{match.opponent_maxpreps_rank}</span>
-                        )}
-                        {match.match_type === 'ihsa-playoffs' && match.opponent_playoff_seed != null && (
-                          <span className="text-slate-400 font-normal"> (#{match.opponent_playoff_seed})</span>
                         )}
                         {match.opponent_record && (
                           <span className="text-slate-400 font-normal"> ({match.opponent_record})</span>
