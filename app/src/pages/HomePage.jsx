@@ -349,8 +349,19 @@ function ScheduleCalendar({ matches, navigate, scoreDetail, onDeleteConfirm, ope
                   </div>
                   <div className="flex items-center gap-3">
                     <button
+                      onClick={(e) => { e.stopPropagation(); openEditMatch(match); }}
+                      className="p-1 text-slate-500 hover:text-primary transition-colors"
+                      title="Edit match"
+                      aria-label="Edit match"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                      </svg>
+                    </button>
+                    <button
                       onClick={(e) => { e.stopPropagation(); onDeleteConfirm(match); }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-slate-500 hover:text-red-400"
+                      className="p-1 text-slate-500 hover:text-red-400 transition-colors"
                       title="Delete match"
                       aria-label="Delete match"
                     >
@@ -1680,8 +1691,19 @@ export function HomePage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <button
+                      onClick={(e) => { e.stopPropagation(); openEditMatch(match); }}
+                      className="p-1 text-slate-500 hover:text-primary transition-colors"
+                      title="Edit match"
+                      aria-label="Edit match"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                      </svg>
+                    </button>
+                    <button
                       onClick={(e) => { e.stopPropagation(); setConfirmDelete(match); }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-slate-500 hover:text-red-400"
+                      className="p-1 text-slate-500 hover:text-red-400 transition-colors"
                       title="Delete match"
                       aria-label="Delete match"
                     >
