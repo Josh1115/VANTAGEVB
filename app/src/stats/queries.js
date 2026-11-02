@@ -44,6 +44,11 @@ export const getBatchSetsPlayedCount = async (matchIds) => {
   return counts;
 };
 
+export const getSetsForMatches = async (matchIds) => {
+  if (!matchIds.length) return [];
+  return db.sets.where('match_id').anyOf(matchIds).toArray();
+};
+
 // Rallies for a match — requires two hops (match → sets → rallies)
 export const getRalliesForMatch = async (matchId) => {
   const sets   = await db.sets.where('match_id').equals(matchId).toArray();

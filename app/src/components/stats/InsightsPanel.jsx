@@ -146,6 +146,7 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [openHintKey,  setOpenHintKey]  = useState(null);
   const [openHowKey,   setOpenHowKey]   = useState(null);
+  const [unit,         setUnit]         = useState('match'); // 'match' | 'set' — what counts as a win/loss
 
   const filterKey = JSON.stringify(filters ?? {});
 
@@ -157,13 +158,13 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
     setBarsReady(false);
     const activeFilters = filterKey ? JSON.parse(filterKey) : {};
     const tasks = currentStats
-      ? [computeWinCorrelation(Number(seasonId), activeFilters)]
-      : [computeWinCorrelation(Number(seasonId), activeFilters), computeSeasonStats(Number(seasonId), activeFilters)];
+      ? [computeWinCorrelation(Number(seasonId), activeFilters, { unit })]
+      : [computeWinCorrelation(Number(seasonId), activeFilters, { unit }), computeSeasonStats(Number(seasonId), activeFilters)];
     Promise.all(tasks)
       .then(([corr, season]) => { setData(corr); setAllStats(season ?? null); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [seasonId, filterKey]);
+  }, [seasonId, filterKey, unit]);
 
   useEffect(() => {
     if (!data) return;
@@ -177,17 +178,46 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
     </div>
   );
 
+  const isSet = unit === 'set';
+  const unitToggle = (
+    <div className="flex justify-center">
+      <div className="inline-flex rounded-lg border border-slate-700 bg-slate-800/60 p-0.5">
+        {[['match', 'Matches'], ['set', 'Sets']].map(([value, label]) => (
+          <button
+            key={value}
+            onClick={() => setUnit(value)}
+            className={`px-4 py-1 rounded-md text-[11px] font-black uppercase tracking-wide transition-colors ${
+              unit === value ? 'bg-blue-500 text-white' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   if (loading) return (
-    <div className="flex justify-center py-12">
-      <span className="text-slate-500 text-sm">Computing insights…</span>
+    <div className="space-y-4">
+      {unitToggle}
+      <div className="flex justify-center py-12">
+        <span className="text-slate-500 text-sm">Computing insights…</span>
+      </div>
     </div>
   );
 
   if (!data) return (
-    <div className="text-center py-12 px-4">
-      <div className="text-3xl mb-3">📊</div>
-      <p className="text-slate-400 font-semibold">Not enough data yet</p>
-      <p className="text-slate-600 text-sm mt-1">Need at least 2 wins and 2 losses to show win correlations.</p>
+    <div className="space-y-4">
+      {unitToggle}
+      <div className="text-center py-12 px-4">
+        <div className="text-3xl mb-3">📊</div>
+        <p className="text-slate-400 font-semibold">Not enough data yet</p>
+        <p className="text-slate-600 text-sm mt-1">
+          {isSet
+            ? 'Need at least 2 sets won and 2 sets lost to show win correlations.'
+            : 'Need at least 2 wins and 2 losses to show win correlations.'}
+        </p>
+      </div>
     </div>
   );
 
@@ -223,16 +253,23 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
     { badge: '#3', cls: 'bg-orange-900/40 text-orange-400 border border-orange-700/40' },
   ];
 
+  const recordLabel = isSet
+    ? `${win.matches} sets won / ${loss.matches} lost`
+    : `${win.matches}W / ${loss.matches}L`;
+
   return (
     <div className="space-y-4">
+      {unitToggle}
       <div className="px-1 flex items-start justify-between gap-2">
         <div>
           <p className="text-xs font-black tracking-widest text-slate-500 uppercase">Win Factors</p>
           <p className="text-xs text-slate-600 mt-0.5">
-            Ranked by impact — stats that most separate your {win.matches}W from your {loss.matches}L.
+            Ranked by impact — stats that most separate your {isSet
+              ? `${win.matches} sets won from your ${loss.matches} sets lost`
+              : `${win.matches}W from your ${loss.matches}L`}.
           </p>
           <span className={`inline-block mt-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md border tracking-wide ${confidence.cls}`}>
-            {confidence.label} · {win.matches}W / {loss.matches}L
+            {confidence.label} · {recordLabel}
           </span>
         </div>
         <button
@@ -391,7 +428,9 @@ export function InsightsPanel({ seasonId, currentStats = null, currentLabel = 'T
             const winVal  = winRow[skill.key];
             const lossVal = lossRow[skill.key];
             if (winVal == null || lossVal == null || winVal === lossVal) return null;
-            if ((winRow[skill.vol] ?? 0) < skill.min || (lossRow[skill.vol] ?? 0) < skill.min) return null;
+            // Minimums are per match; a set is roughly a third of one
+            const min = isSet ? skill.min / 3 : skill.min;
+            if ((winRow[skill.vol] ?? 0) < min || (lossRow[skill.vol] ?? 0) < min) return null;
             const impactScore = effectSize(winVal, lossVal,
               win.variance?.players?.[pid]?.[skill.key], loss.variance?.players?.[pid]?.[skill.key]);
             return { ...skill, pid, winVal, lossVal, impactScore };
