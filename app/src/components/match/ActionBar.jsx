@@ -156,7 +156,6 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
           onPointerDown={(e) => { e.preventDefault(); onStatsOpen(); }}
           className={`${btnBase} w-full bg-slate-800 text-slate-300 hover:bg-slate-700`}
         >
-          <span className={`text-[1.53vmin] leading-none ${alertCount > 0 ? 'text-orange-400' : 'text-slate-500'}`}>TEAM & PLAYER</span>
           <span className={`text-[1.53vmin] leading-none ${alertCount > 0 ? 'text-orange-400' : 'text-slate-500'}`}>STATS</span>
         </button>
         {alertCount > 0 && (
