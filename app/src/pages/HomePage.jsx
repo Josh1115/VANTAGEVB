@@ -1025,7 +1025,7 @@ export function HomePage() {
                 >
                   {/* NCAA-style seed: small number ahead of the team name */}
                   {seasonRecord.playoffSeed && (
-                    <span className="inline-flex items-center justify-center min-w-[28px] h-[28px] px-1 rounded-full border border-amber-400 text-[11px] font-bold text-amber-400 tracking-normal mr-1.5 align-middle" title="Playoff seed">
+                    <span className="text-[13px] font-bold text-amber-400 tracking-normal mr-1.5 align-middle" title="Playoff seed">
                       {seasonRecord.playoffSeed}
                     </span>
                   )}
