@@ -953,7 +953,7 @@ export function HomePage() {
           >
             <span className="text-4xl inline-block vb-ball-spin">🏐</span>
             <div>
-              <div className="font-bold text-base text-white">New Match</div>
+              <div className="font-bold text-base text-white">Start New Match</div>
               <div className="text-xs text-orange-100/80">Start recording stats</div>
             </div>
           </button>
@@ -966,7 +966,7 @@ export function HomePage() {
           >
             <span className="text-4xl inline-block">📅</span>
             <div>
-              <div className="font-bold text-base text-white">Schedule Match</div>
+              <div className="font-bold text-base text-white">Schedule Future Match</div>
               <div className="text-xs text-orange-100/80">Add a game to your calendar</div>
             </div>
           </button>
