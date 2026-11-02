@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { db } from '../db/schema';
@@ -1853,7 +1853,7 @@ export function HistoryPage() {
                         {/* Win trend sparkline (item 10) */}
                         {sparklineData.length >= 2 && (
                           <div className="mt-4">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-2">Wins Per Season</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-2">Wins Per Season <span className="text-primary">(Avg {(sparklineData.reduce((sum, r) => sum + (r.wins ?? 0), 0) / sparklineData.length).toFixed(1)})</span></p>
                             <ResponsiveContainer width="100%" height={72}>
                               <BarChart data={sparklineData} barCategoryGap="20%">
                                 <XAxis dataKey="year" tick={{ fontSize: 8, fill: '#64748b' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
@@ -1864,9 +1864,24 @@ export function HistoryPage() {
                                 />
                                 <Bar dataKey="wins" radius={[3, 3, 0, 0]}>
                                   {sparklineData.map((entry, i) => (
-                                    <Cell key={i} fill={entry.isLive ? '#e8530b' : '#e8530b66'} />
+                                    <Cell key={i} fill={entry.isLive ? '#e8530b' : '#6f3a28'} />
                                   ))}
                                 </Bar>
+                                {/* Dotted average-wins line (includes the current season), drawn behind the bars */}
+                                <YAxis hide domain={[0, 'dataMax']} />
+                                {(() => {
+                                  const avg = sparklineData.reduce((sum, r) => sum + (r.wins ?? 0), 0) / sparklineData.length;
+                                  return (
+                                    <ReferenceLine
+                                      y={avg}
+                                      stroke="#e8530b"
+                                      strokeDasharray="3 3"
+                                      strokeWidth={1}
+                                      ifOverflow="extendDomain"
+                                      zIndex={250} // behind the bars (bars sit at 300)
+                                    />
+                                  );
+                                })()}
                               </BarChart>
                             </ResponsiveContainer>
                           </div>
