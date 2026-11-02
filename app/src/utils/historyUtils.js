@@ -29,10 +29,10 @@ export function ordinal(n) {
 
 export function titlePriority(title) {
   const t = String(title).toLowerCase();
-  if (t.includes('super sectional') || t.includes('supersectional')) return 4;
+  if (/super[\s-]?sectional/.test(t)) return 4;
   if (t.includes('state'))      return 5;
   if (t.includes('sectional'))  return 3;
   if (t.includes('regional'))   return 2;
   if (t.includes('conference')) return 1;
-  return 6;
+  return 0; // tourney wins + any other title go first
 }

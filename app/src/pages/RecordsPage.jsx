@@ -1437,10 +1437,8 @@ export function RecordsPage() {
         items.push({ year: String(t.year), title: `${t.name} Champions`, priority: 0 });
       }
     }
-    return items.sort((a, b) => {
-      const yCmp = a.year.localeCompare(b.year);
-      return yCmp !== 0 ? yCmp : a.priority - b.priority;
-    });
+    // Order by banner type (tourney → conference → regional → sectional → super sectional → state), then oldest year first
+    return items.sort((a, b) => a.priority - b.priority || a.year.localeCompare(b.year));
   }, [seasonHistories, tourneyEntries, currentOrg, currentTeam]);
 
   const teamPrimaryColor   = orgColors[0] ?? currentTeam?.team_jersey_color?.[0] ?? null;
