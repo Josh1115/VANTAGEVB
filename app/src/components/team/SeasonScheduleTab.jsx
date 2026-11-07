@@ -19,6 +19,7 @@ import { PostSeasonModal } from '../shared/PostSeasonModal';
 import { applyInferredSeasonFinish } from '../../utils/seasonUtils';
 import { ScheduleImportModal } from '../match/ScheduleImportModal';
 import { usePlan } from '../../hooks/usePlan';
+import { MATCHES_LOCKED_MESSAGE } from '../../utils/planLimits';
 import { consumeMatchSlotStrict } from '../../utils/supabase';
 import { readTrialCreated, noteTrialMatchCreated, raiseTrialCreatedFloor } from '../../utils/trialMatchCount';
 import { useUiStore, selectShowToast, selectShowUpgradeNudge } from '../../store/uiStore';
@@ -26,7 +27,8 @@ import { useUiStore, selectShowToast, selectShowUpgradeNudge } from '../../store
 export function SeasonScheduleTab({ seasonId }) {
   const navigate = useNavigate();
   const playoffLabel = getPlayoffLabel();
-  const { isMaster, plan, matchLimit } = usePlan();
+  const { isMaster, plan, matchLimit, matchesLocked } = usePlan();
+  const [confirmEndedGame, setConfirmEndedGame] = useState(false);
   const showToast = useUiStore(selectShowToast);
   const showUpgradeNudge = useUiStore(selectShowUpgradeNudge);
 
@@ -233,8 +235,12 @@ export function SeasonScheduleTab({ seasonId }) {
     setSchedOpen(true);
   }
 
-  async function handleScheduleGame() {
+  async function handleScheduleGame(endedConfirmed = false) {
     if (!schedOpp.trim()) return;
+    if (!editMatchId) {
+      if (matchesLocked) { setSchedError(MATCHES_LOCKED_MESSAGE); return; }
+      if (season?.status === 'ended' && !endedConfirmed) { setConfirmEndedGame(true); return; }
+    }
     setSchedSaving(true);
     try {
       let oppRecord = await db.opponents.where('name').equals(schedOpp.trim()).first();
@@ -818,6 +824,16 @@ export function SeasonScheduleTab({ seasonId }) {
         <ScheduleImportModal
           seasonId={seasonId}
           onClose={() => setShowImport(false)}
+        />
+      )}
+
+      {confirmEndedGame && (
+        <ConfirmDialog
+          title="Season Has Ended"
+          message="This season has ended. Add a game anyway?"
+          confirmLabel="Add Game"
+          onConfirm={() => { setConfirmEndedGame(false); handleScheduleGame(true); }}
+          onCancel={() => setConfirmEndedGame(false)}
         />
       )}
 

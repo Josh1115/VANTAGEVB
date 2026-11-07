@@ -90,11 +90,11 @@ export function PricingTab() {
             <span className="text-emerald-400 text-lg font-black">✓</span>
             <div>
               <div className="text-sm font-bold text-white">
-                {teamsAllowed === 99 ? 'Unlimited Teams' : `${teamsAllowed} Team${teamsAllowed > 1 ? 's' : ''}`} / Season
+                Current plan: {teamsAllowed === 99 ? 'Unlimited Teams' : `${teamsAllowed} Team${teamsAllowed > 1 ? 's' : ''}`} / season
+                {expiresAt && `, expires on ${expiresAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`}
               </div>
               <div className="text-xs text-slate-400">
                 All features included · 50 matches/season
-                {expiresAt && ` · Expires ${expiresAt.toLocaleDateString()}`}
               </div>
             </div>
           </div>
@@ -159,7 +159,8 @@ export function PricingTab() {
           {Object.entries(PLAN_LABELS).filter(([key]) => key !== 'trial').map(([key, label]) => {
             const isCurrent = plan === key && !isMaster;
             const isLoading = checkoutPlan === key;
-            const clickDisabled = isMaster || isCurrent || (checkoutPlan !== null && !isLoading);
+            const canRenew = isCurrent && !!expiresAt; // a plan with no end date has nothing to renew
+            const clickDisabled = isMaster || (isCurrent && !canRenew) || (checkoutPlan !== null && !isLoading);
             return (
               <button
                 key={key}
@@ -176,11 +177,11 @@ export function PricingTab() {
                   <span className="text-xs text-slate-500">- 50 matches per team, per 1 season</span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-sm font-bold ${isCurrent ? 'text-primary' : 'text-slate-300'}`}>{PLAN_PRICES[key]}<span className="text-xs font-normal text-slate-500">/yr</span></span>
-                  {isCurrent ? (
-                    <span className="text-[10px] font-bold text-primary uppercase tracking-wide">Current</span>
-                  ) : isLoading ? (
+                  <span className={`text-sm font-bold ${isCurrent ? 'text-primary' : 'text-slate-300'}`}>{PLAN_PRICES[key]}<span className="text-xs font-normal text-slate-500"> / season</span></span>
+                  {isLoading ? (
                     <span className="text-xs text-slate-500">Redirecting…</span>
+                  ) : isCurrent ? (
+                    <span className="text-[10px] font-bold text-primary uppercase tracking-wide">{canRenew ? 'Current · Renew ›' : 'Current'}</span>
                   ) : !isMaster ? (
                     <span className="text-slate-500">›</span>
                   ) : null}

@@ -262,6 +262,18 @@
   animation: brand-glow-pulse 1.8s ease-in-out infinite;
 }
 
+/* Pulsing Vantage-orange glow around a button (History "+ Season") */
+@keyframes brand-btn-glow {
+  0%, 100% { box-shadow: 0 0 6px 1px rgba(232,83,11,0.45); }
+  50%      { box-shadow: 0 0 14px 4px rgba(232,83,11,0.85); }
+}
+.brand-btn-glow {
+  animation: brand-btn-glow 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-btn-glow { animation: none; box-shadow: 0 0 10px 2px rgba(232,83,11,0.6); }
+}
+
 /* Slow green border flicker for a "return sub" suggestion tile */
 @keyframes return-suggest-pulse {
   0%, 100% { border-color: rgba(52,211,153,0.30); box-shadow: 0 0 0 1px rgba(52,211,153,0.10); }

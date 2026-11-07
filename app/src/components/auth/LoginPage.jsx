@@ -739,7 +739,7 @@ export function LoginPage({ onSignup }) {
                 <div className="space-y-2.5">
                   {[
                     { q: 'Does it work at an away gym with no WiFi or cell signal?', a: 'Yes — Vantage is fully offline-first. Every stat is saved directly on your device, no internet needed to record a match.' },
-                    { q: 'Can a JV coach and Varsity coach share one account?', a: 'Yes — with a 2-Team plan, one login can hold both teams. Each coach records their own team, and data merges automatically each time they log in with internet on (or anytime either one taps "Save to Cloud"). A 2-Team plan ($139.99/yr) also runs cheaper than buying two separate 1-Team plans ($79.99 each).' },
+                    { q: 'Can a JV coach and Varsity coach share one account?', a: 'Yes — with a 2-Team plan, one login can hold both teams. Each coach records their own team, and data merges automatically each time they log in with internet on (or anytime either one taps "Save to Cloud"). A 2-Team plan ($139.99 / season) also runs cheaper than buying two separate 1-Team plans ($79.99 each).' },
                     { q: 'What happens if I lose my phone or switch devices?', a: 'Your data isn\'t lost as long as you\'ve backed up — either a manual export file or "Save to Cloud," both available in Settings.' },
                     { q: 'Is there a trial?', a: 'Yes — a trial account can start 1 team and utilize five matches (whether exhibition or regular season), with all Vantage features accessible. No credit card required for sign up.' },
                     { q: 'Can I export my stats to MaxPreps or a spreadsheet?', a: 'Yes — one-tap MaxPreps CSV upload, plus PDF and CSV export after every match.' },

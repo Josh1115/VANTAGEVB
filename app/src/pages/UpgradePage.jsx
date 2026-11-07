@@ -21,9 +21,9 @@ export function UpgradePage() {
   const [error, setError] = useState('');
   const [searchParams] = useSearchParams();
 
-  const { plan: normalizedPlan } = usePlan();
-  const currentPlan = profile?.plan ?? 'inactive';
-  const successPlan     = searchParams.get('plan');
+  // The effective plan: an expired plan counts as inactive, so its owner can buy it again.
+  const { plan: normalizedPlan, expiresAt } = usePlan();
+  const successPlan    = searchParams.get('plan');
   const didSucceed      = searchParams.get('success') === '1';
   const didCancel       = searchParams.get('canceled') === '1';
   const checkoutFailed  = searchParams.get('checkout_failed') === '1';
@@ -35,15 +35,18 @@ export function UpgradePage() {
     let cancelled = false;
     let attempts = 0;
     const MAX_ATTEMPTS = 10;
+    // A renewal keeps the same plan name, so only a new end date proves the payment landed.
+    const expiryBefore = profile?.plan_expires_at ?? null;
 
     async function checkPlan() {
       if (cancelled) return;
       const { data } = await supabase
         .from('profiles')
-        .select('plan')
+        .select('plan, plan_expires_at')
         .eq('id', session.user.id)
         .single();
-      if (data?.plan === successPlan || attempts >= MAX_ATTEMPTS) {
+      const landed = data?.plan === successPlan && (data?.plan_expires_at ?? null) !== expiryBefore;
+      if (landed || attempts >= MAX_ATTEMPTS) {
         if (!cancelled) refreshProfile();
       } else {
         attempts++;
@@ -67,7 +70,7 @@ export function UpgradePage() {
     }
   }
 
-  const currentLabel = PLAN_LABELS[currentPlan];
+  const currentLabel = PLAN_LABELS[normalizedPlan];
   const isRenewing = normalizedPlan === 'inactive' && !!profile?.stripe_customer_id;
 
   return (
@@ -97,7 +100,10 @@ export function UpgradePage() {
         {currentLabel && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-slate-400">Current plan:</span>
-            <span className="text-sm font-bold text-primary">{currentLabel} / season</span>
+            <span className="text-sm font-bold text-primary">
+              {currentLabel} / season
+              {expiresAt && `, expires on ${expiresAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`}
+            </span>
           </div>
         )}
 
@@ -128,7 +134,8 @@ export function UpgradePage() {
         </div>
 
         {PLANS.map((plan) => {
-          const owned   = currentPlan === plan.key;
+          const owned   = normalizedPlan === plan.key;
+          const renewable = owned && !!expiresAt; // a plan with no end date has nothing to renew
           const loading = loadingPlan === plan.key;
           const disabled = loadingPlan !== null && !loading;
           const teamsLabel = plan.teams === 99 ? '5+ Teams' : `${plan.teams} Team${plan.teams > 1 ? 's' : ''}`;
@@ -158,7 +165,7 @@ export function UpgradePage() {
                 </div>
               </div>
               <div className="px-4 pb-4">
-                {owned ? (
+                {owned && !renewable ? (
                   <div className="w-full rounded-xl bg-slate-700 py-2.5 text-sm font-bold text-slate-400 text-center">
                     Current Plan
                   </div>
@@ -172,7 +179,7 @@ export function UpgradePage() {
                         : 'bg-slate-700 text-white hover:bg-slate-600'
                     }`}
                   >
-                    {loading ? 'Redirecting…' : `${isRenewing ? 'Renew' : 'Purchase'} — ${PLAN_PRICES[plan.key]}`}
+                    {loading ? 'Redirecting…' : `${isRenewing || renewable ? 'Renew' : 'Purchase'} — ${PLAN_PRICES[plan.key]}`}
                   </button>
                 )}
               </div>

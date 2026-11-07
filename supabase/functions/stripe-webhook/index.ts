@@ -1,5 +1,6 @@
 import Stripe from 'npm:stripe@14';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { nextPlanExpiry } from './planExpiry.ts';
 
 // Map Stripe Price IDs back to plan names
 const PRICE_TO_PLAN: Record<string, string> = {
@@ -73,19 +74,46 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Plans expire 6 months from purchase date
-        const planExpiresAt = new Date();
-        planExpiresAt.setMonth(planExpiresAt.getMonth() + 6);
+        // Adding time isn't safe to repeat, so claim this event before touching the
+        // plan. Without this, a redelivery after a failed "processed" note below
+        // would add a second 6 months. Losing the claim means another delivery has it.
+        const { error: claimError } = await supabase
+          .from('processed_stripe_events')
+          .insert({ event_id: event.id });
+        if (claimError?.code === '23505') {
+          console.log(`Event ${event.id} claimed by another delivery, skipping`);
+          break;
+        }
+        if (claimError) throw claimError;
 
-        await supabase
-          .from('profiles')
-          .update({
-            plan,
-            stripe_customer_id: session.customer as string,
-            plan_expires_at: planExpiresAt.toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', userId);
+        let planExpiresAt: Date;
+        try {
+          const { data: current, error: readError } = await supabase
+            .from('profiles')
+            .select('plan, plan_expires_at')
+            .eq('id', userId)
+            .maybeSingle();
+          if (readError) throw readError;
+
+          // Only time on a paid plan carries over, not time left on a trial.
+          const isPaidPlan = Object.values(PRICE_TO_PLAN).includes(current?.plan ?? '');
+          planExpiresAt = nextPlanExpiry(isPaidPlan ? current?.plan_expires_at : null);
+
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+              plan,
+              stripe_customer_id: session.customer as string,
+              plan_expires_at: planExpiresAt.toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', userId);
+          if (updateError) throw updateError;
+        } catch (err) {
+          // Release the claim so Stripe's retry can still grant what was paid for.
+          await supabase.from('processed_stripe_events').delete().eq('event_id', event.id);
+          throw err;
+        }
 
         console.log(`Updated user ${userId} to plan: ${plan}, expires: ${planExpiresAt.toISOString()}`);
         break;
@@ -140,8 +168,8 @@ Deno.serve(async (req) => {
   }
 
   // Record event as processed AFTER successful handling so Stripe retries work on transient failures.
-  // Duplicate key (23505) means a concurrent delivery raced us — both outcomes are fine since all
-  // handlers are idempotent (profile updates are last-write-wins).
+  // Duplicate key (23505) is expected: purchases claim their event up front, and revokes are
+  // safe to repeat.
   const { error: insertError } = await supabase
     .from('processed_stripe_events')
     .insert({ event_id: event.id });

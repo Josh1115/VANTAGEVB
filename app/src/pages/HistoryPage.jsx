@@ -13,48 +13,13 @@ import { getEligibleTeams } from '../utils/teams';
 import { ChampionshipBannersSection } from '../components/shared/ChampionshipBanner';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { PostSeasonModal } from '../components/shared/PostSeasonModal';
-import { applyInferredSeasonFinish } from '../utils/seasonUtils';
+import { applyInferredSeasonFinish, resolveSeasonFinish, seasonPlayoffRounds } from '../utils/seasonUtils';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function fmtWinPct(wins, games) {
   if (wins == null || !games) return null;
   return (wins / games * 100).toFixed(1) + '%';
-}
-
-const PLAYOFF_ROUND_ORDER = ['regional', 'sectional', 'super-sectional', 'quarterfinal', 'semifinal', 'state championship'];
-
-function roundOrderIndex(roundName) {
-  const lower = (roundName ?? '').toLowerCase();
-  const exact = PLAYOFF_ROUND_ORDER.findIndex(r => lower === r);
-  if (exact !== -1) return exact;
-  return PLAYOFF_ROUND_ORDER.findIndex(r => lower.includes(r));
-}
-
-function inferFinishFromPlayoffRounds(playoffRounds) {
-  if (!playoffRounds?.length) return '';
-  const sorted = [...playoffRounds]
-    .filter(r => r.round?.trim())
-    .sort((a, b) => {
-      const ai = roundOrderIndex(a.round);
-      const bi = roundOrderIndex(b.round);
-      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-    });
-  const last = sorted[sorted.length - 1];
-  if (!last?.round) return '';
-  return last.result === 'W' ? `Won ${last.round}` : last.round;
-}
-
-function inferFinishFromMatches(matches) {
-  const playoffs = (matches ?? []).filter(
-    m => m.status === MATCH_STATUS.COMPLETE && m.match_type === 'ihsa-playoffs' && m.playoff_round
-  );
-  if (!playoffs.length) return '';
-  const rounds = playoffs.map(m => ({
-    round:  m.playoff_round,
-    result: (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0) ? 'W' : 'L',
-  }));
-  return inferFinishFromPlayoffRounds(rounds);
 }
 
 // ── Shared swipe-to-reveal hook ───────────────────────────────────────────────
@@ -736,7 +701,7 @@ function WinnerCard({ entry, onEdit, onDelete }) {
 // season_history entry if one exists; otherwise those sections are blank.
 // activeSeason: the season DB record (may have head_coach/asst_coach from the roster tab)
 // historyEntry: matching season_history row (has title, rankings, playoffs, and possibly coach overrides)
-function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit, onEndSeason, isWinRecord, isStateRankRecord, isNationalRankRecord, isWinsAddedRecord, isMostGamesRecord }) {
+function LiveSeasonCard({ year, matches, historyEntry, finish, activeSeason, onEdit, onEndSeason, isWinRecord, isStateRankRecord, isNationalRankRecord, isWinsAddedRecord, isMostGamesRecord }) {
   const completed = (matches ?? []).filter(m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition');
   const wins      = completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
   const losses    = completed.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
@@ -751,7 +716,8 @@ function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit, onE
 
   const hasCoach    = headCoach || asstCoach;
   const hasRankings = historyEntry?.state_rank != null || historyEntry?.national_rank != null || historyEntry?.class_rank != null;
-  const hasPlayoffs = historyEntry?.playoff_seed || historyEntry?.state_finish || historyEntry?.playoff_result || (historyEntry?.playoff_rounds?.length > 0);
+  const playoffRounds = seasonPlayoffRounds(historyEntry?.playoff_rounds, matches);
+  const hasPlayoffs = historyEntry?.playoff_seed || finish || historyEntry?.playoff_result || playoffRounds.length > 0;
 
   return (
     <div className="rounded-xl overflow-hidden border border-primary/50 shadow-[0_0_16px_-4px_rgba(232,83,11,0.2)]">
@@ -857,7 +823,7 @@ function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit, onE
           </div>
         )}
 
-        {hasPlayoffs && <PlayoffRoundsDisplay entry={historyEntry} />}
+        {hasPlayoffs && <PlayoffRoundsDisplay entry={historyEntry} finish={finish} rounds={playoffRounds} />}
 
         {!historyEntry && (
           <p className="text-xs text-slate-600 italic">Tap + Details to add coach, rankings, and playoff info.</p>
@@ -869,10 +835,9 @@ function LiveSeasonCard({ year, matches, historyEntry, activeSeason, onEdit, onE
 
 // ── Shared playoff rounds display ─────────────────────────────────────────────
 
-function PlayoffRoundsDisplay({ entry }) {
-  const rounds = entry?.playoff_rounds ?? [];
+function PlayoffRoundsDisplay({ entry, finish, rounds }) {
   const hasSeed    = !!entry?.playoff_seed;
-  const hasFinish  = !!entry?.state_finish;
+  const hasFinish  = !!finish;
   const hasResult  = !!entry?.playoff_result;
   const hasRounds  = rounds.length > 0;
 
@@ -892,7 +857,7 @@ function PlayoffRoundsDisplay({ entry }) {
           {hasFinish && (
             <span className="text-xs">
               <span className="text-slate-500 mr-1">Finish</span>
-              <span className="text-slate-200 font-semibold">{entry.state_finish}</span>
+              <span className="text-slate-200 font-semibold">{finish}</span>
             </span>
           )}
         </div>
@@ -927,14 +892,15 @@ function PlayoffRoundsDisplay({ entry }) {
 
 // ── Static Season Card ────────────────────────────────────────────────────────
 
-function SeasonCard({ entry, onEdit, onDelete, isWinRecord, isStateRankRecord, isNationalRankRecord, isWinsAddedRecord, isMostGamesRecord, liveRecord }) {
+function SeasonCard({ entry, finish, matches, onEdit, onDelete, isWinRecord, isStateRankRecord, isNationalRankRecord, isWinsAddedRecord, isMostGamesRecord, liveRecord }) {
   const wins       = liveRecord?.wins   ?? entry.wins   ?? null;
   const losses     = liveRecord?.losses ?? entry.losses ?? null;
   const total      = wins != null && losses != null ? wins + losses : null;
   const winPct     = total > 0 ? fmtWinPct(wins, total) : null;
   const hasCoach   = entry.head_coach || entry.asst_coach;
   const hasRecord  = wins != null || losses != null;
-  const hasPlayoffs = entry.playoff_seed || entry.state_finish || entry.playoff_result || (entry.playoff_rounds?.length > 0);
+  const playoffRounds = seasonPlayoffRounds(entry.playoff_rounds, matches);
+  const hasPlayoffs = entry.playoff_seed || finish || entry.playoff_result || playoffRounds.length > 0;
   const titleArr   = toTitleArr(entry.title);
 
   return (
@@ -1028,7 +994,7 @@ function SeasonCard({ entry, onEdit, onDelete, isWinRecord, isStateRankRecord, i
         )}
 
         {/* Playoffs */}
-        {hasPlayoffs && <PlayoffRoundsDisplay entry={entry} />}
+        {hasPlayoffs && <PlayoffRoundsDisplay entry={entry} finish={finish} rounds={playoffRounds} />}
       </div>
     </div>
   );
@@ -1125,6 +1091,20 @@ export function HistoryPage() {
     }
     return records;
   }, [teamId]);
+
+  // Every game per season year, so Finish always reflects what was actually played
+  const matchesByYear = useLiveQuery(async () => {
+    if (!teamId) return {};
+    const seasons = await db.seasons.where('team_id').equals(teamId).toArray();
+    if (!seasons.length) return {};
+    const yearBySeason = Object.fromEntries(seasons.map(s => [s.id, String(s.year)]));
+    const matches = await db.matches.where('season_id').anyOf(seasons.map(s => s.id)).toArray();
+    const byYear = {};
+    for (const m of matches) (byYear[yearBySeason[m.season_id]] ??= []).push(m);
+    return byYear;
+  }, [teamId]);
+
+  const finishFor = (h) => resolveSeasonFinish(h?.state_finish, h?.playoff_rounds, matchesByYear?.[String(h?.year)]);
 
   // Live data for the active default season (only when viewing the default team)
   const isDefaultTeam = teamId != null && teamId === defaultTeamId;
@@ -1301,15 +1281,12 @@ export function HistoryPage() {
     wins:           '',
     losses:         '',
     playoff_seed:   liveHistoryEntry.playoff_seed   ?? '',
-    state_finish:   liveHistoryEntry.state_finish
-                      || inferFinishFromPlayoffRounds(liveHistoryEntry.playoff_rounds)
-                      || '',
+    state_finish:   liveHistoryEntry.state_finish   ?? '',
     playoff_result: liveHistoryEntry.playoff_result ?? '',
     playoff_rounds: liveHistoryEntry.playoff_rounds ?? [],
   } : {
     ...EMPTY_FORM,
     year:         activeSeason?.year != null ? String(activeSeason.year) : '',
-    state_finish: activeSeason?.status === 'ended' ? inferFinishFromMatches(activeMatches) : '',
   };
 
   const showLiveCard = isDefaultTeam && activeSeason != null && activeSeason.status !== 'ended';
@@ -1540,7 +1517,7 @@ export function HistoryPage() {
         const w = live?.wins ?? h.wins ?? '';
         const l = live?.losses ?? h.losses ?? '';
         const titles = toTitleArr(h.title).join(', ');
-        const finish = h.state_finish || (h.playoff_rounds?.length ? h.playoff_rounds[h.playoff_rounds.length - 1].round : '');
+        const finish = finishFor(h);
         return [String(h.year), w !== '' && l !== '' ? `${w}–${l}` : '—', h.head_coach ?? '', titles, finish, h.state_rank != null ? `#${h.state_rank}` : ''];
       });
 
@@ -1589,16 +1566,6 @@ export function HistoryPage() {
   return (
     <div className="pb-24">
       <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 pb-3 pt-safe flex flex-col items-center gap-0.5">
-        <div className="w-full flex items-center justify-end">
-          {teamId && (
-            <button
-              onClick={() => setShowAdd(true)}
-              className="px-3 py-1 rounded-lg bg-primary text-white text-sm font-bold"
-            >
-              + Season
-            </button>
-          )}
-        </div>
         <div className="relative mx-auto" style={{ width: 'min(52vw, 260px)' }}>
           <img
             src="/logo.png"
@@ -1608,9 +1575,21 @@ export function HistoryPage() {
           />
           <span className="absolute text-slate-400 select-none" style={{ top: '6%', right: '2%', fontSize: 'min(2.2vw, 11px)' }}>™</span>
         </div>
-        <span className="text-lg font-bold text-white tracking-wide">
-          {orgName ? `History — ${orgName}` : 'History'}
-        </span>
+        <div className="relative w-full flex items-center justify-center">
+          <span className="text-lg font-bold text-white tracking-wide">
+            {orgName ? `History — ${orgName}` : 'History'}
+          </span>
+          <div className="absolute right-0 top-1/2 -translate-y-1/2">
+            {teamId && (
+              <button
+                onClick={() => setShowAdd(true)}
+                className="px-3 py-1 rounded-lg bg-primary text-white text-sm font-bold brand-btn-glow"
+              >
+                + Season
+              </button>
+            )}
+          </div>
+        </div>
       </header>
 
       <div className="p-4 space-y-4">
@@ -1960,6 +1939,7 @@ export function HistoryPage() {
                           year={activeSeason.year}
                           matches={activeMatches}
                           historyEntry={liveHistoryEntry}
+                          finish={liveHistoryEntry?.state_finish ? finishFor(liveHistoryEntry) : ''}
                           activeSeason={activeSeason}
                           onEdit={() => setLiveEditOpen(true)}
                           onEndSeason={() => setConfirmEndSeason(true)}
@@ -1984,6 +1964,8 @@ export function HistoryPage() {
                           <SeasonCard
                             key={entry.id}
                             entry={entry}
+                            finish={finishFor(entry)}
+                            matches={matchesByYear?.[String(entry.year)]}
                             onEdit={setEditEntry}
                             onDelete={setConfirmDeleteEntry}
                             isWinRecord={maxWins > 0 && (liveRecordsByYear?.[String(entry.year)]?.wins ?? entry.wins) === maxWins}
@@ -2050,9 +2032,7 @@ export function HistoryPage() {
             wins:           editEntry.wins           != null ? String(editEntry.wins)    : '',
             losses:         editEntry.losses         != null ? String(editEntry.losses)  : '',
             playoff_seed:   editEntry.playoff_seed   ?? '',
-            state_finish:   editEntry.state_finish
-                              || inferFinishFromPlayoffRounds(editEntry.playoff_rounds)
-                              || '',
+            state_finish:   editEntry.state_finish   ?? '',
             playoff_result: editEntry.playoff_result ?? '',
             playoff_rounds: editEntry.playoff_rounds ?? [],
           }}

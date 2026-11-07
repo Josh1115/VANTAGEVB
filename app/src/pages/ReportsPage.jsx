@@ -309,6 +309,14 @@ export function ReportsPage() {
 
   // Filter data
   const teams   = useLiveQuery(() => db.teams.toArray(), []);
+  const orgs    = useLiveQuery(() => db.organizations.toArray(), []);
+  // Org name for the header: the selected team's school, else the only school.
+  const orgName = useMemo(() => {
+    if (!orgs?.length) return '';
+    const team = (teams ?? []).find(t => String(t.id) === String(selectedTeamId));
+    const org = team ? orgs.find(o => o.id === team.org_id) : (orgs.length === 1 ? orgs[0] : null);
+    return org?.name ?? '';
+  }, [orgs, teams, selectedTeamId]);
 
   // Auto-select when only one team or season exists and nothing is chosen yet
   useEffect(() => {
@@ -657,7 +665,9 @@ export function ReportsPage() {
           />
           <span className="absolute text-slate-400 select-none" style={{ top: '6%', right: '2%', fontSize: 'min(2.2vw, 11px)' }}>™</span>
         </div>
-        <span className="text-lg font-bold text-white tracking-wide">Stats</span>
+        <span className="text-lg font-bold text-white tracking-wide">
+          {orgName ? `Stats — ${orgName}` : 'Stats'}
+        </span>
       </header>
 
       {/* Filters */}

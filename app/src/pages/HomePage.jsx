@@ -8,11 +8,13 @@ import { db } from '../db/schema';
 import { MATCH_STATUS } from '../constants';
 import { fmtDate, fmtHitting, fmtPct } from '../stats/formatters';
 import { currentStreak, seasonOpener, sortByDateTime } from '../utils/seasonSummary';
+import { allTimeRank, resolveSeasonFinish } from '../utils/seasonUtils';
 import { computePlayerStats, computeTeamStats } from '../stats/engine';
 import { deleteMatch } from '../stats/queries';
 import { useUiStore, selectShowToast } from '../store/uiStore';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlan } from '../hooks/usePlan';
+import { renewalReminderDays } from '../utils/planLimits';
 import { useStorageEstimate } from '../hooks/useStorageEstimate';
 import { syncWithCloud } from '../stats/backup';
 import { Button } from '../components/ui/Button';
@@ -455,7 +457,8 @@ export function HomePage() {
   const [confirmLogout, setConfirmLogout] = useState(false);
   const showToast = useUiStore(selectShowToast);
   const { session, profile, refreshProfile } = useAuth();
-  const { teamsAllowed, matchLimit, isMaster } = usePlan();
+  const { teamsAllowed, matchLimit, isMaster, tier, expiresAt, daysUntilExpiry } = usePlan();
+  const renewalDays = renewalReminderDays(tier, daysUntilExpiry);
   const [cloudSaving, setCloudSaving] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState(() => {
     const raw = getStorageItem(STORAGE_KEYS.LAST_CLOUD_SYNC);
@@ -666,6 +669,7 @@ export function HomePage() {
     // so playoff matches don't count toward "season" completion.
     const progressMatches = allSeasonMatches.filter(m => m.match_type === 'reg-season' || m.match_type === 'tourney');
     const progressCompleted = progressMatches.filter(m => m.status === MATCH_STATUS.COMPLETE).length;
+    const seasonEnded = season.status === 'ended';
     return {
       teamName:   team.name ?? team.abbreviation ?? 'Team',
       seasonName: season.name ?? String(season.year),
@@ -674,7 +678,9 @@ export function HomePage() {
       setsW, setsL,
       homeW, homeL, awayW, awayL, neutW, neutL, confW, confL, tourneyW, tourneyL, last5W, last5L, last5Count: last5.length,
       matchProgress: { completed: progressCompleted, total: progressMatches.length },
-      streak,
+      streak: seasonEnded ? null : streak,
+      seasonEnded,
+      finish: seasonEnded ? resolveSeasonFinish(historyEntry?.state_finish, historyEntry?.playoff_rounds, allSeasonMatches) : '',
       opener: opener ? { opponent: opener.opponent_name ?? 'TBD', date: opener.date, location: opener.location ?? null } : null,
       logoUrl: org?.logo_data_url ?? null,
       stateRank:        historyEntry?.state_rank         ?? null,
@@ -857,6 +863,50 @@ export function HomePage() {
       },
     };
   }, [defaultTeamId, defaultSeasonId]);
+
+  // ── Ended seasons: all-time ranks replace the deltas ───────────────────────
+  // Uses the Records page's own top-10 lists so the two pages agree. REC and APR
+  // aren't tracked as records, so they have no rank.
+  const seasonEnded = !!seasonRecord?.seasonEnded;
+  const seasonYear  = seasonRecord?.seasonYear;
+  const [allTimeRanks, setAllTimeRanks] = useState(null);
+  useEffect(() => {
+    if (!seasonEnded || !seasonLeaders || !defaultTeamId) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { computeLeaderboards } = await import('./RecordsPage');
+        const [playerBoards, teamBoards] = await Promise.all([
+          computeLeaderboards('season', defaultTeamId),
+          computeLeaderboards('team_season', defaultTeamId),
+        ]);
+        const thisYear = (r) => String(r.year) === String(seasonYear);
+        const playerRank = (statKey, leader) =>
+          leader ? allTimeRank(playerBoards[statKey], r => thisYear(r) && r.player_id === leader.id) : null;
+        const teamRank = (statKey) => allTimeRank(teamBoards[statKey], thisYear);
+        if (cancelled) return;
+        setAllTimeRanks({
+          players: {
+            kills:   playerRank('k',   seasonLeaders.kills),
+            aces:    playerRank('ace', seasonLeaders.aces),
+            blocks:  playerRank('blk', seasonLeaders.blocks),
+            digs:    playerRank('dig', seasonLeaders.digs),
+            assists: playerRank('ast', seasonLeaders.assists),
+          },
+          team: Object.fromEntries(
+            ['k', 'ace', 'blk', 'dig', 'ast'].map(key => [key, teamRank(key)])
+          ),
+        });
+      } catch {
+        if (!cancelled) setAllTimeRanks(null); // no ranks is better than a broken dashboard
+      }
+    })();
+    return () => { cancelled = true; setAllTimeRanks(null); };
+  }, [seasonEnded, seasonYear, seasonLeaders, defaultTeamId]);
+
+  const allTimeLabel = (rank) => rank != null && (
+    <span className="text-[8px] font-bold leading-tight text-amber-400 text-center">#{rank} All Time</span>
+  );
 
   const [displaySeasonRecord, setDisplaySeasonRecord] = useState({ wins: 0, losses: 0 });
   const seasonRecordAnimated = useRef(false);
@@ -1088,6 +1138,12 @@ export function HomePage() {
 
             {/* W / L numbers */}
             <div className="relative grid grid-cols-2 divide-x divide-slate-700/60">
+              {seasonRecord.finish && (
+                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none w-[92px] px-2 py-1.5 rounded-2xl bg-slate-900 border border-amber-500/70 text-center shadow-lg">
+                  <span className="block text-[9px] font-bold tracking-[0.15em] text-slate-400">FINISH</span>
+                  <span className="block text-[12px] font-black leading-tight text-amber-300">{seasonRecord.finish}</span>
+                </span>
+              )}
               {seasonRecord.streak && (
                 <span
                   className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none w-[55px] h-[55px] flex items-center justify-center rounded-full text-[14px] font-black tracking-[0.05em] tabular-nums border ${
@@ -1185,7 +1241,7 @@ export function HomePage() {
             )}
 
             {/* Season progress bar */}
-            {seasonRecord.matchProgress.total > 0 && (
+            {!seasonRecord.seasonEnded && seasonRecord.matchProgress.total > 0 && (
               <div className="px-4 pt-2 pb-3 border-t border-slate-700/60">
                 <div className="flex justify-between text-[10px] font-bold tracking-[0.15em] text-white mb-1.5">
                   <span>SEASON PROGRESS · {Math.round((seasonRecord.matchProgress.completed / seasonRecord.matchProgress.total) * 100)}%</span>
@@ -1218,7 +1274,7 @@ export function HomePage() {
               >
                 <div className="text-xs font-black uppercase tracking-wider text-white">{label}</div>
                 <div className="text-2xl font-black text-primary tabular-nums mt-0.5">{val}</div>
-                {deltaVal != null && deltaVal !== 0 && (
+                {!seasonEnded && deltaVal != null && deltaVal !== 0 && (
                   <span className={`flex items-center justify-center gap-px text-[9px] font-bold leading-none tabular-nums mt-0.5 ${deltaVal > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {deltaVal > 0 ? '▲' : '▼'}{fmt(deltaVal)}
                   </span>
@@ -1277,7 +1333,7 @@ export function HomePage() {
                       {leader ? (
                         <>
                           <span className="text-xl font-black text-primary tabular-nums leading-none">{fmt ? fmt(leader.val) : leader.val}</span>
-                          <Delta val={ld?.[key]} fmt={fmt} />
+                          {seasonEnded ? allTimeLabel(allTimeRanks?.players?.[key]) : <Delta val={ld?.[key]} fmt={fmt} />}
                           <span className="text-[10px] font-semibold text-white leading-tight text-center break-words w-full">{leader.name}</span>
                         </>
                       ) : (
@@ -1310,7 +1366,7 @@ export function HomePage() {
                       <span className="text-xl font-black text-primary tabular-nums leading-none">
                         {teamVal != null ? (fmt ? fmt(teamVal) : teamVal) : '—'}
                       </span>
-                      <Delta val={td?.[ttKey]} fmt={fmt} />
+                      {seasonEnded ? allTimeLabel(allTimeRanks?.team?.[ttKey]) : <Delta val={td?.[ttKey]} fmt={fmt} />}
                       {fmtPerMatch != null && (
                         <span className="text-[9px] font-semibold text-white leading-none tabular-nums">{fmtPerMatch}<span className="text-white">/MATCH</span></span>
                       )}
@@ -1828,6 +1884,19 @@ export function HomePage() {
             Sign Out
           </button>
         </div>
+
+        {renewalDays != null && (
+          <div className="mx-4 mb-6 rounded-xl border border-amber-700/50 bg-amber-900/20 px-4 py-3 text-center">
+            <p className="text-sm text-amber-300">
+              Your plan expires in <span className="font-black">{renewalDays} day{renewalDays === 1 ? '' : 's'}</span>
+              {' '}({expiresAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}).
+              {' '}After that, you won&apos;t be able to add or start matches.
+            </p>
+            <button onClick={() => navigate('/upgrade')} className="text-sm font-bold text-primary hover:text-orange-300 mt-1">
+              See plans →
+            </button>
+          </div>
+        )}
       </div>
 
       {showKickoffPopup && (

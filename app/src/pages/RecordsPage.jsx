@@ -138,7 +138,9 @@ function pickActiveSeason(seasons) {
     .sort((a, b) => String(b.year).localeCompare(String(a.year)))[0] ?? null;
 }
 
-async function computeLeaderboards(tab, teamId) {
+// Also used by the dashboard for all-time ranks; loaded on demand so this page stays lazy.
+// eslint-disable-next-line react-refresh/only-export-components
+export async function computeLeaderboards(tab, teamId) {
   const statsForTab = tab === 'team_season' ? TEAM_SEASON_STATS : RECORD_STATS;
 
   const historicalAll = await db.historical_records
@@ -1466,13 +1468,6 @@ export function RecordsPage() {
   return (
     <div className="pb-24">
       <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 pb-3 pt-safe flex flex-col items-center gap-0.5">
-        <div className="w-full flex items-center justify-end">
-          {teamId && (
-            <button onClick={() => setShowAdd(true)} className="px-3 py-1 rounded-lg bg-primary text-white text-sm font-bold record-btn-pulse">
-              + Entry
-            </button>
-          )}
-        </div>
         <div className="relative mx-auto" style={{ width: 'min(52vw, 260px)' }}>
           <img
             src="/logo.png"
@@ -1482,9 +1477,18 @@ export function RecordsPage() {
           />
           <span className="absolute text-slate-400 select-none" style={{ top: '6%', right: '2%', fontSize: 'min(2.2vw, 11px)' }}>™</span>
         </div>
-        <span className="text-lg font-bold text-white tracking-wide">
-          {orgName ? `Records — ${orgName}` : 'Records'}
-        </span>
+        <div className="relative w-full flex items-center justify-center">
+          <span className="text-lg font-bold text-white tracking-wide">
+            {orgName ? `Records — ${orgName}` : 'Records'}
+          </span>
+          <div className="absolute right-0 top-1/2 -translate-y-1/2">
+            {teamId && (
+              <button onClick={() => setShowAdd(true)} className="px-3 py-1 rounded-lg bg-primary text-white text-sm font-bold record-btn-pulse">
+                + Entry
+              </button>
+            )}
+          </div>
+        </div>
       </header>
 
       <div className="p-4 space-y-4">

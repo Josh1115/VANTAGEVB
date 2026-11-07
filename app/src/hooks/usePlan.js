@@ -1,5 +1,5 @@
 import { useAuth } from '../contexts/AuthContext';
-import { PLAN_TEAMS, PLAN_PRICES, PLAN_LABELS, TRIAL_MATCH_LIMIT, PLAN_TIER, resolvePlanFromProfile } from '../utils/planLimits';
+import { PLAN_TEAMS, PLAN_PRICES, PLAN_LABELS, TRIAL_MATCH_LIMIT, PLAN_TIER, resolvePlanFromProfile, matchesLockedForProfile } from '../utils/planLimits';
 
 export { PLAN_TEAMS, PLAN_PRICES, PLAN_LABELS, TRIAL_MATCH_LIMIT, PLAN_TIER, resolvePlanFromProfile };
 
@@ -23,5 +23,5 @@ export function usePlan() {
     ? Math.ceil((expiresAt - new Date()) / (1000 * 60 * 60 * 24))
     : null;
 
-  return { plan, isActive, isMaster, teamsAllowed, matchLimit, tier, has, expiresAt: isExpired ? null : expiresAt, daysUntilExpiry };
+  return { plan, isActive, isMaster, teamsAllowed, matchLimit, matchesLocked: matchesLockedForProfile(profile), tier, has, expiresAt: isExpired ? null : expiresAt, daysUntilExpiry };
 }

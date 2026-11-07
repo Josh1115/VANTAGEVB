@@ -6,6 +6,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { MATCHES_LOCKED_MESSAGE } from '../utils/planLimits';
 import { useMatchStore } from '../store/matchStore';
 import { MATCH_STATUS, SET_STATUS, FORMAT, SIDE } from '../constants';
 import { serveOrderToZone, rotationFromStartZone } from '../components/court/CourtZonePicker';
@@ -34,8 +36,9 @@ export function MatchSetupPage() {
   // not block starting it (the button gate / warning banners below).
   const startingScheduled = scheduledMatchId != null;
 
-  const { isMaster, plan, matchLimit, teamsAllowed } = usePlan();
+  const { isMaster, plan, matchLimit, teamsAllowed, matchesLocked } = usePlan();
   const { session } = useAuth();
+  const [endedSeasonAction, setEndedSeasonAction] = useState(null); // the save waiting on "add anyway"
 
   const [seasonId,  setSeasonId]  = useState(searchParams.get('season') ?? '');
   const [opponent,           setOpponent]           = useState('');
@@ -124,6 +127,11 @@ export function MatchSetupPage() {
     [scheduledMatchId]
   );
 
+  // A match already being played can always be finished, on any plan and in any season.
+  const continuingMatch = scheduledMatch?.status === MATCH_STATUS.IN_PROGRESS;
+  const blockedByPlan = matchesLocked && !continuingMatch;
+  const seasonHasEnded = selectedSeason?.status === 'ended' && !continuingMatch;
+
   const allOpponents = useLiveQuery(() => db.opponents.toArray(), []);
 
   // lockedOppId is set when the user picks an existing opponent from the autocomplete.
@@ -201,8 +209,9 @@ export function MatchSetupPage() {
     return oppRecord;
   };
 
-  const handleManualSave = async () => {
+  const handleManualSave = async (endedConfirmed = false) => {
     setError('');
+    if (blockedByPlan) { setError(MATCHES_LOCKED_MESSAGE); return; }
     if (!seasonId) { setError('Select a season.'); return; }
     if (!opponent.trim()) { setError('Enter opponent name.'); return; }
     const parsedSets = manualSets.map((s) => ({
@@ -213,6 +222,7 @@ export function MatchSetupPage() {
       setError('Enter valid scores for every set.');
       return;
     }
+    if (seasonHasEnded && !endedConfirmed) { setEndedSeasonAction(() => () => handleManualSave(true)); return; }
     setSaving(true);
     let trialServerConfirmed = false;
     try {
@@ -314,12 +324,14 @@ export function MatchSetupPage() {
     }
   };
 
-  const handleStart = async () => {
+  const handleStart = async (endedConfirmed = false) => {
     setError('');
+    if (blockedByPlan) { setError(MATCHES_LOCKED_MESSAGE); return; }
     if (!seasonId) { setError('Select a season.'); return; }
     if (!opponent.trim()) { setError('Enter opponent name.'); return; }
     if (lineup.some((id) => !id)) { setError('Assign a player to every position.'); return; }
     if (new Set(lineup).size !== lineup.length) { setError('Each player can only appear once in the lineup.'); return; }
+    if (seasonHasEnded && !endedConfirmed) { setEndedSeasonAction(() => () => handleStart(true)); return; }
 
     setSaving(true);
     try {
@@ -515,6 +527,20 @@ export function MatchSetupPage() {
       <PageHeader title="New Match" backTo="/" />
 
       <div className="p-4 md:p-6 space-y-5 max-w-lg mx-auto">
+
+        {blockedByPlan && (
+          <div className="rounded-xl border border-red-700/50 bg-red-900/20 px-4 py-3">
+            <p className="text-sm text-red-300">
+              {MATCHES_LOCKED_MESSAGE}{' '}
+              <a href="/upgrade" className="underline font-semibold">See plans.</a>
+            </p>
+          </div>
+        )}
+        {seasonHasEnded && !blockedByPlan && (
+          <div className="rounded-xl border border-amber-700/50 bg-amber-900/20 px-4 py-3">
+            <p className="text-sm text-amber-300">This season has ended. Any game you add will count toward it.</p>
+          </div>
+        )}
 
         {/* Season match limit warning — skipped when starting an already-scheduled
             match, since that match's slot was already accounted for. */}
@@ -1043,15 +1069,25 @@ export function MatchSetupPage() {
 
         {/* Primary action */}
         {manualEntry ? (
-          <Button size="lg" className="w-full" disabled={saving || (!isMaster && seasonMatchCount >= matchLimit)} onClick={handleManualSave}>
+          <Button size="lg" className="w-full" disabled={saving || blockedByPlan || (!isMaster && seasonMatchCount >= matchLimit)} onClick={() => handleManualSave()}>
             {saving ? 'Saving…' : 'Save Match'}
           </Button>
         ) : (
-          <Button size="lg" className="w-full" disabled={saving || (!isMaster && !startingScheduled && seasonMatchCount >= matchLimit)} onClick={handleStart}>
+          <Button size="lg" className="w-full" disabled={saving || blockedByPlan || (!isMaster && !startingScheduled && seasonMatchCount >= matchLimit)} onClick={() => handleStart()}>
             {saving ? 'Creating…' : 'Start Match'}
           </Button>
         )}
       </div>
+
+      {endedSeasonAction && (
+        <ConfirmDialog
+          title="Season Has Ended"
+          message={startingScheduled ? 'This season has ended. Start this game anyway?' : 'This season has ended. Add a game anyway?'}
+          confirmLabel={startingScheduled ? 'Start Game' : 'Add Game'}
+          onConfirm={() => { const run = endedSeasonAction; setEndedSeasonAction(null); run(); }}
+          onCancel={() => setEndedSeasonAction(null)}
+        />
+      )}
     </div>
   );
 }

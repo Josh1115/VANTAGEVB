@@ -75,3 +75,22 @@ export function resolvePlanFromProfile(profile) {
 
   return { plan, isActive, isMaster: plan === 'master', teamsAllowed, matchLimit, isExpired, expiresAt };
 }
+
+const RENEWAL_REMINDER_DAYS = 30;
+
+// Days left to show on the dashboard's renewal reminder, or null for no reminder.
+// Paid plans only: a trial or master account has nothing to renew.
+export function renewalReminderDays(tier, daysUntilExpiry) {
+  if (tier !== PLAN_TIER['1_team'] || daysUntilExpiry == null) return null;
+  return daysUntilExpiry <= RENEWAL_REMINDER_DAYS ? daysUntilExpiry : null;
+}
+
+export const MATCHES_LOCKED_MESSAGE = 'Your plan has expired. Renew your plan to add or start matches.';
+
+// True when the account's plan no longer allows new matches. matchLimit stays
+// Infinity for inactive plans on purpose, so sync and restore keep working on an
+// expired account. No profile means the plan is unknown (still loading), not
+// expired, so it must never lock a paying coach out.
+export function matchesLockedForProfile(profile) {
+  return !!profile && !resolvePlanFromProfile(profile).isActive;
+}

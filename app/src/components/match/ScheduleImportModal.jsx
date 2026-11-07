@@ -6,8 +6,10 @@ import { matchDateISO } from '../../utils/matchDate';
 import { clearMatchTombstone } from '../../stats/merge';
 import { useUiStore, selectShowToast } from '../../store/uiStore';
 import { usePlan } from '../../hooks/usePlan';
+import { MATCHES_LOCKED_MESSAGE } from '../../utils/planLimits';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 const TEMPLATE_CSV = `Opponent,Date,Time,Location,Type,Tournament
 Stevenson,2026-09-05,6:00 PM,away,reg-season,
@@ -56,7 +58,8 @@ export function ScheduleImportModal({ seasonId, onClose }) {
   const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
   const showToast = useUiStore(selectShowToast);
-  const { isMaster, matchLimit } = usePlan();
+  const { isMaster, matchLimit, matchesLocked } = usePlan();
+  const [confirmEnded, setConfirmEnded] = useState(false);
 
   function handleFile(file) {
     if (!file) return;
@@ -106,8 +109,13 @@ export function ScheduleImportModal({ seasonId, onClose }) {
     reader.readAsText(file);
   }
 
-  async function handleImport() {
+  async function handleImport(endedConfirmed = false) {
     if (!rows?.length) return;
+    if (matchesLocked) { setParseError(MATCHES_LOCKED_MESSAGE); return; }
+    if (!endedConfirmed && (await db.seasons.get(seasonId))?.status === 'ended') {
+      setConfirmEnded(true);
+      return;
+    }
     setSaving(true);
     try {
       const [liveCount, season] = await Promise.all([
@@ -171,6 +179,16 @@ export function ScheduleImportModal({ seasonId, onClose }) {
   }
 
   return (
+    <>
+    {confirmEnded && (
+      <ConfirmDialog
+        title="Season Has Ended"
+        message="This season has ended. Add these games anyway?"
+        confirmLabel="Add Games"
+        onConfirm={() => { setConfirmEnded(false); handleImport(true); }}
+        onCancel={() => setConfirmEnded(false)}
+      />
+    )}
     <Modal
       title="Import Schedule from CSV"
       onClose={onClose}
@@ -178,7 +196,7 @@ export function ScheduleImportModal({ seasonId, onClose }) {
         <>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           {rows && (
-            <Button onClick={handleImport} disabled={saving}>
+            <Button onClick={() => handleImport()} disabled={saving}>
               {saving ? 'Importing…' : `Import ${rows.length} match${rows.length !== 1 ? 'es' : ''}`}
             </Button>
           )}
@@ -230,5 +248,6 @@ export function ScheduleImportModal({ seasonId, onClose }) {
         )}
       </div>
     </Modal>
+    </>
   );
 }
