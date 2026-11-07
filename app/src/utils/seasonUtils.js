@@ -55,6 +55,23 @@ function formatRoundName(name) {
     .replace(/\bIhsa\b/g, 'IHSA');
 }
 
+export const MAX_PLAYOFF_SETS = 5;
+
+// Turns what was typed into a round's score boxes into saved numbers. Fully blank
+// sets drop out. `incompleteSet` is the first set (1-based) with only one score.
+export function readSetScores(sets) {
+  const scores = [];
+  let incompleteSet = null;
+  (sets ?? []).forEach((set, i) => {
+    const us = String(set?.us ?? '').trim();
+    const opp = String(set?.opp ?? '').trim();
+    if (!us && !opp) return;
+    if (!us || !opp) { incompleteSet ??= i + 1; return; }
+    scores.push({ us: Number(us), opp: Number(opp) });
+  });
+  return { scores, incompleteSet };
+}
+
 function completedPlayoffGames(matches) {
   return (matches ?? []).filter(
     m => m.status === MATCH_STATUS.COMPLETE && m.match_type === 'ihsa-playoffs' && m.playoff_round?.trim()

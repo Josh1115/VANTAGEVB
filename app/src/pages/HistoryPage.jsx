@@ -13,7 +13,8 @@ import { getEligibleTeams } from '../utils/teams';
 import { ChampionshipBannersSection } from '../components/shared/ChampionshipBanner';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { PostSeasonModal } from '../components/shared/PostSeasonModal';
-import { applyInferredSeasonFinish, resolveSeasonFinish, seasonPlayoffRounds } from '../utils/seasonUtils';
+import { applyInferredSeasonFinish, readSetScores, resolveSeasonFinish, seasonPlayoffRounds } from '../utils/seasonUtils';
+import { PlayoffRoundsList, SetScoresInput } from '../components/shared/PlayoffSetScores';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -128,6 +129,14 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
   async function handleSave() {
     const yearStr = String(form.year ?? '').trim();
     if (!yearStr) { setError('Season year is required.'); return; }
+    const playoffRounds = (form.playoff_rounds ?? [])
+      .filter(r => r.round?.trim() || r.opponent?.trim())
+      .map(r => ({ round: r, ...readSetScores(r.set_scores) }));
+    const incomplete = playoffRounds.find(r => r.incompleteSet);
+    if (incomplete) {
+      setError(`${incomplete.round.round?.trim() || incomplete.round.opponent.trim()}: enter both scores for set ${incomplete.incompleteSet}.`);
+      return;
+    }
     setSaving(true);
     try {
       const newStateRank    = form.state_rank    ? Number(form.state_rank)    : null;
@@ -175,7 +184,7 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
         playoff_seed:   form.playoff_seed.trim()         || null,
         state_finish:   form.state_finish.trim()         || null,
         playoff_result: form.playoff_result.trim()       || null,
-        playoff_rounds: (form.playoff_rounds ?? []).filter(r => r.round?.trim() || r.opponent?.trim()),
+        playoff_rounds: playoffRounds.map(({ round, scores }) => ({ ...round, set_scores: scores })),
         ...prevRanks,
       };
       if (resolvedId) { await db.season_history.update(resolvedId, fields); }
@@ -379,6 +388,11 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
                       />
                     </div>
                   </div>
+                  <SetScoresInput
+                    value={r.set_scores}
+                    onChange={scores => setRound('set_scores', scores)}
+                    inputClassName={inp}
+                  />
                 </div>
               );
             })}
@@ -865,21 +879,7 @@ function PlayoffRoundsDisplay({ entry, finish, rounds }) {
 
       {/* Structured rounds */}
       {hasRounds && (
-        <div className="space-y-1">
-          {rounds.map((r, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs">
-              <span className="text-slate-400 font-semibold min-w-[7rem]">{r.round || '—'}</span>
-              <span className={`font-black px-1.5 py-0.5 rounded text-[10px] ${r.result === 'W' ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
-                {r.result}
-              </span>
-              <span className="text-slate-300 flex-1 truncate">
-                {r.opp_seed ? <span className="text-[11px] font-bold text-amber-400 mr-1" title="Playoff seed">{String(r.opp_seed).replace('#', '')}</span> : null}
-                {r.opponent || '—'}
-              </span>
-              {r.score && <span className="text-slate-400 font-mono shrink-0">{r.score}</span>}
-            </div>
-          ))}
-        </div>
+        <PlayoffRoundsList rounds={rounds} />
       )}
 
       {/* Legacy free-text result (backward compat) */}
