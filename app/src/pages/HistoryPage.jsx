@@ -15,6 +15,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { PostSeasonModal } from '../components/shared/PostSeasonModal';
 import { applyInferredSeasonFinish, readSetScores, resolveSeasonFinish, seasonPlayoffRounds } from '../utils/seasonUtils';
 import { PlayoffRoundsList, SetScoresInput } from '../components/shared/PlayoffSetScores';
+import { recordsForYear } from '../utils/seasonRecords';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -892,7 +893,55 @@ function PlayoffRoundsDisplay({ entry, finish, rounds }) {
 
 // ── Static Season Card ────────────────────────────────────────────────────────
 
-function SeasonCard({ entry, finish, matches, onEdit, onDelete, isWinRecord, isStateRankRecord, isNationalRankRecord, isWinsAddedRecord, isMostGamesRecord, liveRecord }) {
+const RECORD_RANK_ICONS = { 1: '🥇', 2: '🥈', 3: '🥉' };
+
+function RecordLine({ item, tag }) {
+  return (
+    <p className="text-xs text-slate-200 leading-snug">
+      <span className="inline-block w-6 text-[11px] font-bold text-slate-400 tabular-nums">
+        {RECORD_RANK_ICONS[item.rank] ?? `#${item.rank}`}
+      </span>
+      {item.name && <span className="font-semibold">{item.name} · </span>}
+      <span className="font-bold tabular-nums">{item.value}</span> {item.label}
+      {item.opp && <span className="text-slate-500"> vs {item.opp}</span>}
+      {tag && <span className="text-[9px] font-bold uppercase tracking-wide text-slate-500 ml-1">{tag}</span>}
+    </p>
+  );
+}
+
+// Right side of a past season card: the 3 best records set that season, with a
+// button that opens the full list (SeasonRecordsFull) under the card details.
+function SeasonRecordsHighlights({ groups, open, onToggle }) {
+  const all = groups.flatMap((g, gi) => g.items.map(i => ({ ...i, tag: g.label, gi })));
+  const top = [...all].sort((a, b) => a.rank - b.rank || a.gi - b.gi || a.order - b.order).slice(0, 3);
+  const more = all.length - top.length;
+  return (
+    <div className="flex-1 min-w-[150px] border-t sm:border-t-0 sm:border-l border-slate-700/50 pt-2.5 sm:pt-0 sm:pl-3 space-y-1">
+      <p className="text-[10px] font-black uppercase tracking-wide text-amber-400">🏆 Records Set ({all.length})</p>
+      {top.map(i => <RecordLine key={i.key} item={i} tag={i.tag} />)}
+      {more > 0 && (
+        <button onClick={onToggle} className="text-xs font-semibold text-primary pt-0.5">
+          {open ? 'Show less ▴' : `+${more} more ▾`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function SeasonRecordsFull({ groups }) {
+  return (
+    <div className="px-4 pb-3 pt-2.5 border-t border-slate-700/50 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+      {groups.map(g => (
+        <div key={g.tab} className="space-y-0.5">
+          <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500">{g.label}</p>
+          {g.items.map(i => <RecordLine key={i.key} item={i} />)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SeasonCard({ entry, finish, matches, onEdit, onDelete, isWinRecord, isStateRankRecord, isNationalRankRecord, isWinsAddedRecord, isMostGamesRecord, liveRecord, seasonRecords }) {
   const wins       = liveRecord?.wins   ?? entry.wins   ?? null;
   const losses     = liveRecord?.losses ?? entry.losses ?? null;
   const total      = wins != null && losses != null ? wins + losses : null;
@@ -902,6 +951,8 @@ function SeasonCard({ entry, finish, matches, onEdit, onDelete, isWinRecord, isS
   const playoffRounds = seasonPlayoffRounds(entry.playoff_rounds, matches);
   const hasPlayoffs = entry.playoff_seed || finish || entry.playoff_result || playoffRounds.length > 0;
   const titleArr   = toTitleArr(entry.title);
+  const [recordsOpen, setRecordsOpen] = useState(false);
+  const hasSeasonRecords = seasonRecords?.length > 0;
 
   return (
     <div className={`bg-slate-800 rounded-xl overflow-hidden ${
@@ -939,7 +990,8 @@ function SeasonCard({ entry, finish, matches, onEdit, onDelete, isWinRecord, isS
         )}
       </div>
 
-      <div className="px-4 py-3 space-y-2.5">
+      <div className="px-4 py-3 flex flex-wrap gap-3">
+      <div className="flex-1 min-w-[150px] space-y-2.5">
         {titleArr.length > 0 && (
           <p className="text-sm font-black text-primary tracking-wide">{titleArr.join(', ')}</p>
         )}
@@ -996,6 +1048,11 @@ function SeasonCard({ entry, finish, matches, onEdit, onDelete, isWinRecord, isS
         {/* Playoffs */}
         {hasPlayoffs && <PlayoffRoundsDisplay entry={entry} finish={finish} rounds={playoffRounds} />}
       </div>
+      {hasSeasonRecords && (
+        <SeasonRecordsHighlights groups={seasonRecords} open={recordsOpen} onToggle={() => setRecordsOpen(o => !o)} />
+      )}
+      </div>
+      {hasSeasonRecords && recordsOpen && <SeasonRecordsFull groups={seasonRecords} />}
     </div>
   );
 }
@@ -1216,6 +1273,25 @@ export function HistoryPage() {
     () => [...(awardWinners ?? [])].sort((a, b) => String(b.year).localeCompare(String(a.year))),
     [awardWinners]
   );
+
+  // All-time records boards, loaded in the background for the season cards'
+  // "Records Set" box (same lists as the Records page, so numbers match).
+  const [recordBoards, setRecordBoards] = useState(null);
+  useEffect(() => {
+    if (!teamId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { computeLeaderboards, RECORD_STAT_DEFS } = await import('./RecordsPage');
+        const tabs = Object.keys(RECORD_STAT_DEFS);
+        const results = await Promise.all(tabs.map(t => computeLeaderboards(t, teamId)));
+        if (!cancelled) setRecordBoards({ boards: Object.fromEntries(tabs.map((t, i) => [t, results[i]])), defs: RECORD_STAT_DEFS });
+      } catch (err) {
+        console.warn('[History] records load failed:', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [teamId]);
 
   async function doDeleteEntry(id) {
     try { await db.season_history.delete(id); } catch { /* best-effort delete */ }
@@ -1980,6 +2056,7 @@ export function HistoryPage() {
                               return maxGames > 0 && g === maxGames;
                             })()}
                             liveRecord={liveRecordsByYear?.[String(entry.year)] ?? null}
+                            seasonRecords={recordBoards ? recordsForYear(recordBoards.boards, entry.year, recordBoards.defs) : null}
                           />
                         ))
                       )}

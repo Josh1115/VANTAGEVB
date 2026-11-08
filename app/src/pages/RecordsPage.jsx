@@ -40,6 +40,16 @@ const TEAM_SEASON_STATS = [
   { key: 'ace_pct', label: 'ACE%',  fmt: fmtPct     },
 ];
 
+// Stat lists per records tab, shared with the History page's "Records Set" box.
+// eslint-disable-next-line react-refresh/only-export-components
+export const RECORD_STAT_DEFS = {
+  match:       RECORD_STATS,
+  team_match:  RECORD_STATS,
+  season:      RECORD_STATS,
+  team_season: TEAM_SEASON_STATS,
+  career:      CAREER_STATS,
+};
+
 const TABS = [
   { value: 'season',      label: 'Season'      },
   { value: 'team_season', label: 'Team Season' },
@@ -381,22 +391,25 @@ export async function computeLeaderboards(tab, teamId) {
     );
   }
 
+  const seasonYearOf = Object.fromEntries(seasons.map(se => [se.id, se.year]));
+
   // match tab — best single-match individual performance
   if (tab === 'match') {
     const perMatch = allMatches.map(m => ({
       opp:      m.opponent_name ?? 'Unknown',
       date:     m.date,
       seasonId: m.season_id,
+      year:     seasonYearOf[m.season_id] ?? '',
       ps:       computePlayerStats(byMatch.get(m.id) ?? [], setsMap[m.id] || 1, positions),
     }));
     return Object.fromEntries(
       RECORD_STATS.map(({ key }) => {
         const computed = [];
-        for (const { opp, date, seasonId, ps } of perMatch) {
+        for (const { opp, date, seasonId, year, ps } of perMatch) {
           const isCurrentMatch = seasonId === currentSeasonId && !currentSeasonEnded;
           for (const [pid, s] of Object.entries(ps)) {
             const val = getStatValue(s, key);
-            if (val != null) computed.push({ name: playerNames[pid] ?? '?', val, opp, date, class_year: playerYears[Number(pid)] ?? '', active: activePlayerIds.has(Number(pid)) && isCurrentMatch, player_id: Number(pid) });
+            if (val != null) computed.push({ name: playerNames[pid] ?? '?', val, opp, date, year, class_year: playerYears[Number(pid)] ?? '', active: activePlayerIds.has(Number(pid)) && isCurrentMatch, player_id: Number(pid) });
           }
         }
         return [key, mergeAndRank(computed, historicalRows(key))];
@@ -408,6 +421,7 @@ export async function computeLeaderboards(tab, teamId) {
   const perMatch = allMatches.map(m => ({
     opp:           m.opponent_name ?? 'Unknown',
     date:          m.date,
+    year:          seasonYearOf[m.season_id] ?? '',
     currentSeason: currentSeasonId != null && m.season_id === currentSeasonId && !currentSeasonEnded,
     ts:            computeTeamStats(byMatch.get(m.id) ?? [], setsMap[m.id] || 1),
   }));
@@ -415,7 +429,7 @@ export async function computeLeaderboards(tab, teamId) {
     RECORD_STATS.map(({ key }) => [
       key,
       mergeAndRank(
-        perMatch.map(({ opp, date, currentSeason, ts }) => ({ val: getStatValue(ts, key), opp, date, currentSeason })),
+        perMatch.map(({ opp, date, year, currentSeason, ts }) => ({ val: getStatValue(ts, key), opp, date, year, currentSeason })),
         historicalRows(key)
       ),
     ])
