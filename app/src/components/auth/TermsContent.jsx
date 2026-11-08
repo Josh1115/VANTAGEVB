@@ -1,4 +1,4 @@
-export const TERMS_VERSION = 'June 14, 2026';
+export const TERMS_VERSION = 'November 8, 2026';
 
 const Section = ({ title, children }) => (
   <section className="mb-8">
@@ -82,7 +82,7 @@ export function TermsContent() {
         </p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li><span className="text-white font-semibold">On your device</span> — all match contacts, rosters, stats, and settings are stored in your device's local browser storage (IndexedDB). This is the primary data store and works offline.</li>
-          <li><span className="text-white font-semibold">In the cloud (Supabase)</span> — your account profile, subscription status, and cloud backups you initiate are stored on Supabase servers located in the United States.</li>
+          <li><span className="text-white font-semibold">In the cloud (Supabase)</span> — your account profile, subscription status, and your coaching data (automatically synced while you are signed in) are stored on Supabase servers located in the United States.</li>
         </ul>
         <p>
           Data stored on Supabase is protected by row-level security — only your account can read or write your own data.

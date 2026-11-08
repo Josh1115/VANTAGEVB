@@ -1,4 +1,4 @@
-export const PRIVACY_VERSION = 'June 15, 2026';
+export const PRIVACY_VERSION = 'November 8, 2026';
 
 const Section = ({ title, children }) => (
   <section className="mb-8">
@@ -41,7 +41,7 @@ export function PrivacyPolicyContent() {
 
         <p className="text-white font-semibold mt-2">Coaching Data You Enter</p>
         <p>
-          All team names, player names, jersey numbers, match statistics, rotation configurations, and related coaching data are entered by you. This data is stored locally on your device (in your browser's IndexedDB storage) and, if you use cloud backup, also on Supabase servers. We do not access, analyze, or sell this data.
+          All team names, player names, jersey numbers, match statistics, rotation configurations, and related coaching data are entered by you. This data is stored locally on your device (in your browser's IndexedDB storage) and is automatically synced to Supabase servers when you are signed in, so it can be backed up and shared across your devices. We do not sell this data or use it for advertising. We only access it when needed to fix a problem with your account or when you ask us to.
         </p>
 
         <p className="text-white font-semibold mt-2">Subscription and Billing Information</p>
@@ -52,7 +52,7 @@ export function PrivacyPolicyContent() {
 
         <p className="text-white font-semibold mt-2">Technical and Device Information</p>
         <p>
-          The App may access standard browser APIs (such as screen orientation, storage quota, and wake lock) to function correctly. We do not collect device identifiers, IP addresses, or browsing history. Your browser may expose some technical metadata (browser type, OS version) through standard web requests to Supabase, which is governed by Supabase's Privacy Policy.
+          The App may access standard browser APIs (such as screen orientation, storage quota, and wake lock) to function correctly. If the App crashes, it sends us an error report containing the error details, the page you were on, your browser and device type, and your account ID if you are signed in. We do not store your IP address; a scrambled, non-reversible code is kept briefly to block spam reports. We also count which app pages are visited, without linking visits to you. Error reports and page counts are deleted after 90 days. We do not track your browsing history outside the App.
         </p>
       </Section>
 
@@ -82,12 +82,12 @@ export function PrivacyPolicyContent() {
       <Section title="6. How Your Data Is Stored">
         <p className="text-white font-semibold">On Your Device (Primary Storage)</p>
         <p>
-          All match contacts, rosters, statistics, and app settings are stored in your browser's local IndexedDB storage. This data never leaves your device unless you explicitly use cloud backup. It is not accessible to us. Clearing your browser data or uninstalling the app will permanently delete this local data.
+          All match contacts, rosters, statistics, and app settings are stored in your browser's local IndexedDB storage. When you are signed in, this data is also automatically synced to the cloud (see below). Clearing your browser data or uninstalling the app will permanently delete this local data.
         </p>
 
         <p className="text-white font-semibold mt-2">In the Cloud (Supabase)</p>
         <p>
-          Your account profile and subscription status are stored on Supabase servers located in the United States. Cloud backups are also stored on Supabase and are protected by row-level security — only your authenticated account can read or write your own data.
+          Your account profile and subscription status are stored on Supabase servers located in the United States. Cloud backups are also stored on Supabase and are protected by row-level security — other users cannot read or write your data. Our administrators can access it only to provide support, fix problems, or when you request it.
         </p>
       </Section>
 

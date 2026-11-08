@@ -34,6 +34,16 @@ async function rateLimited(supabase: ReturnType<typeof createClient>, ip: string
   return false;
 }
 
+// One-way, daily-rotating code for an IP: sha256(secret|UTC date|ip), first
+// 32 hex chars. Same IP + same day → same code (rate limit works); next day →
+// new code, and without the secret it can't be reversed or matched to an IP.
+export async function hashIp(ip: string, secret: string, now: Date = new Date()): Promise<string> {
+  const day = now.toISOString().slice(0, 10);
+  const bytes = new TextEncoder().encode(`${secret}|${day}|${ip}`);
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  return Array.from(digest, (b) => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+}
+
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? '';
   const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
@@ -55,7 +65,10 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders(req) });
   }
 
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown';
+  const rawIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown';
+  // Privacy: never store the real IP. Keep only a one-way code that changes
+  // every UTC day — enough for the per-caller spam limit, useless for tracking.
+  const ip = await hashIp(rawIp, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
