@@ -1,6 +1,5 @@
 import Stripe from 'npm:stripe@14';
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { nextPlanExpiry } from './planExpiry.ts';
 
 // Map Stripe Price IDs back to plan names
 const PRICE_TO_PLAN: Record<string, string> = {
@@ -86,76 +85,83 @@ Deno.serve(async (req) => {
         }
         if (claimError) throw claimError;
 
-        let planExpiresAt: Date;
+        // One database step (add_plan_time), so two payments landing together
+        // can't both start from the same end date and lose one payment's time.
+        let planExpiresAt: string;
         try {
-          const { data: current, error: readError } = await supabase
-            .from('profiles')
-            .select('plan, plan_expires_at')
-            .eq('id', userId)
-            .maybeSingle();
-          if (readError) throw readError;
-
-          // Only time on a paid plan carries over, not time left on a trial.
-          const isPaidPlan = Object.values(PRICE_TO_PLAN).includes(current?.plan ?? '');
-          planExpiresAt = nextPlanExpiry(isPaidPlan ? current?.plan_expires_at : null);
-
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({
-              plan,
-              stripe_customer_id: session.customer as string,
-              plan_expires_at: planExpiresAt.toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', userId);
+          const { data, error: updateError } = await supabase.rpc('add_plan_time', {
+            p_user_id: userId,
+            p_plan: plan,
+            p_customer_id: session.customer as string,
+          });
           if (updateError) throw updateError;
+          if (!data) throw new Error(`no profile for user ${userId}`);
+          planExpiresAt = data as string;
         } catch (err) {
           // Release the claim so Stripe's retry can still grant what was paid for.
           await supabase.from('processed_stripe_events').delete().eq('event_id', event.id);
           throw err;
         }
 
-        console.log(`Updated user ${userId} to plan: ${plan}, expires: ${planExpiresAt.toISOString()}`);
+        console.log(`Updated user ${userId} to plan: ${plan}, expires: ${planExpiresAt}`);
         break;
       }
 
       case 'charge.refunded':
       case 'charge.dispute.created': {
-        // Fix 3: Revoke plan on both manual refunds and bank chargebacks
-        let customerId: string | null = null;
-
+        // A full refund or chargeback takes back only that payment's 6 months, so
+        // earlier paid time (e.g. before an early renewal) is kept. Partial refunds
+        // leave the plan alone.
+        let charge: Stripe.Charge;
         if (event.type === 'charge.refunded') {
-          const charge = event.data.object as Stripe.Charge;
-          customerId = charge.customer as string;
+          charge = event.data.object as Stripe.Charge;
+          if (!charge.refunded) {
+            console.log(`charge.refunded: partial refund on ${charge.id}, plan unchanged`);
+            break;
+          }
         } else {
           const dispute = event.data.object as Stripe.Dispute;
           const chargeId = typeof dispute.charge === 'string' ? dispute.charge : dispute.charge.id;
-          const charge = await stripe.charges.retrieve(chargeId);
-          customerId = charge.customer as string;
+          charge = await stripe.charges.retrieve(chargeId);
         }
 
+        const customerId = charge.customer as string | null;
         if (!customerId) break;
 
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('stripe_customer_id', customerId);
+        if (await claimEvent(supabase, event.id)) {
+          await changePlanTime(supabase, event, () =>
+            supabase.rpc('remove_plan_time', { p_customer_id: customerId }));
+        }
+        break;
+      }
 
-        if (!profiles?.length) {
-          console.warn(`${event.type}: no profile found for customer ${customerId}`);
+      case 'charge.dispute.closed': {
+        // Won chargeback: give back the 6 months the dispute took off.
+        const dispute = event.data.object as Stripe.Dispute;
+        if (dispute.status !== 'won') {
+          console.log(`charge.dispute.closed: status=${dispute.status}, plan unchanged`);
           break;
         }
+        const chargeId = typeof dispute.charge === 'string' ? dispute.charge : dispute.charge.id;
+        const charge = await stripe.charges.retrieve(chargeId);
+        const customerId = charge.customer as string | null;
+        if (!customerId) break;
 
-        await supabase
-          .from('profiles')
-          .update({
-            plan: 'inactive',
-            plan_expires_at: null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('stripe_customer_id', customerId);
+        // The tier that payment bought, used if the plan was switched off meanwhile.
+        const paymentIntentId = typeof charge.payment_intent === 'string'
+          ? charge.payment_intent : charge.payment_intent?.id;
+        if (!paymentIntentId) throw new Error(`charge ${chargeId} has no payment intent`);
+        const sessions = await stripe.checkout.sessions.list({ payment_intent: paymentIntentId, limit: 1 });
+        const sessionId = sessions.data[0]?.id;
+        if (!sessionId) throw new Error(`no checkout session for payment ${paymentIntentId}`);
+        const lineItems = await stripe.checkout.sessions.listLineItems(sessionId, { limit: 1 });
+        const plan = PRICE_TO_PLAN[lineItems.data[0]?.price?.id ?? ''];
+        if (!plan) throw new Error(`unknown price on checkout ${sessionId}`);
 
-        console.log(`Revoked plan for customer ${customerId} (${profiles.length} profile(s)) — reason: ${event.type}`);
+        if (await claimEvent(supabase, event.id)) {
+          await changePlanTime(supabase, event, () =>
+            supabase.rpc('restore_plan_time', { p_customer_id: customerId, p_plan: plan }));
+        }
         break;
       }
 
@@ -168,8 +174,7 @@ Deno.serve(async (req) => {
   }
 
   // Record event as processed AFTER successful handling so Stripe retries work on transient failures.
-  // Duplicate key (23505) is expected: purchases claim their event up front, and revokes are
-  // safe to repeat.
+  // Duplicate key (23505) is expected: purchases, refunds and won chargebacks claim their event up front.
   const { error: insertError } = await supabase
     .from('processed_stripe_events')
     .insert({ event_id: event.id });
@@ -181,3 +186,39 @@ Deno.serve(async (req) => {
     headers: { 'Content-Type': 'application/json' },
   });
 });
+
+// deno-lint-ignore no-explicit-any
+type Supabase = any;
+
+// Changing plan time isn't safe to repeat, so claim the event first. Returns
+// false when another delivery already has it.
+async function claimEvent(supabase: Supabase, eventId: string): Promise<boolean> {
+  const { error } = await supabase.from('processed_stripe_events').insert({ event_id: eventId });
+  if (error?.code === '23505') {
+    console.log(`Event ${eventId} claimed by another delivery, skipping`);
+    return false;
+  }
+  if (error) throw error;
+  return true;
+}
+
+// Runs one plan-time database call for a claimed event and logs each account it
+// changed. On failure the claim is released so Stripe's retry can try again.
+async function changePlanTime(
+  supabase: Supabase,
+  event: Stripe.Event,
+  run: () => PromiseLike<{ data: unknown; error: unknown }>,
+) {
+  try {
+    const { data, error } = await run();
+    if (error) throw error;
+    const rows = (data ?? []) as { id: string; plan: string; plan_expires_at: string | null }[];
+    if (!rows.length) console.warn(`${event.type}: no profile found for this customer`);
+    for (const r of rows) {
+      console.log(`${event.type}: ${r.id} now ${r.plan}, expires ${r.plan_expires_at ?? 'never (switched off)'}`);
+    }
+  } catch (err) {
+    await supabase.from('processed_stripe_events').delete().eq('event_id', event.id);
+    throw err;
+  }
+}
