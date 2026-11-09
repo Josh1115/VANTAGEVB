@@ -17,7 +17,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { SwipeableMatchCard } from '../components/ui/SwipeableMatchCard';
 import { PostSeasonModal } from '../components/shared/PostSeasonModal';
-import { applyInferredSeasonFinish } from '../utils/seasonUtils';
+import { applyInferredSeasonFinish, snapshotSeasonRoster } from '../utils/seasonUtils';
 import { useOurSeed } from '../hooks/useOurSeed';
 import { ScheduleImportModal } from '../components/match/ScheduleImportModal';
 import { usePlan } from '../hooks/usePlan';
@@ -813,6 +813,7 @@ export function SeasonDetailPage() {
           danger
           onConfirm={async () => {
             await db.seasons.update(id, { status: 'ended' });
+            await snapshotSeasonRoster(id, season.team_id);
             await applyInferredSeasonFinish(id, season.team_id, season.year);
             setConfirmEndSeason(false);
             setShowPostSeason(true);

@@ -13,7 +13,7 @@ import { getEligibleTeams } from '../utils/teams';
 import { ChampionshipBannersSection } from '../components/shared/ChampionshipBanner';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { PostSeasonModal } from '../components/shared/PostSeasonModal';
-import { applyInferredSeasonFinish, prunedPlayoffRounds, seasonTitles, withPlayoffSetScores, readSetScores, resolveSeasonFinish, seasonPlayoffRounds } from '../utils/seasonUtils';
+import { applyInferredSeasonFinish, snapshotSeasonRoster, prunedPlayoffRounds, seasonTitles, withPlayoffSetScores, readSetScores, resolveSeasonFinish, seasonPlayoffRounds } from '../utils/seasonUtils';
 import { PlayoffRoundsList, SetScoresInput } from '../components/shared/PlayoffSetScores';
 import { recordsForYear } from '../utils/seasonRecords';
 
@@ -2208,6 +2208,7 @@ export function HistoryPage() {
           onConfirm={async () => {
             try {
               await db.seasons.update(activeSeason.id, { status: 'ended' });
+              await snapshotSeasonRoster(activeSeason.id, activeSeason.team_id);
               await applyInferredSeasonFinish(activeSeason.id, activeSeason.team_id, activeSeason.year);
               setConfirmEndSeason(false);
               setShowPostSeason(true);

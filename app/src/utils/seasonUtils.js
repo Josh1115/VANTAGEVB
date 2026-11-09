@@ -223,6 +223,20 @@ export function allTimeRank(rows, isThisSeason) {
   return 1 + rows.filter(r => r.val > row.val).length;
 }
 
+// Called when a season is ended: remembers who was on the roster at that moment
+// (by player `uid`, which is the same on every synced device), so the finished
+// season can always show its roster even after players are archived.
+// Won't overwrite a snapshot that already exists (e.g. ended twice).
+export async function snapshotSeasonRoster(seasonId, teamId) {
+  const season = await db.seasons.get(seasonId);
+  if (!season || Array.isArray(season.roster_uids)) return;
+  const players = await db.players.where('team_id').equals(teamId)
+    .filter(p => p.is_active !== false).toArray();
+  await db.seasons.update(seasonId, {
+    roster_uids: players.map(p => p.uid).filter(Boolean),
+  });
+}
+
 // Called immediately when a season is ended. Saves the finish implied by the
 // season's games, replacing any earlier auto-filled value but not custom wording.
 export async function applyInferredSeasonFinish(seasonId, teamId, year) {

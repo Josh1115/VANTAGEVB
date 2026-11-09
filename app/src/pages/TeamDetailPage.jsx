@@ -20,7 +20,7 @@ import { SeasonFormModal } from '../components/team/SeasonFormModal';
 import { SavedLineupModal } from '../components/team/SavedLineupModal';
 import { RosterImportModal } from '../components/team/RosterImportModal';
 import { PostSeasonModal } from '../components/shared/PostSeasonModal';
-import { applyInferredSeasonFinish } from '../utils/seasonUtils';
+import { applyInferredSeasonFinish, snapshotSeasonRoster } from '../utils/seasonUtils';
 import { SeasonScheduleTab } from '../components/team/SeasonScheduleTab';
 import { groupRoster } from '../utils/rosterGroups';
 import { CourtRoster } from '../components/team/CourtRoster';
@@ -200,30 +200,43 @@ export function TeamDetailPage() {
     [seasons, selectedSeasonId]
   );
 
-  // For past seasons: union of contact-derived players + all archived (inactive) players.
-  // Returns null when the selected season is the most recent (current) season.
+  // For past or ended seasons: the roster saved when the season was ended
+  // (season.roster_uids), plus anyone who recorded a stat that season. Seasons
+  // ended before roster snapshots existed fall back to all archived players.
+  // Returns null for the current season (most recent and not yet ended).
   const historicalRoster = useLiveQuery(
     async () => {
       if (!selectedSeasonId) return null;
       // Check freshly whether this is the most recent season
       const allSeasons = await db.seasons.where('team_id').equals(id).toArray();
-      const latestId = allSeasons.sort((a, b) => b.year - a.year)[0]?.id;
-      if (selectedSeasonId === latestId) return null; // current season — skip
-      const [matches, archivedPlayers] = await Promise.all([
+      const latest = allSeasons.sort((a, b) => b.year - a.year)[0];
+      if (selectedSeasonId === latest?.id && latest.status !== 'ended') return null; // current season — skip
+      const season = allSeasons.find(s => s.id === selectedSeasonId);
+      const snapshot = Array.isArray(season?.roster_uids) ? new Set(season.roster_uids) : null;
+      const [matches, rosterPlayers] = await Promise.all([
         db.matches.where('season_id').equals(selectedSeasonId).toArray(),
-        db.players.where('team_id').equals(id).filter(p => !p.is_active).toArray(),
+        snapshot
+          ? db.players.where('team_id').equals(id).filter(p => snapshot.has(p.uid)).toArray()
+          : db.players.where('team_id').equals(id).filter(p => !p.is_active).toArray(),
       ]);
+      // Skip deleted players, and anyone already listed (same row, same
+      // synced uid, or same name — duplicate copies of one player).
       const seen = new Set();
       const all = [];
-      for (const p of archivedPlayers) { seen.add(p.id); all.push(p); }
+      const add = (p) => {
+        if (!p || p.removed) return;
+        const keys = [`id:${p.id}`, p.uid && `uid:${p.uid}`, p.name?.trim() && `name:${p.name.trim().toLowerCase()}`].filter(Boolean);
+        if (keys.some(k => seen.has(k))) return;
+        keys.forEach(k => seen.add(k));
+        all.push(p);
+      };
+      rosterPlayers.forEach(add);
       if (matches.length) {
         const matchIds = matches.map(m => m.id);
         const contacts = await db.contacts.where('match_id').anyOf(matchIds).toArray();
         const contactIds = [...new Set(contacts.map(c => c.player_id).filter(Boolean))];
         const contactPlayers = await db.players.bulkGet(contactIds);
-        for (const p of contactPlayers) {
-          if (p && !seen.has(p.id)) { seen.add(p.id); all.push(p); }
-        }
+        contactPlayers.forEach(add);
       }
       return all.sort((a, b) => Number(a.jersey_number) - Number(b.jersey_number));
     },
@@ -239,7 +252,7 @@ export function TeamDetailPage() {
 
   const removePlayer = async () => {
     try {
-      await db.players.update(deletePlayer.id, { is_active: false });
+      await db.players.update(deletePlayer.id, { is_active: false, removed: true });
       setDeletePlayer(null);
     } catch (err) {
       showToast(`Remove failed: ${err.message}`, 'error');
@@ -252,7 +265,7 @@ export function TeamDetailPage() {
     setReactivating(true);
     try {
       const inactive = await db.players.where('team_id').equals(id).filter(p => !p.is_active).toArray();
-      await Promise.all(inactive.map(p => db.players.update(p.id, { is_active: true })));
+      await Promise.all(inactive.map(p => db.players.update(p.id, { is_active: true, removed: false })));
     } catch (err) {
       showToast(`Reactivate failed: ${err.message}`, 'error');
     } finally {
@@ -953,6 +966,7 @@ export function TeamDetailPage() {
             const endedSeason = (seasons ?? []).find(s => s.id === confirmEndSeasonId);
             await db.seasons.update(confirmEndSeasonId, { status: 'ended' });
             if (endedSeason) {
+              await snapshotSeasonRoster(confirmEndSeasonId, endedSeason.team_id);
               await applyInferredSeasonFinish(confirmEndSeasonId, endedSeason.team_id, endedSeason.year);
               setPostSeasonInfo({ teamId: id, year: endedSeason.year });
             }
