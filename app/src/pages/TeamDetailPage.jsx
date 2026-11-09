@@ -546,7 +546,15 @@ export function TeamDetailPage() {
           ) : (
             <div className="space-y-2">
               {savedLineups.map((sl) => {
-                const playerMap = Object.fromEntries(activePlayers.map((p) => [String(p.id), p]));
+                // Look up from the whole team (not just active players) so lineups
+                // from a past season still show names after the roster is archived.
+                const playerMap = Object.fromEntries((players ?? []).map((p) => [String(p.id), p]));
+                // Editors: the active roster plus anyone this lineup uses (even if archived).
+                const usedIds = new Set([...sl.serve_order, sl.libero_player_id, ...(sl.planned_subs ?? []).flatMap(ps => [ps.player_in_id, ps.player_out_id])].filter(Boolean).map(String));
+                const lineupPlayers = (players ?? []).filter(p => p.is_active !== false || usedIds.has(String(p.id)));
+                const archivedTag = (p) => p.is_active === false
+                  ? <span className="ml-1 text-[9px] font-bold uppercase tracking-wide px-1 py-0.5 rounded bg-slate-700/60 text-slate-400 border border-slate-600/50">archived</span>
+                  : null;
                 const libero = sl.libero_player_id ? playerMap[String(sl.libero_player_id)] : null;
                 const isExpanded = expandedLineupId === sl.id;
                 const hasFormations = sl.serve_receive_formations && Object.keys(sl.serve_receive_formations).length > 0;
@@ -624,7 +632,7 @@ export function TeamDetailPage() {
                           <div key={i} className="flex items-center gap-2 text-sm">
                             <span className="text-orange-400 font-black w-6 text-right shrink-0">{ROMAN[i]}</span>
                             {p
-                              ? <span className="text-slate-200">#{p.jersey_number} {p.name} <span className="text-slate-500">({p.position})</span></span>
+                              ? <span className={p.is_active === false ? 'text-slate-500' : 'text-slate-200'}>#{p.jersey_number} {p.name} <span className="text-slate-500">({p.position})</span>{archivedTag(p)}</span>
                               : <span className="text-slate-600 italic">unassigned</span>
                             }
                           </div>
@@ -633,7 +641,7 @@ export function TeamDetailPage() {
                       {libero && (
                         <div className="flex items-center gap-2 text-sm mt-1 pt-1 border-t border-slate-700">
                           <span className="text-slate-500 font-semibold w-6 text-right shrink-0">L</span>
-                          <span className="text-slate-300">#{libero.jersey_number} {libero.name}</span>
+                          <span className={libero.is_active === false ? 'text-slate-500' : 'text-slate-300'}>#{libero.jersey_number} {libero.name}{archivedTag(libero)}</span>
                         </div>
                       )}
                     </div>
@@ -689,7 +697,7 @@ export function TeamDetailPage() {
                               key={`${sl.id}-${expandedRotation}`}
                               rotationNum={expandedRotation}
                               serveOrderIds={sl.serve_order.map(String)}
-                              players={activePlayers}
+                              players={lineupPlayers}
                               formation={draftFormations?.[expandedRotation] ?? null}
                               onChange={handleFormationChange}
                             />
@@ -699,7 +707,7 @@ export function TeamDetailPage() {
                         {expandedLineupTab === 'subs' && (
                           <PlannedSubsEditor
                             serveOrderIds={sl.serve_order.map(String)}
-                            players={activePlayers}
+                            players={lineupPlayers}
                             liberoPlayerId={sl.libero_player_id ?? null}
                             plannedSubs={draftPlannedSubs}
                             onChange={setDraftPlannedSubs}

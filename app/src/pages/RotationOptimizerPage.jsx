@@ -54,7 +54,9 @@ export function RotationOptimizerPage() {
   const [statsLoading, setStatsLoading] = useState(false);
 
   const players = useLiveQuery(
-    () => db.players.where('team_id').equals(tid).filter(p => p.is_active).toArray(),
+    // Whole team (incl. archived) so loaded lineups from past seasons still show
+    // names; the player picker below only offers active players.
+    () => db.players.where('team_id').equals(tid).toArray(),
     [tid]
   );
 
@@ -313,7 +315,7 @@ export function RotationOptimizerPage() {
                 — Clear slot
               </button>
               {(players ?? [])
-                .slice()
+                .filter(p => p.is_active)
                 .sort((a, b) => Number(a.jersey_number) - Number(b.jersey_number))
                 .map(p => {
                   const pStats  = playerStats[String(p.id)];
