@@ -90,3 +90,23 @@ export function recordsForPlayer(boards, playerName, statDefs) {
   });
   return items.sort((a, b) => a.rank - b.rank || a.tabOrder - b.tabOrder || a.order - b.order);
 }
+
+// Volleyball "single-double" / "double-double" / "triple-double": 10+ in one / two / three of these
+// count stats in one match (like basketball). Blocks can be halves (assists).
+export const DOUBLE_STATS = ['k', 'ace', 'blk', 'ast', 'dig'];
+
+/**
+ * lines: [{ stats: { k, ace, blk, ast, dig } }] — one per match.
+ * Returns { singles, doubles, triples }: matches with 1+ / 2+ / 3+ categories at 10+.
+ * Higher ones also count toward lower ones (a triple-double is also a double-double).
+ */
+export function countDoubles(lines) {
+  let singles = 0, doubles = 0, triples = 0;
+  for (const { stats } of lines ?? []) {
+    const hits = DOUBLE_STATS.filter(k => (stats?.[k] ?? 0) >= 10).length;
+    if (hits >= 1) singles++;
+    if (hits >= 2) doubles++;
+    if (hits >= 3) triples++;
+  }
+  return { singles, doubles, triples };
+}

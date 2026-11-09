@@ -436,6 +436,45 @@ export async function computeLeaderboards(tab, teamId) {
   );
 }
 
+// One player's stat line for every tracked match (same matches the Records
+// page counts: no scheduled or exhibition games), for double/triple-double
+// and VER-tier counts on the player's Awards tab.
+// Returns [{ matchId, opp, date, year, ver, stats: { k, ace, blk, ast, dig } }] (ver = VER, not wVER).
+// eslint-disable-next-line react-refresh/only-export-components
+export async function computePlayerMatchLines(teamId, playerId) {
+  const [players, seasons] = await Promise.all([
+    db.players.where('team_id').equals(teamId).toArray(),
+    db.seasons.where('team_id').equals(teamId).toArray(),
+  ]);
+  const positions = Object.fromEntries(players.map(p => [p.id, p.position]));
+  const yearOf = Object.fromEntries(seasons.map(se => [se.id, se.year]));
+  const allMatches = await db.matches
+    .where('season_id').anyOf(seasons.map(s => s.id))
+    .filter(m => m.status !== MATCH_STATUS.SCHEDULED && m.match_type !== 'exhibition')
+    .toArray();
+  if (!allMatches.length) return [];
+  const matchIds = allMatches.map(m => m.id);
+  const [contacts, setsMap] = await Promise.all([
+    getContactsForMatches(matchIds),
+    getBatchSetsPlayedCount(matchIds),
+  ]);
+  const byMatch = groupByMatch(contacts);
+  const lines = [];
+  for (const m of allMatches) {
+    const ps = computePlayerStats(byMatch.get(m.id) ?? [], setsMap[m.id] || 1, positions)[playerId];
+    if (!ps) continue;
+    lines.push({
+      matchId: m.id,
+      opp:     m.opponent_name ?? 'Unknown',
+      date:    m.date,
+      year:    yearOf[m.season_id] ?? '',
+      ver:     ps.ver_raw ?? null,
+      stats:   Object.fromEntries(RECORD_STATS.map(({ key }) => [key, getStatValue(ps, key) ?? 0])),
+    });
+  }
+  return lines;
+}
+
 // ── Add Record Modal ──────────────────────────────────────────────────────────
 
 const CLASS_YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior'];

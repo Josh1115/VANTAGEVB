@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { recordsForYear, recordsForPlayer, rowYear } from '../seasonRecords';
+import { recordsForYear, recordsForPlayer, countDoubles, rowYear } from '../seasonRecords';
 
 const defs = {
   match:       [{ key: 'k', label: 'Kills' }, { key: 'dig', label: 'Digs' }],
@@ -94,5 +94,21 @@ describe('recordsForPlayer', () => {
   it('returns [] without boards or name', () => {
     expect(recordsForPlayer(null, 'Ava', defs)).toEqual([]);
     expect(recordsForPlayer(boards, '', defs)).toEqual([]);
+  });
+});
+
+describe('countDoubles', () => {
+  it('counts 10+ in two / three categories per match', () => {
+    const lines = [
+      { stats: { k: 10, dig: 10, ast: 0 } },          // double
+      { stats: { k: 12, dig: 15, ast: 11 } },         // triple (also a double)
+      { stats: { k: 9.5, dig: 30 } },                 // one category only
+      { stats: { blk: 10, ace: 10, k: 10, dig: 10 } },// 4 cats → triple + double
+      { stats: {} },
+    ];
+    expect(countDoubles(lines)).toEqual({ singles: 4, doubles: 3, triples: 2 });
+  });
+  it('handles empty input', () => {
+    expect(countDoubles(null)).toEqual({ singles: 0, doubles: 0, triples: 0 });
   });
 });

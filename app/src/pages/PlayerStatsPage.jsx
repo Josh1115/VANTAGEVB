@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import { db } from '../db/schema';
 import { SCHOOL_YEAR_CLS } from '../constants';
-import { recordsForPlayer } from '../utils/seasonRecords';
+import { recordsForPlayer, countDoubles } from '../utils/seasonRecords';
 import { computePlayerStats, computePlayerTrends, computeTeamStats, computePlayerWPA, computePQ, computePlayerRotationPassing } from '../stats/engine';
 import {
   getContactsForMatches,
@@ -636,16 +636,22 @@ export function PlayerStatsPage() {
     let cancelled = false;
     (async () => {
       try {
-        const { computeLeaderboards, RECORD_STAT_DEFS } = await import('./RecordsPage');
+        const { computeLeaderboards, computePlayerMatchLines, RECORD_STAT_DEFS } = await import('./RecordsPage');
         const tabs = ['match', 'season', 'career'];
-        const results = await Promise.all(tabs.map(t => computeLeaderboards(t, tid)));
-        if (!cancelled) setRecordBoards({ boards: Object.fromEntries(tabs.map((t, i) => [t, results[i]])), defs: RECORD_STAT_DEFS });
+        const [results, lines] = await Promise.all([
+          Promise.all(tabs.map(t => computeLeaderboards(t, tid))),
+          computePlayerMatchLines(tid, pid),
+        ]);
+        if (!cancelled) setRecordBoards({ boards: Object.fromEntries(tabs.map((t, i) => [t, results[i]])), defs: RECORD_STAT_DEFS, doubles: countDoubles(lines), verTiers: {
+          elite: lines.filter(l => l.ver != null && VER_TIERS.find(t => l.ver >= t.min)?.label === 'ELITE').length,
+          great: lines.filter(l => l.ver != null && VER_TIERS.find(t => l.ver >= t.min)?.label === 'GREAT').length,
+        } });
       } catch (err) {
         console.warn('[PlayerStats] records load failed:', err);
       }
     })();
     return () => { cancelled = true; };
-  }, [mainTab, recordBoards, tid]);
+  }, [mainTab, recordBoards, tid, pid]);
   const playerRecords = useMemo(
     () => recordBoards ? recordsForPlayer(recordBoards.boards, player?.name, recordBoards.defs) : [],
     [recordBoards, player?.name]
@@ -784,12 +790,36 @@ export function PlayerStatsPage() {
         )
       ) : (
         // Awards tab
-        playerAwardGroups.length === 0 && playerRecords.length === 0 ? (
+        playerAwardGroups.length === 0 && playerRecords.length === 0 && !(recordBoards?.doubles?.singles > 0) && !(recordBoards?.verTiers?.great > 0) && !(recordBoards?.verTiers?.elite > 0) ? (
           recordBoards
             ? <EmptyState title="No awards or records" description="Awards entered in the History page (when the player name matches) and all-time top-10 records will appear here." />
             : <div className="flex justify-center py-10"><Spinner /></div>
         ) : (
           <div className="px-4 py-5 space-y-6">
+            {(recordBoards?.doubles?.singles > 0 || recordBoards?.verTiers?.great > 0 || recordBoards?.verTiers?.elite > 0) && (
+              <section>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white mb-3">Milestones</p>
+                <div className="grid grid-cols-3 gap-x-3 gap-y-6">
+                  {[
+                    { key: 'sd', label: 'Single-Doubles', count: recordBoards.doubles.singles, note: '10+ in one stat', ring: 'from-emerald-200 via-emerald-400 to-emerald-700', face: 'from-emerald-300 to-emerald-600 border-emerald-200/60', shadow: 'shadow-emerald-900/40', text: 'text-emerald-950' },
+                    { key: 'dd', label: 'Double-Doubles', count: recordBoards.doubles.doubles, note: '10+ in two stats', ring: 'from-sky-200 via-sky-400 to-sky-700', face: 'from-sky-300 to-sky-600 border-sky-200/60', shadow: 'shadow-sky-900/40', text: 'text-sky-950' },
+                    { key: 'td', label: 'Triple-Doubles', count: recordBoards.doubles.triples, note: '10+ in three stats', ring: 'from-fuchsia-200 via-fuchsia-400 to-fuchsia-700', face: 'from-fuchsia-300 to-fuchsia-600 border-fuchsia-200/60', shadow: 'shadow-fuchsia-900/40', text: 'text-fuchsia-950' },
+                    { key: 'great', label: 'GREAT VER', count: recordBoards.verTiers.great, note: 'VER 4.50–6.99', ring: 'from-violet-200 via-violet-400 to-violet-700', face: 'from-violet-300 to-violet-600 border-violet-200/60', shadow: 'shadow-violet-900/40', text: 'text-violet-950' },
+                    { key: 'elite', label: 'ELITE VER', count: recordBoards.verTiers.elite, note: 'VER 7.00+', ring: 'from-cyan-100 via-cyan-300 to-cyan-600', face: 'from-cyan-200 to-cyan-500 border-cyan-100/60', shadow: 'shadow-cyan-900/40', text: 'text-cyan-950' },
+                  ].filter(m => m.count > 0).map(m => (
+                    <div key={m.key} className="flex flex-col items-center text-center min-w-0">
+                      <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${m.ring} p-[3px] shadow-lg ${m.shadow}`}>
+                        <div className={`w-full h-full rounded-full bg-gradient-to-br ${m.face} border flex items-center justify-center leading-none ${m.text}`}>
+                          <span className="text-xl font-black tabular-nums">×{m.count}</span>
+                        </div>
+                      </div>
+                      <p className="mt-2 text-[11px] font-black uppercase tracking-wide text-white leading-tight line-clamp-2 break-words w-full">{m.label}</p>
+                      <p className="text-[10px] text-slate-400 leading-tight mt-0.5">{m.note}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
             {playerAwardGroups.length > 0 && (
               <section>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white mb-3">Awards</p>
