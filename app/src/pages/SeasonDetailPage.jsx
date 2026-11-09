@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { PlayoffSeed } from '../components/ui/PlayoffSeed';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -18,6 +18,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { SwipeableMatchCard } from '../components/ui/SwipeableMatchCard';
 import { PostSeasonModal } from '../components/shared/PostSeasonModal';
 import { applyInferredSeasonFinish } from '../utils/seasonUtils';
+import { useOurSeed } from '../hooks/useOurSeed';
 import { ScheduleImportModal } from '../components/match/ScheduleImportModal';
 import { usePlan } from '../hooks/usePlan';
 import { MATCHES_LOCKED_MESSAGE } from '../utils/planLimits';
@@ -142,72 +143,10 @@ export function SeasonDetailPage() {
   const [schedOppRecord,    setSchedOppRecord]    = useState('');
   const [schedOppRank,      setSchedOppRank]      = useState('');
   const [schedOppSeed,      setSchedOppSeed]      = useState('');
+  const ourSeed = useOurSeed(id);
   const [schedTime,         setSchedTime]         = useState('');
   const [schedSaving,    setSchedSaving]    = useState(false);
   const [schedError,     setSchedError]     = useState('');
-
-  // Auto-sync completed playoff matches into season_history.playoff_rounds.
-  // Idempotent: matches already present (by round+opponent) are skipped.
-  const syncedMatchIds = useRef(new Set());
-  useEffect(() => {
-    if (!data) return;
-    const { season, matches } = data;
-
-    const ROUND_ORDER = ['regional','sectional','super-sectional','quarterfinal','semifinal','state championship'];
-
-    const completed = matches.filter(
-      m => m.status === MATCH_STATUS.COMPLETE && m.match_type === 'ihsa-playoffs'
-        && !syncedMatchIds.current.has(m.id)
-    );
-    if (completed.length === 0) return;
-
-    (async () => {
-      const existing = await db.season_history
-        .where('team_id').equals(season.team_id)
-        .filter(h => String(h.year) === String(season.year))
-        .first();
-
-      const existingRounds = existing?.playoff_rounds ?? [];
-
-      const newRounds = completed
-        .filter(m => {
-          const rName = (m.playoff_round ?? '').trim().toLowerCase();
-          const oName = (m.opponent_name ?? '').trim().toLowerCase();
-          return !existingRounds.some(
-            r => r.round?.trim().toLowerCase() === rName && r.opponent?.trim().toLowerCase() === oName
-          );
-        })
-        .map(m => ({
-          round:    m.playoff_round ?? '',
-          opponent: m.opponent_name ?? '',
-          result:   (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0) ? 'W' : 'L',
-          score:    `${m.our_sets_won ?? 0}-${m.opp_sets_won ?? 0}`,
-          opp_seed: m.opponent_playoff_seed != null ? String(m.opponent_playoff_seed) : '',
-        }));
-
-      if (newRounds.length === 0) {
-        completed.forEach(m => syncedMatchIds.current.add(m.id));
-        return;
-      }
-
-      const merged = [...existingRounds, ...newRounds].sort((a, b) => {
-        const ai = ROUND_ORDER.indexOf(a.round?.toLowerCase() ?? '');
-        const bi = ROUND_ORDER.indexOf(b.round?.toLowerCase() ?? '');
-        if (ai === -1 && bi === -1) return 0;
-        if (ai === -1) return 1;
-        if (bi === -1) return -1;
-        return ai - bi;
-      });
-
-      if (existing) {
-        await db.season_history.update(existing.id, { playoff_rounds: merged });
-      } else {
-        await db.season_history.add({ team_id: season.team_id, year: String(season.year), playoff_rounds: merged });
-      }
-
-      completed.forEach(m => syncedMatchIds.current.add(m.id));
-    })();
-  }, [data]);
 
   if (data === undefined) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -245,6 +184,7 @@ export function SeasonDetailPage() {
   }
 
   function resetSchedForm() {
+    ourSeed.reset();
     setEditMatchId(null);
     setSchedOpp('');
     setSchedOppAbbr('');
@@ -359,6 +299,7 @@ export function SeasonDetailPage() {
         // Undo any "deleted" marker for this same game so the next sync keeps it.
         await clearMatchTombstone({ season_id: id, opponent_name: fields.opponent_name, date: fields.date });
       }
+      if (schedMatchType === 'ihsa-playoffs') await ourSeed.save();
       resetSchedForm();
     } catch (e) {
       if (e.code === 'MATCH_LIMIT') {
@@ -1118,6 +1059,20 @@ export function SeasonDetailPage() {
                     onChange={(e) => setSchedPlayoffRound(e.target.value)}
                     placeholder="ex: Regional, Sectional…"
                     className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
+                  />
+                </div>
+                <div className="w-24 shrink-0">
+                  <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
+                    Our Seed <span className="normal-case font-normal">(opt)</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    inputMode="numeric"
+                    value={ourSeed.value}
+                    onChange={ourSeed.onChange}
+                    placeholder="ex: 2"
+                    className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
                   />
                 </div>
                 <div className="w-28 shrink-0">

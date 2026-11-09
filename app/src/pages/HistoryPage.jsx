@@ -13,7 +13,7 @@ import { getEligibleTeams } from '../utils/teams';
 import { ChampionshipBannersSection } from '../components/shared/ChampionshipBanner';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { PostSeasonModal } from '../components/shared/PostSeasonModal';
-import { applyInferredSeasonFinish, readSetScores, resolveSeasonFinish, seasonPlayoffRounds } from '../utils/seasonUtils';
+import { applyInferredSeasonFinish, prunedPlayoffRounds, seasonTitles, withPlayoffSetScores, readSetScores, resolveSeasonFinish, seasonPlayoffRounds } from '../utils/seasonUtils';
 import { PlayoffRoundsList, SetScoresInput } from '../components/shared/PlayoffSetScores';
 import { recordsForYear } from '../utils/seasonRecords';
 
@@ -120,12 +120,25 @@ const EMPTY_FORM = {
   playoff_rounds: [],
 };
 
-function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }) {
+function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false, carryOver = null }) {
   const [form, setForm] = useState(initialData ?? EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   function set(field, val) { setForm(f => ({ ...f, [field]: val })); setError(''); }
+
+  // With carried-over coaches, a different head coach starts at year 1 (and
+  // changing back restores the carried year) — unless the year was typed by hand.
+  function setHeadCoach(val) {
+    setForm(f => {
+      const next = { ...f, head_coach: val };
+      if (carryOver && (f.tenure_year === carryOver.tenure_year || f.tenure_year === '1')) {
+        next.tenure_year = val.trim() === carryOver.head_coach ? carryOver.tenure_year : '1';
+      }
+      return next;
+    });
+    setError('');
+  }
 
   async function handleSave() {
     const yearStr = String(form.year ?? '').trim();
@@ -267,7 +280,7 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false }
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className={lbl}>Head Coach</label>
-              <input className={inp} placeholder="Coach Smith" value={form.head_coach} onChange={e => set('head_coach', e.target.value)} />
+              <input className={inp} placeholder="Coach Smith" value={form.head_coach} onChange={e => setHeadCoach(e.target.value)} />
             </div>
             <div>
               <label className={lbl}>Tenure Year #</label>
@@ -721,6 +734,7 @@ function LiveSeasonCard({ year, matches, historyEntry, finish, activeSeason, onE
   const wins      = completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
   const losses    = completed.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
   const total     = completed.length;
+  const liveTitles = seasonTitles(historyEntry?.title, matches);
   const winPct    = total > 0 ? fmtWinPct(wins, total) : null;
 
   // Coaches: prefer history entry (explicitly set in History → Edit Details),
@@ -787,8 +801,8 @@ function LiveSeasonCard({ year, matches, historyEntry, finish, activeSeason, onE
       </div>
 
       <div className="bg-slate-800 px-4 py-3 space-y-2.5">
-        {toTitleArr(historyEntry?.title).length > 0 && (
-          <p className="text-base font-black text-primary tracking-wide">{toTitleArr(historyEntry.title).join(', ')}</p>
+        {liveTitles.length > 0 && (
+          <p className="text-base font-black text-primary tracking-wide">{liveTitles.join(', ')}</p>
         )}
 
         {hasRankings && (
@@ -950,7 +964,7 @@ function SeasonCard({ entry, finish, matches, onEdit, onDelete, isWinRecord, isS
   const hasRecord  = wins != null || losses != null;
   const playoffRounds = seasonPlayoffRounds(entry.playoff_rounds, matches);
   const hasPlayoffs = entry.playoff_seed || finish || entry.playoff_result || playoffRounds.length > 0;
-  const titleArr   = toTitleArr(entry.title);
+  const titleArr   = seasonTitles(entry.title, matches);
   const [recordsOpen, setRecordsOpen] = useState(false);
   const hasSeasonRecords = seasonRecords?.length > 0;
 
@@ -1155,11 +1169,22 @@ export function HistoryPage() {
     const seasons = await db.seasons.where('team_id').equals(teamId).toArray();
     if (!seasons.length) return {};
     const yearBySeason = Object.fromEntries(seasons.map(s => [s.id, String(s.year)]));
-    const matches = await db.matches.where('season_id').anyOf(seasons.map(s => s.id)).toArray();
+    const matches = await withPlayoffSetScores(await db.matches.where('season_id').anyOf(seasons.map(s => s.id)).toArray());
     const byYear = {};
     for (const m of matches) (byYear[yearBySeason[m.season_id]] ??= []).push(m);
     return byYear;
   }, [teamId]);
+
+  // Older versions saved a copy of each playoff game into the season's rounds and
+  // left the old copy behind when the round or opponent was renamed. Remove those
+  // leftover copies; rounds typed by hand without a tracked game are untouched.
+  useEffect(() => {
+    if (!history || !matchesByYear) return;
+    for (const h of history) {
+      const pruned = prunedPlayoffRounds(h.playoff_rounds, matchesByYear[String(h.year)]);
+      if (pruned) db.season_history.update(h.id, { playoff_rounds: pruned }).catch(() => {});
+    }
+  }, [history, matchesByYear]);
 
   const finishFor = (h) => resolveSeasonFinish(h?.state_finish, h?.playoff_rounds, matchesByYear?.[String(h?.year)]);
 
@@ -1173,7 +1198,7 @@ export function HistoryPage() {
   );
   const activeMatches = useLiveQuery(
     () => defaultSeasonId && isDefaultTeam
-      ? db.matches.where('season_id').equals(defaultSeasonId).toArray()
+      ? db.matches.where('season_id').equals(defaultSeasonId).toArray().then(withPlayoffSetScores)
       : Promise.resolve([]),
     [defaultSeasonId, isDefaultTeam]
   );
@@ -1342,6 +1367,23 @@ export function HistoryPage() {
     );
   };
 
+  // A brand-new current season starts with last season's coaches and
+  // classification, the coach's year bumped by one. Anything already entered
+  // for this season on the roster tab takes priority.
+  const liveCarryOver = useMemo(() => {
+    if (liveHistoryEntry || activeSeason?.year == null) return {};
+    const thisYear = String(activeSeason.year);
+    const prev = sortedHistory.find(h => String(h.year).localeCompare(thisYear) < 0) ?? null;
+    const prevTenure = prev?.tenure_year != null ? Number(prev.tenure_year) : null;
+    const tenure = activeSeason.tenure_year ?? (prevTenure != null ? prevTenure + 1 : null);
+    return {
+      head_coach:     activeSeason.head_coach || prev?.head_coach || '',
+      asst_coach:     activeSeason.asst_coach || prev?.asst_coach || '',
+      classification: prev?.classification ?? '',
+      tenure_year:    tenure != null ? String(tenure) : '',
+    };
+  }, [liveHistoryEntry, activeSeason, sortedHistory]);
+
   // Initial data for the live card's edit modal
   const liveEditInitial = liveHistoryEntry ? {
     year:           String(liveHistoryEntry.year ?? activeSeason?.year ?? ''),
@@ -1363,6 +1405,7 @@ export function HistoryPage() {
   } : {
     ...EMPTY_FORM,
     year:         activeSeason?.year != null ? String(activeSeason.year) : '',
+    ...liveCarryOver,
   };
 
   const showLiveCard = isDefaultTeam && activeSeason != null && activeSeason.status !== 'ended';
@@ -1530,9 +1573,12 @@ export function HistoryPage() {
     const divLabel  = currentOrg?.division ?? currentOrg?.state_division ?? '';
 
     const items = [];
-    for (const h of (history ?? [])) {
-      for (const t of toTitleArr(h.title)) {
-        items.push({ year: String(h.year), title: t, priority: titlePriority(t) });
+    // Every season with a History entry or games, so titles won in tracked
+    // playoff games show even before the season's details are filled in.
+    const typedByYear = Object.fromEntries((history ?? []).map(h => [String(h.year), h.title]));
+    for (const year of new Set([...Object.keys(typedByYear), ...Object.keys(matchesByYear ?? {})])) {
+      for (const t of seasonTitles(typedByYear[year], matchesByYear?.[year])) {
+        items.push({ year, title: t, priority: titlePriority(t) });
       }
     }
     for (const t of (tourneyEntries ?? [])) {
@@ -1554,7 +1600,7 @@ export function HistoryPage() {
     }
     // Oldest year first; within a year: tourney/other → conference → regional → sectional → super sectional → state
     return items.sort((a, b) => a.year.localeCompare(b.year) || a.priority - b.priority);
-  }, [history, tourneyEntries, currentOrg, currentTeam]);
+  }, [history, matchesByYear, tourneyEntries, currentOrg, currentTeam]);
   const teamPrimaryColor   = orgColors[0] ?? currentTeam?.team_jersey_color?.[0] ?? null;
   const teamSecondaryColor = orgColors[1] ?? currentTeam?.team_jersey_color?.[1] ?? null;
 
@@ -1592,7 +1638,7 @@ export function HistoryPage() {
         const live = liveRecordsByYear?.[String(h.year)];
         const w = live?.wins ?? h.wins ?? '';
         const l = live?.losses ?? h.losses ?? '';
-        const titles = toTitleArr(h.title).join(', ');
+        const titles = seasonTitles(h.title, matchesByYear?.[String(h.year)]).join(', ');
         const finish = finishFor(h);
         return [String(h.year), w !== '' && l !== '' ? `${w}–${l}` : '—', h.head_coach ?? '', titles, finish, h.state_rank != null ? `#${h.state_rank}` : ''];
       });
@@ -2231,6 +2277,7 @@ export function HistoryPage() {
           teamId={teamId}
           editId={liveHistoryEntry?.id}
           initialData={liveEditInitial}
+          carryOver={liveCarryOver.head_coach ? liveCarryOver : null}
           liveMode
           onClose={() => setLiveEditOpen(false)}
         />

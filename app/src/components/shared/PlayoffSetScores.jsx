@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 import { MAX_PLAYOFF_SETS } from '../../utils/seasonUtils';
 
-const SET_SCORE_WIDTH_PX = 40; // one set score in the list's 12px font, plus its gap
+const SET_SCORE_WIDTH_PX = 52; // one set score in the list's 12px font, plus its "·" divider
 const SET_NUMBERS = Array.from({ length: MAX_PLAYOFF_SETS }, (_, i) => i);
 
 // Two rows of score boxes, one column per set. Typed values stay as text until the
@@ -39,19 +39,20 @@ export function SetScoresInput({ value, onChange, inputClassName = '' }) {
   );
 }
 
-// Saved set scores, ours first. Green for a set won, red for a set lost. Each score
-// takes the same width so sets line up from one round to the next.
+// Saved set scores, ours first, styled like the dashboard: plain score text with a
+// short green (won) or red (lost) bar under each set. Each score takes the same
+// width so sets line up from one round to the next.
 function SetScoresLine({ scores }) {
   if (!scores?.length) return null;
   return (
-    <span className="flex min-w-0 gap-x-1 overflow-x-auto whitespace-nowrap font-mono font-semibold">
+    <span className="flex min-w-0 items-center gap-x-1 overflow-x-auto whitespace-nowrap font-mono text-slate-300">
       {scores.map((s, i) => (
-        <span
-          key={i}
-          title={`Set ${i + 1}`}
-          className={`min-w-[5ch] text-center ${s.us > s.opp ? 'text-emerald-400' : s.us < s.opp ? 'text-red-400' : 'text-slate-400'}`}
-        >
-          {s.us}-{s.opp}
+        <span key={i} className="inline-flex items-center gap-x-1">
+          {i > 0 && <span className="text-slate-500">·</span>}
+          <span title={`Set ${i + 1}`} className="flex min-w-[5ch] flex-col items-center">
+            <span>{s.us}-{s.opp}</span>
+            <span className={`mt-0.5 h-px w-3 rounded-full ${s.us > s.opp ? 'bg-emerald-500' : s.us < s.opp ? 'bg-red-500' : 'bg-slate-500'}`} />
+          </span>
         </span>
       ))}
     </span>

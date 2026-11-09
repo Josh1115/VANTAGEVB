@@ -1,5 +1,5 @@
 import { db } from '../db/schema';
-import { MATCH_STATUS } from '../constants';
+import { MATCH_STATUS, SET_STATUS } from '../constants';
 import { sortByDateTime } from './seasonSummary';
 
 export function fmtVal(val, decimals = 0) {
@@ -72,6 +72,24 @@ export function readSetScores(sets) {
   return { scores, incompleteSet };
 }
 
+// Final score of each finished set, in set order: [{ us, opp }].
+export function gameSetScores(sets) {
+  return (sets ?? [])
+    .filter(s => s.status === SET_STATUS.COMPLETE && s.our_score != null && s.opp_score != null)
+    .sort((a, b) => (a.set_number ?? 0) - (b.set_number ?? 0))
+    .map(s => ({ us: s.our_score, opp: s.opp_score }));
+}
+
+// Adds `set_scores` to each completed playoff game so History can show them.
+export async function withPlayoffSetScores(matches) {
+  const games = completedPlayoffGames(matches);
+  if (!games.length) return matches ?? [];
+  const sets = await db.sets.where('match_id').anyOf(games.map(m => m.id)).toArray();
+  const byMatch = {};
+  for (const s of sets) (byMatch[s.match_id] ??= []).push(s);
+  return matches.map(m => (byMatch[m.id] ? { ...m, set_scores: gameSetScores(byMatch[m.id]) } : m));
+}
+
 function completedPlayoffGames(matches) {
   return (matches ?? []).filter(
     m => m.status === MATCH_STATUS.COMPLETE && m.match_type === 'ihsa-playoffs' && m.playoff_round?.trim()
@@ -82,11 +100,43 @@ function completedPlayoffGames(matches) {
 // with completed games: a game updates the row for its round, or adds a row if
 // that game was never copied into the list. Games are ordered by date and time;
 // rows with no date can only be placed by round name.
+// Pairs saved rounds with completed games: exact round + opponent first, then
+// round name alone, then opponent alone (a renamed round — a team can't meet the
+// same opponent twice in one bracket). Saved rows left over that share an
+// opponent with a game are stale copies of it.
+function matchPlayoffRounds(rounds, matches) {
+  const rows = rounds ?? [];
+  const unmatched = new Set(rows.keys());
+  const claims = []; // [game, row index or null]
+  const sameRound = (r, m) => normalizeRound(r.round) === normalizeRound(m.playoff_round);
+  const sameOpponent = (r, m) => !!normalizeRound(m.opponent_name) && normalizeRound(r.opponent) === normalizeRound(m.opponent_name);
+  let remaining = completedPlayoffGames(matches);
+  for (const isMatch of [(r, m) => sameRound(r, m) && sameOpponent(r, m), sameRound, sameOpponent]) {
+    remaining = remaining.filter(m => {
+      const i = [...unmatched].find(j => isMatch(rows[j], m));
+      if (i === undefined) return true;
+      unmatched.delete(i);
+      claims.push([m, i]);
+      return false;
+    });
+  }
+  for (const m of remaining) claims.push([m, null]);
+  const games = completedPlayoffGames(matches);
+  const stale = new Set([...unmatched].filter(i => games.some(m => sameOpponent(rows[i], m))));
+  return { claims, stale };
+}
+
+// Saved rounds with any stale copies of tracked games removed, or null when
+// nothing needs to change. Used to clean up duplicates saved by older versions.
+export function prunedPlayoffRounds(rounds, matches) {
+  const { stale } = matchPlayoffRounds(rounds, matches);
+  if (!stale.size) return null;
+  return rounds.filter((_, i) => !stale.has(i));
+}
+
 export function seasonPlayoffRounds(rounds, matches) {
   const rows = (rounds ?? []).map(r => ({ ...r }));
-  const unmatched = new Set(rows.keys());
-  const sameRound = (r, m) => normalizeRound(r.round) === normalizeRound(m.playoff_round);
-  const sameOpponent = (r, m) => normalizeRound(r.opponent) === normalizeRound(m.opponent_name);
+  const { claims, stale } = matchPlayoffRounds(rows, matches);
 
   const applyGame = (m, i) => {
     rows[i] = {
@@ -98,26 +148,20 @@ export function seasonPlayoffRounds(rounds, matches) {
       score:      `${m.our_sets_won ?? 0}-${m.opp_sets_won ?? 0}`,
       date:       m.date,
       match_time: m.match_time,
+      // A tracked game's set scores replace any typed ones, so they always
+      // agree with the set count above.
+      ...(m.set_scores?.length ? { set_scores: m.set_scores } : {}),
     };
-    unmatched.delete(i);
   };
 
-  // Exact round + opponent first, so a game can't take a row that belongs to another.
-  let remaining = completedPlayoffGames(matches);
-  for (const isMatch of [(r, m) => sameRound(r, m) && sameOpponent(r, m), sameRound]) {
-    remaining = remaining.filter(m => {
-      const i = [...unmatched].find(j => isMatch(rows[j], m));
-      if (i === undefined) return true;
-      applyGame(m, i);
-      return false;
-    });
-  }
-  for (const m of remaining) {
+  for (const [m, i] of claims) {
+    if (i != null) { applyGame(m, i); continue; }
     rows.push({});
     applyGame(m, rows.length - 1);
   }
 
   return rows
+    .filter((_, i) => !stale.has(i))
     .sort((a, b) =>
       (a.date && b.date ? sortByDateTime(a, b) : 0) || roundRank(a.round) - roundRank(b.round)
     )
@@ -199,4 +243,95 @@ export async function applyInferredSeasonFinish(seasonId, teamId, year) {
   } else {
     await db.season_history.add({ team_id: teamId, year, state_finish: finish });
   }
+}
+
+// ── Our playoff seed ─────────────────────────────────────────────────────────
+// A team has one seed for the whole playoffs, so it's stored once — on the
+// season's History entry (season_history.playoff_seed) — and every playoff game
+// screen reads and writes that same value.
+
+// The number in a saved seed ("#2" → "2"); '' when there isn't one.
+export function seedDigits(val) {
+  const m = String(val ?? '').match(/\d+/);
+  return m ? String(Number(m[0])) : '';
+}
+
+async function historyEntryForSeason(seasonId) {
+  const season = seasonId != null ? await db.seasons.get(seasonId) : null;
+  if (!season) return { season: null, entry: null };
+  const entry = await db.season_history
+    .where('team_id').equals(season.team_id)
+    .filter(h => String(h.year) === String(season.year))
+    .first();
+  return { season, entry: entry ?? null };
+}
+
+export async function getOurSeed(seasonId) {
+  const { entry } = await historyEntryForSeason(seasonId);
+  return seedDigits(entry?.playoff_seed);
+}
+
+// Saves our seed for the season. A blank box never erases a saved seed.
+export async function saveOurSeed(seasonId, seed) {
+  const digits = seedDigits(seed);
+  if (!digits) return;
+  const { season, entry } = await historyEntryForSeason(seasonId);
+  if (!season) return;
+  if (entry) {
+    if (seedDigits(entry.playoff_seed) !== digits) {
+      await db.season_history.update(entry.id, { playoff_seed: digits });
+    }
+  } else {
+    await db.season_history.add({ team_id: season.team_id, year: season.year, playoff_seed: digits });
+  }
+}
+
+// ── Playoff titles from games ────────────────────────────────────────────────
+// Titles are only given for winning a Regional final, Sectional final or the
+// Super-Sectional, plus State placements (champion, runner-up, 3rd, 4th).
+// A bare stage name ("Regional") doesn't count: it may not be the final.
+const STAGE_FINAL = /\b(final|finals|championship|champs?)\b/;
+const NOT_FINAL = /\b(semi ?finals?|quarter ?finals?)\b/;
+
+// The title (or null) a finished playoff game earns.
+export function titleForGame(roundName, won) {
+  const n = normalizeRound(roundName);
+  if (!n) return null;
+  if (/(3rd|third) place/.test(n)) return won ? 'State 3rd Place' : 'State 4th Place';
+  if (STATE_FINAL_ROUND.test(n)) return won ? 'State Champions' : 'State Runner-Up';
+  if (!won || NOT_FINAL.test(n)) return null;
+  if (/super ?sectional/.test(n)) return 'Super-Sectional Champions';
+  if (/sectional/.test(n) && STAGE_FINAL.test(n)) return 'Sectional Champions';
+  if (/regional/.test(n) && STAGE_FINAL.test(n)) return 'Regional Champions';
+  return null;
+}
+
+// Which automatic title a typed one means, so the same title isn't shown twice
+// ("Regional Champs" typed + "Regional Champions" from the games).
+function sameAsAutoTitle(typed) {
+  const t = normalizeRound(typed);
+  if (/state/.test(t)) {
+    if (/(3rd|third)/.test(t)) return 'State 3rd Place';
+    if (/(4th|fourth)/.test(t)) return 'State 4th Place';
+    if (/(runner|2nd|second)/.test(t)) return 'State Runner-Up';
+    if (/champ/.test(t)) return 'State Champions';
+  }
+  if (!/champ/.test(t)) return null;
+  if (/super ?sectional/.test(t)) return 'Super-Sectional Champions';
+  if (/sectional/.test(t)) return 'Sectional Champions';
+  if (/regional/.test(t)) return 'Regional Champions';
+  return null;
+}
+
+// A season's titles: the ones typed in, plus any earned in tracked playoff games.
+export function seasonTitles(typedTitles, matches) {
+  const typed = (Array.isArray(typedTitles) ? typedTitles : typedTitles ? [typedTitles] : [])
+    .map(t => String(t).trim()).filter(Boolean);
+  const have = new Set(typed.map(sameAsAutoTitle).filter(Boolean));
+  const auto = [];
+  for (const m of completedPlayoffGames(matches)) {
+    const title = titleForGame(m.playoff_round, (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0));
+    if (title && !have.has(title)) { have.add(title); auto.push(title); }
+  }
+  return [...typed, ...auto];
 }

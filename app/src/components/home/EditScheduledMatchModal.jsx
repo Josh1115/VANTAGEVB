@@ -5,6 +5,7 @@ import { getPlayoffLabel } from '../../utils/storage';
 import { matchDateISO } from '../../utils/matchDate';
 import { findOrCreateOpponent } from '../../stats/queries';
 import { Button } from '../ui/Button';
+import { useOurSeed } from '../../hooks/useOurSeed';
 
 // Edits a scheduled (not-yet-started) match's metadata — opponent, date,
 // location, match type, etc. `match` is always an existing match row; matches
@@ -27,6 +28,8 @@ export function EditScheduledMatchModal({ match, onClose, onDeleteRequested }) {
   const [oppSeed,      setOppSeed]      = useState(match.opponent_playoff_seed != null ? String(match.opponent_playoff_seed) : '');
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState('');
+
+  const ourSeed = useOurSeed(match.season_id);
 
   async function handleSave() {
     if (!opp.trim()) return;
@@ -53,6 +56,7 @@ export function EditScheduledMatchModal({ match, onClose, onDeleteRequested }) {
         opponent_playoff_seed: matchType === 'ihsa-playoffs' && oppSeed !== '' ? parseInt(oppSeed, 10) : null,
         match_time:       time || null,
       });
+      if (matchType === 'ihsa-playoffs') await ourSeed.save();
       onClose();
     } catch {
       setError('Failed to save. Please try again.');
@@ -266,6 +270,16 @@ export function EditScheduledMatchModal({ match, onClose, onDeleteRequested }) {
               value={oppSeed}
               onChange={(e) => setOppSeed(e.target.value)}
               placeholder="ex: 3"
+              className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
+            />
+            <label className="block text-xs text-slate-400 mb-1 mt-3 font-semibold uppercase tracking-wide">Our Playoff Seed</label>
+            <input
+              type="number"
+              min="1"
+              inputMode="numeric"
+              value={ourSeed.value}
+              onChange={ourSeed.onChange}
+              placeholder="ex: 2"
               className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
             />
           </div>

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useUiStore, selectShowToast } from '../store/uiStore';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
+import { useOurSeed } from '../hooks/useOurSeed';
 import { computeMatchStats,
          computePlayerStats, computeTeamStats, computeRotationStats, computePointQuality,
          computeServeZoneStats, computeISvsOOS, computeTransitionAttack,
@@ -840,6 +841,7 @@ export function MatchSummaryPage() {
 
   // Match + sets from Dexie (live)
   const match = useLiveQuery(() => db.matches.get(id), [id]);
+  const ourSeed = useOurSeed(match?.season_id);
   const sets   = useLiveQuery(() => db.sets.where('match_id').equals(id).sortBy('set_number'), [id]);
   const correctionContacts = useLiveQuery(
     () => db.contacts.where('match_id').equals(id).filter((c) => c.source === 'video_correction').toArray(),
@@ -1297,6 +1299,7 @@ export function MatchSummaryPage() {
       oppRank:      match.opponent_maxpreps_rank != null ? String(match.opponent_maxpreps_rank) : '',
       oppSeed:      match.opponent_playoff_seed != null ? String(match.opponent_playoff_seed) : '',
     });
+    ourSeed.reset();
     setEditOpen(true);
   }
 
@@ -1323,6 +1326,7 @@ export function MatchSummaryPage() {
         opponent_playoff_seed: editForm.matchType === 'ihsa-playoffs' && String(editForm.oppSeed).trim() !== '' ? parseInt(editForm.oppSeed, 10) || null : null,
         opponent_maxpreps_rank: editForm.oppRank.trim() !== '' ? parseInt(editForm.oppRank, 10) || null : null,
       });
+      if (editForm.matchType === 'ihsa-playoffs') await ourSeed.save();
       setEditOpen(false);
     } finally {
       setEditSaving(false);
@@ -2495,6 +2499,16 @@ export function MatchSummaryPage() {
                   value={editForm.oppSeed}
                   onChange={(e) => setEditForm(f => ({ ...f, oppSeed: e.target.value }))}
                   placeholder="ex: 3"
+                  className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
+                />
+                <label className="block text-xs text-slate-400 mb-1 mt-3 font-semibold uppercase tracking-wide">Our Playoff Seed</label>
+                <input
+                  type="number"
+                  min="1"
+                  inputMode="numeric"
+                  value={ourSeed.value}
+                  onChange={ourSeed.onChange}
+                  placeholder="ex: 2"
                   className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
                 />
               </div>
