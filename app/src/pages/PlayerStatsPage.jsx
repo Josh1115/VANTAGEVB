@@ -8,6 +8,7 @@ import {
 } from 'recharts';
 import { db } from '../db/schema';
 import { SCHOOL_YEAR_CLS } from '../constants';
+import { recordsForPlayer } from '../utils/seasonRecords';
 import { computePlayerStats, computePlayerTrends, computeTeamStats, computePlayerWPA, computePQ, computePlayerRotationPassing } from '../stats/engine';
 import {
   getContactsForMatches,
@@ -627,6 +628,29 @@ export function PlayerStatsPage() {
       .map(g => ({ ...g, winners: [...g.winners].sort((a, b) => String(b.year).localeCompare(String(a.year))) }));
   }, [allTeamWinners, player?.name, awardTypes]);
 
+  // All-time records boards (same lists as the Records page), loaded only when
+  // the Awards tab is opened, for this player's record medals.
+  const [recordBoards, setRecordBoards] = useState(null);
+  useEffect(() => {
+    if (mainTab !== 'awards' || recordBoards || !tid) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { computeLeaderboards, RECORD_STAT_DEFS } = await import('./RecordsPage');
+        const tabs = ['match', 'season', 'career'];
+        const results = await Promise.all(tabs.map(t => computeLeaderboards(t, tid)));
+        if (!cancelled) setRecordBoards({ boards: Object.fromEntries(tabs.map((t, i) => [t, results[i]])), defs: RECORD_STAT_DEFS });
+      } catch (err) {
+        console.warn('[PlayerStats] records load failed:', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [mainTab, recordBoards, tid]);
+  const playerRecords = useMemo(
+    () => recordBoards ? recordsForPlayer(recordBoards.boards, player?.name, recordBoards.defs) : [],
+    [recordBoards, player?.name]
+  );
+
   if (!player) {
     return (
       <div className="flex items-center justify-center h-48">
@@ -760,30 +784,79 @@ export function PlayerStatsPage() {
         )
       ) : (
         // Awards tab
-        playerAwardGroups.length === 0 ? (
-          <EmptyState title="No awards" description="Awards entered in the History page will appear here when the player name matches." />
+        playerAwardGroups.length === 0 && playerRecords.length === 0 ? (
+          recordBoards
+            ? <EmptyState title="No awards or records" description="Awards entered in the History page (when the player name matches) and all-time top-10 records will appear here." />
+            : <div className="flex justify-center py-10"><Spinner /></div>
         ) : (
-          <div className="px-4 py-4 space-y-5">
-            {playerAwardGroups.map(({ type, winners }) => (
-              <div key={type.id}>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white mb-2">{type.name}</p>
-                <div className="space-y-2">
-                  {winners.map(w => (
-                    <div key={w.id} className="bg-surface rounded-xl px-4 py-3 border border-slate-700/50 flex items-center gap-3 flex-wrap">
-                      <span className="text-sm font-bold text-white tabular-nums">{w.year}</span>
-                      {w.school_year && (
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${SCHOOL_YEAR_CLS[w.school_year] ?? 'bg-slate-700/60 text-slate-300 border-slate-600/50'}`}>
-                          {w.school_year}
-                        </span>
-                      )}
-                      {w.times_won > 1 && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-primary/20 text-primary border-primary/30">×{w.times_won}</span>
-                      )}
+          <div className="px-4 py-5 space-y-6">
+            {playerAwardGroups.length > 0 && (
+              <section>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white mb-3">Awards</p>
+                <div className="grid grid-cols-3 gap-x-3 gap-y-6">
+            {playerAwardGroups.flatMap(({ type, winners }) => winners.map(w => (
+              <div key={w.id} className="flex flex-col items-center text-center min-w-0">
+                <div className="relative">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-200 via-amber-400 to-amber-700 p-[3px] shadow-lg shadow-amber-900/40">
+                    <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-300 to-amber-600 border border-amber-200/60 flex items-center justify-center text-2xl">
+                      🏆
                     </div>
-                  ))}
+                  </div>
+                  {w.times_won > 1 && (
+                    <span className="absolute -top-1 -right-2 text-[10px] font-black px-1.5 py-0.5 rounded-full bg-primary text-white border-2 border-bg tabular-nums">×{w.times_won}</span>
+                  )}
                 </div>
+                <p className="mt-2 text-[11px] font-black uppercase tracking-wide text-white leading-tight line-clamp-2 break-words w-full">{type.name}</p>
+                <p className="text-xs font-bold text-amber-300 tabular-nums mt-0.5">{w.year}</p>
+                {w.school_year && (
+                  <span className={`mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${SCHOOL_YEAR_CLS[w.school_year] ?? 'bg-slate-700/60 text-slate-300 border-slate-600/50'}`}>
+                    {w.school_year}
+                  </span>
+                )}
               </div>
-            ))}
+            )))}
+                </div>
+              </section>
+            )}
+            {playerRecords.length > 0 && (
+              <section>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white mb-3">Records</p>
+                <div className="space-y-5">
+                {['match', 'season', 'career'].map(tab => {
+                  const recs = playerRecords.filter(r => r.tab === tab);
+                  if (!recs.length) return null;
+                  return (
+                <div key={tab}>
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 mb-3">{recs[0].tabLabel}</p>
+                <div className="grid grid-cols-3 gap-x-3 gap-y-6">
+                  {recs.map(r => {
+                    const tier = r.rank === 1
+                      ? { ring: 'from-yellow-200 via-amber-400 to-amber-700', face: 'from-amber-300 to-amber-600 border-amber-200/60', shadow: 'shadow-amber-900/40', text: 'text-amber-950' }
+                      : r.rank <= 3
+                        ? { ring: 'from-slate-100 via-slate-300 to-slate-500', face: 'from-slate-200 to-slate-400 border-white/60', shadow: 'shadow-slate-900/40', text: 'text-slate-900' }
+                        : { ring: 'from-orange-200 via-orange-500 to-orange-800', face: 'from-orange-400 to-orange-700 border-orange-200/50', shadow: 'shadow-orange-950/40', text: 'text-orange-950' };
+                    return (
+                      <div key={r.key} className="flex flex-col items-center text-center min-w-0">
+                        <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${tier.ring} p-[3px] shadow-lg ${tier.shadow}`}>
+                          <div className={`w-full h-full rounded-full bg-gradient-to-br ${tier.face} border flex items-center justify-center leading-none ${tier.text}`}>
+                            <span className="text-xl font-black tabular-nums">#{r.rank}</span>
+                          </div>
+                        </div>
+                        <p className="mt-2 text-[11px] font-black uppercase tracking-wide text-white leading-tight line-clamp-2 break-words w-full">{r.label}</p>
+                        <p className="text-xs font-bold text-amber-300 tabular-nums mt-0.5">{r.value}</p>
+                        <p className="text-[10px] text-slate-400 leading-tight mt-0.5 line-clamp-2 break-words w-full">
+                          {[r.year, r.opp && `vs ${r.opp}`].filter(Boolean).join(' · ')}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+                </div>
+                  );
+                })}
+                </div>
+              </section>
+            )}
           </div>
         )
       )}

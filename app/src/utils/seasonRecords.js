@@ -55,3 +55,38 @@ export function recordsForYear(boards, year, statDefs) {
   }
   return groups;
 }
+
+// Player tabs only (team records don't belong to one player).
+const PLAYER_RECORD_TABS = ['match', 'season', 'career'];
+
+/**
+ * Every all-time top-10 spot one player holds, for the medals on their
+ * profile's Awards tab. Matches by name (same as awards). Same boards/statDefs
+ * shapes as recordsForYear. Returns [{ key, tab, tabLabel, rank, label, value, year, opp }]
+ * sorted best rank first, then Match → Season → Career, then stat order.
+ */
+export function recordsForPlayer(boards, playerName, statDefs) {
+  const name = playerName?.trim().toLowerCase();
+  if (!boards || !name) return [];
+  const items = [];
+  PLAYER_RECORD_TABS.forEach((tab, tabOrder) => {
+    const tabLabel = SEASON_RECORD_GROUPS.find(g => g.tab === tab)?.label ?? tab;
+    const defs = (statDefs?.[tab] ?? []).filter(d => SEASON_RECORD_STATS.has(d.key));
+    defs.forEach((def, order) => {
+      for (const row of boards[tab]?.[def.key] ?? []) {
+        if (row.name?.trim().toLowerCase() !== name) continue;
+        items.push({
+          key:   `${tab}-${def.key}-${row.rank}`,
+          tab, tabLabel,
+          rank:  row.rank,
+          label: def.label,
+          value: def.fmt ? def.fmt(row.val) : String(row.val),
+          year:  rowYear(tab, row),
+          opp:   tab === 'match' ? (row.opp || null) : null,
+          tabOrder, order,
+        });
+      }
+    });
+  });
+  return items.sort((a, b) => a.rank - b.rank || a.tabOrder - b.tabOrder || a.order - b.order);
+}

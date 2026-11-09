@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { recordsForYear, rowYear } from '../seasonRecords';
+import { recordsForYear, recordsForPlayer, rowYear } from '../seasonRecords';
 
 const defs = {
   match:       [{ key: 'k', label: 'Kills' }, { key: 'dig', label: 'Digs' }],
@@ -65,5 +65,34 @@ describe('stat filter', () => {
 describe('rowYear', () => {
   it('ignores a season-less row on season tabs', () => {
     expect(rowYear('season', { year: '' })).toBeNull();
+  });
+});
+
+
+describe('recordsForPlayer', () => {
+  const defs = {
+    match:  [{ key: 'k', label: 'Kills' }, { key: 'hit', label: 'HIT%' }],
+    season: [{ key: 'k', label: 'Kills' }],
+    career: [{ key: 'ace', label: 'Aces' }],
+    team_match: [{ key: 'k', label: 'Kills' }],
+  };
+  const boards = {
+    match:  { k: [{ rank: 1, name: 'Ava Lee', val: 25, year: '2026', opp: 'Fremd' }, { rank: 2, name: 'Mia', val: 20, year: '2026' }],
+              hit: [{ rank: 1, name: 'Ava Lee', val: 0.5, year: '2026' }] },
+    season: { k: [{ rank: 3, name: ' ava lee ', val: 300, year: '2025' }] },
+    career: { ace: [{ rank: 1, name: 'Ava Lee', val: 90, career_year_end: '2026' }] },
+    team_match: { k: [{ rank: 1, name: 'Ava Lee', val: 70, year: '2026' }] },
+  };
+
+  it('finds only this player, count stats, no team records; best rank first', () => {
+    const r = recordsForPlayer(boards, 'Ava Lee', defs);
+    expect(r.map(x => `${x.tab}:${x.label}:#${x.rank}`)).toEqual(['match:Kills:#1', 'career:Aces:#1', 'season:Kills:#3']);
+    expect(r[0]).toMatchObject({ value: '25', year: '2026', opp: 'Fremd' });
+    expect(r[1].year).toBe('2026');
+  });
+
+  it('returns [] without boards or name', () => {
+    expect(recordsForPlayer(null, 'Ava', defs)).toEqual([]);
+    expect(recordsForPlayer(boards, '', defs)).toEqual([]);
   });
 });
