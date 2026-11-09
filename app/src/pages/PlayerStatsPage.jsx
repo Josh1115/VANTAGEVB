@@ -790,18 +790,20 @@ export function PlayerStatsPage() {
         )
       ) : (
         // Awards tab
-        playerAwardGroups.length === 0 && playerRecords.length === 0 && !(recordBoards?.doubles?.singles > 0) && !(recordBoards?.verTiers?.great > 0) && !(recordBoards?.verTiers?.elite > 0) ? (
+        playerAwardGroups.length === 0 && playerRecords.length === 0 && !(Object.values(recordBoards?.doubles?.byStat ?? {}).some(n => n > 0)) && !(recordBoards?.verTiers?.great > 0) && !(recordBoards?.verTiers?.elite > 0) ? (
           recordBoards
             ? <EmptyState title="No awards or records" description="Awards entered in the History page (when the player name matches) and all-time top-10 records will appear here." />
             : <div className="flex justify-center py-10"><Spinner /></div>
         ) : (
           <div className="px-4 py-5 space-y-6">
-            {(recordBoards?.doubles?.singles > 0 || recordBoards?.verTiers?.great > 0 || recordBoards?.verTiers?.elite > 0) && (
+            {(Object.values(recordBoards?.doubles?.byStat ?? {}).some(n => n > 0) || recordBoards?.verTiers?.great > 0 || recordBoards?.verTiers?.elite > 0) && (
               <section>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white mb-3">Milestones</p>
                 <div className="grid grid-cols-3 gap-x-3 gap-y-6">
                   {[
-                    { key: 'sd', label: 'Single-Doubles', count: recordBoards.doubles.singles, note: '10+ in one stat', ring: 'from-emerald-200 via-emerald-400 to-emerald-700', face: 'from-emerald-300 to-emerald-600 border-emerald-200/60', shadow: 'shadow-emerald-900/40', text: 'text-emerald-950' },
+                    ...[['k', 'Kills'], ['ace', 'Aces'], ['blk', 'Blocks'], ['ast', 'Assists'], ['dig', 'Digs']].map(([k, name]) => (
+                      { key: `ten-${k}`, label: `10+ ${name}`, count: recordBoards.doubles.byStat[k], note: 'in a match', ring: 'from-emerald-200 via-emerald-400 to-emerald-700', face: 'from-emerald-300 to-emerald-600 border-emerald-200/60', shadow: 'shadow-emerald-900/40', text: 'text-emerald-950' }
+                    )),
                     { key: 'dd', label: 'Double-Doubles', count: recordBoards.doubles.doubles, note: '10+ in two stats', ring: 'from-sky-200 via-sky-400 to-sky-700', face: 'from-sky-300 to-sky-600 border-sky-200/60', shadow: 'shadow-sky-900/40', text: 'text-sky-950' },
                     { key: 'td', label: 'Triple-Doubles', count: recordBoards.doubles.triples, note: '10+ in three stats', ring: 'from-fuchsia-200 via-fuchsia-400 to-fuchsia-700', face: 'from-fuchsia-300 to-fuchsia-600 border-fuchsia-200/60', shadow: 'shadow-fuchsia-900/40', text: 'text-fuchsia-950' },
                     { key: 'great', label: 'GREAT VER', count: recordBoards.verTiers.great, note: 'VER 4.50–6.99', ring: 'from-violet-200 via-violet-400 to-violet-700', face: 'from-violet-300 to-violet-600 border-violet-200/60', shadow: 'shadow-violet-900/40', text: 'text-violet-950' },

@@ -91,22 +91,25 @@ export function recordsForPlayer(boards, playerName, statDefs) {
   return items.sort((a, b) => a.rank - b.rank || a.tabOrder - b.tabOrder || a.order - b.order);
 }
 
-// Volleyball "single-double" / "double-double" / "triple-double": 10+ in one / two / three of these
+// Volleyball "double-double" / "triple-double": 10+ in two / three of these
 // count stats in one match (like basketball). Blocks can be halves (assists).
 export const DOUBLE_STATS = ['k', 'ace', 'blk', 'ast', 'dig'];
 
 /**
  * lines: [{ stats: { k, ace, blk, ast, dig } }] — one per match.
- * Returns { singles, doubles, triples }: matches with 1+ / 2+ / 3+ categories at 10+.
- * Higher ones also count toward lower ones (a triple-double is also a double-double).
+ * Returns { doubles, triples, byStat }: matches with 2+ / 3+ categories at 10+
+ * (a triple-double is also a double-double), and byStat = { k, ace, blk, ast, dig }:
+ * how many matches had 10+ in that one stat.
  */
 export function countDoubles(lines) {
-  let singles = 0, doubles = 0, triples = 0;
+  let doubles = 0, triples = 0;
+  const byStat = Object.fromEntries(DOUBLE_STATS.map(k => [k, 0]));
   for (const { stats } of lines ?? []) {
-    const hits = DOUBLE_STATS.filter(k => (stats?.[k] ?? 0) >= 10).length;
-    if (hits >= 1) singles++;
+    const hitKeys = DOUBLE_STATS.filter(k => (stats?.[k] ?? 0) >= 10);
+    hitKeys.forEach(k => { byStat[k]++; });
+    const hits = hitKeys.length;
     if (hits >= 2) doubles++;
     if (hits >= 3) triples++;
   }
-  return { singles, doubles, triples };
+  return { doubles, triples, byStat };
 }

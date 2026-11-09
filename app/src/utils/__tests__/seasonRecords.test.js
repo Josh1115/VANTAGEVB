@@ -106,9 +106,9 @@ describe('countDoubles', () => {
       { stats: { blk: 10, ace: 10, k: 10, dig: 10 } },// 4 cats → triple + double
       { stats: {} },
     ];
-    expect(countDoubles(lines)).toEqual({ singles: 4, doubles: 3, triples: 2 });
+    expect(countDoubles(lines)).toEqual({ doubles: 3, triples: 2, byStat: { k: 3, ace: 1, blk: 1, ast: 1, dig: 4 } });
   });
   it('handles empty input', () => {
-    expect(countDoubles(null)).toEqual({ singles: 0, doubles: 0, triples: 0 });
+    expect(countDoubles(null)).toEqual({ doubles: 0, triples: 0, byStat: { k: 0, ace: 0, blk: 0, ast: 0, dig: 0 } });
   });
 });
