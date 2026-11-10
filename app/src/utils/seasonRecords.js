@@ -113,3 +113,28 @@ export function countDoubles(lines) {
   }
   return { doubles, triples, byStat };
 }
+
+// Career Club: lifetime-total tiers per stat (bronze → diamond).
+export const CAREER_CLUB_TIERS = {
+  k:   [100, 250, 500, 750, 1000],
+  dig: [100, 250, 500, 750, 1000],
+  ast: [100, 250, 500, 750, 1000],
+  ace: [25, 50, 100, 150, 200],
+  blk: [25, 50, 100, 150, 200],
+};
+
+/**
+ * lines: per-match lines ({ stats }); preApp: player row with pre_vbstat_* totals.
+ * Returns [{ stat, total, level (1-5), threshold, next }] for stats that reached tier 1.
+ */
+export function careerClub(lines, preApp) {
+  const out = [];
+  for (const [stat, tiers] of Object.entries(CAREER_CLUB_TIERS)) {
+    let total = Number(preApp?.[`pre_vbstat_${stat}`] ?? 0) || 0;
+    for (const { stats } of lines ?? []) total += Number(stats?.[stat] ?? 0) || 0;
+    const level = tiers.filter(t => total >= t).length;
+    if (!level) continue;
+    out.push({ stat, total, level, threshold: tiers[level - 1], next: tiers[level] ?? null });
+  }
+  return out;
+}

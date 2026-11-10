@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import { db } from '../db/schema';
 import { SCHOOL_YEAR_CLS } from '../constants';
-import { recordsForPlayer, countDoubles } from '../utils/seasonRecords';
+import { recordsForPlayer, countDoubles, careerClub } from '../utils/seasonRecords';
 import { computePlayerStats, computePlayerTrends, computeTeamStats, computePlayerWPA, computePQ, computePlayerRotationPassing } from '../stats/engine';
 import {
   getContactsForMatches,
@@ -439,6 +439,15 @@ function withoutNameCol(cols) {
   return cols.filter((c) => c.key !== 'name');
 }
 
+const CAREER_STAT_NAME = { k: 'Kills', dig: 'Digs', ast: 'Assists', ace: 'Aces', blk: 'Blocks' };
+const CAREER_TIER_STYLE = [
+  { name: 'Bronze',   ring: 'from-orange-200 via-orange-500 to-orange-900', face: 'from-orange-400 to-orange-700 border-orange-200/60', shadow: 'shadow-orange-900/40', text: 'text-orange-950' },
+  { name: 'Silver',   ring: 'from-slate-100 via-slate-300 to-slate-500',    face: 'from-slate-200 to-slate-400 border-white/60',       shadow: 'shadow-slate-900/40',  text: 'text-slate-900' },
+  { name: 'Gold',     ring: 'from-yellow-200 via-amber-400 to-amber-700',   face: 'from-amber-300 to-amber-600 border-amber-200/60',  shadow: 'shadow-amber-900/40',  text: 'text-amber-950' },
+  { name: 'Platinum', ring: 'from-teal-50 via-teal-200 to-teal-500',        face: 'from-teal-100 to-teal-300 border-white/60',        shadow: 'shadow-teal-900/40',   text: 'text-teal-950' },
+  { name: 'Diamond',  ring: 'from-white via-sky-200 to-indigo-400',         face: 'from-sky-100 to-indigo-300 border-white/70',       shadow: 'shadow-indigo-900/50', text: 'text-indigo-950' },
+];
+
 export function PlayerStatsPage() {
   const { teamId, playerId } = useParams();
   const [searchParams] = useSearchParams();
@@ -642,7 +651,7 @@ export function PlayerStatsPage() {
           Promise.all(tabs.map(t => computeLeaderboards(t, tid))),
           computePlayerMatchLines(tid, pid),
         ]);
-        if (!cancelled) setRecordBoards({ boards: Object.fromEntries(tabs.map((t, i) => [t, results[i]])), defs: RECORD_STAT_DEFS, doubles: countDoubles(lines), verTiers: {
+        if (!cancelled) setRecordBoards({ boards: Object.fromEntries(tabs.map((t, i) => [t, results[i]])), defs: RECORD_STAT_DEFS, doubles: countDoubles(lines), career: careerClub(lines, player), verTiers: {
           elite: lines.filter(l => l.ver != null && VER_TIERS.find(t => l.ver >= t.min)?.label === 'ELITE').length,
           great: lines.filter(l => l.ver != null && VER_TIERS.find(t => l.ver >= t.min)?.label === 'GREAT').length,
         } });
@@ -651,7 +660,7 @@ export function PlayerStatsPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [mainTab, recordBoards, tid, pid]);
+  }, [mainTab, recordBoards, tid, pid, player]);
   const playerRecords = useMemo(
     () => recordBoards ? recordsForPlayer(recordBoards.boards, player?.name, recordBoards.defs) : [],
     [recordBoards, player?.name]
@@ -796,32 +805,24 @@ export function PlayerStatsPage() {
             : <div className="flex justify-center py-10"><Spinner /></div>
         ) : (
           <div className="px-4 py-5 space-y-6">
-            {(Object.values(recordBoards?.doubles?.byStat ?? {}).some(n => n > 0) || recordBoards?.verTiers?.great > 0 || recordBoards?.verTiers?.elite > 0) && (
-              <section>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white mb-3">Milestones</p>
-                <div className="grid grid-cols-3 gap-x-3 gap-y-6">
-                  {[
-                    ...[['k', 'Kills'], ['ace', 'Aces'], ['blk', 'Blocks'], ['ast', 'Assists'], ['dig', 'Digs']].map(([k, name]) => (
-                      { key: `ten-${k}`, label: `10+ ${name}`, count: recordBoards.doubles.byStat[k], note: 'in a match', ring: 'from-emerald-200 via-emerald-400 to-emerald-700', face: 'from-emerald-300 to-emerald-600 border-emerald-200/60', shadow: 'shadow-emerald-900/40', text: 'text-emerald-950' }
-                    )),
-                    { key: 'dd', label: 'Double-Doubles', count: recordBoards.doubles.doubles, note: '10+ in two stats', ring: 'from-sky-200 via-sky-400 to-sky-700', face: 'from-sky-300 to-sky-600 border-sky-200/60', shadow: 'shadow-sky-900/40', text: 'text-sky-950' },
-                    { key: 'td', label: 'Triple-Doubles', count: recordBoards.doubles.triples, note: '10+ in three stats', ring: 'from-fuchsia-200 via-fuchsia-400 to-fuchsia-700', face: 'from-fuchsia-300 to-fuchsia-600 border-fuchsia-200/60', shadow: 'shadow-fuchsia-900/40', text: 'text-fuchsia-950' },
-                    { key: 'great', label: 'GREAT VER', count: recordBoards.verTiers.great, note: 'VER 4.50–6.99', ring: 'from-violet-200 via-violet-400 to-violet-700', face: 'from-violet-300 to-violet-600 border-violet-200/60', shadow: 'shadow-violet-900/40', text: 'text-violet-950' },
-                    { key: 'elite', label: 'ELITE VER', count: recordBoards.verTiers.elite, note: 'VER 7.00+', ring: 'from-cyan-100 via-cyan-300 to-cyan-600', face: 'from-cyan-200 to-cyan-500 border-cyan-100/60', shadow: 'shadow-cyan-900/40', text: 'text-cyan-950' },
-                  ].filter(m => m.count > 0).map(m => (
-                    <div key={m.key} className="flex flex-col items-center text-center min-w-0">
-                      <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${m.ring} p-[3px] shadow-lg ${m.shadow}`}>
-                        <div className={`w-full h-full rounded-full bg-gradient-to-br ${m.face} border flex items-center justify-center leading-none ${m.text}`}>
-                          <span className="text-xl font-black tabular-nums">×{m.count}</span>
-                        </div>
-                      </div>
-                      <p className="mt-2 text-[11px] font-black uppercase tracking-wide text-white leading-tight line-clamp-2 break-words w-full">{m.label}</p>
-                      <p className="text-[10px] text-slate-400 leading-tight mt-0.5">{m.note}</p>
-                    </div>
+            {(() => {
+              const mb = recordBoards;
+              const milestoneCount = mb ? Object.values(mb.doubles?.byStat ?? {}).reduce((a, n) => a + n, 0) + (mb.doubles?.doubles ?? 0) + (mb.doubles?.triples ?? 0) + (mb.verTiers?.great ?? 0) + (mb.verTiers?.elite ?? 0) : 0;
+              const items = [
+                ['🏆', playerAwardGroups.reduce((a, g) => a + g.winners.length, 0), 'Awards'],
+                ['🥇', playerRecords.length, 'Records'],
+                ['💯', mb?.career?.length ?? 0, 'Club'],
+                ['⭐', milestoneCount, 'Milestones'],
+              ].filter(([, n]) => n > 0);
+              if (!items.length) return null;
+              return (
+                <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 rounded-xl bg-slate-800/60 border border-slate-700/60 px-3 py-2.5">
+                  {items.map(([icon, n, name]) => (
+                    <span key={name} className="text-xs font-bold text-white whitespace-nowrap"><span className="mr-1">{icon}</span><span className="tabular-nums">{n}</span> <span className="text-slate-400 font-semibold">{name}</span></span>
                   ))}
                 </div>
-              </section>
-            )}
+              );
+            })()}
             {playerAwardGroups.length > 0 && (
               <section>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white mb-3">Awards</p>
@@ -886,6 +887,54 @@ export function PlayerStatsPage() {
                 </div>
                   );
                 })}
+                </div>
+              </section>
+            )}
+            {recordBoards?.career?.length > 0 && (
+              <section>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white mb-3">Career Club</p>
+                <div className="grid grid-cols-3 gap-x-3 gap-y-6">
+                  {recordBoards.career.map(c => {
+                    const tier = CAREER_TIER_STYLE[c.level - 1];
+                    return (
+                      <div key={c.stat} className="flex flex-col items-center text-center min-w-0">
+                        <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${tier.ring} p-[3px] shadow-lg ${tier.shadow}`}>
+                          <div className={`w-full h-full rounded-full bg-gradient-to-br ${tier.face} border flex items-center justify-center leading-none ${tier.text}`}>
+                            <span className="text-lg font-black tabular-nums">{c.threshold.toLocaleString()}</span>
+                          </div>
+                        </div>
+                        <p className="mt-2 text-[11px] font-black uppercase tracking-wide text-white leading-tight w-full">{CAREER_STAT_NAME[c.stat]}</p>
+                        <p className="text-[10px] font-bold text-slate-300 leading-tight mt-0.5">{tier.name}</p>
+                        <p className="text-[10px] text-slate-400 leading-tight mt-0.5 tabular-nums">{Math.round(c.total).toLocaleString()}{c.next ? ` · next ${c.next.toLocaleString()}` : ''}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+            {(Object.values(recordBoards?.doubles?.byStat ?? {}).some(n => n > 0) || recordBoards?.verTiers?.great > 0 || recordBoards?.verTiers?.elite > 0) && (
+              <section>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white mb-3">Milestones</p>
+                <div className="grid grid-cols-3 gap-x-3 gap-y-6">
+                  {[
+                    ...[['k', 'Kills'], ['ace', 'Aces'], ['blk', 'Blocks'], ['ast', 'Assists'], ['dig', 'Digs']].map(([k, name]) => (
+                      { key: `ten-${k}`, label: `10+ ${name}`, count: recordBoards.doubles.byStat[k], note: 'in a match', ring: 'from-emerald-200 via-emerald-400 to-emerald-700', face: 'from-emerald-300 to-emerald-600 border-emerald-200/60', shadow: 'shadow-emerald-900/40', text: 'text-emerald-950' }
+                    )),
+                    { key: 'dd', label: 'Double-Doubles', count: recordBoards.doubles.doubles, note: '10+ in two stats', ring: 'from-sky-200 via-sky-400 to-sky-700', face: 'from-sky-300 to-sky-600 border-sky-200/60', shadow: 'shadow-sky-900/40', text: 'text-sky-950' },
+                    { key: 'td', label: 'Triple-Doubles', count: recordBoards.doubles.triples, note: '10+ in three stats', ring: 'from-fuchsia-200 via-fuchsia-400 to-fuchsia-700', face: 'from-fuchsia-300 to-fuchsia-600 border-fuchsia-200/60', shadow: 'shadow-fuchsia-900/40', text: 'text-fuchsia-950' },
+                    { key: 'great', label: 'GREAT VER', count: recordBoards.verTiers.great, note: 'VER 4.50–6.99', ring: 'from-violet-200 via-violet-400 to-violet-700', face: 'from-violet-300 to-violet-600 border-violet-200/60', shadow: 'shadow-violet-900/40', text: 'text-violet-950' },
+                    { key: 'elite', label: 'ELITE VER', count: recordBoards.verTiers.elite, note: 'VER 7.00+', ring: 'from-cyan-100 via-cyan-300 to-cyan-600', face: 'from-cyan-200 to-cyan-500 border-cyan-100/60', shadow: 'shadow-cyan-900/40', text: 'text-cyan-950' },
+                  ].filter(m => m.count > 0).map(m => (
+                    <div key={m.key} className="flex flex-col items-center text-center min-w-0">
+                      <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${m.ring} p-[3px] shadow-lg ${m.shadow}`}>
+                        <div className={`w-full h-full rounded-full bg-gradient-to-br ${m.face} border flex items-center justify-center leading-none ${m.text}`}>
+                          <span className="text-xl font-black tabular-nums">×{m.count}</span>
+                        </div>
+                      </div>
+                      <p className="mt-2 text-[11px] font-black uppercase tracking-wide text-white leading-tight line-clamp-2 break-words w-full">{m.label}</p>
+                      <p className="text-[10px] text-slate-400 leading-tight mt-0.5">{m.note}</p>
+                    </div>
+                  ))}
                 </div>
               </section>
             )}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { recordsForYear, recordsForPlayer, countDoubles, rowYear } from '../seasonRecords';
+import { recordsForYear, recordsForPlayer, countDoubles, rowYear, careerClub } from '../seasonRecords';
 
 const defs = {
   match:       [{ key: 'k', label: 'Kills' }, { key: 'dig', label: 'Digs' }],
@@ -110,5 +110,19 @@ describe('countDoubles', () => {
   });
   it('handles empty input', () => {
     expect(countDoubles(null)).toEqual({ doubles: 0, triples: 0, byStat: { k: 0, ace: 0, blk: 0, ast: 0, dig: 0 } });
+  });
+});
+
+describe('careerClub', () => {
+  it('sums match lines + pre-app totals and picks the tier', () => {
+    const lines = [{ stats: { k: 60, ace: 10, dig: 5 } }, { stats: { k: 50, ace: 20, blk: 2.5 } }];
+    const r = careerClub(lines, { pre_vbstat_k: 400, pre_vbstat_dig: null });
+    expect(r.find(x => x.stat === 'k')).toEqual({ stat: 'k', total: 510, level: 3, threshold: 500, next: 750 });
+    expect(r.find(x => x.stat === 'ace')).toEqual({ stat: 'ace', total: 30, level: 1, threshold: 25, next: 50 });
+    expect(r.find(x => x.stat === 'dig')).toBeUndefined();
+    expect(r.find(x => x.stat === 'blk')).toBeUndefined();
+  });
+  it('top tier has no next', () => {
+    expect(careerClub([{ stats: { blk: 250 } }], null)[0]).toMatchObject({ level: 5, next: null });
   });
 });
