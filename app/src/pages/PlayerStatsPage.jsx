@@ -426,6 +426,50 @@ const STAT_TABS = [
   { value: 'ver',       label: 'VER'       },
 ];
 
+// Build By Game table rows from computePlayerTrends output.
+function buildByGameRows(trends, wpaByMatch = {}, pid) {
+  const trendRows = trends?.byPlayer?.[pid];
+  if (!trendRows) return [];
+  return trends.matches.map((m, i) => {
+    const row    = trendRows[i];
+    const wpa    = wpaByMatch[m.id];
+    const d      = m.date ? new Date(m.date) : null;
+    const dateStr  = d ? `${d.getMonth() + 1}/${d.getDate()}` : '—';
+    const opp      = m.opponentName || '—';
+    const oppAbbr  = m.opponentAbbr || m.opponentName?.slice(0, 4).toUpperCase() || dateStr;
+    const wpaFields = { wpa: wpa?.wpa ?? null, wpa_pos: wpa?.wpa_pos ?? null, wpa_neg: wpa?.wpa_neg ?? null };
+    if (!row) return { _key: m.id, date: dateStr, opp, oppAbbr, si_pct: null, ace: null, se: null, k: null, ae: null, hit_pct: null, blks: null, dig: null, ast: null, ver: null, ...wpaFields };
+    return { _key: m.id, date: dateStr, opp, oppAbbr, ...row, blks: (row.bs ?? 0) + (row.ba ?? 0), ...wpaFields };
+  });
+}
+
+// Load + compute By Game rows for a season other than the one on screen.
+async function loadSeasonGameRows(seasonId, pid) {
+  const ms = await db.matches.where('season_id').equals(seasonId)
+    .filter(m => m.match_type !== 'exhibition' && m.status !== 'scheduled')
+    .sortBy('date');
+  if (!ms.length) return [];
+  const ids = ms.map(m => m.id);
+  const [contacts, setsPerMatch, positions, rallies] = await Promise.all([
+    getContactsForMatches(ids),
+    getBatchSetsPlayedCount(ids),
+    getPlayerPositionsForMatches(ids),
+    getRalliesForMatchesWithMatchId(ids),
+  ]);
+  const trends = computePlayerTrends(ms, contacts, setsPerMatch, positions);
+  const { pAlpha, pBeta, qAlpha, qBeta } = computePQ(rallies);
+  const contactByMatch = {};
+  for (const c of contacts) (contactByMatch[c.match_id] ??= []).push(c);
+  const rallyByMatch = {};
+  for (const r of rallies) (rallyByMatch[r.match_id] ??= []).push(r);
+  const wpaByMatch = {};
+  for (const m of ms) {
+    const wpa = computePlayerWPA(contactByMatch[m.id] ?? [], rallyByMatch[m.id] ?? [], pAlpha, pBeta, qAlpha, qBeta);
+    wpaByMatch[m.id] = wpa[String(pid)] ?? null;
+  }
+  return buildByGameRows(trends, wpaByMatch, pid);
+}
+
 const BY_GAME_COLS = [
   { key: 'date',    label: 'Date'  },
   { key: 'opp',    label: 'Opp'   },
@@ -576,21 +620,39 @@ export function PlayerStatsPage() {
   // Per-match rows for By Game tab
   const byGameRows = useMemo(() => {
     if (!stats?.trends) return [];
-    const trendRows  = stats.trends.byPlayer[pid];
-    const wpaByMatch = stats.wpaByMatch ?? {};
-    if (!trendRows) return [];
-    return stats.trends.matches.map((m, i) => {
-      const row    = trendRows[i];
-      const wpa    = wpaByMatch[m.id];
-      const d      = m.date ? new Date(m.date) : null;
-      const dateStr  = d ? `${d.getMonth() + 1}/${d.getDate()}` : '—';
-      const opp      = m.opponentName || '—';
-      const oppAbbr  = m.opponentAbbr || m.opponentName?.slice(0, 4).toUpperCase() || dateStr;
-      const wpaFields = { wpa: wpa?.wpa ?? null, wpa_pos: wpa?.wpa_pos ?? null, wpa_neg: wpa?.wpa_neg ?? null };
-      if (!row) return { _key: m.id, date: dateStr, opp, oppAbbr, si_pct: null, ace: null, se: null, k: null, ae: null, hit_pct: null, blks: null, dig: null, ast: null, ver: null, ...wpaFields };
-      return { _key: m.id, date: dateStr, opp, oppAbbr, ...row, blks: (row.bs ?? 0) + (row.ba ?? 0), ...wpaFields };
-    });
+    return buildByGameRows(stats.trends, stats.wpaByMatch, pid);
   }, [stats, pid]);
+
+  // By Game season menu. null = the season this page is showing (newest by default).
+  const [byGameSeason, setByGameSeason] = useState(null);
+  const [pastGameRows, setPastGameRows] = useState({}); // seasonId -> rows (cached per visit)
+  const seasonsWithGames = useLiveQuery(async () => {
+    if (!seasons?.length) return [];
+    const ids = new Set();
+    await db.matches.where('season_id').anyOf(seasons.map(s => s.id))
+      .filter(m => m.match_type !== 'exhibition' && m.status !== 'scheduled')
+      .each(m => ids.add(m.season_id));
+    return [...seasons].filter(s => ids.has(s.id)).sort((a, b) => b.id - a.id);
+  }, [seasons]);
+  const byGameSel = byGameSeason ?? season?.id;
+  useEffect(() => {
+    if (mainTab !== 'bygame' || !seasonsWithGames || !season) return;
+    const want = byGameSel === 'all'
+      ? seasonsWithGames.map(s => s.id).filter(id => id !== season.id)
+      : byGameSel !== season.id ? [byGameSel] : [];
+    const missing = want.filter(id => !(id in pastGameRows));
+    if (!missing.length) return;
+    let cancelled = false;
+    Promise.all(missing.map(id => loadSeasonGameRows(id, pid).catch(() => []).then(rows => [id, rows])))
+      .then(pairs => { if (!cancelled) setPastGameRows(prev => ({ ...prev, ...Object.fromEntries(pairs) })); });
+    return () => { cancelled = true; };
+  }, [mainTab, byGameSel, seasonsWithGames, season, pid, pastGameRows]);
+  const rowsForSeason = (id) => (id === season?.id ? byGameRows : pastGameRows[id]);
+  // [{ season, rows }] groups to show; rows undefined = still loading
+  const byGameGroups = (byGameSel === 'all' ? (seasonsWithGames ?? []) : (seasonsWithGames ?? []).filter(s => s.id === byGameSel))
+    .map(s => ({ season: s, rows: rowsForSeason(s.id) }));
+  const byGameLoading = byGameGroups.some(g => g.rows === undefined);
+  const byGameVisible = byGameGroups.filter(g => g.rows?.length);
 
   const servingCols = useMemo(
     () => withoutNameCol(SERVING_COLS[serveView] ?? SERVING_COLS.all),
@@ -763,8 +825,18 @@ export function PlayerStatsPage() {
         )
       ) : mainTab === 'bygame' ? (
         // By Game tab
-        byGameRows.length === 0 ? (
-          <EmptyState title="No matches" description="No matches recorded this season." />
+        <div>
+        {(seasonsWithGames?.length ?? 0) > 0 && (
+          <TabBar
+            tabs={[{ value: 'all', label: 'All' }, ...seasonsWithGames.map(s => ({ value: s.id, label: s.name ?? String(s.year) }))]}
+            active={byGameSel}
+            onChange={setByGameSeason}
+          />
+        )}
+        {byGameLoading ? (
+          <div className="flex justify-center py-10"><Spinner /></div>
+        ) : byGameVisible.length === 0 ? (
+          <EmptyState title="No matches" description={byGameSel === season?.id ? 'No matches recorded this season.' : 'This player has no games in this season.'} />
         ) : (
           <div className="overflow-x-auto py-3">
             <table className="w-full text-sm">
@@ -783,7 +855,13 @@ export function PlayerStatsPage() {
                 </tr>
               </thead>
               <tbody>
-                {byGameRows.map((row, i) => (
+                {byGameVisible.map(({ season: gs, rows }) => [
+                  byGameSel === 'all' && (
+                    <tr key={`hdr-${gs.id}`} className="bg-slate-800/70">
+                      <td colSpan={BY_GAME_COLS.length} className="px-2 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-white">{gs.name ?? gs.year}</td>
+                    </tr>
+                  ),
+                  ...rows.map((row, i) => (
                   <tr
                     key={row._key}
                     className={`border-b border-slate-800 ${i % 2 === 0 ? '' : 'bg-slate-900/40'}`}
@@ -801,11 +879,13 @@ export function PlayerStatsPage() {
                       );
                     })}
                   </tr>
-                ))}
+                  )),
+                ])}
               </tbody>
             </table>
           </div>
-        )
+        )}
+        </div>
       ) : (
         // Awards tab
         playerAwardGroups.length === 0 && playerRecords.length === 0 && !(Object.values(recordBoards?.doubles?.byStat ?? {}).some(n => n > 0)) && !(recordBoards?.verTiers?.great > 0) && !(recordBoards?.verTiers?.elite > 0) ? (
