@@ -24,6 +24,14 @@ import { PROJECTION_MIN_MATCHES, buildProjectedRow, buildCareerProjectedRow, SEA
 import { useProjectedSeasonMatches } from '../hooks/useSettingsStorage';
 import { PageHeader } from '../components/layout/PageHeader';
 import { TabBar } from '../components/ui/Tab';
+
+const AWARDS_FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'awards', label: 'Awards' },
+  { value: 'records', label: 'Records' },
+  { value: 'career', label: 'Career' },
+  { value: 'milestones', label: 'Milestones' },
+];
 import { StatTable } from '../components/stats/StatTable';
 import { Spinner } from '../components/ui/Spinner';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -640,6 +648,7 @@ export function PlayerStatsPage() {
   // All-time records boards (same lists as the Records page), loaded only when
   // the Awards tab is opened, for this player's record medals.
   const [recordBoards, setRecordBoards] = useState(null);
+  const [awardsFilter, setAwardsFilter] = useState('all');
   useEffect(() => {
     if (mainTab !== 'awards' || recordBoards || !tid) return;
     let cancelled = false;
@@ -814,16 +823,20 @@ export function PlayerStatsPage() {
                 ['💯', mb?.career?.length ?? 0, 'Club'],
                 ['⭐', milestoneCount, 'Milestones'],
               ].filter(([, n]) => n > 0);
-              if (!items.length) return null;
               return (
-                <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 rounded-xl bg-slate-800/60 border border-slate-700/60 px-3 py-2.5">
-                  {items.map(([icon, n, name]) => (
-                    <span key={name} className="text-xs font-bold text-white whitespace-nowrap"><span className="mr-1">{icon}</span><span className="tabular-nums">{n}</span> <span className="text-slate-400 font-semibold">{name}</span></span>
-                  ))}
+                <div className="space-y-3">
+                  {items.length > 0 && (
+                    <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 rounded-xl bg-slate-800/60 border border-slate-700/60 px-3 py-2.5">
+                      {items.map(([icon, n, name]) => (
+                        <span key={name} className="text-xs font-bold text-white whitespace-nowrap"><span className="mr-1">{icon}</span><span className="tabular-nums">{n}</span> <span className="text-slate-400 font-semibold">{name}</span></span>
+                      ))}
+                    </div>
+                  )}
+                  <TabBar tabs={AWARDS_FILTERS} active={awardsFilter} onChange={setAwardsFilter} />
                 </div>
               );
             })()}
-            {playerAwardGroups.length > 0 && (
+            {(awardsFilter === 'all' || awardsFilter === 'awards') && playerAwardGroups.length > 0 && (
               <section>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white mb-3">Awards</p>
                 <div className="grid grid-cols-3 gap-x-3 gap-y-6">
@@ -851,7 +864,7 @@ export function PlayerStatsPage() {
                 </div>
               </section>
             )}
-            {playerRecords.length > 0 && (
+            {(awardsFilter === 'all' || awardsFilter === 'records') && playerRecords.length > 0 && (
               <section>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white mb-3">Records</p>
                 <div className="space-y-5">
@@ -890,7 +903,7 @@ export function PlayerStatsPage() {
                 </div>
               </section>
             )}
-            {recordBoards?.career?.length > 0 && (
+            {(awardsFilter === 'all' || awardsFilter === 'career') && recordBoards?.career?.length > 0 && (
               <section>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white mb-3">Career Club</p>
                 <div className="grid grid-cols-3 gap-x-3 gap-y-6">
@@ -912,7 +925,7 @@ export function PlayerStatsPage() {
                 </div>
               </section>
             )}
-            {(Object.values(recordBoards?.doubles?.byStat ?? {}).some(n => n > 0) || recordBoards?.verTiers?.great > 0 || recordBoards?.verTiers?.elite > 0) && (
+            {(awardsFilter === 'all' || awardsFilter === 'milestones') && (Object.values(recordBoards?.doubles?.byStat ?? {}).some(n => n > 0) || recordBoards?.verTiers?.great > 0 || recordBoards?.verTiers?.elite > 0) && (
               <section>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white mb-3">Milestones</p>
                 <div className="grid grid-cols-3 gap-x-3 gap-y-6">
