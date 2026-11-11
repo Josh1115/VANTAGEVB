@@ -16,6 +16,8 @@ import { PostSeasonModal } from '../components/shared/PostSeasonModal';
 import { applyInferredSeasonFinish, snapshotSeasonRoster, prunedPlayoffRounds, seasonTitles, withPlayoffSetScores, readSetScores, resolveSeasonFinish, seasonPlayoffRounds } from '../utils/seasonUtils';
 import { PlayoffRoundsList, SetScoresInput } from '../components/shared/PlayoffSetScores';
 import { recordsForYear } from '../utils/seasonRecords';
+import { exportSectionedCSV } from '../stats/export';
+import { exportTeamLabel, exportHint, exportFilename } from '../utils/exportLabel';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -1096,6 +1098,7 @@ export function HistoryPage() {
   const [confirmDeleteAwardType, setConfirmDeleteAwardType] = useState(null);
   const [confirmDeleteCommit,    setConfirmDeleteCommit]    = useState(null);
   const [confirmDeleteWinner,    setConfirmDeleteWinner]    = useState(null);
+  const [exportingCsv,           setExportingCsv]           = useState(false);
 
   // Default team/season from settings (read once — localStorage is synchronous)
   const defaultTeamId   = useMemo(() => getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID),   []);
@@ -1604,6 +1607,64 @@ export function HistoryPage() {
   const teamPrimaryColor   = orgColors[0] ?? currentTeam?.team_jersey_color?.[0] ?? null;
   const teamSecondaryColor = orgColors[1] ?? currentTeam?.team_jersey_color?.[1] ?? null;
 
+  // ── CSV backup export ─────────────────────────────────────────────────────
+  // Same season rows as the PDF (live season first, live W-L when available),
+  // plus coaches, commits, every award's winners, and tournaments.
+  const exportLabel = exportTeamLabel(currentTeam, gender);
+  const exportNote  = exportHint(gender, genderTeams, 'history');
+
+  async function exportHistoryCSV() {
+    if (!teamId || exportingCsv) return;
+    setExportingCsv(true);
+    try {
+      const seasons = showLiveCard
+        ? [{ ...(liveHistoryEntry ?? {}), year: activeSeason.year, wins: liveCardWins, losses: liveCardGames - liveCardWins,
+             head_coach: liveHistoryEntry?.head_coach ?? activeSeason?.head_coach ?? '',
+             asst_coach: liveHistoryEntry?.asst_coach ?? activeSeason?.asst_coach ?? '' }, ...sortedHistory]
+        : sortedHistory;
+      const seasonRows = seasons.map(h => {
+        const yr   = String(h.year);
+        const live = liveRecordsByYear?.[yr];
+        const rounds = seasonPlayoffRounds(h.playoff_rounds, matchesByYear?.[yr])
+          .filter(r => r.round || r.opponent)
+          .map(r => `${r.round || 'Playoff'}: ${r.result ?? ''} vs ${r.opponent ?? '?'}${r.score ? ` (${r.score})` : ''}`)
+          .join('; ');
+        return [
+          yr, live?.wins ?? h.wins ?? '', live?.losses ?? h.losses ?? '',
+          h.head_coach ?? '', h.asst_coach ?? '',
+          seasonTitles(h.title, matchesByYear?.[yr]).join(', '),
+          finishFor(h) ?? '', h.playoff_seed ?? '', h.state_rank ?? '', h.national_rank ?? '', h.class_rank ?? '',
+          h.classification ?? '', rounds,
+        ];
+      });
+      const coachRow = c => [c.name, c.wins, c.losses, c.winPct ?? '', c.yearLabel ?? ''];
+
+      const types = sortedAwardTypes;
+      const winners = types.length
+        ? await db.accolade_winners.where('type_id').anyOf(types.map(t => t.id)).toArray()
+        : [];
+      const typeName = Object.fromEntries(types.map(t => [t.id, t.name]));
+      const typeOrder = Object.fromEntries(types.map((t, i) => [t.id, i]));
+      const awardRows = winners
+        .sort((a, b) => (typeOrder[a.type_id] - typeOrder[b.type_id]) || String(b.year).localeCompare(String(a.year)))
+        .map(w => [typeName[w.type_id] ?? '', w.player_name ?? '', w.year ?? '', w.school_year ?? '', w.times_won ?? '']);
+
+      exportSectionedCSV([
+        { title: 'SEASONS', columns: ['Year', 'Wins', 'Losses', 'Head Coach', 'Asst Coach', 'Titles', 'Playoff Finish', 'Playoff Seed', 'State Rank', 'National Rank', 'Class Rank', 'Classification', 'Playoff Games'], rows: seasonRows },
+        { title: 'HEAD COACH RECORDS', columns: ['Coach', 'Wins', 'Losses', 'Win%', 'Years'], rows: coachRecords.map(coachRow) },
+        { title: 'ASSISTANT COACH RECORDS', columns: ['Coach', 'Wins', 'Losses', 'Win%', 'Years'], rows: asstCoachRecords.map(coachRow) },
+        { title: 'COLLEGE COMMITS', columns: ['Player', 'Grad Year', 'College', 'Division'], rows: sortedCommits.map(c => [c.player_name ?? '', c.grad_year ?? '', c.college ?? '', c.division ?? '']) },
+        { title: 'INDIVIDUAL AWARDS', columns: ['Award', 'Player', 'Year', 'Grade', 'Times Won'], rows: awardRows },
+        { title: 'TOURNAMENTS', columns: ['Year', 'Tournament', 'Seed', 'Place'], rows: [...(tourneyEntries ?? [])].sort((a, b) => b.year - a.year).map(t => [t.year ?? '', t.name ?? '', t.seed ?? '', t.placing ?? '']) },
+      ], exportFilename('History', orgName, currentTeam?.name));
+    } catch (err) {
+      console.error('History export failed', err);
+      alert('Export failed. Please try again.');
+    } finally {
+      setExportingCsv(false);
+    }
+  }
+
   // ── PDF export (item 14) ──────────────────────────────────────────────────
   function exportHistoryPDF() {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
@@ -1961,6 +2022,7 @@ export function HistoryPage() {
                                 <Tooltip
                                   cursor={{ fill: 'rgba(255,255,255,0.04)' }}
                                   contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }}
+                                  itemStyle={{ color: '#fff' }}
                                   formatter={(v) => [v, 'Wins']}
                                 />
                                 <Bar dataKey="wins" radius={[3, 3, 0, 0]}>
@@ -2112,6 +2174,19 @@ export function HistoryPage() {
               </>
             )}
           </>
+        )}
+
+        {teamId && (
+          <div className="pt-8 flex flex-col items-center gap-1">
+            <button
+              onClick={exportHistoryCSV}
+              disabled={exportingCsv}
+              className="px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-500 hover:text-slate-300 disabled:opacity-50"
+            >
+              {exportingCsv ? 'Exporting…' : `Export ${exportLabel} history (CSV)`}
+            </button>
+            <p className="text-[10px] text-slate-600 text-center">{exportNote}</p>
+          </div>
         )}
       </div>
 

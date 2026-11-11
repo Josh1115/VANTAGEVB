@@ -476,3 +476,76 @@ export async function exportBoxScorePDF(match, sets, teamName, roster, playerSta
   addPageFooters(doc);
   doc.save(filename);
 }
+
+// ── Records backup CSV ───────────────────────────────────────────────────────
+
+// Builds one flat table of every leaderboard plus tourney finishes so a coach
+// has a readable spreadsheet backup of the Records page. Values use the same
+// formatter as the screen so the file matches what the coach sees.
+// sections: [{ label, stats: [{ key, label, fmt }], boards: { statKey: rows[] } }]
+export function buildRecordsCsvRows(sections, tourneys = []) {
+  const rows = [];
+  for (const { label, stats, boards } of sections) {
+    for (const stat of stats) {
+      for (const r of boards?.[stat.key] ?? []) {
+        const careerYears = r.career_year_start != null
+          ? `${r.career_year_start}–${r.career_year_end ?? 'present'}`
+          : '';
+        rows.push({
+          Category: label,
+          Stat:     stat.label,
+          Rank:     r.rank,
+          Player:   r.name ?? '',
+          Value:    stat.fmt ? stat.fmt(r.val) : r.val,
+          Year:     careerYears || (r.year ?? ''),
+          Opponent: r.opp ?? '',
+          Date:     r.date ?? '',
+          Class:    r.class_year ?? '',
+          Source:   r.historical ? 'Manually entered' : 'App',
+        });
+      }
+    }
+  }
+  for (const t of tourneys) {
+    rows.push({
+      Category: 'Tourney',
+      Stat:     t.name ?? '',
+      Rank:     t.placing ?? '',
+      Player:   '',
+      Value:    t.seed != null ? `Seed ${t.seed}` : '',
+      Year:     t.year ?? '',
+      Opponent: '',
+      Date:     '',
+      Class:    '',
+      Source:   'Manually entered',
+    });
+  }
+  return rows;
+}
+
+export function exportRecordsCSV(sections, tourneys, filename = 'records.csv') {
+  const csv = Papa.unparse(buildRecordsCsvRows(sections, tourneys));
+  // BOM so Excel reads the en-dash / accented names correctly
+  triggerDownload(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' }), filename);
+}
+
+// ── Multi-section CSV (History backup) ───────────────────────────────────────
+
+// sections: [{ title, columns: string[], rows: any[][] }]. Each section gets a
+// title row, a header row, its rows, then a blank spacer row — readable as one
+// sheet in Excel / Google Sheets. Empty sections still print with "(none)".
+export function buildSectionedCsv(sections) {
+  const out = [];
+  for (const { title, columns, rows } of sections) {
+    out.push([title]);
+    out.push(columns);
+    if (rows.length) out.push(...rows);
+    else out.push(['(none)']);
+    out.push([]);
+  }
+  return Papa.unparse(out);
+}
+
+export function exportSectionedCSV(sections, filename = 'export.csv') {
+  triggerDownload(new Blob(['﻿' + buildSectionedCsv(sections)], { type: 'text/csv;charset=utf-8;' }), filename);
+}

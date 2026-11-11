@@ -15,6 +15,8 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { toTitleArr, ordinal, titlePriority } from '../utils/historyUtils';
 import { ChampionshipBannersSection } from '../components/shared/ChampionshipBanner';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { exportRecordsCSV } from '../stats/export';
+import { exportTeamLabel, exportHint, exportFilename } from '../utils/exportLabel';
 
 const RECORD_STATS = [
   { key: 'k',   label: 'Kills',   fmt: fmtCount },
@@ -1292,6 +1294,7 @@ export function RecordsPage() {
   const [confirmDeleteTourney,  setConfirmDeleteTourney]  = useState(null);
   const [confirmDeleteBaseline, setConfirmDeleteBaseline] = useState(null); // row being cleared, or null
   const [computeError,         setComputeError]         = useState(false);
+  const [exporting,            setExporting]            = useState(false);
 
   const orgs = useLiveQuery(
     () => db.organizations.toArray().then(o => o.sort((a, b) => a.name?.localeCompare(b.name))),
@@ -1496,6 +1499,31 @@ export function RecordsPage() {
     return items.sort((a, b) => a.year.localeCompare(b.year) || a.priority - b.priority);
   }, [seasonHistories, tourneyEntries, currentOrg, currentTeam]);
 
+  const exportLabel = exportTeamLabel(currentTeam, gender);
+  const exportNote  = exportHint(gender, genderTeams, 'records');
+
+  const handleExport = async () => {
+    if (!teamId || exporting) return;
+    setExporting(true);
+    try {
+      const sections = [];
+      for (const t of TABS) {
+        if (t.value === 'tourney') continue;
+        sections.push({
+          label:  t.label,
+          stats:  RECORD_STAT_DEFS[t.value],
+          boards: await computeLeaderboards(t.value, teamId),
+        });
+      }
+      exportRecordsCSV(sections, tourneyEntries ?? [], exportFilename('Records', orgName, currentTeam?.name));
+    } catch (err) {
+      console.error('Records export failed', err);
+      alert('Export failed. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const teamPrimaryColor   = orgColors[0] ?? currentTeam?.team_jersey_color?.[0] ?? null;
   const teamSecondaryColor = orgColors[1] ?? currentTeam?.team_jersey_color?.[1] ?? null;
 
@@ -1689,6 +1717,19 @@ export function RecordsPage() {
               </>
             )}
           </>
+        )}
+
+        {teamId && (
+          <div className="pt-8 flex flex-col items-center gap-1">
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-500 hover:text-slate-300 disabled:opacity-50"
+            >
+              {exporting ? 'Exporting…' : `Export ${exportLabel} records (CSV)`}
+            </button>
+            <p className="text-[10px] text-slate-600 text-center">{exportNote}</p>
+          </div>
         )}
       </div>
 

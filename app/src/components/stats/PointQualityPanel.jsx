@@ -63,6 +63,7 @@ function PointsPieChart({ earned, free, given, divisor = 1 }) {
               </Pie>
               <Tooltip
                 contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }}
+                itemStyle={{ color: '#fff' }}
                 formatter={(value, name) => [`${value} (${pct(value)})`, name]}
               />
             </PieChart>
