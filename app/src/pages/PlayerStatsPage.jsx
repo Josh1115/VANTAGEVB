@@ -486,6 +486,18 @@ const BY_GAME_COLS = [
   { key: 'wpa',    label: 'WPA',  fmt: fmtVER       },
 ];
 
+// Sort By Game rows by one stat column; blanks ("—") always last. sort=null keeps date order.
+function sortStatRows(rows, sort) {
+  if (!sort) return rows;
+  const { key, dir } = sort;
+  return [...rows].sort((a, b) => {
+    const av = a[key], bv = b[key];
+    const aNull = av == null || Number.isNaN(av), bNull = bv == null || Number.isNaN(bv);
+    if (aNull || bNull) return aNull === bNull ? 0 : aNull ? 1 : -1;
+    return dir === 'asc' ? av - bv : bv - av;
+  });
+}
+
 // Strip the 'name' column — player identity is already in the page header
 function withoutNameCol(cols) {
   return cols.filter((c) => c.key !== 'name');
@@ -653,6 +665,13 @@ export function PlayerStatsPage() {
     .map(s => ({ season: s, rows: rowsForSeason(s.id) }));
   const byGameLoading = byGameGroups.some(g => g.rows === undefined);
   const byGameVisible = byGameGroups.filter(g => g.rows?.length);
+  // By Game column sort: null = date order. Tap stat: high→low, again: low→high, again: off.
+  const [byGameSort, setByGameSort] = useState(null); // { key, dir: 'desc' | 'asc' }
+  const tapByGameCol = (key) => {
+    if (key === 'date' || key === 'opp') return setByGameSort(null);
+    setByGameSort(prev => prev?.key !== key ? { key, dir: 'desc' } : prev.dir === 'desc' ? { key, dir: 'asc' } : null);
+  };
+  const sortByGameRows = (rows) => sortStatRows(rows, byGameSort);
 
   const servingCols = useMemo(
     () => withoutNameCol(SERVING_COLS[serveView] ?? SERVING_COLS.all),
@@ -828,7 +847,7 @@ export function PlayerStatsPage() {
         <div>
         {(seasonsWithGames?.length ?? 0) > 0 && (
           <TabBar
-            tabs={[{ value: 'all', label: 'All' }, ...seasonsWithGames.map(s => ({ value: s.id, label: s.name ?? String(s.year) }))]}
+            tabs={[{ value: 'all', label: 'All' }, ...seasonsWithGames.map(s => ({ value: s.id, label: s.year ? String(s.year) : s.name }))]}
             active={byGameSel}
             onChange={setByGameSeason}
           />
@@ -845,11 +864,17 @@ export function PlayerStatsPage() {
                   {BY_GAME_COLS.map((c) => (
                     <th
                       key={c.key}
-                      className={`px-2 py-2 font-semibold text-slate-400 whitespace-nowrap ${
-                        c.key === 'date' || c.key === 'opp' ? 'text-left' : 'text-right'
-                      }`}
+                      onClick={() => tapByGameCol(c.key)}
+                      className={`px-2 py-2 font-semibold whitespace-nowrap cursor-pointer select-none ${
+                        byGameSort?.key === c.key ? 'text-primary' : 'text-slate-400'
+                      } ${c.key === 'date' || c.key === 'opp' ? 'text-left' : 'text-right'}`}
                     >
                       {c.label}
+                      {c.key !== 'date' && c.key !== 'opp' && (
+                        byGameSort?.key === c.key
+                          ? <span className="ml-1 text-xs">{byGameSort.dir === 'desc' ? '↓' : '↑'}</span>
+                          : <span className="ml-1 text-xs text-slate-600">↕</span>
+                      )}
                     </th>
                   ))}
                 </tr>
@@ -858,10 +883,10 @@ export function PlayerStatsPage() {
                 {byGameVisible.map(({ season: gs, rows }) => [
                   byGameSel === 'all' && (
                     <tr key={`hdr-${gs.id}`} className="bg-slate-800/70">
-                      <td colSpan={BY_GAME_COLS.length} className="px-2 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-white">{gs.name ?? gs.year}</td>
+                      <td colSpan={BY_GAME_COLS.length} className="px-2 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-white">{gs.year ? String(gs.year) : gs.name}</td>
                     </tr>
                   ),
-                  ...rows.map((row, i) => (
+                  ...sortByGameRows(rows).map((row, i) => (
                   <tr
                     key={row._key}
                     className={`border-b border-slate-800 ${i % 2 === 0 ? '' : 'bg-slate-900/40'}`}

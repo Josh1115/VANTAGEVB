@@ -64,9 +64,9 @@ export function StatTable({ columns, rows, totalsRow, totalsRowLabel, extraTotal
                 )}
               >
                 {col.label}
-                {sortKey === col.key && (
-                  <span className="ml-1 text-xs">{desc ? '↓' : '↑'}</span>
-                )}
+                {sortKey === col.key
+                  ? <span className="ml-1 text-xs">{desc ? '↓' : '↑'}</span>
+                  : <span className="ml-1 text-xs text-slate-600">↕</span>}
               </th>
             ))}
           </tr>
