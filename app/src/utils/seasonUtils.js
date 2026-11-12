@@ -320,6 +320,37 @@ export function titleForGame(roundName, won) {
   return null;
 }
 
+// ── Season record pills ──────────────────────────────────────────────────────
+// rows: [{ key, wins, losses, playoffWins }]. Returns { [key]: [pill labels] }.
+// Win % and fewest losses need a full-ish season (MIN_PILL_GAMES) so a 1-0 start
+// or a half-entered old season can't take the record. Ties all get the pill.
+export const MIN_PILL_GAMES = 10;
+export function seasonRecordPills(rows) {
+  const full = rows.filter(r => r.wins != null && r.losses != null && r.wins + r.losses >= MIN_PILL_GAMES);
+  const pct = r => r.wins / (r.wins + r.losses);
+  const bestPct = full.length ? Math.max(...full.map(pct)) : null;
+  const fewestLosses = full.length ? Math.min(...full.map(r => r.losses)) : null;
+  const mostPlayoffWins = Math.max(0, ...rows.map(r => r.playoffWins ?? 0));
+  const out = {};
+  for (const r of rows) {
+    const pills = [];
+    const isFull = full.includes(r);
+    if (isFull && bestPct > 0 && pct(r) === bestPct) pills.push('Best Win %');
+    if (isFull && r.losses === fewestLosses) pills.push('Fewest Losses');
+    if (mostPlayoffWins > 0 && r.playoffWins === mostPlayoffWins) pills.push('Most Playoff Wins');
+    out[r.key] = pills;
+  }
+  return out;
+}
+
+// True when a won round deserves a trophy icon: any "Champions" title above,
+// plus a State Semifinal win (not a title, but it sends the team to the final).
+export function isTrophyRound(roundName, won) {
+  if (!won) return false;
+  if (titleForGame(roundName, true)?.endsWith('Champions')) return true;
+  return /^(ihsa )?state semi ?finals?( game| match)?$/.test(normalizeRound(roundName));
+}
+
 // Which automatic title a typed one means, so the same title isn't shown twice
 // ("Regional Champs" typed + "Regional Champions" from the games).
 function sameAsAutoTitle(typed) {

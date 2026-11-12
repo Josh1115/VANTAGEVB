@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import { MAX_PLAYOFF_SETS } from '../../utils/seasonUtils';
+import { MAX_PLAYOFF_SETS, isTrophyRound } from '../../utils/seasonUtils';
 
 const SET_SCORE_WIDTH_PX = 52; // one set score in the list's 12px font, plus its "·" divider
 const SET_NUMBERS = Array.from({ length: MAX_PLAYOFF_SETS }, (_, i) => i);
@@ -80,7 +80,10 @@ export function PlayoffRoundsList({ rounds }) {
     <div className="grid items-center justify-start gap-x-3 gap-y-1 overflow-x-auto text-xs" style={{ gridTemplateColumns: columns }}>
       {rounds.map((r, i) => (
         <Fragment key={i}>
-          <span className="mr-1.5 whitespace-nowrap text-slate-400 font-semibold">{r.round || '—'}</span>
+          <span className="mr-1.5 whitespace-nowrap text-slate-400 font-semibold">
+            {r.round || '—'}
+            {isTrophyRound(r.round, r.result === 'W') && <span className="ml-1" title="Championship" aria-label="Championship">🏆</span>}
+          </span>
           <span className={`text-center font-black px-1.5 py-0.5 rounded ${r.result === 'W' ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
             {r.result}
           </span>

@@ -13,7 +13,7 @@ import { getEligibleTeams } from '../utils/teams';
 import { ChampionshipBannersSection } from '../components/shared/ChampionshipBanner';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { PostSeasonModal } from '../components/shared/PostSeasonModal';
-import { applyInferredSeasonFinish, snapshotSeasonRoster, prunedPlayoffRounds, seasonTitles, withPlayoffSetScores, readSetScores, resolveSeasonFinish, seasonPlayoffRounds } from '../utils/seasonUtils';
+import { applyInferredSeasonFinish, snapshotSeasonRoster, prunedPlayoffRounds, seasonTitles, withPlayoffSetScores, readSetScores, resolveSeasonFinish, seasonPlayoffRounds, seasonRecordPills } from '../utils/seasonUtils';
 import { PlayoffRoundsList, SetScoresInput } from '../components/shared/PlayoffSetScores';
 import { recordsForYear } from '../utils/seasonRecords';
 import { exportSectionedCSV } from '../stats/export';
@@ -731,7 +731,13 @@ function WinnerCard({ entry, onEdit, onDelete }) {
 // season_history entry if one exists; otherwise those sections are blank.
 // activeSeason: the season DB record (may have head_coach/asst_coach from the roster tab)
 // historyEntry: matching season_history row (has title, rankings, playoffs, and possibly coach overrides)
-function LiveSeasonCard({ year, matches, historyEntry, finish, activeSeason, onEdit, onEndSeason, isWinRecord, isStateRankRecord, isNationalRankRecord, isWinsAddedRecord, isMostGamesRecord }) {
+const EXTRA_PILL_STYLE = {
+  'Best Win %': 'text-lime-400 border-lime-500/50',
+  'Fewest Losses': 'text-teal-400 border-teal-500/50',
+  'Most Playoff Wins': 'text-orange-400 border-orange-500/50',
+};
+
+function LiveSeasonCard({ year, matches, historyEntry, finish, activeSeason, onEdit, onEndSeason, isWinRecord, isStateRankRecord, isNationalRankRecord, isWinsAddedRecord, isMostGamesRecord, extraPills = [] }) {
   const completed = (matches ?? []).filter(m => m.status === MATCH_STATUS.COMPLETE && m.match_type !== 'exhibition');
   const wins      = completed.filter(m => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
   const losses    = completed.filter(m => (m.our_sets_won ?? 0) < (m.opp_sets_won ?? 0)).length;
@@ -791,13 +797,14 @@ function LiveSeasonCard({ year, matches, historyEntry, finish, activeSeason, onE
             {historyEntry ? 'Edit' : '+ Details'}
           </button>
         </div>
-        {(isWinRecord || isStateRankRecord || isNationalRankRecord || isWinsAddedRecord || isMostGamesRecord) && (
+        {(isWinRecord || isStateRankRecord || isNationalRankRecord || isWinsAddedRecord || isMostGamesRecord || extraPills.length > 0) && (
           <div className="flex flex-wrap gap-1.5 mt-2">
             {isWinRecord        && <span className="text-[9px] font-black uppercase tracking-wide text-amber-400 border border-amber-500/50 px-1.5 py-0.5 rounded-full">Most Wins</span>}
             {isStateRankRecord  && <span className="text-[9px] font-black uppercase tracking-wide text-sky-400 border border-sky-500/50 px-1.5 py-0.5 rounded-full">Best State Rank</span>}
             {isNationalRankRecord && <span className="text-[9px] font-black uppercase tracking-wide text-violet-400 border border-violet-500/50 px-1.5 py-0.5 rounded-full">Best USA Rank</span>}
             {isWinsAddedRecord  && <span className="text-[9px] font-black uppercase tracking-wide text-emerald-400 border border-emerald-500/50 px-1.5 py-0.5 rounded-full">Most Wins Added</span>}
             {isMostGamesRecord  && <span className="text-[9px] font-black uppercase tracking-wide text-rose-400 border border-rose-500/50 px-1.5 py-0.5 rounded-full">Most Games Played</span>}
+            {extraPills.map(label => <span key={label} className={`text-[9px] font-black uppercase tracking-wide border px-1.5 py-0.5 rounded-full ${EXTRA_PILL_STYLE[label]}`}>{label}</span>)}
           </div>
         )}
       </div>
@@ -957,7 +964,7 @@ function SeasonRecordsFull({ groups }) {
   );
 }
 
-function SeasonCard({ entry, finish, matches, onEdit, onDelete, isWinRecord, isStateRankRecord, isNationalRankRecord, isWinsAddedRecord, isMostGamesRecord, liveRecord, seasonRecords }) {
+function SeasonCard({ entry, finish, matches, onEdit, onDelete, isWinRecord, isStateRankRecord, isNationalRankRecord, isWinsAddedRecord, isMostGamesRecord, extraPills = [], liveRecord, seasonRecords }) {
   const wins       = liveRecord?.wins   ?? entry.wins   ?? null;
   const losses     = liveRecord?.losses ?? entry.losses ?? null;
   const total      = wins != null && losses != null ? wins + losses : null;
@@ -995,13 +1002,14 @@ function SeasonCard({ entry, finish, matches, onEdit, onDelete, isWinRecord, isS
             <button onClick={() => onDelete(entry)} className="text-xs text-red-400 font-semibold px-2 py-1 rounded-lg hover:bg-slate-600/50 transition-colors">Delete</button>
           </div>
         </div>
-        {(isWinRecord || isStateRankRecord || isNationalRankRecord || isWinsAddedRecord || isMostGamesRecord) && (
+        {(isWinRecord || isStateRankRecord || isNationalRankRecord || isWinsAddedRecord || isMostGamesRecord || extraPills.length > 0) && (
           <div className="flex flex-wrap gap-1.5 mt-2">
             {isWinRecord         && <span className="text-[9px] font-black uppercase tracking-wide text-amber-400 border border-amber-500/50 px-1.5 py-0.5 rounded-full">Most Wins</span>}
             {isStateRankRecord   && <span className="text-[9px] font-black uppercase tracking-wide text-sky-400 border border-sky-500/50 px-1.5 py-0.5 rounded-full">Best State Rank</span>}
             {isNationalRankRecord && <span className="text-[9px] font-black uppercase tracking-wide text-violet-400 border border-violet-500/50 px-1.5 py-0.5 rounded-full">Best USA Rank</span>}
             {isWinsAddedRecord   && <span className="text-[9px] font-black uppercase tracking-wide text-emerald-400 border border-emerald-500/50 px-1.5 py-0.5 rounded-full">Most Wins Added</span>}
             {isMostGamesRecord   && <span className="text-[9px] font-black uppercase tracking-wide text-rose-400 border border-rose-500/50 px-1.5 py-0.5 rounded-full">Most Games Played</span>}
+            {extraPills.map(label => <span key={label} className={`text-[9px] font-black uppercase tracking-wide border px-1.5 py-0.5 rounded-full ${EXTRA_PILL_STYLE[label]}`}>{label}</span>)}
           </div>
         )}
       </div>
@@ -1449,6 +1457,27 @@ export function HistoryPage() {
     if (hasActiveSeason && liveCardGames > 0) vals.push(liveCardGames);
     return vals.length ? Math.max(...vals) : 0;
   }, [history, liveCardGames, hasActiveSeason, liveRecordsByYear]);
+
+  const recordPills = useMemo(() => {
+    const playoffWins = (rounds, matches) =>
+      seasonPlayoffRounds(rounds, matches).filter(r => r.result === 'W').length;
+    const rows = sortedHistory.map(h => {
+      const live = liveRecordsByYear?.[String(h.year)];
+      return {
+        key: h.id,
+        wins: live?.wins ?? h.wins ?? null,
+        losses: live?.losses ?? h.losses ?? null,
+        playoffWins: playoffWins(h.playoff_rounds, matchesByYear?.[String(h.year)]),
+      };
+    });
+    if (showLiveCard) rows.push({
+      key: 'live',
+      wins: liveCardWins,
+      losses: liveCardGames - liveCardWins,
+      playoffWins: playoffWins(liveHistoryEntry?.playoff_rounds, activeMatches),
+    });
+    return seasonRecordPills(rows);
+  }, [sortedHistory, liveRecordsByYear, matchesByYear, showLiveCard, liveCardWins, liveCardGames, liveHistoryEntry, activeMatches]);
 
   const bestStateRank = useMemo(() => {
     const vals = (history ?? []).map(h => h.state_rank).filter(r => r != null && r > 0);
@@ -2132,6 +2161,7 @@ export function HistoryPage() {
                           isNationalRankRecord={bestNationalRank != null && liveHistoryEntry?.national_rank === bestNationalRank}
                           isWinsAddedRecord={bestWinsAdded?.isLive === true}
                           isMostGamesRecord={maxGames > 0 && liveCardGames === maxGames}
+                          extraPills={recordPills.live}
                         />
                       )}
 
@@ -2163,6 +2193,7 @@ export function HistoryPage() {
                                 : entry.games ?? null;
                               return maxGames > 0 && g === maxGames;
                             })()}
+                            extraPills={recordPills[entry.id]}
                             liveRecord={liveRecordsByYear?.[String(entry.year)] ?? null}
                             seasonRecords={recordBoards ? recordsForYear(recordBoards.boards, entry.year, recordBoards.defs) : null}
                           />
