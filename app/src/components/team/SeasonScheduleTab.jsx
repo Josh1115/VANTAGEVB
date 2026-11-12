@@ -16,8 +16,9 @@ import { EmptyState } from '../ui/EmptyState';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { SwipeableMatchCard } from '../ui/SwipeableMatchCard';
 import { PostSeasonModal } from '../shared/PostSeasonModal';
-import { applyInferredSeasonFinish, snapshotSeasonRoster } from '../../utils/seasonUtils';
+import { applyInferredSeasonFinish, snapshotSeasonRoster, nextPlayoffRound } from '../../utils/seasonUtils';
 import { useOurSeed } from '../../hooks/useOurSeed';
+import { PlayoffRoundPicker } from '../shared/PlayoffRoundPicker';
 import { ScheduleImportModal } from '../match/ScheduleImportModal';
 import { usePlan } from '../../hooks/usePlan';
 import { MATCHES_LOCKED_MESSAGE } from '../../utils/planLimits';
@@ -919,7 +920,13 @@ export function SeasonScheduleTab({ seasonId }) {
                   {[['reg-season', 'Reg Season'], ['tourney', 'Tourney'], ['ihsa-playoffs', playoffLabel], ['exhibition', 'Exhibition']].map(([val, label]) => (
                     <button
                       key={val}
-                      onClick={() => setSchedMatchType(val)}
+                      onClick={() => {
+                        setSchedMatchType(val);
+                        // Pre-pick the round after the last playoff game played.
+                        if (val === 'ihsa-playoffs' && !schedPlayoffRound.trim()) {
+                          setSchedPlayoffRound(nextPlayoffRound(data?.matches) ?? '');
+                        }
+                      }}
                       className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors ${
                         schedMatchType === val
                           ? 'bg-primary text-white border-primary'
@@ -968,18 +975,19 @@ export function SeasonScheduleTab({ seasonId }) {
               )}
 
               {schedMatchType === 'ihsa-playoffs' && (
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Playoff Round</label>
+                  <PlayoffRoundPicker
+                    value={schedPlayoffRound}
+                    onChange={setSchedPlayoffRound}
+                    inputClassName="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
+                  />
+                </div>
+              )}
+
+              {schedMatchType === 'ihsa-playoffs' && (
                 <div className="flex gap-2">
                   <div className="flex-1 min-w-0">
-                    <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Playoff Round</label>
-                    <input
-                      type="text"
-                      value={schedPlayoffRound}
-                      onChange={e => setSchedPlayoffRound(e.target.value)}
-                      placeholder="ex: Regional, Sectional…"
-                      className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
-                    />
-                  </div>
-                  <div className="w-24 shrink-0">
                     <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
                       Our Seed <span className="normal-case font-normal">(opt)</span>
                     </label>
@@ -993,7 +1001,7 @@ export function SeasonScheduleTab({ seasonId }) {
                       className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
                     />
                   </div>
-                  <div className="w-28 shrink-0">
+                  <div className="flex-1 min-w-0">
                     <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">
                       Opp Seed <span className="normal-case font-normal">(opt)</span>
                     </label>

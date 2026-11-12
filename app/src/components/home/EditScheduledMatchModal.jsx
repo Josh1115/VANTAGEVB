@@ -6,6 +6,8 @@ import { matchDateISO } from '../../utils/matchDate';
 import { findOrCreateOpponent } from '../../stats/queries';
 import { Button } from '../ui/Button';
 import { useOurSeed } from '../../hooks/useOurSeed';
+import { PlayoffRoundPicker } from '../shared/PlayoffRoundPicker';
+import { nextPlayoffRound } from '../../utils/seasonUtils';
 
 // Edits a scheduled (not-yet-started) match's metadata — opponent, date,
 // location, match type, etc. `match` is always an existing match row; matches
@@ -198,7 +200,15 @@ export function EditScheduledMatchModal({ match, onClose, onDeleteRequested }) {
             {[['reg-season', 'Reg Season'], ['tourney', 'Tourney'], ['ihsa-playoffs', playoffLabel], ['exhibition', 'Exhibition']].map(([val, label]) => (
               <button
                 key={val}
-                onClick={() => setMatchType(val)}
+                onClick={async () => {
+                  setMatchType(val);
+                  // Pre-pick the round after the last playoff game played.
+                  if (val === 'ihsa-playoffs' && !playoffRound.trim() && match.season_id) {
+                    const games = await db.matches.where('season_id').equals(match.season_id).toArray();
+                    const guess = nextPlayoffRound(games);
+                    if (guess) setPlayoffRound(prev => prev.trim() ? prev : guess);
+                  }
+                }}
                 className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors
                   ${matchType === val
                     ? 'bg-primary text-white border-primary'
@@ -251,12 +261,10 @@ export function EditScheduledMatchModal({ match, onClose, onDeleteRequested }) {
         {matchType === 'ihsa-playoffs' && (
           <div>
             <label className="block text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wide">Playoff Round</label>
-            <input
-              type="text"
+            <PlayoffRoundPicker
               value={playoffRound}
-              onChange={(e) => setPlayoffRound(e.target.value)}
-              placeholder="ex: Regional, Sectional, Super-Sectional, State…"
-              className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
+              onChange={setPlayoffRound}
+              inputClassName="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
             />
           </div>
         )}

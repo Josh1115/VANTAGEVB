@@ -172,6 +172,11 @@ export async function computeLeaderboards(tab, teamId) {
 
     const seasons = await db.seasons.where('team_id').equals(teamId).toArray();
     const seasonYearById = Object.fromEntries(seasons.map(s => [s.id, s.year]));
+    // A year counts as over once every season in it has been ended.
+    const isYearEnded = (year) => {
+      const inYear = seasons.filter(s => String(s.year) === String(year));
+      return inYear.length > 0 && inYear.every(s => s.status === 'ended');
+    };
 
     let careerStats = {};
     let playerYearRange = {}; // player_id -> { min, max }
@@ -278,7 +283,9 @@ export async function computeLeaderboards(tab, teamId) {
             return {
               name:              playerNamesMap[pid] ?? '?',
               val,
-              class_year:        playerClassYears[pid] ?? '',
+              // A senior whose last season has ended is assumed graduated: drop "Sr.".
+              class_year:        playerClassYears[pid] === 'Senior' && yearRange && isYearEnded(yearRange.max)
+                ? '' : (playerClassYears[pid] ?? ''),
               career_year_start: starts.length ? Math.min(...starts) : null,
               career_year_end:   isActive ? null : (ends.length ? Math.max(...ends) : null),
               active:            isActive,

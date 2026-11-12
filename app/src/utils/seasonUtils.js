@@ -320,6 +320,29 @@ export function titleForGame(roundName, won) {
   return null;
 }
 
+// ── Playoff round picker ─────────────────────────────────────────────────────
+// Tap choices on the schedule forms, in bracket order.
+export const PLAYOFF_ROUND_CHOICES = [
+  'Regional Semifinal', 'Regional Final', 'Sectional Semifinal', 'Sectional Final',
+  'Super-Sectional', 'State Semifinal', 'State Final', '3rd Place',
+];
+const THIRD_PLACE = '3rd Place';
+
+// Best guess at the round to schedule next, from the season's finished playoff
+// games: the round after the furthest one played, if it was won. Losing a State
+// Semifinal leads to the 3rd Place game. Null when there's nothing to guess
+// (no playoff games yet, eliminated, or the season's final game is done).
+export function nextPlayoffRound(matches) {
+  const games = completedPlayoffGames(matches);
+  if (!games.length) return null;
+  const last = games.reduce((a, b) => (roundRank(b.playoff_round) > roundRank(a.playoff_round) ? b : a));
+  const lastRank = roundRank(last.playoff_round);
+  if (lastRank === UNKNOWN_ROUND_RANK) return null;
+  const won = (last.our_sets_won ?? 0) > (last.opp_sets_won ?? 0);
+  if (!won) return lastRank === roundRank('State Semifinal') ? THIRD_PLACE : null;
+  return PLAYOFF_ROUND_CHOICES.find(c => c !== THIRD_PLACE && roundRank(c) > lastRank) ?? null;
+}
+
 // ── Season record pills ──────────────────────────────────────────────────────
 // rows: [{ key, wins, losses, playoffWins }]. Returns { [key]: [pill labels] }.
 // Win % and fewest losses need a full-ish season (MIN_PILL_GAMES) so a 1-0 start
