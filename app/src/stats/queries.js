@@ -1,5 +1,6 @@
 import { db } from '../db/schema';
-import { addTombstone, tombstoneKeyForMatch } from './merge';
+import { addTombstone, tombstoneKeyForMatch, tombstoneKeyForSeason } from './merge';
+import { STORAGE_KEYS, getIntStorage, setStorageItem } from '../utils/storage';
 
 // Looks up an opponent by exact name, creating it if it doesn't exist yet.
 // Shared by every "edit a match's opponent" flow (dashboard schedule editor,
@@ -200,4 +201,72 @@ export async function deleteMatch(matchId) {
       await db.opponents.delete(match.opponent_id);
     }
   }
+}
+
+// Undo what Start New Season changed for this season (grade bumps, roster
+// moves), using the before-values it saved on the season. A player's grade is
+// only put back if it still carries this season's bump (grade_year).
+export async function undoNewSeasonChanges(season) {
+  const changes = season?.new_season_changes?.players ?? [];
+  if (!changes.length) return 0;
+  const teamPlayers = await db.players.where('team_id').equals(season.team_id).toArray();
+  let undone = 0;
+  for (const c of changes) {
+    const p = teamPlayers.find(x => (c.uid && x.uid === c.uid) || x.id === c.id);
+    if (!p) continue;
+    const upd = { is_active: c.is_active };
+    if (p.grade_year != null && Number(p.grade_year) === Number(season.year)) {
+      upd.year = c.year ?? null;
+      upd.grade_year = c.grade_year ?? null;
+    }
+    await db.players.update(p.id, upd);
+    undone++;
+  }
+  return undone;
+}
+
+// Delete ONE season (not the team): its matches and all their records, undo any
+// Start New Season changes, and leave a tombstone so cloud sync can't restore it.
+export async function deleteSeason(seasonId) {
+  const season = await db.seasons.get(seasonId);
+  if (!season) return;
+  const team = await db.teams.get(season.team_id);
+  const org  = team ? await db.organizations.get(team.org_id) : null;
+
+  const matches  = await db.matches.where('season_id').equals(seasonId).toArray();
+  const matchIds = matches.map((m) => m.id);
+  const sets     = matchIds.length ? await db.sets.where('match_id').anyOf(matchIds).toArray() : [];
+  const setIds   = sets.map((s) => s.id);
+
+  await db.transaction('rw', db.tables, async () => {
+    if (setIds.length) {
+      await Promise.all([
+        db.contacts.where('set_id').anyOf(setIds).delete(),
+        db.rallies.where('set_id').anyOf(setIds).delete(),
+        db.lineups.where('set_id').anyOf(setIds).delete(),
+        db.substitutions.where('set_id').anyOf(setIds).delete(),
+      ]);
+      await db.sets.bulkDelete(setIds);
+    }
+    if (matchIds.length) {
+      await db.opp_tendencies.where('match_id').anyOf(matchIds).delete();
+      await db.timeouts.where('match_id').anyOf(matchIds).delete();
+      await db.matches.bulkDelete(matchIds);
+    }
+    await undoNewSeasonChanges(season);
+    await db.seasons.delete(seasonId);
+    if (season.uid) await addTombstone('season-uid', season.uid);
+    else if (team && org) await addTombstone('season', tombstoneKeyForSeason(org.name, team, season));
+  });
+
+  // Deleting the default season would leave other pages auto-selecting a ghost —
+  // fall back to this team's next-most-recent season (highest year), if any.
+  if (getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID) === seasonId) {
+    const remaining = await db.seasons.where('team_id').equals(season.team_id).toArray();
+    const latest = remaining.length
+      ? remaining.reduce((a, b) => (Number(b.year) > Number(a.year) ? b : a))
+      : null;
+    setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, latest?.id ?? null);
+  }
+  return { matchCount: matchIds.length };
 }

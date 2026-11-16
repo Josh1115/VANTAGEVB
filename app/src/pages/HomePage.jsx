@@ -8,9 +8,8 @@ import { db } from '../db/schema';
 import { MATCH_STATUS } from '../constants';
 import { fmtDate, fmtHitting, fmtPct } from '../stats/formatters';
 import { currentStreak, seasonOpener, sortByDateTime } from '../utils/seasonSummary';
-import { allTimeRank, resolveSeasonFinish, snapshotSeasonRoster, applyInferredSeasonFinish } from '../utils/seasonUtils';
-import { SeasonFormModal } from '../components/team/SeasonFormModal';
-import { PostSeasonModal } from '../components/shared/PostSeasonModal';
+import { allTimeRank, resolveSeasonFinish } from '../utils/seasonUtils';
+import { StartSeasonWizard } from '../components/home/StartSeasonWizard';
 import { computePlayerStats, computeTeamStats } from '../stats/engine';
 import { deleteMatch } from '../stats/queries';
 import { useUiStore, selectShowToast } from '../store/uiStore';
@@ -460,10 +459,8 @@ export function HomePage() {
   const showToast = useUiStore(selectShowToast);
   const { session, profile, refreshProfile } = useAuth();
   const { teamsAllowed, matchLimit, isMaster, isActive, tier, expiresAt, daysUntilExpiry } = usePlan();
-  // Start New Season: end the open season first, then add the new one.
-  const [confirmEndForNew, setConfirmEndForNew] = useState(false);
-  const [postSeasonForNew, setPostSeasonForNew] = useState(null);
-  const [showNewSeasonForm, setShowNewSeasonForm] = useState(false);
+  // Start New Season wizard (gender → level → end old season → returning players).
+  const [showNewSeason, setShowNewSeason] = useState(false);
   const renewalDays = renewalReminderDays(tier, daysUntilExpiry);
   const [cloudSaving, setCloudSaving] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState(() => {
@@ -526,26 +523,9 @@ export function HomePage() {
   const [, bumpTeamSwitch] = useState(0);
   const defaultTeamId   = getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID);
   const defaultSeasonId = getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID);
-  const currentSeason = useLiveQuery(
-    () => defaultSeasonId ? db.seasons.get(defaultSeasonId) : Promise.resolve(null),
-    [defaultSeasonId]
-  );
-
   function handleStartNewSeason() {
     if (!isActive && !isMaster) { showToast('Your plan has expired. Renew your plan to start a new season.', 'error'); return; }
-    if (!defaultTeamId) { navigate('/teams'); return; }
-    if (currentSeason && currentSeason.status !== 'ended') { setConfirmEndForNew(true); return; }
-    setShowNewSeasonForm(true);
-  }
-
-  async function endSeasonForNew() {
-    const s = currentSeason;
-    setConfirmEndForNew(false);
-    if (!s) return;
-    await db.seasons.update(s.id, { status: 'ended' });
-    await snapshotSeasonRoster(s.id, s.team_id);
-    await applyInferredSeasonFinish(s.id, s.team_id, s.year);
-    setPostSeasonForNew({ teamId: s.team_id, year: s.year });
+    setShowNewSeason(true);
   }
 
   // Teams for the dashboard's quick-switch pills — null (pills hidden) unless
@@ -1941,29 +1921,10 @@ export function HomePage() {
         )}
       </div>
 
-      {confirmEndForNew && (
-        <ConfirmDialog
-          title="End Current Season First?"
-          message={`Your ${currentSeason?.year ?? 'current'} season is still open. End it now so it gets its banner, roster snapshot and senior graduation, then set up the new season.`}
-          confirmLabel="End Season"
-          danger
-          onConfirm={endSeasonForNew}
-          onCancel={() => setConfirmEndForNew(false)}
-        />
-      )}
-
-      {postSeasonForNew && (
-        <PostSeasonModal
-          teamId={postSeasonForNew.teamId}
-          year={postSeasonForNew.year}
-          onClose={() => { setPostSeasonForNew(null); setShowNewSeasonForm(true); }}
-        />
-      )}
-
-      {showNewSeasonForm && defaultTeamId && (
-        <SeasonFormModal
-          teamId={defaultTeamId}
-          onClose={() => { setShowNewSeasonForm(false); bumpTeamSwitch((n) => n + 1); }}
+      {showNewSeason && (
+        <StartSeasonWizard
+          onClose={() => setShowNewSeason(false)}
+          onDone={() => { setShowNewSeason(false); bumpTeamSwitch((n) => n + 1); }}
         />
       )}
 

@@ -135,6 +135,11 @@ export function tombstoneKeyForOrg(orgName) {
 export function tombstoneKeyForTeam(orgName, team) {
   return `${norm(orgName)}|${nkTeam(team)}`;
 }
+// Seasons are tombstoned by uid ('season-uid') so re-creating the same year
+// later isn't blocked; this natural key ('season') is only for old rows with no uid.
+export function tombstoneKeyForSeason(orgName, team, season) {
+  return `${norm(orgName)}|${nkTeam(team)}|${nkSeason(season)}`;
+}
 export function tombstoneKeyForMatch(orgName, team, seasonYear, match) {
   return `${norm(orgName)}|${nkTeam(team)}|${String(seasonYear ?? '')}|${nkMatch(match)}`;
 }
@@ -530,6 +535,10 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
         }
         continue;
       }
+      // Deliberately deleted on this device: don't let the cloud copy bring it back.
+      const seasonTeam = teamById.get(exTeamId);
+      if (s.uid ? tombstoneSet.has(`season-uid::${s.uid}`)
+        : tombstoneSet.has(`season::${tombstoneKeyForSeason(orgNameById.get(seasonTeam?.org_id), seasonTeam, s)}`)) continue;
       const { id: _, team_id: __, ...rest } = s;
       const newId = await db.seasons.add({ ...rest, team_id: exTeamId });
       seasonMap.set(s.id, newId);

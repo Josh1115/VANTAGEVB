@@ -358,6 +358,47 @@ export function furthestPlayoffRank(rounds) {
   return ranks.length ? Math.max(...ranks) : null;
 }
 
+// ── Grade bump (Start New Season) ────────────────────────────────────────────
+// Grades come in many spellings ("Junior", "Jr", "JR.", "11", "11th"). Returns
+// 0=Fr 1=So 2=Jr 3=Sr, or null when the grade isn't recognised (club ages, blank).
+const GRADE_PATTERNS = [
+  /^(fr\.?|fresh\.?|freshman|9(th)?)$/i,
+  /^(so\.?|soph\.?|sophomore|10(th)?)$/i,
+  /^(jr\.?|junior|11(th)?)$/i,
+];
+export function gradeIndex(year) {
+  const raw = String(year ?? '').trim();
+  if (isSeniorYear(raw)) return 3;
+  const i = GRADE_PATTERNS.findIndex(re => re.test(raw));
+  return i === -1 ? null : i;
+}
+
+// The next grade in the same style as the input, or null for seniors and
+// unrecognised grades (those are left alone).
+const GRADE_WORDS = ['Freshman', 'Sophomore', 'Junior', 'Senior'];
+const GRADE_ABBR  = ['Fr', 'So', 'Jr', 'Sr'];
+export function nextGrade(year) {
+  const raw = String(year ?? '').trim();
+  const idx = gradeIndex(raw);
+  if (idx == null || idx >= 3) return null;
+  const n = idx + 1;
+  const num = raw.match(/^\d+(th)?$/i);
+  if (num) return `${9 + n}${num[1] ? 'th' : ''}`;
+  if (/^[a-z]{5,}$/i.test(raw)) return GRADE_WORDS[n];
+  let out = GRADE_ABBR[n];
+  if (raw === raw.toUpperCase()) out = out.toUpperCase();
+  if (raw.endsWith('.')) out += '.';
+  return out;
+}
+
+// What a returning player's grade becomes for a new season of `newYear`.
+// grade_year remembers the season a player was last bumped for, so running
+// Start New Season twice can't bump the same player twice.
+export function gradeForNewSeason(player, newYear) {
+  if (player?.grade_year != null && Number(player.grade_year) >= Number(newYear)) return player.year;
+  return nextGrade(player?.year) ?? player?.year;
+}
+
 // ── Season record pills ──────────────────────────────────────────────────────
 // rows: [{ key, year, wins, losses, playoffWins, furthestRound }]. Returns { [key]: [pill labels] }.
 // Biggest Turnaround: largest win % jump over the previous full season.

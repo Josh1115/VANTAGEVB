@@ -9,6 +9,8 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { deleteSeason } from '../stats/queries';
+import { DeleteSeasonDialog } from '../components/shared/DeleteSeasonDialog';
 import { TabBar } from '../components/ui/Tab';
 import { RotationFormationEditor } from '../components/match/RotationFormationEditor';
 import { PlannedSubsEditor } from '../components/match/PlannedSubsEditor';
@@ -196,6 +198,7 @@ export function TeamDetailPage() {
     setSelectedSeasonId(prev => prev ?? latest.id);
   }, [seasons]);
 
+  const [confirmDeleteSeason, setConfirmDeleteSeason] = useState(null);
   const selectedSeason = useMemo(
     () => (seasons ?? []).find(s => s.id === selectedSeasonId) ?? null,
     [seasons, selectedSeasonId]
@@ -561,7 +564,36 @@ export function TeamDetailPage() {
               End Season
             </button>
           )}
+
+          {/* Delete just the selected season (not the team) */}
+          {selectedSeason && (
+            <button
+              onClick={() => setConfirmDeleteSeason(selectedSeason)}
+              className="w-full mt-2 py-2.5 rounded-xl text-slate-500 text-sm font-semibold hover:text-red-400 hover:bg-red-900/10 transition-colors"
+            >
+              Delete {selectedSeason.year} Season
+            </button>
+          )}
         </div>
+      )}
+
+      {confirmDeleteSeason && (
+        <DeleteSeasonDialog
+          season={confirmDeleteSeason}
+          teamName={team?.name}
+          onConfirm={async () => {
+            const s = confirmDeleteSeason;
+            setConfirmDeleteSeason(null);
+            try {
+              await deleteSeason(s.id);
+              setSelectedSeasonId(null);
+              showToast('Season deleted', 'success');
+            } catch (err) {
+              showToast(`Delete failed: ${err.message}`, 'error');
+            }
+          }}
+          onCancel={() => setConfirmDeleteSeason(null)}
+        />
       )}
 
       {tab === 'lineups' && (

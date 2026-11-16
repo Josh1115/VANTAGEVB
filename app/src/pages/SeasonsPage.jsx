@@ -7,6 +7,8 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { deleteSeason } from '../stats/queries';
+import { DeleteSeasonDialog } from '../components/shared/DeleteSeasonDialog';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useUiStore, selectShowToast } from '../store/uiStore';
 import { STORAGE_KEYS, getIntStorage, setStorageItem } from '../utils/storage';
@@ -136,7 +138,7 @@ export function SeasonsPage() {
   const navigate = useNavigate();
   const showToast = useUiStore(selectShowToast);
   const [showModal, setShowModal] = useState(false);
-  const [deleteSeason, setDeleteSeason] = useState(null); // season object to delete
+  const [seasonToDelete, setSeasonToDelete] = useState(null); // season object to delete
 
   const seasons = useLiveQuery(async () => {
     const allSeasons = await db.seasons.orderBy('year').reverse().toArray();
@@ -175,43 +177,12 @@ export function SeasonsPage() {
   }, []);
 
   const handleDeleteSeason = async () => {
-    if (!deleteSeason) return;
+    if (!seasonToDelete) return;
     try {
-      const matches  = await db.matches.where('season_id').equals(deleteSeason.id).toArray();
-      const matchIds = matches.map((m) => m.id);
-      const sets     = matchIds.length ? await db.sets.where('match_id').anyOf(matchIds).toArray() : [];
-      const setIds   = sets.map((s) => s.id);
-
-      await db.transaction('rw', db.tables, async () => {
-        if (setIds.length) {
-          await Promise.all([
-            db.contacts.where('set_id').anyOf(setIds).delete(),
-            db.rallies.where('set_id').anyOf(setIds).delete(),
-            db.lineups.where('set_id').anyOf(setIds).delete(),
-            db.substitutions.where('set_id').anyOf(setIds).delete(),
-          ]);
-          await db.sets.bulkDelete(setIds);
-        }
-        if (matchIds.length) {
-          await db.opp_tendencies.where('match_id').anyOf(matchIds).delete();
-          await db.timeouts.where('match_id').anyOf(matchIds).delete();
-          await db.matches.bulkDelete(matchIds);
-        }
-        await db.seasons.delete(deleteSeason.id);
-      });
-
-      // Deleting the default season would leave other pages auto-selecting a ghost —
-      // fall back to this team's next-most-recent season (highest year), if any.
-      if (getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID) === deleteSeason.id) {
-        const remaining = await db.seasons.where('team_id').equals(deleteSeason.team_id).toArray();
-        const latest = remaining.length
-          ? remaining.reduce((a, b) => (Number(b.year) > Number(a.year) ? b : a))
-          : null;
-        setStorageItem(STORAGE_KEYS.DEFAULT_SEASON_ID, latest?.id ?? null);
-      }
-      setDeleteSeason(null);
+      await deleteSeason(seasonToDelete.id);
+      setSeasonToDelete(null);
     } catch (err) {
-      setDeleteSeason(null);
+      setSeasonToDelete(null);
       showToast(`Delete failed: ${err.message}`, 'error');
     }
   };
@@ -285,7 +256,7 @@ export function SeasonsPage() {
                   )}
                 </button>
                 <button
-                  onClick={() => setDeleteSeason(season)}
+                  onClick={() => setSeasonToDelete(season)}
                   className="px-4 text-slate-600 hover:text-red-400 transition-colors shrink-0"
                   title="Delete season"
                 >
@@ -327,14 +298,12 @@ export function SeasonsPage() {
 
       {showModal && <NewSeasonModal onClose={() => setShowModal(false)} />}
 
-      {deleteSeason && (
-        <ConfirmDialog
-          title="Delete Season"
-          message={`Delete "${deleteSeason.name ?? deleteSeason.year}" for ${deleteSeason.team?.name ?? 'this team'}? All matches and stats for this season will be permanently erased. This cannot be undone.`}
-          confirmLabel="Delete"
-          danger
+      {seasonToDelete && (
+        <DeleteSeasonDialog
+          season={seasonToDelete}
+          teamName={seasonToDelete.team?.name}
           onConfirm={handleDeleteSeason}
-          onCancel={() => setDeleteSeason(null)}
+          onCancel={() => setSeasonToDelete(null)}
         />
       )}
     </div>

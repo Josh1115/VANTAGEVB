@@ -9,7 +9,8 @@ import { computeMatchStats, computeTeamStats, computePlayerStats } from '../stat
 import { exportMaxPrepsCSV, maxPrepsFilename } from '../stats/export';
 import { getStorageItem, STORAGE_KEYS, getPlayoffLabel } from '../utils/storage';
 import { matchDateISO } from '../utils/matchDate';
-import { deleteMatch } from '../stats/queries';
+import { deleteMatch, deleteSeason } from '../stats/queries';
+import { DeleteSeasonDialog } from '../components/shared/DeleteSeasonDialog';
 import { clearMatchTombstone } from '../stats/merge';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
@@ -118,6 +119,7 @@ export function SeasonDetailPage() {
   // Schedule-game modal state (must be before early return)
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmEndSeason, setConfirmEndSeason] = useState(false);
+  const [confirmDeleteSeason, setConfirmDeleteSeason] = useState(false);
   const [showPostSeason,   setShowPostSeason]   = useState(false);
 
   const [showImport, setShowImport] = useState(false);
@@ -803,7 +805,33 @@ export function SeasonDetailPage() {
             End Season
           </button>
         )}
+
+        {/* Delete just this season (not the team) */}
+        <button
+          onClick={() => setConfirmDeleteSeason(true)}
+          className="w-full py-2.5 rounded-xl text-slate-500 text-sm font-semibold hover:text-red-400 hover:bg-red-900/10 transition-colors"
+        >
+          Delete Season
+        </button>
       </div>
+
+      {confirmDeleteSeason && (
+        <DeleteSeasonDialog
+          season={season}
+          teamName={team?.name}
+          onConfirm={async () => {
+            setConfirmDeleteSeason(false);
+            try {
+              await deleteSeason(season.id);
+              showToast('Season deleted', 'success');
+              navigate('/seasons', { replace: true });
+            } catch (err) {
+              showToast(`Delete failed: ${err.message}`, 'error');
+            }
+          }}
+          onCancel={() => setConfirmDeleteSeason(false)}
+        />
+      )}
 
       {confirmEndSeason && (
         <ConfirmDialog
