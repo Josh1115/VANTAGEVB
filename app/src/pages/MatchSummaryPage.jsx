@@ -297,7 +297,7 @@ function MatchNotes({ matchId, initialNotes }) {
         onChange={handleChange}
         placeholder="Add notes about this match…"
         className="w-full bg-surface border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 resize-none focus:outline-none focus:border-primary/60 transition-colors"
-        rows={3}
+        rows={2}
       />
     </div>
   );
@@ -815,6 +815,7 @@ export function MatchSummaryPage() {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfProgress, setPdfProgress] = useState(0);
   const [reviseModalSet, setReviseModalSet] = useState(null);
+  const [editMenuOpen,   setEditMenuOpen]   = useState(false);
   const [boxScoreSet, setBoxScoreSet] = useState(null);
   const [statsVersion, setStatsVersion] = useState(0);
   const [showCorrections, setShowCorrections] = useState(false);
@@ -1521,80 +1522,59 @@ export function MatchSummaryPage() {
           {/* Match header */}
           <div className="px-4 pt-4 pb-2">
             {/* Top row: match info + Top Performers side by side */}
-            <div className="flex gap-36 items-stretch">
-              {/* Left: match identity + set scores */}
-              <div className="min-w-0 flex-shrink-0">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-bold">
-                    vs. {match.opponent_name ?? 'Opponent'}
-                    {match.opponent_record && (
-                      <span className="text-sm font-normal text-slate-400 ml-2">({match.opponent_record})</span>
-                    )}
-                  </h2>
-                  <button
-                    onClick={openEditModal}
-                    title="Edit match details"
-                    className="text-slate-400 hover:text-orange-400 text-sm transition-colors"
-                  >✎</button>
-                </div>
-                {match.status === 'complete' && (() => {
-                  const won = (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
-                  return (
-                    <div className="flex items-center gap-2 mt-0.5">
+            <div className="grid grid-cols-[24rem_24rem] gap-24 items-stretch justify-center">
+              {/* Left: match identity + set scores. One ✎ opens the edit menu. */}
+              {(() => {
+                const complete = match.status === 'complete';
+                const won = (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
+                const doneSets = (sets ?? []).filter(s => s.status === 'complete');
+                const info = [
+                  fmtDate(match.date),
+                  match.location && match.location[0].toUpperCase() + match.location.slice(1),
+                  match.conference && (match.conference === 'conference' ? 'Conference' : 'Non-Con'),
+                  match.match_type && { 'reg-season': 'Reg Season', 'tourney': 'Tourney', 'ihsa-playoffs': playoffLabel, 'exhibition': 'Exhibition' }[match.match_type],
+                ].filter(Boolean);
+                return (
+                  <div className="bg-surface rounded-xl border border-slate-700/60 p-3 h-full flex flex-col items-center justify-center gap-1 text-center">
+                    <div className="flex items-baseline justify-center gap-2">
+                      <h2 className="text-xl font-bold leading-tight">
+                        {match.location === 'away' ? '@' : 'vs.'} {match.opponent_name ?? 'Opponent'}
+                        {match.opponent_record && (
+                          <span className="text-sm font-normal text-slate-400 ml-2">({match.opponent_record})</span>
+                        )}
+                      </h2>
+                      <button
+                        onClick={() => setEditMenuOpen(true)}
+                        title="Edit match"
+                        className="text-slate-400 hover:text-orange-400 text-base transition-colors"
+                      >✎</button>
+                    </div>
+                    <p className="text-sm text-slate-400">{info.join(' · ')}</p>
+                    {complete && (
                       <div className={`text-2xl font-black tracking-tight ${won ? 'text-emerald-400' : 'text-red-400'}`}>
                         {won ? 'W' : 'L'} {match.our_sets_won ?? 0}–{match.opp_sets_won ?? 0}
                       </div>
-                      <button
-                        onClick={() => {
-                          setEditOurSets(match.our_sets_won ?? 0);
-                          setEditOppSets(match.opp_sets_won ?? 0);
-                          setAddSetOurScore('');
-                          setAddSetOppScore('');
-                          setEditResultOpen(true);
-                        }}
-                        title="Correct set result"
-                        className="text-slate-400 hover:text-orange-400 text-sm transition-colors"
-                      >✎</button>
-                    </div>
-                  );
-                })()}
-                <p className="text-sm text-slate-400">
-                  {fmtDate(match.date)}
-                  {match.location && (
-                    <span className="ml-2 capitalize text-slate-500">· {match.location}</span>
-                  )}
-                  {match.conference && (
-                    <span className="ml-2 text-slate-500">· {match.conference === 'conference' ? 'Conference' : 'Non-Con'}</span>
-                  )}
-                  {match.match_type && (
-                    <span className="ml-2 text-slate-500">· {{ 'reg-season': 'Reg Season', 'tourney': 'Tourney', 'ihsa-playoffs': playoffLabel, 'exhibition': 'Exhibition' }[match.match_type]}</span>
-                  )}
-                </p>
-                {sets && sets.length > 0 && (
-                  <div className="flex gap-2 mt-2 flex-wrap">
-                    {sets.filter(s => s.status === 'complete').map((s) => {
-                      const won = s.our_score > s.opp_score;
-                      return (
-                        <div key={s.id} className="flex items-center gap-1">
-                          <div className={`rounded-lg px-3 py-1 text-sm border ${won ? 'bg-emerald-900/30 border-emerald-700/50' : 'bg-red-900/30 border-red-800/50'}`}>
-                            <span className={`text-xs mr-1 font-semibold ${won ? 'text-emerald-500' : 'text-red-500'}`}>S{s.set_number}</span>
-                            <span className={`font-bold font-mono ${won ? 'text-emerald-300' : 'text-red-300'}`}>{s.our_score}–{s.opp_score}</span>
-                          </div>
-                          <button
-                            onClick={() => setReviseModalSet(s)}
-                            title="Revise set"
-                            className="text-xs text-slate-400 hover:text-orange-400 px-1 transition-colors"
-                          >✎</button>
-                        </div>
-                      );
-                    })}
+                    )}
+                    {doneSets.length > 0 && (
+                      <div className="flex gap-1.5 flex-wrap justify-center">
+                        {doneSets.map((s) => {
+                          const setWon = s.our_score > s.opp_score;
+                          return (
+                            <div key={s.id} className={`rounded-lg px-2.5 py-1 text-sm border ${setWon ? 'bg-emerald-900/30 border-emerald-700/50' : 'bg-red-900/30 border-red-800/50'}`}>
+                              <span className={`text-xs mr-1 font-semibold ${setWon ? 'text-emerald-500' : 'text-red-500'}`}>S{s.set_number}</span>
+                              <span className={`font-bold font-mono ${setWon ? 'text-emerald-300' : 'text-red-300'}`}>{s.our_score}–{s.opp_score}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                );
+              })()}
 
               {/* Right: Top Performers */}
               {topPerformers && (
-                <div className="bg-surface rounded-xl border border-slate-700/60 p-3 w-96 shrink-0 h-full flex flex-col">
+                <div className="bg-surface rounded-xl border border-slate-700/60 p-3 h-full flex flex-col">
                   <p className="text-xs font-black uppercase tracking-widest text-orange-500 mb-2 text-center">Top Performers</p>
                   <div className="flex-1 flex flex-col justify-between">
                     {topPerformers.map(({ label, entry }) => entry && (
@@ -1613,7 +1593,27 @@ export function MatchSummaryPage() {
 
             {/* Below the two-column row: notes + export */}
             <MatchNotes matchId={id} initialNotes={match.notes ?? ''} />
-            <div className="flex gap-2 mt-3 flex-wrap">
+            <p className="mt-3 mb-1.5 text-xs font-bold text-slate-400">Adjustments:</p>
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" variant="secondary" disabled={!stats} onClick={() => setShowCorrections(true)}>
+                ✎ Correct
+              </Button>
+              {match.status === 'complete' && match.opponent_id && stats && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    const suggestions = generateScoutingSuggestions(stats);
+                    setScoutSuggestions(suggestions.length ? suggestions : [{ type: 'note', value: '' }]);
+                    setShowScoutModal(true);
+                  }}
+                >
+                  📋 Scout
+                </Button>
+              )}
+            </div>
+            <p className="mt-3 mb-1.5 text-xs font-bold text-slate-400">Downloadables:</p>
+            <div className="flex gap-2 flex-wrap">
               <Button size="sm" variant="secondary" disabled={!stats || pdfBusy} onClick={handlePDF}>
                 {pdfBusy ? `Generating ${pdfProgress}/${TABS.length}…` : 'PDF'}
               </Button>
@@ -1632,28 +1632,12 @@ export function MatchSummaryPage() {
               <Button size="sm" variant="secondary" disabled={!stats || sharingCard} onClick={handleDownloadCard}>
                 {sharingCard ? '…' : '⬇ Card'}
               </Button>
-              <Button size="sm" variant="secondary" disabled={!stats} onClick={() => setShowCorrections(true)}>
-                ✎ Correct
-              </Button>
-              {match.status === 'complete' && match.opponent_id && stats && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    const suggestions = generateScoutingSuggestions(stats);
-                    setScoutSuggestions(suggestions.length ? suggestions : [{ type: 'note', value: '' }]);
-                    setShowScoutModal(true);
-                  }}
-                >
-                  📋 Scout
-                </Button>
-              )}
             </div>
           </div>
 
           {/* Set filter picker */}
           {sets && sets.length > 1 && stats && (
-            <div className="flex gap-1.5 mx-4 mb-3">
+            <div className="flex gap-1.5 mx-4 mt-3 mb-3">
               <button
                 onClick={() => setSelectedSetId(null)}
                 className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
@@ -2359,6 +2343,41 @@ export function MatchSummaryPage() {
         seasonRecord={seasonRecord}
         playerNames={playerNames}
       />
+
+      {editMenuOpen && (
+        <Modal title="Edit Match" onClose={() => setEditMenuOpen(false)}>
+          <div className="space-y-2">
+            {[
+              { label: 'Match Details', sub: 'Date, opponent, record, location, type', go: openEditModal },
+              ...(match.status === 'complete' ? [{
+                label: 'Result / Add Set', sub: `Sets won ${match.our_sets_won ?? 0}–${match.opp_sets_won ?? 0}`,
+                go: () => {
+                  setEditOurSets(match.our_sets_won ?? 0);
+                  setEditOppSets(match.opp_sets_won ?? 0);
+                  setAddSetOurScore('');
+                  setAddSetOppScore('');
+                  setEditResultOpen(true);
+                },
+              }] : []),
+              ...(sets ?? []).filter(s => s.status === 'complete').map(s => ({
+                label: `Set ${s.set_number}`, sub: `${s.our_score}–${s.opp_score}`, go: () => setReviseModalSet(s),
+              })),
+            ].map(item => (
+              <button
+                key={item.label}
+                onClick={() => { setEditMenuOpen(false); item.go(); }}
+                className="w-full flex items-center justify-between rounded-lg bg-slate-800 hover:bg-slate-700 px-4 py-3 text-left transition-colors"
+              >
+                <span>
+                  <span className="block text-sm font-bold text-white">{item.label}</span>
+                  <span className="block text-xs text-slate-400">{item.sub}</span>
+                </span>
+                <span className="text-slate-500 text-lg">›</span>
+              </button>
+            ))}
+          </div>
+        </Modal>
+      )}
 
       {editOpen && (
         <Modal
