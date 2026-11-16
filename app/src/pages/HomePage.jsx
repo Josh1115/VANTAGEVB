@@ -8,7 +8,9 @@ import { db } from '../db/schema';
 import { MATCH_STATUS } from '../constants';
 import { fmtDate, fmtHitting, fmtPct } from '../stats/formatters';
 import { currentStreak, seasonOpener, sortByDateTime } from '../utils/seasonSummary';
-import { allTimeRank, resolveSeasonFinish } from '../utils/seasonUtils';
+import { allTimeRank, resolveSeasonFinish, snapshotSeasonRoster, applyInferredSeasonFinish } from '../utils/seasonUtils';
+import { SeasonFormModal } from '../components/team/SeasonFormModal';
+import { PostSeasonModal } from '../components/shared/PostSeasonModal';
 import { computePlayerStats, computeTeamStats } from '../stats/engine';
 import { deleteMatch } from '../stats/queries';
 import { useUiStore, selectShowToast } from '../store/uiStore';
@@ -457,7 +459,11 @@ export function HomePage() {
   const [confirmLogout, setConfirmLogout] = useState(false);
   const showToast = useUiStore(selectShowToast);
   const { session, profile, refreshProfile } = useAuth();
-  const { teamsAllowed, matchLimit, isMaster, tier, expiresAt, daysUntilExpiry } = usePlan();
+  const { teamsAllowed, matchLimit, isMaster, isActive, tier, expiresAt, daysUntilExpiry } = usePlan();
+  // Start New Season: end the open season first, then add the new one.
+  const [confirmEndForNew, setConfirmEndForNew] = useState(false);
+  const [postSeasonForNew, setPostSeasonForNew] = useState(null);
+  const [showNewSeasonForm, setShowNewSeasonForm] = useState(false);
   const renewalDays = renewalReminderDays(tier, daysUntilExpiry);
   const [cloudSaving, setCloudSaving] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState(() => {
@@ -520,6 +526,27 @@ export function HomePage() {
   const [, bumpTeamSwitch] = useState(0);
   const defaultTeamId   = getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID);
   const defaultSeasonId = getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID);
+  const currentSeason = useLiveQuery(
+    () => defaultSeasonId ? db.seasons.get(defaultSeasonId) : Promise.resolve(null),
+    [defaultSeasonId]
+  );
+
+  function handleStartNewSeason() {
+    if (!isActive && !isMaster) { showToast('Your plan has expired. Renew your plan to start a new season.', 'error'); return; }
+    if (!defaultTeamId) { navigate('/teams'); return; }
+    if (currentSeason && currentSeason.status !== 'ended') { setConfirmEndForNew(true); return; }
+    setShowNewSeasonForm(true);
+  }
+
+  async function endSeasonForNew() {
+    const s = currentSeason;
+    setConfirmEndForNew(false);
+    if (!s) return;
+    await db.seasons.update(s.id, { status: 'ended' });
+    await snapshotSeasonRoster(s.id, s.team_id);
+    await applyInferredSeasonFinish(s.id, s.team_id, s.year);
+    setPostSeasonForNew({ teamId: s.team_id, year: s.year });
+  }
 
   // Teams for the dashboard's quick-switch pills — null (pills hidden) unless
   // the account has more than one team. Each carries its most recent season so
@@ -1003,26 +1030,26 @@ export function HomePage() {
           {/* New Match */}
           <button
             onClick={() => navigate('/matches/new')}
-            className="group flex-1 basis-0 min-w-0 card-top-glow btn-shimmer bg-primary/90 hover:bg-primary rounded-xl p-4 text-left flex items-center gap-3 transition-[transform,filter,background-color] duration-75 active:scale-[0.97] active:brightness-90 animate-slide-up-fade shadow-lg"
+            className="group flex-1 basis-0 min-w-0 card-top-glow btn-shimmer bg-primary/90 hover:bg-primary rounded-xl px-3 py-4 text-center flex items-center justify-center gap-3 transition-[transform,filter,background-color] duration-75 active:scale-[0.97] active:brightness-90 animate-slide-up-fade shadow-lg"
             style={{ animationDelay: '0ms' }}
           >
-            <span className="text-4xl inline-block vb-ball-spin">🏐</span>
+            <span className="text-5xl inline-block vb-ball-spin">🏐</span>
             <div>
-              <div className="font-bold text-base text-white">Start New Match</div>
-              <div className="text-xs text-orange-100/80">Start recording stats</div>
+              <div className="font-bold text-lg text-white leading-tight">Start New Match</div>
+              <div className="text-sm text-orange-100/80">Start recording stats</div>
             </div>
           </button>
 
           {/* Schedule Match — opens the default season's add-game form */}
           <button
             onClick={() => navigate(defaultSeasonId ? `/seasons/${defaultSeasonId}?schedule=1` : '/teams')}
-            className="group flex-1 basis-0 min-w-0 bg-primary/90 hover:bg-primary rounded-xl p-4 text-left flex items-center gap-3 transition-[transform,background-color] duration-75 active:scale-[0.97] animate-slide-up-fade"
+            className="group flex-1 basis-0 min-w-0 bg-primary/90 hover:bg-primary rounded-xl px-3 py-4 text-center flex items-center justify-center gap-3 transition-[transform,background-color] duration-75 active:scale-[0.97] animate-slide-up-fade"
             style={{ animationDelay: '60ms' }}
           >
-            <span className="text-4xl inline-block">📅</span>
+            <span className="text-5xl inline-block">📅</span>
             <div>
-              <div className="font-bold text-base text-white">Schedule Future Match</div>
-              <div className="text-xs text-orange-100/80">Add a game to your calendar</div>
+              <div className="font-bold text-lg text-white leading-tight">Schedule Future Match</div>
+              <div className="text-sm text-orange-100/80">Add a game to your calendar</div>
             </div>
           </button>
         </div>
@@ -1379,17 +1406,17 @@ export function HomePage() {
         })()}
 
         {/* ── Opponents + Next Match (side by side) ── */}
-        <div className="flex gap-2 animate-slide-up-fade" style={{ animationDelay: '180ms' }}>
+        <div className="flex justify-center gap-2 animate-slide-up-fade" style={{ animationDelay: '180ms' }}>
           <button
             onClick={() => navigate('/opponents')}
-            className={`group card-top-glow bg-primary/90 hover:bg-primary rounded-xl p-3 text-left flex items-center gap-2.5 active:scale-[0.97] transition-[transform,background-color] duration-75 ${nextMatch ? 'flex-1' : 'w-full'}`}
+            className={`group card-top-glow bg-primary/90 hover:bg-primary rounded-xl p-3 text-center flex items-center justify-center gap-2.5 active:scale-[0.97] transition-[transform,background-color] duration-75 ${nextMatch ? 'flex-1' : 'w-[calc(50%-0.25rem)]'}`}
           >
             <span className="text-2xl inline-block transition-transform duration-75 group-active:-translate-y-1 group-active:scale-125">🔍</span>
             <div className="min-w-0">
-              <div className="font-semibold text-base text-white">Scouting & Opponents</div>
+              <div className="font-bold text-base text-white leading-tight">Scouting & Opponents</div>
               <div className="text-xs text-orange-100/80 truncate">Historical opponent trends</div>
             </div>
-            <span className="text-orange-100/70 ml-auto">›</span>
+            <span className="text-lg text-orange-100/70">›</span>
           </button>
 
           {nextMatch ? (
@@ -1823,25 +1850,40 @@ export function HomePage() {
         <div className="flex gap-2 animate-slide-up-fade" style={{ animationDelay: '200ms' }}>
           <button
             onClick={() => setShowWhiteboard(true)}
-            className="group flex-1 card-top-glow bg-primary/90 hover:bg-primary rounded-xl p-3 text-left flex items-center gap-2.5 active:scale-[0.97] transition-[transform,background-color] duration-75"
+            className="group flex-1 card-top-glow bg-primary/90 hover:bg-primary rounded-xl p-3 text-center flex items-center justify-center gap-2.5 active:scale-[0.97] transition-[transform,background-color] duration-75"
           >
             <span className="text-2xl inline-block transition-transform duration-75 group-active:-translate-y-1 group-active:scale-125">📋</span>
             <div className="min-w-0">
-              <div className="font-semibold text-sm text-white">Whiteboard</div>
-              <div className="text-[11px] text-orange-100/80 truncate">Timeout draw & diagram</div>
+              <div className="font-bold text-base text-white leading-tight">Whiteboard</div>
+              <div className="text-xs text-orange-100/80 truncate">Timeout draw & diagram</div>
             </div>
-            <span className="text-orange-100/70 ml-auto">›</span>
+            <span className="text-lg text-orange-100/70">›</span>
           </button>
           <button
             onClick={() => navigate('/tools')}
-            className="group flex-1 card-top-glow bg-primary/90 hover:bg-primary rounded-xl p-3 text-left flex items-center gap-2.5 active:scale-[0.97] transition-[transform,background-color] duration-75"
+            className="group flex-1 card-top-glow bg-primary/90 hover:bg-primary rounded-xl p-3 text-center flex items-center justify-center gap-2.5 active:scale-[0.97] transition-[transform,background-color] duration-75"
           >
             <span className="text-2xl inline-block transition-transform duration-75 group-active:-translate-y-1 group-active:scale-125">🛠️</span>
             <div className="min-w-0">
-              <div className="font-semibold text-sm text-white">Practice Tools</div>
-              <div className="text-[11px] text-orange-100/80 truncate">Features for Practice!</div>
+              <div className="font-bold text-base text-white leading-tight">Practice Tools</div>
+              <div className="text-xs text-orange-100/80 truncate">Features for Practice!</div>
             </div>
-            <span className="text-orange-100/70 ml-auto">›</span>
+            <span className="text-lg text-orange-100/70">›</span>
+          </button>
+        </div>
+
+        {/* ── Start New Season (same size as Whiteboard, centered) ── */}
+        <div className="flex justify-center animate-slide-up-fade" style={{ animationDelay: '220ms' }}>
+          <button
+            onClick={handleStartNewSeason}
+            className="group w-[calc(50%-0.25rem)] card-top-glow bg-primary/90 hover:bg-primary rounded-xl p-3 text-center flex items-center justify-center gap-2.5 active:scale-[0.97] transition-[transform,background-color] duration-75"
+          >
+            <span className="text-2xl inline-block transition-transform duration-75 group-active:-translate-y-1 group-active:scale-125">🏁</span>
+            <div className="min-w-0">
+              <div className="font-bold text-base text-white leading-tight">Start New Season</div>
+              <div className="text-xs text-orange-100/80 truncate">Close out & begin next</div>
+            </div>
+            <span className="text-lg text-orange-100/70">›</span>
           </button>
         </div>
 
@@ -1898,6 +1940,32 @@ export function HomePage() {
           </div>
         )}
       </div>
+
+      {confirmEndForNew && (
+        <ConfirmDialog
+          title="End Current Season First?"
+          message={`Your ${currentSeason?.year ?? 'current'} season is still open. End it now so it gets its banner, roster snapshot and senior graduation, then set up the new season.`}
+          confirmLabel="End Season"
+          danger
+          onConfirm={endSeasonForNew}
+          onCancel={() => setConfirmEndForNew(false)}
+        />
+      )}
+
+      {postSeasonForNew && (
+        <PostSeasonModal
+          teamId={postSeasonForNew.teamId}
+          year={postSeasonForNew.year}
+          onClose={() => { setPostSeasonForNew(null); setShowNewSeasonForm(true); }}
+        />
+      )}
+
+      {showNewSeasonForm && defaultTeamId && (
+        <SeasonFormModal
+          teamId={defaultTeamId}
+          onClose={() => { setShowNewSeasonForm(false); bumpTeamSwitch((n) => n + 1); }}
+        />
+      )}
 
       {showKickoffPopup && (
         <SeasonKickoffModal onClose={() => setShowKickoffPopup(false)} />
