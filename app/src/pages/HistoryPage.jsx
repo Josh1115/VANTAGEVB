@@ -934,6 +934,20 @@ function RecordLine({ item, tag }) {
   );
 }
 
+// One of the 3 side-by-side highlight tiles: medal, big number, stat, player, opponent.
+function RecordTile({ item, tag }) {
+  return (
+    <div className="px-1.5 text-center min-w-0 flex flex-col items-center gap-0.5">
+      <span className="text-2xl leading-none">{RECORD_RANK_ICONS[item.rank] ?? <span className="text-sm font-bold text-slate-400">#{item.rank}</span>}</span>
+      <span className="text-2xl font-black text-white tabular-nums leading-tight">{item.value}</span>
+      <span className="text-xs font-semibold text-slate-300 leading-tight">{item.label}</span>
+      {item.name && <span className="text-xs font-bold text-slate-100 leading-tight truncate max-w-full">{item.name}</span>}
+      {item.opp && <span className="text-[10px] text-slate-500 leading-tight truncate max-w-full">vs {item.opp}</span>}
+      {tag && <span className="text-[9px] font-bold uppercase tracking-wide text-slate-500 leading-tight">{tag}</span>}
+    </div>
+  );
+}
+
 // Right side of a past season card: the 3 best records set that season, with a
 // button that opens the full list (SeasonRecordsFull) under the card details.
 function SeasonRecordsHighlights({ groups, open, onToggle }) {
@@ -941,14 +955,18 @@ function SeasonRecordsHighlights({ groups, open, onToggle }) {
   const top = [...all].sort((a, b) => a.rank - b.rank || a.gi - b.gi || a.order - b.order).slice(0, 3);
   const more = all.length - top.length;
   return (
-    <div className="flex-1 min-w-[150px] border-t sm:border-t-0 sm:border-l border-slate-700/50 pt-2.5 sm:pt-0 sm:pl-3 space-y-1">
+    <div className="flex-1 min-w-[150px] flex flex-col border-t sm:border-t-0 sm:border-l border-slate-700/50 pt-2.5 sm:pt-0 sm:pl-3">
       <p className="text-[10px] font-black uppercase tracking-wide text-amber-400">🏆 Records Set ({all.length})</p>
-      {top.map(i => <RecordLine key={i.key} item={i} tag={i.tag} />)}
-      {more > 0 && (
-        <button onClick={onToggle} className="text-xs font-semibold text-primary pt-0.5">
-          {open ? 'Show less ▴' : `+${more} more ▾`}
-        </button>
-      )}
+      <div className="flex-1 flex flex-col justify-center gap-2 py-2">
+        <div className={`grid divide-x divide-slate-700/50`} style={{ gridTemplateColumns: `repeat(${top.length}, minmax(0, 1fr))` }}>
+          {top.map(i => <RecordTile key={i.key} item={i} tag={i.tag} />)}
+        </div>
+        {more > 0 && (
+          <button onClick={onToggle} className="self-center text-xs font-semibold text-primary">
+            {open ? 'Show less ▴' : `+${more} more ▾`}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
