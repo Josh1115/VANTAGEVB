@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { STORAGE_KEYS, setStorageItem } from '../../utils/storage';
+import { STORAGE_KEYS, setStorageItem, getIntStorage } from '../../utils/storage';
 import { useUiStore, selectShowToast } from '../../store/uiStore';
 import {
   snapshotSeasonRoster, applyInferredSeasonFinish, isSeniorYear, gradeForNewSeason,
@@ -21,12 +21,20 @@ function nextSeasonName(last, newYear) {
   return `${newYear} Season`;
 }
 
-// Start New Season: pick gender → pick level (team) → end the open season →
+// Start New Season: finish the dashboard's open season → pick gender → pick level (team) → end the open season →
 // choose returning players (grades move up) → create the new season.
 export function StartSeasonWizard({ onClose, onDone }) {
   const navigate  = useNavigate();
   const showToast = useUiStore(selectShowToast);
-  const [step, setStep]       = useState('gender');
+  const [step, setStep]       = useState('start');
+  // The season the dashboard is showing. If it's still open, finishing it comes first.
+  const [currentSeasonId] = useState(() => getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID));
+  const current = useLiveQuery(async () => {
+    const season = currentSeasonId ? await db.seasons.get(currentSeasonId) : null;
+    if (!season) return { season: null, teamName: null };
+    const t = await db.teams.get(season.team_id);
+    return { season, teamName: t?.name ?? null };
+  }, [currentSeasonId]);
   const [gender, setGender]   = useState(null);
   const [teamId, setTeamId]   = useState(null);
   const [year, setYear]       = useState('');
@@ -49,13 +57,34 @@ export function StartSeasonWizard({ onClose, onDone }) {
   );
   const shownGenders = GENDERS.filter(([g]) => g !== 'Mixed' || (teams ?? []).some(t => t.gender === 'Mixed'));
 
-  // Last season's roster: active players plus anyone in its roster snapshot.
-  const players = useLiveQuery(async () => {
-    if (!team) return [];
+  // Last season's roster: active players, anyone in its saved roster snapshot,
+  // and anyone who recorded a stat in its matches (covers players archived by
+  // the old "archive everyone" button). Duplicate copies of a player show once.
+  const rosterInfo = useLiveQuery(async () => {
+    if (!team) return { list: [], total: 0 };
     const snap = new Set(team.latest?.roster_uids ?? []);
-    const all = await db.players.where('team_id').equals(team.id).toArray();
-    return all.filter(p => !p.removed && (p.is_active !== false || (p.uid && snap.has(p.uid))));
+    const all = (await db.players.where('team_id').equals(team.id).toArray()).filter(p => !p.removed);
+    let statIds = new Set();
+    if (team.latest) {
+      const matchIds = (await db.matches.where('season_id').equals(team.latest.id).toArray()).map(m => m.id);
+      if (matchIds.length) {
+        const contacts = await db.contacts.where('match_id').anyOf(matchIds).toArray();
+        statIds = new Set(contacts.map(c => c.player_id).filter(Boolean));
+      }
+    }
+    const seen = new Set();
+    const list = [];
+    for (const p of all) {
+      if (!(p.is_active !== false || (p.uid && snap.has(p.uid)) || statIds.has(p.id))) continue;
+      const keys = [p.uid && `uid:${p.uid}`, p.name?.trim() && `name:${p.name.trim().toLowerCase()}`].filter(Boolean);
+      if (keys.some(k => seen.has(k))) continue;
+      keys.forEach(k => seen.add(k));
+      list.push(p);
+    }
+    list.sort((a, b) => Number(a.jersey_number) - Number(b.jersey_number));
+    return { list, total: all.length, seniorsAll: all.filter(p => isSeniorYear(p.year)).length };
   }, [team?.id, team?.latest?.id]);
+  const players   = rosterInfo?.list;
   const returning = (players ?? []).filter(p => !isSeniorYear(p.year));
   const seniors   = (players ?? []).filter(p => isSeniorYear(p.year) && p.is_active !== false);
   const newYear   = Number(year);
@@ -78,14 +107,13 @@ export function StartSeasonWizard({ onClose, onDone }) {
     if (team.latest && team.latest.status !== 'ended') setStep('end');
     else setStep('roster');
   }
-  async function endOldSeason() {
-    const s = team.latest;
+  async function endOldSeason(s = team.latest, next = 'roster') {
     setBusy(true);
     try {
       await snapshotSeasonRoster(s.id, s.team_id);
       await db.seasons.update(s.id, { status: 'ended' });
       await applyInferredSeasonFinish(s.id, s.team_id, s.year);
-      setStep('roster');
+      setStep(next);
     } catch (err) {
       showToast(`Could not end season: ${err.message}`, 'error');
     } finally { setBusy(false); }
@@ -138,7 +166,27 @@ export function StartSeasonWizard({ onClose, onDone }) {
 
   return (
     <Modal title="Start New Season" onClose={onClose}>
-      {teams === undefined ? null : step === 'gender' ? (
+      {teams === undefined || current === undefined ? null : step === 'start' && current.season && current.season.status !== 'ended' ? (
+        <div className="space-y-3">
+          <p className="text-sm text-slate-300">
+            Before starting a new season, let's finish your{' '}
+            <span className="font-bold text-white">{current.season.year}{current.teamName ? ` ${current.teamName}` : ''}</span> season.
+          </p>
+          <div className="rounded-lg bg-slate-800/60 px-3 py-2.5 text-xs text-slate-300 space-y-1">
+            <p className="font-semibold text-white">Finishing a season:</p>
+            <p>• Marks it complete. It shows as finished on the History page.</p>
+            <p>• Saves this season's roster and records your playoff finish and any title banner.</p>
+            <p>• Keeps every match and stat. Nothing is deleted.</p>
+          </div>
+          <p className="text-sm text-slate-300">Ready to finish the {current.season.year} season?</p>
+          <div className="flex gap-2">
+            <Button variant="secondary" className="flex-1" disabled={busy} onClick={onClose}>Not Yet</Button>
+            <Button className="flex-1" disabled={busy} onClick={() => endOldSeason(current.season, 'gender')}>
+              {busy ? 'Finishing…' : `Finish ${current.season.year} Season`}
+            </Button>
+          </div>
+        </div>
+      ) : step === 'gender' || step === 'start' ? (
         <div className="space-y-3">
           <p className="text-sm text-slate-400">Which program is this season for?</p>
           <div className="grid grid-cols-2 gap-2">
@@ -186,7 +234,7 @@ export function StartSeasonWizard({ onClose, onDone }) {
           </p>
           <div className="flex gap-2">
             <Button variant="secondary" className="flex-1" onClick={() => setStep('level')}>Back</Button>
-            <Button className="flex-1" disabled={busy} onClick={endOldSeason}>{busy ? 'Ending…' : `End ${team.latest.year} Season`}</Button>
+            <Button className="flex-1" disabled={busy} onClick={() => endOldSeason()}>{busy ? 'Ending…' : `End ${team.latest.year} Season`}</Button>
           </div>
         </div>
       ) : (
@@ -195,7 +243,10 @@ export function StartSeasonWizard({ onClose, onDone }) {
             Returning players for {newYear}. Uncheck anyone who isn't coming back. Grades move up one year.
           </p>
           {returning.length === 0 ? (
-            <p className="text-sm text-slate-500">No freshmen, sophomores or juniors on last season's roster.</p>
+            <p className="text-sm text-slate-500">
+              No freshmen, sophomores or juniors on last season's roster.
+              {rosterInfo && ` (${rosterInfo.total} player${rosterInfo.total !== 1 ? 's' : ''} on this team: ${rosterInfo.seniorsAll} senior${rosterInfo.seniorsAll !== 1 ? 's' : ''}, ${rosterInfo.total - rosterInfo.seniorsAll - returning.length} archived with no stats last season.)`}
+            </p>
           ) : (
             <div className="space-y-1.5 max-h-72 overflow-y-auto">
               {returning.map(p => {
