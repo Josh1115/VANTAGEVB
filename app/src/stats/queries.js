@@ -218,6 +218,8 @@ export async function undoNewSeasonChanges(season) {
     if (p.grade_year != null && Number(p.grade_year) === Number(season.year)) {
       upd.year = c.year ?? null;
       upd.grade_year = c.grade_year ?? null;
+      // Put last season's number back only if no new one was entered since.
+      if ('jersey_number' in c && (p.jersey_number == null || p.jersey_number === '')) upd.jersey_number = c.jersey_number;
     }
     await db.players.update(p.id, upd);
     undone++;

@@ -770,6 +770,11 @@ export function HomePage() {
       hasSchedule: matchCount > 0,
       firstTeamId:   allTeams[0]?.id ?? null,
       firstSeasonId: allSeasons[0]?.id ?? null,
+      // A new season for a team that already had one (e.g. via Start New Season):
+      // the team and season exist, so the checklist starts at the roster.
+      returningSeason: teamSeasons.length > 1 && seasonId != null,
+      currentTeamId:   teamId,
+      currentSeasonId: seasonId,
     };
   }, []);
 
@@ -1546,10 +1551,14 @@ export function HomePage() {
           )}
 
           {recentMatches !== undefined && displayMatches.length === 0 && (() => {
-            const { hasTeam, hasSeason, hasPlayers, hasSchedule, firstTeamId, firstSeasonId } = setupState ?? {};
+            const { hasTeam, hasSeason, hasPlayers, hasSchedule, firstTeamId, firstSeasonId, returningSeason, currentTeamId, currentSeasonId } = setupState ?? {};
             const teamRoute   = firstTeamId   ? `/teams/${firstTeamId}`     : '/teams';
             const seasonRoute = firstSeasonId ? `/seasons/${firstSeasonId}` : teamRoute;
-            const steps = [
+            const steps = returningSeason ? [
+              { label: 'Add Remaining Roster', done: false, action: () => navigate(`/teams/${currentTeamId}`),     hint: 'Add new players to your returning roster' },
+              { label: 'Add Your Schedule',    done: false, action: () => navigate(`/seasons/${currentSeasonId}`), hint: 'Add opponents and match dates'            },
+              { label: 'Start a Match',        done: false, action: () => navigate('/matches/new'),                hint: 'Record your first live stats'             },
+            ] : [
               { label: 'Create a Team',     done: !!hasTeam,     action: () => navigate('/teams'),           hint: 'School, club, or program name'   },
               { label: 'Create a Season',   done: !!hasSeason,   action: () => navigate(teamRoute),          hint: 'Year and season name'             },
               { label: 'Add a Roster',      done: !!hasPlayers,  action: () => navigate(teamRoute),          hint: 'Add players and jersey numbers'   },

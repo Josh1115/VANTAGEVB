@@ -284,9 +284,13 @@ export async function computeLeaderboards(tab, teamId) {
             // (even if archived by the old "archive everyone" button).
             const player      = playerById[pid];
             const lastYear    = yearRange?.max ?? null;
-            const graduated   = isSeniorYear(player?.year) && lastYear != null && isYearEnded(lastYear);
+            // Back on the roster for a newer, still-open season (e.g. a Jr→Sr carried
+            // over by Start New Season): not graduated, so the record is active again.
+            const returned    = player?.is_active !== false && !player?.removed && lastYear != null && latestYear != null
+              && latestYear > Number(lastYear) && !isYearEnded(latestYear);
+            const graduated   = isSeniorYear(player?.year) && lastYear != null && isYearEnded(lastYear) && !returned;
             const playedLatest = lastYear != null && latestYear != null && Number(lastYear) === latestYear;
-            const isActive    = !player?.removed && !graduated && (activePlayerIds.has(pid) || playedLatest);
+            const isActive    = !player?.removed && !graduated && (activePlayerIds.has(pid) || playedLatest || returned);
             const preYears    = preYearsByPid[pid] ?? {};
             const starts      = [yearRange?.min, histCareerStartByPid[pid], preYears.start].filter(v => v != null);
             const ends        = [yearRange?.max, preYears.end].filter(v => v != null);

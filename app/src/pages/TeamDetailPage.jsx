@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { Modal } from '../components/ui/Modal';
 import { deleteSeason } from '../stats/queries';
 import { DeleteSeasonDialog } from '../components/shared/DeleteSeasonDialog';
 import { TabBar } from '../components/ui/Tab';
@@ -297,17 +298,20 @@ export function TeamDetailPage() {
     }
   };
 
-  const [reactivating, setReactivating] = useState(false);
-  const archivedCount = (players ?? []).filter(p => !p.is_active).length;
-  const reactivateRoster = async () => {
-    setReactivating(true);
+  // Past Players: inactive (graduated / not returning) but not deleted. Each can
+  // be brought back one at a time — deleted players stay deleted.
+  const [showPastPlayers, setShowPastPlayers] = useState(false);
+  const pastPlayers = useMemo(
+    () => (players ?? []).filter(p => p.is_active === false && !p.removed)
+      .sort((a, b) => String(a.name ?? '').localeCompare(String(b.name ?? ''))),
+    [players]
+  );
+  const bringBackPlayer = async (p) => {
     try {
-      const inactive = await db.players.where('team_id').equals(id).filter(p => !p.is_active).toArray();
-      await Promise.all(inactive.map(p => db.players.update(p.id, { is_active: true, removed: false })));
+      await db.players.update(p.id, { is_active: true });
+      showToast(`${p.name} is back on the roster`, 'success');
     } catch (err) {
-      showToast(`Reactivate failed: ${err.message}`, 'error');
-    } finally {
-      setReactivating(false);
+      showToast(`Bring back failed: ${err.message}`, 'error');
     }
   };
 
@@ -415,9 +419,9 @@ export function TeamDetailPage() {
               <div className="flex justify-between items-center mb-3">
                 <span className="text-sm text-slate-400">{activePlayers.length} players</span>
                 <div className="flex gap-2">
-                  {archivedCount > 0 && (
-                    <Button size="sm" variant="ghost" onClick={reactivateRoster} disabled={reactivating}>
-                      {reactivating ? 'Reactivating…' : `↺ Reactivate Team (${archivedCount})`}
+                  {pastPlayers.length > 0 && (
+                    <Button size="sm" variant="ghost" onClick={() => setShowPastPlayers(true)}>
+                      Past Players ({pastPlayers.length})
                     </Button>
                   )}
                   <Button size="sm" variant="ghost" onClick={() => setShowImportModal(true)}>↑ Import</Button>
@@ -575,6 +579,27 @@ export function TeamDetailPage() {
             </button>
           )}
         </div>
+      )}
+
+      {showPastPlayers && (
+        <Modal title="Past Players" onClose={() => setShowPastPlayers(false)}>
+          <p className="text-xs text-slate-400 mb-3">
+            Players not on the active roster (graduated or not returning). Their stats are kept. Bring back anyone who's on the team this season.
+          </p>
+          {pastPlayers.length === 0 ? (
+            <p className="text-sm text-slate-500">No past players.</p>
+          ) : (
+            <div className="space-y-1.5 max-h-80 overflow-y-auto">
+              {pastPlayers.map(p => (
+                <div key={p.id} className="flex items-center gap-3 rounded-lg bg-slate-800/60 px-3 py-2">
+                  <span className="flex-1 min-w-0 text-sm text-white truncate">{p.name}</span>
+                  {p.year && <span className="text-xs text-slate-400 whitespace-nowrap">{p.year}</span>}
+                  <Button size="sm" variant="ghost" onClick={() => bringBackPlayer(p)}>Bring Back</Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Modal>
       )}
 
       {confirmDeleteSeason && (

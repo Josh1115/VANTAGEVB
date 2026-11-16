@@ -133,12 +133,12 @@ export function StartSeasonWizard({ onClose, onDone }) {
       // season so deleting this season can undo the grade bumps and roster moves.
       const updates = [];
       for (const p of returning) {
-        if (isChecked(p.id)) updates.push([p, { year: gradeForNewSeason(p, newYear), grade_year: newYear, is_active: true }]);
+        if (isChecked(p.id)) updates.push([p, { year: gradeForNewSeason(p, newYear), grade_year: newYear, is_active: true, jersey_number: '' }]); // new numbers entered by hand
         else if (p.is_active !== false) updates.push([p, { is_active: false }]);
       }
       for (const p of seniors) updates.push([p, { is_active: false }]);
       const before = updates.map(([p]) => ({
-        id: p.id, uid: p.uid ?? null, year: p.year ?? null, grade_year: p.grade_year ?? null, is_active: p.is_active !== false,
+        id: p.id, uid: p.uid ?? null, year: p.year ?? null, grade_year: p.grade_year ?? null, is_active: p.is_active !== false, jersey_number: p.jersey_number ?? null,
       }));
       let seasonId;
       await db.transaction('rw', db.seasons, db.players, async () => {
@@ -240,7 +240,7 @@ export function StartSeasonWizard({ onClose, onDone }) {
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-slate-400">
-            Returning players for {newYear}. Uncheck anyone who isn't coming back. Grades move up one year.
+            Returning players for {newYear}. Uncheck anyone who isn't coming back. Grades move up one year, and last season's jersey numbers are cleared so you can enter new ones.
           </p>
           {returning.length === 0 ? (
             <p className="text-sm text-slate-500">
@@ -255,7 +255,7 @@ export function StartSeasonWizard({ onClose, onDone }) {
                   <label key={p.id} className="flex items-center gap-3 rounded-lg bg-slate-800/60 px-3 py-2 cursor-pointer">
                     <input type="checkbox" checked={isChecked(p.id)} onChange={() => toggle(p.id)} className="accent-[#e8530b] w-4 h-4" />
                     <span className="flex-1 min-w-0 text-sm text-white truncate">
-                      {p.jersey_number != null && p.jersey_number !== '' ? `#${p.jersey_number} ` : ''}{p.name}
+                      {p.name}
                     </span>
                     <span className="text-xs text-slate-400 whitespace-nowrap">
                       {p.year ? (to !== p.year ? `${p.year} → ${to}` : p.year) : 'No grade'}
