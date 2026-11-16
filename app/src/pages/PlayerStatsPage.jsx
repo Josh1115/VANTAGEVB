@@ -769,8 +769,9 @@ export function PlayerStatsPage() {
     <span className="flex items-baseline gap-2">
       <span className="font-mono text-primary mr-1">#{player.jersey_number}</span>
       {player.name}
+      {isSeniorYear(player.year) && player.is_active === false && !player.removed && <span title="Graduated" aria-label="Graduated">🎓</span>}
       {player.year && (
-        <span className="text-sm font-normal text-slate-400">{player.year}{isSeniorYear(player.year) && player.is_active === false && !player.removed && <span className="ml-1" title="Graduated" aria-label="Graduated">🎓</span>}</span>
+        <span className="text-sm font-normal text-slate-400">{player.year}</span>
       )}
     </span>
   );
