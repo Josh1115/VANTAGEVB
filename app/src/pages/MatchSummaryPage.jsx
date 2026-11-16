@@ -1503,7 +1503,12 @@ export function MatchSummaryPage() {
 
   return (
     <div>
-      <PageHeader title="Match Summary" backTo="/" />
+      <PageHeader
+        title={match?.opponent_name
+          ? `Match Summary ${match.location === 'away' ? '@' : 'vs.'} ${match.opponent_name}`
+          : 'Match Summary'}
+        backTo="/"
+      />
 
       {loading && !stats && (
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
