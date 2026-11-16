@@ -64,9 +64,17 @@ export function ChampionshipBanner({ title, year, orgName, primaryColorId, secon
 
 export function ChampionshipBannersSection({ titledSeasons, orgName, primaryColorId, secondaryColorId, bannerClassName }) {
   if (!titledSeasons.length) return null;
+  const counts = countTitleTypes(titledSeasons);
   return (
     <div className="bg-surface rounded-xl px-4 py-4">
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 text-center">Titles &amp; Championships</p>
+      <p className="text-[10px] font-black uppercase tracking-widest text-[#e8530b] mb-4 text-center">Titles &amp; Championships</p>
+      {counts.length > 0 && (
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 px-3 mb-4">
+          {counts.map(([n, name]) => (
+            <span key={name} className="text-xs font-bold text-white whitespace-nowrap"><span className="tabular-nums">{n}</span> <span className="text-slate-400 font-semibold">{name}</span></span>
+          ))}
+        </div>
+      )}
       <div className="flex flex-wrap gap-5 justify-center">
         {titledSeasons.map((s, idx) => (
           <div
@@ -87,4 +95,23 @@ export function ChampionshipBannersSection({ titledSeasons, orgName, primaryColo
       </div>
     </div>
   );
+}
+
+// Tally banners by level for the summary bar. Super-Sectional is checked
+// before Sectional; every state finish (title, runner-up, placing) counts as State.
+export function countTitleTypes(titledSeasons) {
+  const c = { regional: 0, sectional: 0, superSectional: 0, state: 0 };
+  for (const { title } of titledSeasons) {
+    const t = String(title ?? '').toLowerCase();
+    if (/state/.test(t)) c.state++;
+    else if (/super[\s-]?sectional/.test(t)) c.superSectional++;
+    else if (/sectional/.test(t)) c.sectional++;
+    else if (/regional/.test(t)) c.regional++;
+  }
+  return [
+    [c.regional, c.regional === 1 ? 'Regional' : 'Regionals'],
+    [c.sectional, c.sectional === 1 ? 'Sectional' : 'Sectionals'],
+    [c.superSectional, c.superSectional === 1 ? 'Super-Sectional' : 'Super-Sectionals'],
+    [c.state, 'State'],
+  ].filter(([n]) => n > 0);
 }

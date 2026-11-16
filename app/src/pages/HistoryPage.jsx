@@ -13,7 +13,7 @@ import { getEligibleTeams } from '../utils/teams';
 import { ChampionshipBannersSection } from '../components/shared/ChampionshipBanner';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { PostSeasonModal } from '../components/shared/PostSeasonModal';
-import { applyInferredSeasonFinish, snapshotSeasonRoster, prunedPlayoffRounds, seasonTitles, withPlayoffSetScores, readSetScores, resolveSeasonFinish, seasonPlayoffRounds, seasonRecordPills } from '../utils/seasonUtils';
+import { applyInferredSeasonFinish, snapshotSeasonRoster, prunedPlayoffRounds, seasonTitles, withPlayoffSetScores, readSetScores, resolveSeasonFinish, seasonPlayoffRounds, seasonRecordPills, furthestPlayoffRank } from '../utils/seasonUtils';
 import { PlayoffRoundsList, SetScoresInput } from '../components/shared/PlayoffSetScores';
 import { recordsForYear } from '../utils/seasonRecords';
 import { exportSectionedCSV } from '../stats/export';
@@ -735,6 +735,8 @@ const EXTRA_PILL_STYLE = {
   'Best Win %': 'text-lime-400 border-lime-500/50',
   'Fewest Losses': 'text-teal-400 border-teal-500/50',
   'Most Playoff Wins': 'text-orange-400 border-orange-500/50',
+  'Biggest Turnaround': 'text-sky-400 border-sky-500/50',
+  'Longest Playoff Run': 'text-fuchsia-400 border-fuchsia-500/50',
 };
 
 function LiveSeasonCard({ year, matches, historyEntry, finish, activeSeason, onEdit, onEndSeason, isWinRecord, isStateRankRecord, isNationalRankRecord, isWinsAddedRecord, isMostGamesRecord, extraPills = [] }) {
@@ -1459,25 +1461,29 @@ export function HistoryPage() {
   }, [history, liveCardGames, hasActiveSeason, liveRecordsByYear]);
 
   const recordPills = useMemo(() => {
-    const playoffWins = (rounds, matches) =>
-      seasonPlayoffRounds(rounds, matches).filter(r => r.result === 'W').length;
+    const playoffInfo = (rounds, matches) => {
+      const played = seasonPlayoffRounds(rounds, matches);
+      return { playoffWins: played.filter(r => r.result === 'W').length, furthestRound: furthestPlayoffRank(played) };
+    };
     const rows = sortedHistory.map(h => {
       const live = liveRecordsByYear?.[String(h.year)];
       return {
         key: h.id,
+        year: h.year,
         wins: live?.wins ?? h.wins ?? null,
         losses: live?.losses ?? h.losses ?? null,
-        playoffWins: playoffWins(h.playoff_rounds, matchesByYear?.[String(h.year)]),
+        ...playoffInfo(h.playoff_rounds, matchesByYear?.[String(h.year)]),
       };
     });
     if (showLiveCard) rows.push({
       key: 'live',
+      year: activeSeason?.year,
       wins: liveCardWins,
       losses: liveCardGames - liveCardWins,
-      playoffWins: playoffWins(liveHistoryEntry?.playoff_rounds, activeMatches),
+      ...playoffInfo(liveHistoryEntry?.playoff_rounds, activeMatches),
     });
     return seasonRecordPills(rows);
-  }, [sortedHistory, liveRecordsByYear, matchesByYear, showLiveCard, liveCardWins, liveCardGames, liveHistoryEntry, activeMatches]);
+  }, [sortedHistory, liveRecordsByYear, matchesByYear, showLiveCard, liveCardWins, liveCardGames, liveHistoryEntry, activeMatches, activeSeason?.year]);
 
   const bestStateRank = useMemo(() => {
     const vals = (history ?? []).map(h => h.state_rank).filter(r => r != null && r > 0);
@@ -2078,6 +2084,26 @@ export function HistoryPage() {
                             </ResponsiveContainer>
                           </div>
                         )}
+                        {/* Win milestones: how many seasons reached 15+/20+/25+/30+ wins */}
+                        {(() => {
+                          const tiles = [15, 20, 25, 30]
+                            .map(t => [t, sparklineData.filter(r => (r.wins ?? 0) >= t).length])
+                            .filter(([, n]) => n > 0);
+                          if (!tiles.length) return null;
+                          return (
+                            <div className="mt-4">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-2">Win Milestones</p>
+                              <div className="grid grid-cols-4 gap-2">
+                                {tiles.map(([t, n]) => (
+                                  <div key={t} className="bg-slate-800/60 rounded-lg py-2 text-center">
+                                    <div className="text-xl font-black text-white tabular-nums leading-none">{n}</div>
+                                    <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mt-1">{t}+ Wins</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
 

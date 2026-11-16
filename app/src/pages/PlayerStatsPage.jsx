@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { isSeniorYear } from '../utils/seasonUtils';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
@@ -769,7 +770,7 @@ export function PlayerStatsPage() {
       <span className="font-mono text-primary mr-1">#{player.jersey_number}</span>
       {player.name}
       {player.year && (
-        <span className="text-sm font-normal text-slate-400">{player.year}</span>
+        <span className="text-sm font-normal text-slate-400">{player.year}{isSeniorYear(player.year) && player.is_active === false && !player.removed && <span className="ml-1" title="Graduated" aria-label="Graduated">🎓</span>}</span>
       )}
     </span>
   );

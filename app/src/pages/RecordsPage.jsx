@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { isSeniorYear } from '../utils/seasonUtils';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
@@ -177,6 +178,8 @@ export async function computeLeaderboards(tab, teamId) {
       const inYear = seasons.filter(s => String(s.year) === String(year));
       return inYear.length > 0 && inYear.every(s => s.status === 'ended');
     };
+    const latestYear = seasons.length ? Math.max(...seasons.map(s => Number(s.year)).filter(Number.isFinite)) : null;
+    const playerById = Object.fromEntries(players.map(p => [p.id, p]));
 
     let careerStats = {};
     let playerYearRange = {}; // player_id -> { min, max }
@@ -276,7 +279,14 @@ export async function computeLeaderboards(tab, teamId) {
             const val          = fromContacts + offset;
             if (!val) return null;
             const yearRange   = playerYearRange[pid] ?? null;
-            const isActive    = activePlayerIds.has(pid);
+            // Glow follows the season, not the roster switch: a senior whose last
+            // season ended has graduated; Fr–Jr from the latest season still glow
+            // (even if archived by the old "archive everyone" button).
+            const player      = playerById[pid];
+            const lastYear    = yearRange?.max ?? null;
+            const graduated   = isSeniorYear(player?.year) && lastYear != null && isYearEnded(lastYear);
+            const playedLatest = lastYear != null && latestYear != null && Number(lastYear) === latestYear;
+            const isActive    = !player?.removed && !graduated && (activePlayerIds.has(pid) || playedLatest);
             const preYears    = preYearsByPid[pid] ?? {};
             const starts      = [yearRange?.min, histCareerStartByPid[pid], preYears.start].filter(v => v != null);
             const ends        = [yearRange?.max, preYears.end].filter(v => v != null);
@@ -284,8 +294,7 @@ export async function computeLeaderboards(tab, teamId) {
               name:              playerNamesMap[pid] ?? '?',
               val,
               // A senior whose last season has ended is assumed graduated: drop "Sr.".
-              class_year:        playerClassYears[pid] === 'Senior' && yearRange && isYearEnded(yearRange.max)
-                ? '' : (playerClassYears[pid] ?? ''),
+              class_year:        graduated ? '' : (playerClassYears[pid] ?? ''),
               career_year_start: starts.length ? Math.min(...starts) : null,
               career_year_end:   isActive ? null : (ends.length ? Math.max(...ends) : null),
               active:            isActive,

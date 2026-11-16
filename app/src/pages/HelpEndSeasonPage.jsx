@@ -72,13 +72,13 @@ function DiagPostSeasonModal() {
       <text x="28" y="36" fill={TXT} fontSize="11" fontWeight="900">Season Complete</text>
       <text x="28" y="50" fill={TXT4} fontSize="8.5">A couple things to wrap up:</text>
 
-      {/* Archive Roster block */}
+      {/* Graduate Seniors block */}
       <rect x="20" y="60" width="280" height="66" rx="10" fill={SURFACE} stroke={BORDER} strokeWidth="1" />
-      <text x="34" y="78" fill={TXT} fontSize="9" fontWeight="800">Archive Roster</text>
-      <text x="34" y="90" fill={TXT5} fontSize="7.5">Move 12 active players to inactive.</text>
-      <text x="34" y="100" fill={TXT5} fontSize="7.5">Players and all their stats are preserved.</text>
+      <text x="34" y="78" fill={TXT} fontSize="9" fontWeight="800">Graduate Seniors</text>
+      <text x="34" y="90" fill={TXT5} fontSize="7.5">Move 4 seniors off the active roster.</text>
+      <text x="34" y="100" fill={TXT5} fontSize="7.5">Freshmen through juniors stay. All stats are kept.</text>
       <rect x="34" y="108" width="252" height="12" rx="5" fill={BORDER} />
-      <text x="160" y="118" fill={TXT3} fontSize="7.5" fontWeight="700" textAnchor="middle">Archive 12 Players</text>
+      <text x="160" y="118" fill={TXT3} fontSize="7.5" fontWeight="700" textAnchor="middle">Graduate 4 Seniors</text>
 
       {/* Season Details block */}
       <rect x="20" y="134" width="280" height="62" rx="10" fill={SURFACE} stroke={BORDER} strokeWidth="1" />
@@ -99,12 +99,12 @@ function DiagPostSeasonModal() {
 function DiagArchivedRoster() {
   return (
     <svg viewBox="0 0 320 130" className="w-full rounded-xl" style={{ background: SURFACE }}>
-      <text x="16" y="16" fill={TXT5} fontSize="7.5" fontWeight="900" letterSpacing="1.5">AFTER ARCHIVING</text>
+      <text x="16" y="16" fill={TXT5} fontSize="7.5" fontWeight="900" letterSpacing="1.5">AFTER GRADUATING</text>
 
       {/* Archived confirmation row */}
       <rect x="8" y="24" width="304" height="36" rx="8" fill={SURFACE2} stroke={BORDER} strokeWidth="1" />
       <text x="26" y="46" fill={EMERALD} fontSize="13" fontWeight="900">✓</text>
-      <text x="46" y="46" fill={TXT3} fontSize="9">12 players archived</text>
+      <text x="46" y="46" fill={TXT3} fontSize="9">4 seniors graduated</text>
 
       {/* Inactive roster rows */}
       {[0, 1, 2].map(i => (
@@ -203,7 +203,7 @@ export function HelpEndSeasonPage() {
         <div className="bg-surface rounded-xl p-4 border border-slate-700 space-y-2">
           <p className="text-white font-semibold">What this guide covers</p>
           <p className="text-slate-400 text-sm leading-relaxed">
-            When your season is over — whether you lost in the playoffs or the year has simply ended — use the End Season feature to officially close it out. This unlocks post-season steps: archiving your roster for the new year and logging final season details in History.
+            When your season is over — whether you lost in the playoffs or the year has simply ended — use the End Season feature to officially close it out. This unlocks post-season steps: graduating your seniors and logging final season details in History.
           </p>
         </div>
 
@@ -244,15 +244,15 @@ export function HelpEndSeasonPage() {
         </Step>
 
         {/* Step 4 */}
-        <Step number={4} title="Archive your roster">
+        <Step number={4} title="Graduate your seniors">
           <DiagArchivedRoster />
           <p className="text-sm text-slate-400 mt-3 leading-relaxed">
-            Tap <span className="text-white font-semibold">Archive Roster</span> to move all active players to inactive status. This clears the active roster so you can build a fresh one for next season. Every player's stats and history are fully preserved — nothing is lost.
+            Tap <span className="text-white font-semibold">Graduate Seniors</span> to move your seniors off the active roster. Freshmen through juniors stay on the roster for next season. Every player's stats and history are kept — nothing is lost.
           </p>
           <div className="mt-3 flex gap-2 p-3 rounded-lg bg-slate-800 border border-slate-700">
             <span style={{ color: PRIMARY }} className="text-sm shrink-0">›</span>
             <p className="text-sm text-slate-400">
-              Players can be reactivated individually at any time from the Team → Roster tab if someone returns next season.
+              Graduated players can be put back on the active roster at any time from the Team → Roster tab.
             </p>
           </div>
         </Step>
@@ -269,7 +269,7 @@ export function HelpEndSeasonPage() {
         <Step number={6} title="Season is now marked Done">
           <DiagDoneBadge />
           <p className="text-sm text-slate-400 mt-3 leading-relaxed">
-            The season card in History switches from an orange <span className="font-semibold" style={{ color: PRIMARY }}>CURRENT</span> badge to a gray <span className="text-slate-300 font-semibold">DONE</span> badge. Coach win/loss records and program totals update to include this season. Active record glow effects in the Records page turn off.
+            The season card in History switches from an orange <span className="font-semibold" style={{ color: PRIMARY }}>CURRENT</span> badge to a gray <span className="text-slate-300 font-semibold">DONE</span> badge. Coach win/loss records and program totals update to include this season. Seniors' record glow in the Records page turns off; freshmen through juniors keep their career record glow.
           </p>
         </Step>
 
@@ -279,7 +279,7 @@ export function HelpEndSeasonPage() {
           {[
             ['You can end a season with unplayed matches', 'If your playoff run ended early, any remaining scheduled matches simply stay on the schedule as unplayed. They won\'t affect records or stats.'],
             ['Playoff finish is inferred automatically', 'The app reads your last completed playoff match and fills in the Finish field — e.g., "Regional Final" if you lost in that round, or "Won Sectional" if you won. You can always override it.'],
-            ['Archiving is reversible', 'Archived players are just set to inactive — they still exist with all their stats intact. You can reactivate any player from the Roster tab when they return.'],
+            ['Graduating is reversible', 'Graduated players are just moved off the active roster — they still exist with all their stats intact. You can put any player back from the Roster tab.'],
             ['Come back later', 'The post-season checklist doesn\'t have to be completed right away. You can dismiss it and return to the History page to fill in details whenever you\'re ready.'],
           ].map(([title, body]) => (
             <div key={title} className="pl-10 flex gap-3">

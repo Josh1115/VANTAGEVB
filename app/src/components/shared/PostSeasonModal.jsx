@@ -2,16 +2,19 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
+import { isSeniorYear } from '../../utils/seasonUtils';
 
 export function PostSeasonModal({ teamId, year, onClose }) {
   const navigate = useNavigate();
-  const [archived,          setArchived]          = useState(false);
+  const [archived,          setArchived]          = useState(false); // seniors graduated
+  const [graduatedCount,    setGraduatedCount]    = useState(0);
   const [archiving,         setArchiving]          = useState(false);
   const [practiceArchived,  setPracticeArchived]   = useState(false);
   const [archivingPractice, setArchivingPractice]  = useState(false);
 
+  // Only seniors leave the active roster; Fr–Jr stay for next season.
   const activePlayers = useLiveQuery(
-    () => db.players.where('team_id').equals(teamId).filter(p => p.is_active).toArray(),
+    () => db.players.where('team_id').equals(teamId).filter(p => p.is_active && isSeniorYear(p.year)).toArray(),
     [teamId]
   );
 
@@ -39,9 +42,10 @@ export function PostSeasonModal({ teamId, year, onClose }) {
     try {
       const players = await db.players
         .where('team_id').equals(teamId)
-        .filter(p => p.is_active)
+        .filter(p => p.is_active && isSeniorYear(p.year))
         .toArray();
       await Promise.all(players.map(p => db.players.update(p.id, { is_active: false })));
+      setGraduatedCount(players.length);
       setArchived(true);
     } finally {
       setArchiving(false);
@@ -80,14 +84,14 @@ export function PostSeasonModal({ teamId, year, onClose }) {
 
         {!allDone && (
           <div className="space-y-2">
-            {/* Archive Roster */}
+            {/* Graduate Seniors */}
             {activeCount > 0 && !archived && (
               <div className="bg-slate-800 rounded-xl px-4 py-3 space-y-2.5">
                 <div>
-                  <p className="text-sm font-semibold text-slate-100">Archive Roster</p>
+                  <p className="text-sm font-semibold text-slate-100">Graduate Seniors</p>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Move {activeCount} active player{activeCount !== 1 ? 's' : ''} to inactive.
-                    Players and all their stats are preserved.
+                    Move {activeCount} senior{activeCount !== 1 ? 's' : ''} off the active roster.
+                    Freshmen through juniors stay. All stats are kept.
                   </p>
                 </div>
                 <button
@@ -95,16 +99,16 @@ export function PostSeasonModal({ teamId, year, onClose }) {
                   disabled={archiving}
                   className="w-full py-2 rounded-lg bg-slate-700 text-slate-200 text-sm font-semibold hover:bg-slate-600 transition-colors disabled:opacity-50"
                 >
-                  {archiving ? 'Archiving…' : `Archive ${activeCount} Players`}
+                  {archiving ? 'Graduating…' : `Graduate ${activeCount} Senior${activeCount !== 1 ? 's' : ''}`}
                 </button>
               </div>
             )}
 
-            {/* Archived confirmation inline */}
+            {/* Graduated confirmation inline */}
             {archived && (
               <div className="bg-slate-800 rounded-xl px-4 py-3 flex items-center gap-2">
                 <span className="text-emerald-400 font-bold">✓</span>
-                <p className="text-sm text-slate-300">{activeCount} players archived</p>
+                <p className="text-sm text-slate-300">{graduatedCount} senior{graduatedCount !== 1 ? 's' : ''} graduated</p>
               </div>
             )}
 

@@ -343,8 +343,25 @@ export function nextPlayoffRound(matches) {
   return PLAYOFF_ROUND_CHOICES.find(c => c !== THIRD_PLACE && roundRank(c) > lastRank) ?? null;
 }
 
+// ── Graduating seniors ───────────────────────────────────────────────────────
+// Grades come from the player form ("Senior") or roster imports ("Sr", "SR.",
+// "12", "12th", "Senior"), so match them all.
+export function isSeniorYear(year) {
+  return /^(sr\.?|senior|12(th)?)$/i.test(String(year ?? '').trim());
+}
+
+// Rank of the furthest known playoff round a season reached (higher = further),
+// or null when no round has a recognised name.
+export function furthestPlayoffRank(rounds) {
+  const ranks = (rounds ?? []).map(r => roundRank(r.round))
+    .filter(n => n !== UNKNOWN_ROUND_RANK && n !== BLANK_ROUND_RANK);
+  return ranks.length ? Math.max(...ranks) : null;
+}
+
 // ── Season record pills ──────────────────────────────────────────────────────
-// rows: [{ key, wins, losses, playoffWins }]. Returns { [key]: [pill labels] }.
+// rows: [{ key, year, wins, losses, playoffWins, furthestRound }]. Returns { [key]: [pill labels] }.
+// Biggest Turnaround: largest win % jump over the previous full season.
+// Longest Playoff Run: furthest playoff round reached (furthestRound from furthestPlayoffRank).
 // Win % and fewest losses need a full-ish season (MIN_PILL_GAMES) so a 1-0 start
 // or a half-entered old season can't take the record. Ties all get the pill.
 export const MIN_PILL_GAMES = 10;
@@ -354,6 +371,14 @@ export function seasonRecordPills(rows) {
   const bestPct = full.length ? Math.max(...full.map(pct)) : null;
   const fewestLosses = full.length ? Math.min(...full.map(r => r.losses)) : null;
   const mostPlayoffWins = Math.max(0, ...rows.map(r => r.playoffWins ?? 0));
+  const byYear = [...full].sort((a, b) => String(a.year).localeCompare(String(b.year)));
+  const jump = new Map();
+  for (let i = 1; i < byYear.length; i++) {
+    if (String(byYear[i].year) === String(byYear[i - 1].year)) continue;
+    jump.set(byYear[i], pct(byYear[i]) - pct(byYear[i - 1]));
+  }
+  const bestJump = jump.size ? Math.max(...jump.values()) : 0;
+  const furthest = Math.max(-Infinity, ...rows.map(r => r.furthestRound ?? -Infinity));
   const out = {};
   for (const r of rows) {
     const pills = [];
@@ -361,6 +386,8 @@ export function seasonRecordPills(rows) {
     if (isFull && bestPct > 0 && pct(r) === bestPct) pills.push('Best Win %');
     if (isFull && r.losses === fewestLosses) pills.push('Fewest Losses');
     if (mostPlayoffWins > 0 && r.playoffWins === mostPlayoffWins) pills.push('Most Playoff Wins');
+    if (bestJump > 0 && jump.get(r) === bestJump) pills.push('Biggest Turnaround');
+    if (furthest > -Infinity && r.furthestRound === furthest) pills.push('Longest Playoff Run');
     out[r.key] = pills;
   }
   return out;

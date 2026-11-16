@@ -20,7 +20,7 @@ import { SeasonFormModal } from '../components/team/SeasonFormModal';
 import { SavedLineupModal } from '../components/team/SavedLineupModal';
 import { RosterImportModal } from '../components/team/RosterImportModal';
 import { PostSeasonModal } from '../components/shared/PostSeasonModal';
-import { applyInferredSeasonFinish, snapshotSeasonRoster } from '../utils/seasonUtils';
+import { applyInferredSeasonFinish, snapshotSeasonRoster, isSeniorYear } from '../utils/seasonUtils';
 import { SeasonScheduleTab } from '../components/team/SeasonScheduleTab';
 import { groupRoster } from '../utils/rosterGroups';
 import { CourtRoster } from '../components/team/CourtRoster';
@@ -176,6 +176,7 @@ export function TeamDetailPage() {
   const [confirmEndSeasonId, setConfirmEndSeasonId] = useState(null);
   const [postSeasonInfo,     setPostSeasonInfo]     = useState(null); // { teamId, year }
   const [deletePlayer, setDeletePlayer]       = useState(null);
+  const [confirmGraduate, setConfirmGraduate] = useState(false);
   const [showLineupModal, setShowLineupModal] = useState(false);
   const [editLineup, setEditLineup]           = useState(null);
   const [deleteLineup, setDeleteLineup]       = useState(null);
@@ -199,6 +200,19 @@ export function TeamDetailPage() {
     () => (seasons ?? []).find(s => s.id === selectedSeasonId) ?? null,
     [seasons, selectedSeasonId]
   );
+
+  // Coaches can be entered here (on the season) or on the History page (on the
+  // season's history entry). Show whichever has them so an ended season keeps
+  // its staff on the roster.
+  const selectedHistoryEntry = useLiveQuery(
+    () => selectedSeason
+      ? db.season_history.where('team_id').equals(id).filter(h => String(h.year) === String(selectedSeason.year)).first()
+      : null,
+    [id, selectedSeason?.year]
+  );
+  const staffHead   = selectedSeason?.head_coach  || selectedHistoryEntry?.head_coach  || null;
+  const staffAsst   = selectedSeason?.asst_coach  || selectedHistoryEntry?.asst_coach  || null;
+  const staffTenure = selectedSeason?.tenure_year ?? selectedHistoryEntry?.tenure_year ?? null;
 
   // For past or ended seasons: the roster saved when the season was ended
   // (season.roster_uids), plus anyone who recorded a stat that season. Seasons
@@ -256,6 +270,27 @@ export function TeamDetailPage() {
       setDeletePlayer(null);
     } catch (err) {
       showToast(`Remove failed: ${err.message}`, 'error');
+    }
+  };
+
+  // Graduate Seniors: offered once the latest season has ended and seniors are
+  // still on the active roster (also covers seasons ended before this existed).
+  const activeSeniors = (players ?? []).filter(p => p.is_active && isSeniorYear(p.year));
+  const latestSeasonEnded = (() => {
+    const list = seasons ?? [];
+    if (!list.length) return false;
+    const latest = Math.max(...list.map(s => Number(s.year)).filter(Number.isFinite));
+    const inYear = list.filter(s => Number(s.year) === latest);
+    return inYear.length > 0 && inYear.every(s => s.status === 'ended');
+  })();
+  const graduateSeniors = async () => {
+    try {
+      await Promise.all(activeSeniors.map(p => db.players.update(p.id, { is_active: false })));
+      showToast(`${activeSeniors.length} senior${activeSeniors.length !== 1 ? 's' : ''} graduated`);
+    } catch (err) {
+      showToast(`Graduate failed: ${err.message}`, 'error');
+    } finally {
+      setConfirmGraduate(false);
     }
   };
 
@@ -326,30 +361,30 @@ export function TeamDetailPage() {
             <div className="mb-5">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold uppercase tracking-wide text-slate-400">Coaching Staff</span>
-                {isCurrentSeason && (
+                {(isCurrentSeason || selectedSeasonId === sortedSeasons[0]?.id) && (
                   <button
                     onClick={() => setShowCoachModal(true)}
                     className="text-xs text-primary font-semibold px-2 py-1 rounded-lg hover:bg-slate-700/50 transition-colors"
                   >
-                    {selectedSeason.head_coach ? 'Edit' : '+ Add'}
+                    {staffHead || staffAsst ? 'Edit' : '+ Add'}
                   </button>
                 )}
               </div>
-              {selectedSeason.head_coach || selectedSeason.asst_coach ? (
+              {staffHead || staffAsst ? (
                 <div className="bg-surface rounded-xl px-4 py-3 space-y-1">
-                  {selectedSeason.head_coach && (
+                  {staffHead && (
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 w-8 shrink-0">HC</span>
-                      <span className="text-sm text-slate-200 font-semibold">{selectedSeason.head_coach}</span>
-                      {selectedSeason.tenure_year != null && (
-                        <span className="text-xs text-slate-500">· Year {selectedSeason.tenure_year}</span>
+                      <span className="text-sm text-slate-200 font-semibold">{staffHead}</span>
+                      {staffTenure != null && staffTenure !== '' && (
+                        <span className="text-xs text-slate-500">· Year {staffTenure}</span>
                       )}
                     </div>
                   )}
-                  {selectedSeason.asst_coach && (
+                  {staffAsst && (
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 w-8 shrink-0">AC</span>
-                      <span className="text-sm text-slate-200">{selectedSeason.asst_coach}</span>
+                      <span className="text-sm text-slate-200">{staffAsst}</span>
                     </div>
                   )}
                 </div>
@@ -360,6 +395,17 @@ export function TeamDetailPage() {
           )}
 
           <RosterViewToggle value={rosterView} onChange={setRosterView} />
+
+          {/* Ended latest season shows the saved (past) roster view, so the
+              Graduate Seniors button lives here, above either view. */}
+          {latestSeasonEnded && activeSeniors.length > 0 && selectedSeasonId === sortedSeasons[0]?.id && (
+            <div className="flex items-center justify-between gap-3 mb-3 p-3 rounded-xl bg-slate-800 border border-slate-700">
+              <span className="text-xs text-slate-400">
+                Season ended. {activeSeniors.length} senior{activeSeniors.length !== 1 ? 's are' : ' is'} still on the active roster.
+              </span>
+              <Button size="sm" onClick={() => setConfirmGraduate(true)}>🎓 Graduate Seniors</Button>
+            </div>
+          )}
 
           {isCurrentSeason ? (
             <>
@@ -418,7 +464,7 @@ export function TeamDetailPage() {
                             {player.height_ft != null && (
                               <span className="text-xs text-slate-400">{player.height_ft}'{player.height_in != null ? player.height_in : 0}"</span>
                             )}
-                            {player.year && <span className="text-xs text-slate-400">{player.year}</span>}
+                            {player.year && <span className="text-xs text-slate-400">{player.year}{isSeniorYear(player.year) && player.is_active === false && !player.removed && <span className="ml-1" title="Graduated" aria-label="Graduated">🎓</span>}</span>}
                           </div>
                         </div>
                         <button
@@ -494,7 +540,7 @@ export function TeamDetailPage() {
                         {player.height_ft != null && (
                           <span className="text-xs text-slate-400">{player.height_ft}'{player.height_in != null ? player.height_in : 0}"</span>
                         )}
-                        {player.year && <span className="text-xs text-slate-400">{player.year}</span>}
+                        {player.year && <span className="text-xs text-slate-400">{player.year}{isSeniorYear(player.year) && player.is_active === false && !player.removed && <span className="ml-1" title="Graduated" aria-label="Graduated">🎓</span>}</span>}
                       </div>
                     </div>
                   </div>
@@ -553,7 +599,7 @@ export function TeamDetailPage() {
                 const usedIds = new Set([...sl.serve_order, sl.libero_player_id, ...(sl.planned_subs ?? []).flatMap(ps => [ps.player_in_id, ps.player_out_id])].filter(Boolean).map(String));
                 const lineupPlayers = (players ?? []).filter(p => p.is_active !== false || usedIds.has(String(p.id)));
                 const archivedTag = (p) => p.is_active === false
-                  ? <span className="ml-1 text-[9px] font-bold uppercase tracking-wide px-1 py-0.5 rounded bg-slate-700/60 text-slate-400 border border-slate-600/50">archived</span>
+                  ? <span className="ml-1 text-[9px] font-bold uppercase tracking-wide px-1 py-0.5 rounded bg-slate-700/60 text-slate-400 border border-slate-600/50">graduated</span>
                   : null;
                 const libero = sl.libero_player_id ? playerMap[String(sl.libero_player_id)] : null;
                 const isExpanded = expandedLineupId === sl.id;
@@ -928,7 +974,7 @@ export function TeamDetailPage() {
 
       {showCoachModal && selectedSeason && (
         <CoachModal
-          season={selectedSeason}
+          season={{ ...selectedSeason, head_coach: staffHead, asst_coach: staffAsst, tenure_year: staffTenure }}
           onClose={() => setShowCoachModal(false)}
         />
       )}
@@ -950,6 +996,16 @@ export function TeamDetailPage() {
           danger
           onConfirm={async () => { await db.saved_lineups.delete(deleteLineup.id); setDeleteLineup(null); }}
           onCancel={() => setDeleteLineup(null)}
+        />
+      )}
+
+      {confirmGraduate && (
+        <ConfirmDialog
+          title="Graduate Seniors?"
+          message={`Move ${activeSeniors.length} senior${activeSeniors.length !== 1 ? 's' : ''} (${activeSeniors.map(p => p.name).join(', ')}) off the active roster? Freshmen through juniors stay. All stats are kept.`}
+          confirmLabel="Graduate"
+          onConfirm={graduateSeniors}
+          onCancel={() => setConfirmGraduate(false)}
         />
       )}
 
