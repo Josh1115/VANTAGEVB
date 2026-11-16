@@ -13,6 +13,7 @@ export function RankEditModal({ seasonRecord, defaultTeamId, onClose }) {
   const [nationalInput, setNationalInput] = useState(seasonRecord?.nationalRank != null ? String(seasonRecord.nationalRank) : '');
   const [classInput,    setClassInput]    = useState(seasonRecord?.classRank ?? '');
   const [seedInput,     setSeedInput]     = useState(seasonRecord?.playoffSeed ?? '');
+  const [ranksFinal,    setRanksFinal]    = useState(!!seasonRecord?.ranksFinal);
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState('');
 
@@ -33,8 +34,14 @@ export function RankEditModal({ seasonRecord, defaultTeamId, onClose }) {
         .filter(h => String(h.year) === yearStr)
         .first();
 
+      // Finalized: clear the "previous" ranks so no up/down arrows show, and stop
+      // recording new ones. Unfinalizing restarts tracking from the next change.
       const prevRanks = {};
-      if (existing) {
+      if (ranksFinal) {
+        prevRanks.prev_state_rank = null;
+        prevRanks.prev_national_rank = null;
+        prevRanks.prev_class_rank = null;
+      } else if (existing) {
         if (newStateRank !== (existing.state_rank ?? null))
           prevRanks.prev_state_rank = existing.state_rank ?? null;
         if (newNationalRank !== (existing.national_rank ?? null))
@@ -48,6 +55,7 @@ export function RankEditModal({ seasonRecord, defaultTeamId, onClose }) {
         national_rank: newNationalRank,
         class_rank:    newClassRank,
         playoff_seed:  seedInput.trim().replace(/^#\s*/, '') || null,
+        ranks_final:   ranksFinal,
         ...prevRanks,
       };
 
@@ -123,6 +131,19 @@ export function RankEditModal({ seasonRecord, defaultTeamId, onClose }) {
             className="w-full bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder-slate-500"
           />
         </div>
+
+        <label className="flex items-start gap-3 rounded-lg bg-surface border border-slate-700 px-3 py-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={ranksFinal}
+            onChange={(e) => setRanksFinal(e.target.checked)}
+            className="accent-[#e8530b] w-4 h-4 mt-0.5"
+          />
+          <span>
+            <span className="block text-sm font-semibold text-white">Finalized ranks</span>
+            <span className="block text-xs text-slate-400">Final poll is out. Stop tracking up/down changes.</span>
+          </span>
+        </label>
 
         {error && (
           <p className="text-sm text-red-400 text-center">{error}</p>

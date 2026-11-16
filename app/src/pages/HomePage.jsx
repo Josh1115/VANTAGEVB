@@ -696,6 +696,7 @@ export function HomePage() {
       prevStateRank:    historyEntry?.prev_state_rank    ?? null,
       prevNationalRank: historyEntry?.prev_national_rank ?? null,
       prevClassRank:    historyEntry?.prev_class_rank    ?? null,
+      ranksFinal:       !!historyEntry?.ranks_final,
       // Stored as free text on HistoryPage ("#2"), so strip any leading "#".
       playoffSeed:      String(historyEntry?.playoff_seed ?? '').replace(/^#\s*/, '').trim() || null,
       teamState:        team.state ?? null,
@@ -1127,7 +1128,7 @@ export function HomePage() {
                   >
                     {ranks.map((r, idx) => {
                       const cur = Number(r.cur), prev = Number(r.prev);
-                      const delta = r.prev != null && Number.isFinite(cur) && Number.isFinite(prev) ? prev - cur : 0;
+                      const delta = !seasonRecord.ranksFinal && r.prev != null && Number.isFinite(cur) && Number.isFinite(prev) ? prev - cur : 0;
                       return (
                         <span key={r.label} className="flex items-center">
                           {idx > 0 && <span className="text-slate-600 mr-2">·</span>}
@@ -1140,6 +1141,9 @@ export function HomePage() {
                         </span>
                       );
                     })}
+                    {seasonRecord.ranksFinal && (
+                      <span className="ml-2 text-[10px] font-black tracking-widest text-amber-300 border border-amber-500/60 rounded px-1.5 py-0.5">FINAL</span>
+                    )}
                     <svg aria-hidden="true" viewBox="0 0 20 20" className="w-3.5 h-3.5 fill-slate-400 ml-1">
                       <path d="M13.6 2.6a2 2 0 0 1 2.8 2.8l-9.5 9.5-3.7.9.9-3.7 9.5-9.5Z" />
                     </svg>

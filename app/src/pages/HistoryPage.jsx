@@ -172,7 +172,7 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false, 
       let prevRanks = {};
       if (resolvedId) {
         const existing = await db.season_history.get(resolvedId);
-        if (existing) {
+        if (existing && !existing.ranks_final) { // finalized ranks don't track changes
           if (newStateRank !== existing.state_rank)
             prevRanks.prev_state_rank = existing.state_rank ?? null;
           if (newNationalRank !== existing.national_rank)
