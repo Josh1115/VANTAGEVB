@@ -461,6 +461,7 @@ export function TeamDetailPage() {
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold truncate">
                             {player.name}
+                            {isSeniorYear(player.year) && player.is_active === false && !player.removed && <span className="ml-1.5" title="Graduated" aria-label="Graduated">🎓</span>}
                             {player.is_captain && <span className="ml-1.5 text-xs font-bold text-yellow-400">C</span>}
                           </div>
                           <div className="flex gap-1 flex-wrap items-center">
@@ -471,7 +472,7 @@ export function TeamDetailPage() {
                             {player.height_ft != null && (
                               <span className="text-xs text-slate-400">{player.height_ft}'{player.height_in != null ? player.height_in : 0}"</span>
                             )}
-                            {player.year && <span className="text-xs text-slate-400">{player.year}{isSeniorYear(player.year) && player.is_active === false && !player.removed && <span className="ml-1" title="Graduated" aria-label="Graduated">🎓</span>}</span>}
+                            {player.year && <span className="text-xs text-slate-400">{player.year}</span>}
                           </div>
                         </div>
                         <button
@@ -537,6 +538,7 @@ export function TeamDetailPage() {
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold truncate">
                         {player.name}
+                        {isSeniorYear(player.year) && player.is_active === false && !player.removed && <span className="ml-1.5" title="Graduated" aria-label="Graduated">🎓</span>}
                         {player.is_captain && <span className="ml-1.5 text-xs font-bold text-yellow-400">C</span>}
                       </div>
                       <div className="flex gap-1 flex-wrap items-center">
@@ -547,7 +549,7 @@ export function TeamDetailPage() {
                         {player.height_ft != null && (
                           <span className="text-xs text-slate-400">{player.height_ft}'{player.height_in != null ? player.height_in : 0}"</span>
                         )}
-                        {player.year && <span className="text-xs text-slate-400">{player.year}{isSeniorYear(player.year) && player.is_active === false && !player.removed && <span className="ml-1" title="Graduated" aria-label="Graduated">🎓</span>}</span>}
+                        {player.year && <span className="text-xs text-slate-400">{player.year}</span>}
                       </div>
                     </div>
                   </div>

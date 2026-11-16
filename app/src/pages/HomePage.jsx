@@ -8,7 +8,7 @@ import { db } from '../db/schema';
 import { MATCH_STATUS } from '../constants';
 import { fmtDate, fmtHitting, fmtPct } from '../stats/formatters';
 import { currentStreak, seasonOpener, sortByDateTime } from '../utils/seasonSummary';
-import { allTimeRank, resolveSeasonFinish } from '../utils/seasonUtils';
+import { allTimeRank, resolveSeasonFinish, seasonTitles } from '../utils/seasonUtils';
 import { StartSeasonWizard } from '../components/home/StartSeasonWizard';
 import { computePlayerStats, computeTeamStats } from '../stats/engine';
 import { deleteMatch } from '../stats/queries';
@@ -697,6 +697,8 @@ export function HomePage() {
       prevNationalRank: historyEntry?.prev_national_rank ?? null,
       prevClassRank:    historyEntry?.prev_class_rank    ?? null,
       ranksFinal:       !!historyEntry?.ranks_final,
+      // Titles won (typed on History + earned in tracked playoff games), shown once the season ends.
+      titles:           seasonEnded ? seasonTitles(historyEntry?.title, matches) : [],
       // Stored as free text on HistoryPage ("#2"), so strip any leading "#".
       playoffSeed:      String(historyEntry?.playoff_seed ?? '').replace(/^#\s*/, '').trim() || null,
       teamState:        team.state ?? null,
@@ -1150,6 +1152,11 @@ export function HomePage() {
                   </button>
                 );
               })()}
+              {seasonRecord.titles.length > 0 && (
+                <div className="mt-1 text-[12.5px] font-black tracking-wide text-amber-300">
+                  🏆 {seasonRecord.titles.join(' · ')}
+                </div>
+              )}
             </div>
 
             {/* W / L numbers */}
