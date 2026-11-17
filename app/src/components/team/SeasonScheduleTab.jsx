@@ -7,13 +7,14 @@ import { MATCH_STATUS } from '../../constants';
 import { fmtDate, fmtHitting, fmtPct } from '../../stats/formatters';
 import { computeMatchStats, computeTeamStats, computePlayerStats } from '../../stats/engine';
 import { exportMaxPrepsCSV, maxPrepsFilename } from '../../stats/export';
-import { getStorageItem, STORAGE_KEYS, getPlayoffLabel } from '../../utils/storage';
+import { STORAGE_KEYS, getPlayoffLabel } from '../../utils/storage';
 import { matchDateISO } from '../../utils/matchDate';
 import { deleteMatch } from '../../stats/queries';
 import { clearMatchTombstone } from '../../stats/merge';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { getMaxPrepsTeamId, maxPrepsProblems } from '../../utils/maxPreps';
 import { SwipeableMatchCard } from '../ui/SwipeableMatchCard';
 import { PostSeasonModal } from '../shared/PostSeasonModal';
 import { applyInferredSeasonFinish, snapshotSeasonRoster, nextPlayoffRound } from '../../utils/seasonUtils';
@@ -133,6 +134,7 @@ export function SeasonScheduleTab({ seasonId }) {
   const ourSeed = useOurSeed(seasonId);
   const [schedTime,        setSchedTime]        = useState('');
   const [schedSaving,      setSchedSaving]      = useState(false);
+  const [maxPrepsWarn,     setMaxPrepsWarn]     = useState(null); // { message, download }
   const [schedError,       setSchedError]       = useState('');
 
   if (!data) return null;
@@ -144,12 +146,17 @@ export function SeasonScheduleTab({ seasonId }) {
   const nationalRank   = historyEntry?.national_rank ?? null;
   const hasRankings    = classification || classRank != null || stateRank != null || nationalRank != null;
 
+  // Same pre-download check as the match summary: this team's MaxPreps ID +
+  // every player in the file has a jersey number.
   async function handleMaxPreps(e, matchId) {
     e.stopPropagation();
-    const uuid = getStorageItem(STORAGE_KEYS.MAXPREPS_TEAM_ID, '');
+    const uuid = getMaxPrepsTeamId(data.team);
     const stats = await computeMatchStats(matchId);
     const match = matches.find((m) => m.id === matchId);
-    exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, uuid, maxPrepsFilename(match));
+    const download = () => exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, uuid, maxPrepsFilename(match));
+    const problems = maxPrepsProblems(uuid, Object.keys(stats.players), playerNames, playerJerseys);
+    if (problems.length) { setMaxPrepsWarn({ message: `${problems.join(' ')} MaxPreps may reject this file.`, download }); return; }
+    download();
   }
 
   function resetSchedForm() {
@@ -732,6 +739,15 @@ export function SeasonScheduleTab({ seasonId }) {
       )}
 
       {/* Modals */}
+      {maxPrepsWarn && (
+        <ConfirmDialog
+          title="MaxPreps file may not upload"
+          message={maxPrepsWarn.message}
+          confirmLabel="Download anyway"
+          onCancel={() => setMaxPrepsWarn(null)}
+          onConfirm={() => { const d = maxPrepsWarn.download; setMaxPrepsWarn(null); d(); }}
+        />
+      )}
       {confirmEndSeason && (
         <ConfirmDialog
           title="End Season?"

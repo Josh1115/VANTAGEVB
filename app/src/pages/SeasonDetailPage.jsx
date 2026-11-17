@@ -7,7 +7,8 @@ import { MATCH_STATUS } from '../constants';
 import { fmtDate, fmtHitting, fmtPct } from '../stats/formatters';
 import { computeMatchStats, computeTeamStats, computePlayerStats } from '../stats/engine';
 import { exportMaxPrepsCSV, maxPrepsFilename } from '../stats/export';
-import { getStorageItem, STORAGE_KEYS, getPlayoffLabel } from '../utils/storage';
+import { STORAGE_KEYS, getPlayoffLabel } from '../utils/storage';
+import { getMaxPrepsTeamId, maxPrepsProblems } from '../utils/maxPreps';
 import { matchDateISO } from '../utils/matchDate';
 import { deleteMatch, deleteSeason } from '../stats/queries';
 import { DeleteSeasonDialog } from '../components/shared/DeleteSeasonDialog';
@@ -18,7 +19,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { SwipeableMatchCard } from '../components/ui/SwipeableMatchCard';
 import { PostSeasonModal } from '../components/shared/PostSeasonModal';
-import { applyInferredSeasonFinish, snapshotSeasonRoster } from '../utils/seasonUtils';
+import { applyInferredSeasonFinish, snapshotSeasonRoster, allTimeRank } from '../utils/seasonUtils';
 import { useOurSeed } from '../hooks/useOurSeed';
 import { ScheduleImportModal } from '../components/match/ScheduleImportModal';
 import { usePlan } from '../hooks/usePlan';
@@ -51,9 +52,16 @@ export function SeasonDetailPage() {
     const opps = oppIds.length ? await db.opponents.bulkGet(oppIds) : [];
     const oppMap = Object.fromEntries(opps.filter(Boolean).map((o) => [o.id, o.name]));
 
+    // Set scores for finished/live matches (shown on the match bars, like the dashboard)
+    const playedIds = rawMatches.filter((m) => m.status !== MATCH_STATUS.SCHEDULED).map((m) => m.id);
+    const allSets = playedIds.length ? await db.sets.where('match_id').anyOf(playedIds).sortBy('set_number') : [];
+    const setsById = {};
+    for (const st of allSets) (setsById[st.match_id] ??= []).push(st);
+
     const matches = rawMatches.map((m) => ({
       ...m,
       opponent_name: m.opponent_name ?? oppMap[m.opponent_id] ?? 'Opponent',
+      sets: setsById[m.id] ?? [],
     }));
 
     const players = await db.players.where('team_id').equals(season.team_id).toArray();
@@ -116,8 +124,47 @@ export function SeasonDetailPage() {
     };
   }, [id]);
 
+  // "#N All Time" tags: where this season's leaders and team totals sit on the
+  // Records page's own Season / Team Season top-10 lists (same as the dashboard).
+  const [allTimeRanks, setAllTimeRanks] = useState(null);
+  useEffect(() => {
+    if (!seasonStats?.teamId) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const season = await db.seasons.get(id);
+        const { computeLeaderboards } = await import('./RecordsPage');
+        const [playerBoards, teamBoards] = await Promise.all([
+          computeLeaderboards('season', seasonStats.teamId),
+          computeLeaderboards('team_season', seasonStats.teamId),
+        ]);
+        const thisYear = (r) => String(r.year) === String(season?.year);
+        const playerRank = (statKey, leader) =>
+          leader?.id ? allTimeRank(playerBoards[statKey], r => thisYear(r) && r.player_id === leader.id) : null;
+        const L = seasonStats.leaders;
+        if (cancelled) return;
+        setAllTimeRanks({
+          players: {
+            kills: playerRank('k', L.kills), aces: playerRank('ace', L.aces), blocks: playerRank('blk', L.blocks),
+            digs: playerRank('dig', L.digs), assists: playerRank('ast', L.assists),
+          },
+          team: Object.fromEntries(
+            ['k', 'ace', 'blk', 'dig', 'ast'].map(k => [k, allTimeRank(teamBoards[k], thisYear)])
+          ),
+        });
+      } catch {
+        if (!cancelled) setAllTimeRanks(null); // no tags is better than a broken page
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [seasonStats, id]);
+  const allTimeLabel = (rank) => rank != null && (
+    <span className="text-[8px] font-bold leading-tight text-amber-400 text-center">#{rank} All Time</span>
+  );
+
   // Schedule-game modal state (must be before early return)
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [maxPrepsWarn, setMaxPrepsWarn] = useState(null); // { message, download }
   const [confirmEndSeason, setConfirmEndSeason] = useState(false);
   const [confirmDeleteSeason, setConfirmDeleteSeason] = useState(false);
   const [showPostSeason,   setShowPostSeason]   = useState(false);
@@ -175,14 +222,16 @@ export function SeasonDetailPage() {
   const classRank      = historyEntry?.class_rank   ?? null;
   const stateRank      = historyEntry?.state_rank    ?? null;
   const nationalRank   = historyEntry?.national_rank ?? null;
-  const hasRankings    = classification || classRank != null || stateRank != null || nationalRank != null;
 
   async function handleMaxPreps(e, matchId) {
     e.stopPropagation();
-    const uuid = getStorageItem(STORAGE_KEYS.MAXPREPS_TEAM_ID, '');
+    const uuid = getMaxPrepsTeamId(data.team);
     const stats = await computeMatchStats(matchId);
     const match = matches.find((m) => m.id === matchId);
-    exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, uuid, maxPrepsFilename(match));
+    const download = () => exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, uuid, maxPrepsFilename(match));
+    const problems = maxPrepsProblems(uuid, Object.keys(stats.players), playerNames, playerJerseys);
+    if (problems.length) { setMaxPrepsWarn({ message: `${problems.join(' ')} MaxPreps may reject this file.`, download }); return; }
+    download();
   }
 
   function resetSchedForm() {
@@ -337,91 +386,97 @@ export function SeasonDetailPage() {
       <PageHeader title={season.name ?? String(season.year)} backTo="/seasons" />
 
       <div className="p-4 md:p-6 space-y-4">
-        {/* Season info card */}
-        <div className="bg-surface rounded-xl px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="font-semibold">{team?.name ?? '—'}</div>
-              <div className="text-sm text-slate-400">{season.year}</div>
-            </div>
-            {hasRankings && (
-              <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center">
-                {classification && (
-                  <span className="text-sm font-bold text-slate-200">
-                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1">Class</span>
-                    {classification}{classRank ? ` #${classRank}` : ''}
+        {/* Season info card — same layout as the dashboard's season box, without its animations */}
+        {(() => {
+          const setsW = completedNonExhib.reduce((a, m) => a + (m.our_sets_won ?? 0), 0);
+          const setsL = completedNonExhib.reduce((a, m) => a + (m.opp_sets_won ?? 0), 0);
+          const winPct = completedNonExhib.length ? wins / completedNonExhib.length : null;
+          const last5W = last5.filter((m) => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
+          const ranks = [
+            { label: classification ? `CLASS ${classification}` : 'CLASS', cur: classRank },
+            { label: 'STATE', cur: stateRank },
+            { label: 'NATIONAL', cur: nationalRank },
+          ].filter((r) => r.cur != null && r.cur !== '');
+          const doneCount = matches.filter((m) => m.status === MATCH_STATUS.COMPLETE).length;
+          const rec = (r, label) => (
+            <span className="text-white font-semibold">
+              {r.w}–{r.l} <span className="text-orange-500">{label}</span>
+            </span>
+          );
+          const dot = <span className="text-blue-400 font-black">·</span>;
+          return (
+            <div className="bg-surface rounded-xl overflow-hidden">
+              {/* Header: team · season, then rankings */}
+              <div className="px-4 py-2 border-b border-slate-700/60 text-center">
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                  <span className="text-[17.5px] font-black tracking-widest text-white uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                    {team?.name ?? '—'}
                   </span>
-                )}
-                {stateRank != null && (
-                  <span className="text-sm font-bold text-slate-200">
-                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1">State</span>
-                    #{stateRank}
-                  </span>
-                )}
-                {nationalRank != null && (
-                  <span className="text-sm font-bold text-slate-200">
-                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1">Natl</span>
-                    #{nationalRank}
-                  </span>
-                )}
-              </div>
-            )}
-            {completedNonExhib.length > 0 && (
-              <div className="text-right shrink-0">
-                <div className="font-mono font-bold text-lg">{wins}–{losses}</div>
-                <div className="text-xs text-slate-400">W–L</div>
-              </div>
-            )}
-          </div>
-
-          {completedNonExhib.length > 0 && (
-            <div className="mt-2 pt-2 border-t border-slate-700/60 flex flex-wrap gap-x-4 gap-y-1.5 items-center justify-center">
-              {homeRec.any && (
-                <span className="text-xs font-semibold text-slate-300">
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1">Home</span>
-                  {homeRec.w}–{homeRec.l}
-                </span>
-              )}
-              {awayRec.any && (
-                <span className="text-xs font-semibold text-slate-300">
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1">Away</span>
-                  {awayRec.w}–{awayRec.l}
-                </span>
-              )}
-              {neutRec.any && (
-                <span className="text-xs font-semibold text-slate-300">
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1">Neut</span>
-                  {neutRec.w}–{neutRec.l}
-                </span>
-              )}
-              {confRec.any && (
-                <span className="text-xs font-semibold text-slate-300">
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1">Conf</span>
-                  {confRec.w}–{confRec.l}
-                </span>
-              )}
-              {tourneyRec.any && (
-                <span className="text-xs font-semibold text-slate-300">
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1">Tourn</span>
-                  {tourneyRec.w}–{tourneyRec.l}
-                </span>
-              )}
-              {last5.length > 0 && (
-                <span className="flex items-center gap-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-0.5">L5</span>
-                  {last5.map((m, i) => {
-                    const won = (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0);
-                    return (
-                      <span key={i} className={`text-[10px] font-black px-1 py-0.5 rounded ${won ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
-                        {won ? 'W' : 'L'}
+                  <span className="text-white font-black text-xl">·</span>
+                  <span className="text-[15px] text-white font-semibold uppercase">{season.name ?? season.year}</span>
+                </div>
+                {ranks.length > 0 ? (
+                  <div className="mt-0.5 flex items-center justify-center flex-wrap gap-x-2">
+                    {ranks.map((r, idx) => (
+                      <span key={r.label} className="flex items-center">
+                        {idx > 0 && <span className="text-slate-600 mr-2">·</span>}
+                        <span className="text-[15px] font-black text-amber-400 tracking-wide">{r.label}: #{r.cur}</span>
                       </span>
-                    );
-                  })}
+                    ))}
+                  </div>
+                ) : classification ? (
+                  <div className="mt-0.5 text-[15px] font-black text-amber-400 tracking-wide">CLASS {classification}</div>
+                ) : null}
+              </div>
+
+              {/* W / L numbers */}
+              <div className="grid grid-cols-2 divide-x divide-slate-700/60">
+                <div className="py-5 text-center">
+                  <div className="text-[72px] font-black text-emerald-400 tabular-nums leading-none tracking-[0.15em]" style={{ fontFamily: "'Orbitron', sans-serif" }}>{wins}</div>
+                  <div className="text-[15px] font-black tracking-[0.2em] text-emerald-700 mt-2">WINS</div>
+                </div>
+                <div className="py-5 text-center">
+                  <div className="text-[72px] font-black text-red-400 tabular-nums leading-none tracking-[0.15em]" style={{ fontFamily: "'Orbitron', sans-serif" }}>{losses}</div>
+                  <div className="text-[15px] font-black tracking-[0.2em] text-red-800 mt-2">LOSSES</div>
+                </div>
+              </div>
+
+              {/* Sets row */}
+              <div className="px-4 py-2 border-t border-slate-700/60 flex flex-col items-center justify-center gap-0.5 text-xs">
+                <span className="font-black tracking-[0.2em] text-white">SETS</span>
+                <span className="font-black tabular-nums tracking-[0.15em]">
+                  <span className="text-emerald-400">{setsW}</span>
+                  <span className="text-slate-400">–</span>
+                  <span className="text-red-400">{setsL}</span>
                 </span>
+              </div>
+
+              {/* Record splits */}
+              <div className="px-4 py-2.5 border-t border-slate-700/60 flex items-center justify-center gap-3 flex-wrap text-xs">
+                <span className="font-black text-primary">{fmtPct(winPct)} MATCH WIN</span>
+                {dot}{rec(homeRec, 'HOME')}
+                {dot}{rec(awayRec, 'AWAY')}
+                {dot}{rec(neutRec, 'NEUT')}
+                {dot}{rec(confRec, 'CONF')}
+                {dot}{rec(tourneyRec, 'TOURN')}
+                {dot}{rec({ w: last5W, l: last5.length - last5W }, `LAST ${last5.length || 5}`)}
+              </div>
+
+              {/* Season progress (static) */}
+              {season.status !== 'ended' && matches.length > 0 && (
+                <div className="px-4 pt-2 pb-3 border-t border-slate-700/60">
+                  <div className="flex justify-between text-[10px] font-bold tracking-[0.15em] text-white mb-1.5">
+                    <span>SEASON PROGRESS · {Math.round((doneCount / matches.length) * 100)}%</span>
+                    <span>{doneCount} / {matches.length}</span>
+                  </div>
+                  <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full" style={{ width: `${(doneCount / matches.length) * 100}%` }} />
+                  </div>
+                </div>
               )}
             </div>
-          )}
-        </div>
+          );
+        })()}
 
         {/* Season Leaders + Team stat boxes */}
         {seasonStats && (() => {
@@ -454,6 +509,7 @@ export function SeasonDetailPage() {
                         <>
                           <span className="text-xl font-black text-primary tabular-nums leading-none">{fmt ? fmt(leader.val) : leader.val}</span>
                           <span className="text-[10px] font-semibold text-slate-300 leading-tight text-center break-words w-full">{leader.name}</span>
+                          {allTimeLabel(allTimeRanks?.players?.[leaderKey])}
                         </>
                       ) : (
                         <span className="text-xl font-black text-slate-600 leading-none">—</span>
@@ -487,6 +543,7 @@ export function SeasonDetailPage() {
                           {fmtPM}<span className="text-white">/M</span>
                         </span>
                       )}
+                      {allTimeLabel(allTimeRanks?.team?.[ttKey])}
                     </button>
                   );
                 })}
@@ -714,17 +771,29 @@ export function SeasonDetailPage() {
                         ? `/matches/${match.id}/summary`
                         : `/matches/${match.id}/live`
                     )}
-                    className="group w-full bg-surface rounded-xl px-4 py-3 text-left flex items-center justify-between hover:bg-slate-700 transition-colors cursor-pointer"
+                    className={`group w-full bg-surface rounded-xl px-4 py-3 text-left flex items-center justify-between hover:bg-slate-700 transition-colors cursor-pointer border-l-4 ${
+                      match.status === MATCH_STATUS.COMPLETE
+                        ? (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0) ? 'border-emerald-600' : 'border-red-700'
+                        : match.status === MATCH_STATUS.IN_PROGRESS ? 'border-primary' : 'border-transparent'
+                    }`}
                   >
                     <div>
-                      <div className="font-semibold">
-                        <PlayoffSeed match={match} />
-                        {match.opponent_name}
-                        {match.opponent_maxpreps_rank != null && (
-                          <span className="text-slate-400 font-normal"> #{match.opponent_maxpreps_rank}</span>
+                      <div className="font-semibold flex items-center gap-1.5 flex-wrap">
+                        <span>
+                          <PlayoffSeed match={match} />
+                          {match.opponent_name}
+                          {match.opponent_maxpreps_rank != null && (
+                            <span className="text-slate-400 font-normal"> #{match.opponent_maxpreps_rank}</span>
+                          )}
+                          {match.opponent_record && (
+                            <span className="text-slate-400 font-normal"> ({match.opponent_record})</span>
+                          )}
+                        </span>
+                        {match.match_type === 'tourney' && match.tournament_name && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 uppercase tracking-wide">{match.tournament_name}</span>
                         )}
-                        {match.opponent_record && (
-                          <span className="text-slate-400 font-normal"> ({match.opponent_record})</span>
+                        {match.match_type === 'ihsa-playoffs' && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-900/50 text-cyan-400 uppercase tracking-wide">{match.playoff_round || playoffLabel}</span>
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -770,23 +839,49 @@ export function SeasonDetailPage() {
                           <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
                         </svg>
                       </button>
-                      <div className="text-right flex flex-col items-end gap-0.5">
-                        <div className="flex items-center gap-1.5">
+                      {/* Same result layout as the dashboard's match bars: W/L, (sets), | set scores | */}
+                      <div className="text-right flex flex-col items-end gap-1">
+                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
                           {match.status === MATCH_STATUS.COMPLETE && (() => {
                             const won = (match.our_sets_won ?? 0) > (match.opp_sets_won ?? 0);
                             return (
-                              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${won ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
-                                {won ? 'W' : 'L'}
-                              </span>
+                              <>
+                                <span className={`text-sm font-black px-1.5 py-0.5 rounded ${won ? 'bg-emerald-900/60 text-emerald-400' : 'bg-red-900/60 text-red-400'}`}>
+                                  {won ? 'W' : 'L'}
+                                </span>
+                                <span className="text-sm font-semibold text-slate-400">({match.our_sets_won ?? 0}-{match.opp_sets_won ?? 0})</span>
+                              </>
                             );
                           })()}
-                          <span className="text-sm font-mono">{match.our_sets_won ?? 0}–{match.opp_sets_won ?? 0}</span>
+                          {match.status !== MATCH_STATUS.COMPLETE && (
+                            <span className="text-sm font-mono">{match.our_sets_won ?? 0}–{match.opp_sets_won ?? 0}</span>
+                          )}
+                          {match.sets?.length > 0 && (
+                            <>
+                              {match.status === MATCH_STATUS.COMPLETE && <span className="text-sm text-slate-500">|</span>}
+                              <span className={`font-mono text-slate-300 inline-flex items-center gap-1 ${match.status === MATCH_STATUS.COMPLETE ? 'text-sm' : 'text-xs'}`}>
+                                {match.sets.map((st, i) => (
+                                  <span key={i} className="inline-flex items-center gap-1">
+                                    {i > 0 && <span className="text-slate-500">·</span>}
+                                    <span className="flex flex-col items-center">
+                                      <span>{st.our_score ?? 0}-{st.opp_score ?? 0}</span>
+                                      <span className={`w-3 h-px mt-0.5 rounded-full ${(st.our_score ?? 0) > (st.opp_score ?? 0) ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                    </span>
+                                  </span>
+                                ))}
+                              </span>
+                              {match.status === MATCH_STATUS.COMPLETE && <span className="text-sm text-slate-500">|</span>}
+                            </>
+                          )}
                         </div>
-                        <div className={`text-xs ${match.status === MATCH_STATUS.IN_PROGRESS ? 'text-primary' : 'text-slate-400'}`}>
-                          {match.status === MATCH_STATUS.IN_PROGRESS ? 'Live'
-                            : match.status === MATCH_STATUS.COMPLETE ? 'Final'
-                            : 'Setup'}
-                        </div>
+                        {match.status !== MATCH_STATUS.COMPLETE && (
+                          <div className={`text-xs flex items-center gap-1 ${match.status === MATCH_STATUS.IN_PROGRESS ? 'text-primary' : 'text-slate-400'}`}>
+                            {match.status === MATCH_STATUS.IN_PROGRESS && (
+                              <span className="serve-pulse inline-block w-1.5 h-1.5 rounded-full bg-primary" />
+                            )}
+                            {match.status === MATCH_STATUS.IN_PROGRESS ? 'Live' : 'Setup'}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -850,6 +945,15 @@ export function SeasonDetailPage() {
         />
       )}
 
+      {maxPrepsWarn && (
+        <ConfirmDialog
+          title="MaxPreps file may not upload"
+          message={maxPrepsWarn.message}
+          confirmLabel="Download anyway"
+          onCancel={() => setMaxPrepsWarn(null)}
+          onConfirm={() => { const d = maxPrepsWarn.download; setMaxPrepsWarn(null); d(); }}
+        />
+      )}
       {confirmDelete && (
         <ConfirmDialog
           title="Delete Match?"

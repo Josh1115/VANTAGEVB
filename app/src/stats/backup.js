@@ -413,13 +413,3 @@ export async function syncWithCloud(supabase, session, { teamsAllowed = Infinity
   await saveToCloud(supabase, session);
 }
 
-export async function getCloudBackupMeta(supabase, session) {
-  const user = session?.user;
-  if (!user) return null;
-  const { data } = await supabase
-    .from('backups')
-    .select('created_at')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  return data?.created_at ?? null;
-}

@@ -87,7 +87,7 @@ function computeCoachRecords(sortedHistory, field, { hasActiveSeason, activeSeas
     map[name].maxYear = Math.max(map[name].maxYear, yr);
   }
   if (hasActiveSeason) {
-    const name = (liveHistoryEntry?.[field] ?? activeSeason?.[field])?.trim();
+    const name = (liveHistoryEntry?.[field] || activeSeason?.[field])?.trim();
     if (name) {
       if (!map[name]) map[name] = { wins: 0, losses: 0, minYear: Infinity, maxYear: 0, isPresent: false };
       const yr = parseYear(activeSeason?.year);
@@ -1217,6 +1217,13 @@ export function HistoryPage() {
       : Promise.resolve([]),
     [teamId]
   );
+  // Every season of this team — used to fall back to the roster tab's coach
+  // when a season's History entry was created without one (e.g. by a rank
+  // update or playoff seed), so the coach doesn't vanish once the season ends.
+  const teamSeasons = useLiveQuery(
+    () => teamId ? db.seasons.where('team_id').equals(teamId).toArray() : Promise.resolve([]),
+    [teamId]
+  );
   const commits = useLiveQuery(
     () => teamId
       ? db.player_commits.where('team_id').equals(teamId).toArray()
@@ -1381,10 +1388,26 @@ export function HistoryPage() {
     const activeYear = (activeSeason?.status !== 'ended' && activeSeason?.year != null)
       ? String(activeSeason.year)
       : null;
+    const rosterByYear = new Map();
+    for (const se of teamSeasons ?? []) {
+      if (se.year == null || (!se.head_coach && !se.asst_coach)) continue;
+      if (!rosterByYear.has(String(se.year))) rosterByYear.set(String(se.year), se);
+    }
     return [...(history ?? [])]
       .filter(h => !activeYear || String(h.year) !== activeYear)
+      .map(h => {
+        const se = rosterByYear.get(String(h.year));
+        if (!se || (h.head_coach && h.asst_coach)) return h;
+        // Typed-in History coach wins; blanks fall back to the roster coach.
+        return {
+          ...h,
+          head_coach:  h.head_coach || se.head_coach || null,
+          asst_coach:  h.asst_coach || se.asst_coach || null,
+          tenure_year: h.tenure_year ?? (!h.head_coach && se.head_coach ? se.tenure_year ?? null : null),
+        };
+      })
       .sort((a, b) => String(b.year).localeCompare(String(a.year)));
-  }, [history, activeSeason]);
+  }, [history, activeSeason, teamSeasons]);
 
   const sortedCommits = useMemo(
     () => [...(commits ?? [])].sort((a, b) => b.grad_year - a.grad_year),
@@ -1494,9 +1517,10 @@ export function HistoryPage() {
     class_rank:     liveHistoryEntry.class_rank     ?? '',
     state_rank:     liveHistoryEntry.state_rank     != null ? String(liveHistoryEntry.state_rank)    : '',
     national_rank:  liveHistoryEntry.national_rank  != null ? String(liveHistoryEntry.national_rank) : '',
-    head_coach:     liveHistoryEntry.head_coach     ?? '',
-    tenure_year:    liveHistoryEntry.tenure_year    != null ? String(liveHistoryEntry.tenure_year) : '',
-    asst_coach:     liveHistoryEntry.asst_coach     ?? '',
+    head_coach:     liveHistoryEntry.head_coach     || activeSeason?.head_coach || '',
+    tenure_year:    liveHistoryEntry.tenure_year    != null ? String(liveHistoryEntry.tenure_year)
+                  : (!liveHistoryEntry.head_coach && activeSeason?.tenure_year != null ? String(activeSeason.tenure_year) : ''),
+    asst_coach:     liveHistoryEntry.asst_coach     || activeSeason?.asst_coach || '',
     games:          '',
     wins:           '',
     losses:         '',
@@ -2173,16 +2197,16 @@ export function HistoryPage() {
                             </ResponsiveContainer>
                           </div>
                         )}
-                        {/* Win milestones: how many seasons reached 15+/20+/25+/30+ wins */}
+                        {/* Win milestones: how many seasons reached 15+/20+/25+/30+/35+ wins */}
                         {(() => {
-                          const tiles = [15, 20, 25, 30]
+                          const tiles = [15, 20, 25, 30, 35]
                             .map(t => [t, sparklineData.filter(r => (r.wins ?? 0) >= t).length])
                             .filter(([, n]) => n > 0);
                           if (!tiles.length) return null;
                           return (
                             <div className="mt-4">
                               <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-2">Win Milestones</p>
-                              <div className="grid grid-cols-4 gap-2">
+                              <div className="grid grid-cols-5 gap-2">
                                 {tiles.map(([t, n]) => (
                                   <div key={t} className="bg-slate-800/60 rounded-lg py-2 text-center">
                                     <div className="text-xl font-black text-white tabular-nums leading-none">{n}</div>

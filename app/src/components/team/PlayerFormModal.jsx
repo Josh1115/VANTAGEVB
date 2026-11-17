@@ -127,31 +127,44 @@ export function PlayerFormModal({ onClose, teamId, player, onDelete }) {
               maxLength={3}
             />
           </div>
-          <div>
-            <label className="block text-sm text-slate-400 mb-1">Position</label>
-            <select
-              className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
-              value={position}
-              onChange={(e) => setPosition(e.target.value)}
-            >
-              {POSITION_KEYS.map((p) => (
-                <option key={p} value={p}>{p} — {POSITIONS[p]}</option>
-              ))}
-            </select>
+        </div>
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">Position</label>
+          <div className="flex flex-wrap gap-2">
+            {POSITION_KEYS.map((p) => (
+              <button
+                key={p}
+                type="button"
+                title={POSITIONS[p]}
+                onClick={() => { setPosition(p); if (secondaryPosition === p) setSecondaryPosition(''); }}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-colors ${position === p ? 'bg-primary border-primary text-white' : 'bg-bg border-slate-600 text-slate-300'}`}
+              >
+                {p}
+              </button>
+            ))}
           </div>
+          <p className="text-xs text-slate-500 mt-1">{POSITIONS[position]}</p>
         </div>
         <div>
           <label className="block text-sm text-slate-400 mb-1">Secondary Position <span className="text-slate-500">(optional)</span></label>
-          <select
-            className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white"
-            value={secondaryPosition}
-            onChange={(e) => setSecondaryPosition(e.target.value)}
-          >
-            <option value="">— None —</option>
-            {POSITION_KEYS.filter((p) => p !== position).map((p) => (
-              <option key={p} value={p}>{p} — {POSITIONS[p]}</option>
-            ))}
-          </select>
+          <div className="flex flex-wrap gap-2">
+            {['', ...POSITION_KEYS].map((p) => {
+              const disabled = p !== '' && p === position;
+              return (
+                <button
+                  key={p || 'none'}
+                  type="button"
+                  disabled={disabled}
+                  title={p ? POSITIONS[p] : 'None'}
+                  onClick={() => setSecondaryPosition(p)}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-colors ${disabled ? 'opacity-30 cursor-not-allowed bg-bg border-slate-700 text-slate-500' : secondaryPosition === p ? 'bg-primary border-primary text-white' : 'bg-bg border-slate-600 text-slate-300'}`}
+                >
+                  {p || 'None'}
+                </button>
+              );
+            })}
+          </div>
+          {secondaryPosition && <p className="text-xs text-slate-500 mt-1">{POSITIONS[secondaryPosition]}</p>}
         </div>
         <div>
           <label className="block text-sm text-slate-400 mb-1">Year <span className="text-slate-500">(optional)</span></label>

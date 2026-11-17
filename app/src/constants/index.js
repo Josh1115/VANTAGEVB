@@ -154,37 +154,8 @@ export const COLLEGE_DIVISIONS = [
   { value: 'Club',    label: 'Club'    },
 ];
 
-// Plan feature lists
+// Trial plan
 export const TRIAL_MATCH_LIMIT  = 5;
-export const TRIAL_FEATURES     = [
-  'Full Core feature access',
-  'All analytics & reports',
-  'Practice tools & whiteboard',
-  'Opponent scouting page',
-  'Multi-format export (PDF, CSV, MaxPreps)',
-  'Limited to 5 matches',
-  'Read-only after trial ends',
-];
-// Kept for grandfathered Baseline users
-export const BASELINE_FEATURES  = [
-  'Limited to one level',
-  'Limited to one season',
-  'Max 20 matches',
-  'Basic stats (K, Ace, Blk, Digs, Ast, Errs)',
-  'Live stat recording',
-  'No Records page',
-  'No History page',
-  'No Reports page',
-  'No MaxPreps export',
-  'Limited settings & customization',
-  'Baseline priority support',
-  'No tools / practice features',
-  'No whiteboard',
-  'No opponent page',
-];
-export const CORE_FEATURES      = ['Full analytics suite', 'Career records & history', 'Practice tools', 'Opponent scouting page', 'Rotation optimizer', 'Multi-format export (PDF, CSV, MaxPreps)'];
-export const ADVANTAGE_FEATURES = ['Everything in CORE', 'Two levels per program (JV + Varsity)', 'Up to 45 matches per team/level', 'Priority customer support'];
-export const TOPPER_FEATURES    = ['Everything in ADVANTAGE', 'Up to 60 matches per team/level'];
 
 // Jersey / team colors — shared between TeamsPage (color picker) and SeasonsPage (accent derivation)
 export const JERSEY_COLORS = [

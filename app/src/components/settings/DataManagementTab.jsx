@@ -8,7 +8,7 @@ import { db } from '../../db/schema';
 import { supabase } from '../../utils/supabase';
 import { STORAGE_KEYS, setStorageItem, getIntStorage } from '../../utils/storage';
 import { resetTrialCreated } from '../../utils/trialMatchCount';
-import { useTrimSetting } from '../../hooks/useSettingsStorage';
+import { legacyMaxPrepsId, teamDisplayLabel } from '../../utils/maxPreps';
 import { exportBackup, importBackup, restoreAutoBackup, saveToCloud, restoreFromCloud, syncWithCloud } from '../../stats/backup';
 import { findDuplicatePlayerGroups, findDuplicateOpponentGroups, findDuplicateOrgGroups, findDuplicateTeamGroups } from '../../stats/dedupe';
 import { Button } from '../ui/Button';
@@ -26,7 +26,24 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
   const { isActive, isMaster, teamsAllowed, matchLimit } = usePlan();
   const fileInputRef = useRef(null);
 
-  const [maxPrepsId, saveMaxPrepsId] = useTrimSetting(STORAGE_KEYS.MAXPREPS_TEAM_ID);
+  // MaxPreps Team ID per team (Varsity and JV have different IDs); saved on the
+  // team so it syncs. A legacy single device-only ID is moved onto the
+  // dashboard's default team the first time this tab opens.
+  const maxPrepsTeams = useLiveQuery(() => db.teams.toArray(), []);
+  const [maxPrepsDrafts, setMaxPrepsDrafts] = useState({});
+  useEffect(() => {
+    if (!maxPrepsTeams) return;
+    const legacy = legacyMaxPrepsId();
+    const defId = getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID, null);
+    const def = maxPrepsTeams.find(t => t.id === defId);
+    if (legacy && def && !String(def.maxpreps_team_id ?? '').trim()) {
+      db.teams.update(def.id, { maxpreps_team_id: legacy }).catch(() => {});
+    }
+  }, [maxPrepsTeams]);
+  function saveTeamMaxPrepsId(teamId) {
+    const val = String(maxPrepsDrafts[teamId] ?? '').trim();
+    db.teams.update(teamId, { maxpreps_team_id: val || null }).catch(() => {});
+  }
 
   const [importing,           setImporting]           = useState(false);
   const [pendingFile,         setPendingFile]         = useState(null);
@@ -221,17 +238,29 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
       )}
 
       <div>
-        <label className="block text-sm font-medium mb-1">MaxPreps Team ID</label>
+        <label className="block text-sm font-medium mb-1">MaxPreps Team IDs</label>
         <div className="text-xs text-slate-400 mb-2">
-          Required for MaxPreps .txt export. To find your ID: go to your team's MaxPreps page → Roster/Stats → Import Stats → the UUID in that page's URL is your Team ID.
+          Required for MaxPreps .txt export. Each team (Varsity, JV, etc.) has its own ID. To find it: go to that team's MaxPreps page → Roster/Stats → Import Stats → the UUID in that page's URL is the Team ID. Saved IDs sync to your other devices.
         </div>
-        <input
-          type="text"
-          value={maxPrepsId}
-          onChange={(e) => saveMaxPrepsId(e.target.value)}
-          placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-          className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-primary placeholder:text-slate-600"
-        />
+        {(maxPrepsTeams ?? []).length === 0 ? (
+          <p className="text-xs text-slate-500">Add a team first.</p>
+        ) : (
+          <div className="space-y-2">
+            {(maxPrepsTeams ?? []).map(t => (
+              <div key={t.id}>
+                <div className="text-xs font-semibold text-slate-300 mb-1">{teamDisplayLabel(t) || 'Team'}</div>
+                <input
+                  type="text"
+                  value={maxPrepsDrafts[t.id] ?? t.maxpreps_team_id ?? ''}
+                  onChange={(e) => setMaxPrepsDrafts(d => ({ ...d, [t.id]: e.target.value }))}
+                  onBlur={() => { if (t.id in maxPrepsDrafts) saveTeamMaxPrepsId(t.id); }}
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-primary placeholder:text-slate-600"
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       <Button className="w-full" variant="secondary" onClick={handleExport}>
         Export Full Backup (JSON)

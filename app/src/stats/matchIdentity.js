@@ -44,11 +44,6 @@ export function distinguishKey(m) {
   ].join('|');
 }
 
-// The natural key cloud sync and tombstones use (season + opponent + date).
-export function naturalKey(m) {
-  return `${m.season_id}|${norm(m.opponent_name)}|${day(m.date)}`;
-}
-
 // Deterministic across devices: both sides of a sync must independently pick the
 // SAME survivor out of a group of duplicates, so order by the permanent `uid`
 // (present on every row created since schema v23). Legacy rows without a `uid`

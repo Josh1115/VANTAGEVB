@@ -1982,12 +1982,6 @@ export function pickMetricVar(src, key, d) {
   return pickMetricVal(src, key, d?.variance);
 }
 
-// Reads one field off one player's row inside a computeWinCorrelation win/loss bucket
-// (i.e. d.players[playerId][key]). Mirrors pickMetricVal's shape for the team-level case.
-export function pickPlayerVal(playerId, key, d) {
-  return d?.players?.[playerId]?.[key];
-}
-
 export function computeRallyHistogram(contacts) {
   if (!contacts?.length) return [];
   const lenByRally = new Map();

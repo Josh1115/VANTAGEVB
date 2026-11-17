@@ -38,8 +38,9 @@ import { BoxScoreEntryModal } from '../components/match/BoxScoreEntryModal';
 import { VideoCorrectionsModal } from '../components/match/VideoCorrectionsModal';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { getMaxPrepsTeamId, maxPrepsProblems } from '../utils/maxPreps';
 import { FORMAT, MATCH_STATUS, ORG_COLOR_HEX } from '../constants';
-import { getStorageItem, STORAGE_KEYS, getPlayoffLabel } from '../utils/storage';
+import { STORAGE_KEYS, getPlayoffLabel } from '../utils/storage';
 import { matchDateISO } from '../utils/matchDate';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
@@ -839,7 +840,7 @@ export function MatchSummaryPage() {
   // Scouting auto-populate
   const showToast = useUiStore(selectShowToast);
   const [scoutSuggestions, setScoutSuggestions] = useState([]);
-  const [showScoutPrompt,  setShowScoutPrompt]  = useState(false);
+  const autoScoutRan = useRef(false);
   const [showScoutModal,   setShowScoutModal]   = useState(false);
 
   // Match + sets from Dexie (live)
@@ -974,20 +975,40 @@ export function MatchSummaryPage() {
       .finally(() => setLoading(false));
   }, [id, statsVersion]);
 
-  // Trigger scouting prompt once after stats load for complete matches
+  // Auto-save scouting notes for the opponent once per completed match — no
+  // prompt. Skipped if this match already has notes (auto or hand-entered,
+  // from this device or synced from another) or was reviewed/skipped under the
+  // old prompt. created_at is derived from the match date so two devices that
+  // both auto-save before syncing produce identical rows, which the sync merge
+  // de-duplicates.
   useEffect(() => {
-    if (!stats || !match || match.status !== 'complete') return;
-    if (!match.opponent_id) return;
+    if (autoScoutRan.current) return;
+    if (!stats || !match || match.status !== 'complete' || !match.opponent_id) return;
+    autoScoutRan.current = true;
     if (localStorage.getItem(`vbstat_scout_${id}`)) return;
     const suggestions = generateScoutingSuggestions(stats);
     if (!suggestions.length) return;
-    setScoutSuggestions(suggestions);
-    setShowScoutPrompt(true);
-  }, [stats, match, id]);
+    (async () => {
+      try {
+        const existing = await db.opp_tendencies.where('match_id').equals(id).count();
+        if (existing > 0) return;
+        const day = String(match.date ?? '').slice(0, 10);
+        const createdAt = /^\d{4}-\d{2}-\d{2}$/.test(day) ? `${day}T12:00:00.000Z` : new Date().toISOString();
+        await db.opp_tendencies.bulkAdd(suggestions.map(sg => ({
+          opp_id:     match.opponent_id,
+          match_id:   id,
+          type:       sg.type,
+          value:      sg.value.trim(),
+          created_at: createdAt,
+          auto:       true,
+        })));
+        localStorage.setItem(`vbstat_scout_${id}`, '1');
+        showToast(`Scouting updated for ${match.opponent_name ?? 'opponent'}`, 'success');
+      } catch { /* best-effort — coach can still add notes with the Scout button */ }
+    })();
+  }, [stats, match, id, showToast]);
 
   function dismissScoutPrompt() {
-    localStorage.setItem(`vbstat_scout_${id}`, '1');
-    setShowScoutPrompt(false);
     setShowScoutModal(false);
   }
 
@@ -1437,25 +1458,19 @@ export function MatchSummaryPage() {
     exportMatchCSV(stats.players, playerNames, `match-${id}-stats.csv`);
   }
 
+  const maxPrepsIdRef = useRef('');
   function downloadMaxPreps() {
-    const uuid = getStorageItem(STORAGE_KEYS.MAXPREPS_TEAM_ID, '');
-    exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, uuid, maxPrepsFilename(match));
+    exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, maxPrepsIdRef.current, maxPrepsFilename(match));
   }
 
-  // MaxPreps matches players by jersey # and needs the Team ID on line 1 —
+  // MaxPreps matches players by jersey # and needs this team's ID on line 1 —
   // warn before downloading a file it would reject.
-  function handleMaxPreps() {
-    if (!stats) return;
-    const problems = [];
-    if (!getStorageItem(STORAGE_KEYS.MAXPREPS_TEAM_ID, '')) {
-      problems.push('No MaxPreps Team ID is saved in Settings.');
-    }
-    const noJersey = Object.keys(stats.players)
-      .filter((id) => String(playerJerseys[id] ?? '').trim() === '')
-      .map((id) => playerNames[id] ?? 'Unknown player');
-    if (noJersey.length) {
-      problems.push(`Missing jersey number: ${noJersey.join(', ')}. Add numbers on the team roster.`);
-    }
+  async function handleMaxPreps() {
+    if (!stats || !match) return;
+    const season = match.season_id != null ? await db.seasons.get(match.season_id) : null;
+    const team   = season ? await db.teams.get(season.team_id) : null;
+    maxPrepsIdRef.current = getMaxPrepsTeamId(team);
+    const problems = maxPrepsProblems(maxPrepsIdRef.current, Object.keys(stats.players), playerNames, playerJerseys);
     if (problems.length) {
       setMaxPrepsWarn(`${problems.join(' ')} MaxPreps may reject this file.`);
       return;
@@ -2683,32 +2698,6 @@ export function MatchSummaryPage() {
           onCorrect={() => setStatsVersion((v) => v + 1)}
           onClose={() => setShowCorrections(false)}
         />
-      )}
-
-      {/* Scouting auto-populate prompt */}
-      {showScoutPrompt && !showScoutModal && match && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 animate-slide-up">
-          <div className="bg-slate-800 border-t border-slate-700 px-4 py-3 flex items-center gap-3 safe-area-inset-bottom">
-            <span className="text-xl shrink-0">📋</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">
-                Update scouting for {match.opponent_name}?
-              </p>
-              <p className="text-xs text-slate-400">
-                {scoutSuggestions.length} note{scoutSuggestions.length !== 1 ? 's' : ''} generated from this match
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={dismissScoutPrompt}
-                className="text-xs text-slate-400 hover:text-white transition-colors px-2 py-1"
-              >
-                Skip
-              </button>
-              <Button size="sm" onClick={() => setShowScoutModal(true)}>Review</Button>
-            </div>
-          </div>
-        </div>
       )}
 
       {showScoutModal && match && (
