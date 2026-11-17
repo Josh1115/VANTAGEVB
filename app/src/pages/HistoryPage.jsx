@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { CollegeLogo } from '../components/shared/CollegeLogo';
+import { loadColleges, searchColleges, findCollege, imageFileToLogoDataUrl } from '../utils/collegeLogos';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
 import jsPDF from 'jspdf';
@@ -447,7 +449,7 @@ const DIV_COLORS = {
   'Club':    'bg-slate-600/30 text-slate-400 border-slate-600/30',
 };
 
-const EMPTY_COMMIT = { player_name: '', grad_year: '', college: '', division: 'NCAA D1' };
+const EMPTY_COMMIT = { player_name: '', grad_year: '', college: '', division: 'NCAA D1', logo_espn_id: null, logo_data: null };
 
 function CommitModal({ teamId, onClose, editId, initialData }) {
   const [form, setForm] = useState(initialData ?? EMPTY_COMMIT);
@@ -455,6 +457,23 @@ function CommitModal({ teamId, onClose, editId, initialData }) {
   const [error, setError] = useState('');
 
   function set(field, val) { setForm(f => ({ ...f, [field]: val })); setError(''); }
+
+  // College search: picking a suggestion attaches its ESPN logo; typing
+  // afterwards detaches it. An uploaded logo overrides both.
+  const [colleges, setColleges] = useState([]);
+  const [showSuggest, setShowSuggest] = useState(false);
+  useEffect(() => { loadColleges().then(setColleges); }, []);
+  const suggestions = showSuggest ? searchColleges(colleges, form.college) : [];
+  const autoMatch = !form.logo_espn_id ? findCollege(colleges, form.college) : null;
+  const previewCommit = { ...form, logo_espn_id: form.logo_espn_id ?? autoMatch?.id ?? null };
+
+  async function handleLogoFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try { set('logo_data', await imageFileToLogoDataUrl(file)); }
+    catch { setError('That file could not be read as an image.'); }
+  }
 
   async function handleSave() {
     if (!form.player_name.trim()) { setError('Player name is required.'); return; }
@@ -468,6 +487,8 @@ function CommitModal({ teamId, onClose, editId, initialData }) {
       grad_year:   Number(form.grad_year),
       college:     form.college.trim(),
       division:    form.division,
+      logo_espn_id: form.logo_espn_id ?? findCollege(colleges, form.college)?.id ?? null,
+      logo_data:    form.logo_data ?? null,
     };
     try {
       if (editId) { await db.player_commits.update(editId, fields); }
@@ -507,7 +528,53 @@ function CommitModal({ teamId, onClose, editId, initialData }) {
 
           <div>
             <label className={lbl}>College / University *</label>
-            <input className={inp} placeholder="University of Michigan" value={form.college} onChange={e => set('college', e.target.value)} />
+            <div className="relative">
+              <input
+                className={inp}
+                placeholder="Start typing, e.g. Michigan"
+                value={form.college}
+                onChange={e => { setForm(f => ({ ...f, college: e.target.value, logo_espn_id: null })); setError(''); setShowSuggest(true); }}
+                onFocus={() => setShowSuggest(true)}
+                onBlur={() => setTimeout(() => setShowSuggest(false), 150)}
+              />
+              {suggestions.length > 0 && (
+                <div className="absolute z-10 left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg overflow-hidden shadow-lg max-h-64 overflow-y-auto">
+                  {suggestions.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => { setForm(f => ({ ...f, college: c.n, logo_espn_id: c.id })); setShowSuggest(false); setError(''); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm text-slate-100 hover:bg-slate-700"
+                    >
+                      <CollegeLogo commit={{ logo_espn_id: c.id }} size={22} />
+                      <span className="truncate">{c.d}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className={lbl}>Logo</label>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
+                <CollegeLogo commit={previewCommit} size={40} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-primary cursor-pointer">
+                  {form.logo_data ? 'Change uploaded logo' : 'Upload logo'}
+                  <input type="file" accept="image/*" className="hidden" onChange={handleLogoFile} />
+                </label>
+                {form.logo_data && (
+                  <button type="button" onClick={() => set('logo_data', null)} className="text-xs text-slate-400 text-left hover:text-red-400">Remove uploaded logo</button>
+                )}
+                <span className="text-[11px] text-slate-500">
+                  {form.logo_data ? 'Using your uploaded logo.' : previewCommit.logo_espn_id ? 'Found automatically.' : 'Pick a college from the list, or upload one.'}
+                </span>
+              </div>
+            </div>
           </div>
 
           <div>
@@ -546,7 +613,10 @@ function CommitCard({ entry, onEdit, onDelete }) {
         <button onClick={() => onDelete(entry)} className="flex-1 flex items-center justify-center bg-red-600 rounded-r-xl text-white text-xs font-bold">Delete</button>
       </div>
       <div style={slideStyle} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onClickCapture={clickCapture}>
-        <div className="bg-slate-800 rounded-xl px-4 py-3 border border-slate-700/50">
+        <div className="bg-slate-800 rounded-xl px-4 py-3 border border-slate-700/50 flex items-center gap-3">
+          {/* College logo far left, beside the name + school lines */}
+          <CollegeLogo commit={entry} size={38} />
+          <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <span className="font-bold text-slate-100 truncate">{entry.player_name}</span>
@@ -560,6 +630,7 @@ function CommitCard({ entry, onEdit, onDelete }) {
             </div>
           </div>
           <p className="text-sm text-slate-400 mt-0.5">{entry.college}</p>
+          </div>
         </div>
       </div>
     </div>
@@ -2282,6 +2353,8 @@ export function HistoryPage() {
             grad_year:   editCommit.grad_year   != null ? String(editCommit.grad_year) : '',
             college:     editCommit.college     ?? '',
             division:    editCommit.division    ?? 'NCAA D1',
+            logo_espn_id: editCommit.logo_espn_id ?? null,
+            logo_data:    editCommit.logo_data    ?? null,
           }}
           onClose={() => setEditCommit(null)}
         />
