@@ -36,6 +36,7 @@ function CoachModal({ season, onClose }) {
   const [headCoach,   setHeadCoach]   = useState(season.head_coach   ?? '');
   const [asstCoach,   setAsstCoach]   = useState(season.asst_coach   ?? '');
   const [tenureYear,  setTenureYear]  = useState(season.tenure_year  != null ? String(season.tenure_year) : '');
+  const [asstTenure,  setAsstTenure]  = useState(season.asst_tenure_year != null ? String(season.asst_tenure_year) : '');
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState('');
 
@@ -47,6 +48,7 @@ function CoachModal({ season, onClose }) {
         head_coach:  headCoach.trim()  || null,
         asst_coach:  asstCoach.trim()  || null,
         tenure_year: tenureYear ? Number(tenureYear) : null,
+        asst_tenure_year: asstTenure ? Number(asstTenure) : null,
       });
       onClose();
     } catch {
@@ -80,9 +82,15 @@ function CoachModal({ season, onClose }) {
               <input className={inp} type="number" min="1" placeholder="3" value={tenureYear} onChange={e => setTenureYear(e.target.value)} />
             </div>
           </div>
-          <div>
-            <label className={lbl}>Assistant Coach</label>
-            <input className={inp} placeholder="Coach Jones" value={asstCoach} onChange={e => setAsstCoach(e.target.value)} />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={lbl}>Assistant Coach</label>
+              <input className={inp} placeholder="Coach Jones" value={asstCoach} onChange={e => setAsstCoach(e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Tenure Year #</label>
+              <input className={inp} type="number" min="1" placeholder="2" value={asstTenure} onChange={e => setAsstTenure(e.target.value)} />
+            </div>
           </div>
         </div>
 
@@ -217,6 +225,7 @@ export function TeamDetailPage() {
   const staffHead   = selectedSeason?.head_coach  || selectedHistoryEntry?.head_coach  || null;
   const staffAsst   = selectedSeason?.asst_coach  || selectedHistoryEntry?.asst_coach  || null;
   const staffTenure = selectedSeason?.tenure_year ?? selectedHistoryEntry?.tenure_year ?? null;
+  const staffAsstTenure = selectedSeason?.asst_tenure_year ?? selectedHistoryEntry?.asst_tenure_year ?? null;
 
   // For past or ended seasons: the roster saved when the season was ended
   // (season.roster_uids), plus anyone who recorded a stat that season. Seasons
@@ -392,6 +401,9 @@ export function TeamDetailPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 w-8 shrink-0">AC</span>
                       <span className="text-sm text-slate-200">{staffAsst}</span>
+                      {staffAsstTenure != null && staffAsstTenure !== '' && (
+                        <span className="text-xs text-slate-500">· Year {staffAsstTenure}</span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1033,7 +1045,7 @@ export function TeamDetailPage() {
 
       {showCoachModal && selectedSeason && (
         <CoachModal
-          season={{ ...selectedSeason, head_coach: staffHead, asst_coach: staffAsst, tenure_year: staffTenure }}
+          season={{ ...selectedSeason, head_coach: staffHead, asst_coach: staffAsst, tenure_year: staffTenure, asst_tenure_year: staffAsstTenure }}
           onClose={() => setShowCoachModal(false)}
         />
       )}

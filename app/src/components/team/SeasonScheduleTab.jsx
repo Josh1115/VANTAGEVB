@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { PlayoffSeed } from '../ui/PlayoffSeed';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
+import OpponentSuggestions, { OPPONENT_LIST_ID } from '../shared/OpponentSuggestions';
 import { MATCH_STATUS } from '../../constants';
 import { fmtDate, fmtHitting, fmtPct } from '../../stats/formatters';
 import { computeMatchStats, computeTeamStats, computePlayerStats } from '../../stats/engine';
@@ -33,6 +34,7 @@ export function SeasonScheduleTab({ seasonId }) {
   const { isMaster, plan, matchLimit, matchesLocked } = usePlan();
   const [confirmEndedGame, setConfirmEndedGame] = useState(false);
   const showToast = useUiStore(selectShowToast);
+  const oppInputRef = useRef(null);
   const showUpgradeNudge = useUiStore(selectShowUpgradeNudge);
 
   const data = useLiveQuery(async () => {
@@ -159,6 +161,18 @@ export function SeasonScheduleTab({ seasonId }) {
     download();
   }
 
+  // Save & Add Another: keep date/time/location/match type/tournament so a
+  // whole tourney or week can be entered back to back; clear the opponent.
+  function keepForNextGame() {
+    setSchedOpp('');
+    setSchedOppAbbr('');
+    setSchedOppRecord('');
+    setSchedOppRank('');
+    setSchedOppSeed('');
+    setSchedError('');
+    setTimeout(() => oppInputRef.current?.focus(), 0);
+  }
+
   function resetSchedForm() {
     ourSeed.reset();
     setEditMatchId(null);
@@ -197,11 +211,11 @@ export function SeasonScheduleTab({ seasonId }) {
     setSchedOpen(true);
   }
 
-  async function handleScheduleGame(endedConfirmed = false) {
+  async function handleScheduleGame(endedConfirmed = false, addAnother = false) {
     if (!schedOpp.trim()) return;
     if (!editMatchId) {
       if (matchesLocked) { setSchedError(MATCHES_LOCKED_MESSAGE); return; }
-      if (season?.status === 'ended' && !endedConfirmed) { setConfirmEndedGame(true); return; }
+      if (season?.status === 'ended' && !endedConfirmed) { setConfirmEndedGame({ addAnother }); return; }
     }
     setSchedSaving(true);
     try {
@@ -274,7 +288,12 @@ export function SeasonScheduleTab({ seasonId }) {
         await clearMatchTombstone({ season_id: seasonId, opponent_name: fields.opponent_name, date: fields.date });
       }
       if (schedMatchType === 'ihsa-playoffs') await ourSeed.save();
-      resetSchedForm();
+      if (addAnother && !editMatchId) {
+        keepForNextGame();
+        showToast(`${fields.opponent_name} saved — add the next game`, 'success');
+      } else {
+        resetSchedForm();
+      }
     } catch (e) {
       if (e.code === 'MATCH_LIMIT') {
         setSchedError(e.message === 'limit' ? 'Match limit reached for this season. Upgrade your plan to add more.' : e.message);
@@ -805,7 +824,7 @@ export function SeasonScheduleTab({ seasonId }) {
           title="Season Has Ended"
           message="This season has ended. Add a game anyway?"
           confirmLabel="Add Game"
-          onConfirm={() => { setConfirmEndedGame(false); handleScheduleGame(true); }}
+          onConfirm={() => { const again = confirmEndedGame.addAnother; setConfirmEndedGame(false); handleScheduleGame(true, again); }}
           onCancel={() => setConfirmEndedGame(false)}
         />
       )}
@@ -824,9 +843,13 @@ export function SeasonScheduleTab({ seasonId }) {
                     value={schedOpp}
                     onChange={e => setSchedOpp(e.target.value)}
                     placeholder="Opponent team name"
+                    list={OPPONENT_LIST_ID}
+                    autoComplete="off"
+                    ref={oppInputRef}
                     className="flex-1 bg-surface border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-slate-600"
                     autoFocus
                   />
+                  <OpponentSuggestions />
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-[10px] text-slate-500 uppercase tracking-wide leading-none">Abbr</span>
                     <input
@@ -1035,6 +1058,16 @@ export function SeasonScheduleTab({ seasonId }) {
 
               <div className="flex gap-3 pt-2">
                 <Button variant="secondary" className="flex-1" onClick={resetSchedForm}>Cancel</Button>
+                {!editMatchId && (
+                <Button
+                  variant="secondary"
+                  className="flex-1"
+                  disabled={!schedOpp.trim() || schedSaving}
+                  onClick={() => { setSchedError(''); handleScheduleGame(false, true); }}
+                >
+                  Save &amp; Add Another
+                </Button>
+              )}
                 <Button
                   className="flex-1"
                   disabled={!schedOpp.trim() || schedSaving}

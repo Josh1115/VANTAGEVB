@@ -117,7 +117,7 @@ function computeCoachRecords(sortedHistory, field, { hasActiveSeason, activeSeas
 const EMPTY_ROUND = { round: '', opponent: '', result: 'W', score: '', opp_seed: '' };
 
 const EMPTY_FORM = {
-  year: '', title: [], classification: '', head_coach: '', tenure_year: '', asst_coach: '',
+  year: '', title: [], classification: '', head_coach: '', tenure_year: '', asst_coach: '', asst_tenure_year: '',
   games: '', wins: '', losses: '',
   state_rank: '', national_rank: '', class_rank: '',
   playoff_seed: '', state_finish: '', playoff_result: '',
@@ -189,6 +189,7 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false, 
         head_coach:     form.head_coach.trim()           || null,
         asst_coach:     form.asst_coach.trim()           || null,
         tenure_year:    form.tenure_year  ? Number(form.tenure_year)  : null,
+        asst_tenure_year: form.asst_tenure_year ? Number(form.asst_tenure_year) : null,
         // liveMode's form never shows/populates these, so leave them out of the
         // update entirely rather than writing null over any value already saved.
         ...(!liveMode ? {
@@ -292,9 +293,15 @@ function HistoryModal({ teamId, onClose, editId, initialData, liveMode = false, 
             </div>
           </div>
 
-          <div>
-            <label className={lbl}>Assistant Coach</label>
-            <input className={inp} placeholder="Coach Jones" value={form.asst_coach} onChange={e => set('asst_coach', e.target.value)} />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={lbl}>Assistant Coach</label>
+              <input className={inp} placeholder="Coach Jones" value={form.asst_coach} onChange={e => set('asst_coach', e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Tenure Year #</label>
+              <input className={inp} type="number" min="1" placeholder="2" value={form.asst_tenure_year ?? ''} onChange={e => set('asst_tenure_year', e.target.value)} />
+            </div>
           </div>
 
           {!liveMode && (
@@ -823,6 +830,7 @@ function LiveSeasonCard({ year, matches, historyEntry, finish, activeSeason, onE
   const headCoach  = historyEntry?.head_coach  || activeSeason?.head_coach  || null;
   const asstCoach  = historyEntry?.asst_coach  || activeSeason?.asst_coach  || null;
   const tenureYear = historyEntry?.tenure_year ?? activeSeason?.tenure_year ?? null;
+  const asstTenure = historyEntry?.asst_tenure_year ?? (!historyEntry?.asst_coach ? activeSeason?.asst_tenure_year : null) ?? null;
 
   const hasCoach    = headCoach || asstCoach;
   const hasRankings = historyEntry?.state_rank != null || historyEntry?.national_rank != null || historyEntry?.class_rank != null;
@@ -929,6 +937,9 @@ function LiveSeasonCard({ year, matches, historyEntry, finish, activeSeason, onE
               <span className="text-sm text-slate-200">
                 <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1.5">AC</span>
                 {asstCoach}
+                {asstTenure != null && (
+                  <span className="text-xs text-slate-500 ml-1.5">· Year {asstTenure}</span>
+                )}
               </span>
             )}
           </div>
@@ -1155,6 +1166,9 @@ function SeasonCard({ entry, finish, matches, onEdit, onDelete, isWinRecord, isS
               <span className="text-sm text-slate-200">
                 <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mr-1.5">AC</span>
                 {entry.asst_coach}
+                {entry.asst_tenure_year != null && (
+                  <span className="text-xs text-slate-500 ml-1.5">· Year {entry.asst_tenure_year}</span>
+                )}
               </span>
             )}
           </div>
@@ -1397,13 +1411,14 @@ export function HistoryPage() {
       .filter(h => !activeYear || String(h.year) !== activeYear)
       .map(h => {
         const se = rosterByYear.get(String(h.year));
-        if (!se || (h.head_coach && h.asst_coach)) return h;
+        if (!se || (h.head_coach && h.asst_coach && h.asst_tenure_year != null)) return h;
         // Typed-in History coach wins; blanks fall back to the roster coach.
         return {
           ...h,
           head_coach:  h.head_coach || se.head_coach || null,
           asst_coach:  h.asst_coach || se.asst_coach || null,
           tenure_year: h.tenure_year ?? (!h.head_coach && se.head_coach ? se.tenure_year ?? null : null),
+          asst_tenure_year: h.asst_tenure_year ?? (!h.asst_coach && se.asst_coach ? se.asst_tenure_year ?? null : null),
         };
       })
       .sort((a, b) => String(b.year).localeCompare(String(a.year)));
@@ -1501,11 +1516,14 @@ export function HistoryPage() {
     const prev = sortedHistory.find(h => String(h.year).localeCompare(thisYear) < 0) ?? null;
     const prevTenure = prev?.tenure_year != null ? Number(prev.tenure_year) : null;
     const tenure = activeSeason.tenure_year ?? (prevTenure != null ? prevTenure + 1 : null);
+    const prevAsstTenure = prev?.asst_tenure_year != null ? Number(prev.asst_tenure_year) : null;
+    const asstTenure = activeSeason.asst_tenure_year ?? (prevAsstTenure != null ? prevAsstTenure + 1 : null);
     return {
       head_coach:     activeSeason.head_coach || prev?.head_coach || '',
       asst_coach:     activeSeason.asst_coach || prev?.asst_coach || '',
       classification: prev?.classification ?? '',
       tenure_year:    tenure != null ? String(tenure) : '',
+      asst_tenure_year: asstTenure != null ? String(asstTenure) : '',
     };
   }, [liveHistoryEntry, activeSeason, sortedHistory]);
 
@@ -1521,6 +1539,8 @@ export function HistoryPage() {
     tenure_year:    liveHistoryEntry.tenure_year    != null ? String(liveHistoryEntry.tenure_year)
                   : (!liveHistoryEntry.head_coach && activeSeason?.tenure_year != null ? String(activeSeason.tenure_year) : ''),
     asst_coach:     liveHistoryEntry.asst_coach     || activeSeason?.asst_coach || '',
+    asst_tenure_year: liveHistoryEntry.asst_tenure_year != null ? String(liveHistoryEntry.asst_tenure_year)
+                  : (!liveHistoryEntry.asst_coach && activeSeason?.asst_tenure_year != null ? String(activeSeason.asst_tenure_year) : ''),
     games:          '',
     wins:           '',
     losses:         '',
@@ -2398,6 +2418,7 @@ export function HistoryPage() {
             head_coach:     editEntry.head_coach     ?? '',
             tenure_year:    editEntry.tenure_year    != null ? String(editEntry.tenure_year) : '',
             asst_coach:     editEntry.asst_coach     ?? '',
+            asst_tenure_year: editEntry.asst_tenure_year != null ? String(editEntry.asst_tenure_year) : '',
             games:          editEntry.games          != null ? String(editEntry.games)   : '',
             wins:           editEntry.wins           != null ? String(editEntry.wins)    : '',
             losses:         editEntry.losses         != null ? String(editEntry.losses)  : '',
