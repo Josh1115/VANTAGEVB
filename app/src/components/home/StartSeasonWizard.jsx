@@ -133,7 +133,7 @@ export function StartSeasonWizard({ onClose, onDone }) {
       // season so deleting this season can undo the grade bumps and roster moves.
       const updates = [];
       for (const p of returning) {
-        if (isChecked(p.id)) updates.push([p, { year: gradeForNewSeason(p, newYear), grade_year: newYear, is_active: true, jersey_number: '' }]); // new numbers entered by hand
+        if (isChecked(p.id)) updates.push([p, { year: gradeForNewSeason(p, newYear), grade_year: newYear, is_active: true }]);
         else if (p.is_active !== false) updates.push([p, { is_active: false }]);
       }
       for (const p of seniors) updates.push([p, { is_active: false }]);

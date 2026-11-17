@@ -67,7 +67,7 @@ export function ChampionshipBannersSection({ titledSeasons, orgName, primaryColo
   const counts = countTitleTypes(titledSeasons);
   return (
     <div className="bg-surface rounded-xl px-4 py-4">
-      <p className="text-[10px] font-black uppercase tracking-widest text-[#e8530b] mb-4 text-center">Titles &amp; Championships</p>
+      <p className="text-[10px] font-black uppercase tracking-widest text-white mb-4 text-center">Titles &amp; Championships</p>
       {counts.length > 0 && (
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 px-3 mb-4">
           {counts.map(([n, name]) => (

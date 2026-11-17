@@ -37,6 +37,7 @@ import { ReviseSetModal } from '../components/match/ReviseSetModal';
 import { BoxScoreEntryModal } from '../components/match/BoxScoreEntryModal';
 import { VideoCorrectionsModal } from '../components/match/VideoCorrectionsModal';
 import { Modal } from '../components/ui/Modal';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { FORMAT, MATCH_STATUS, ORG_COLOR_HEX } from '../constants';
 import { getStorageItem, STORAGE_KEYS, getPlayoffLabel } from '../utils/storage';
 import { matchDateISO } from '../utils/matchDate';
@@ -820,6 +821,7 @@ export function MatchSummaryPage() {
   const [statsVersion, setStatsVersion] = useState(0);
   const [showCorrections, setShowCorrections] = useState(false);
   const [editOpen,      setEditOpen]      = useState(false);
+  const [maxPrepsWarn,  setMaxPrepsWarn]  = useState(null); // warning text before a MaxPreps download
   const [editForm, setEditForm] = useState({
     opp: '', oppAbbr: '', oppRecord: '', date: '', loc: 'home',
     conf: 'non-con', matchType: 'reg-season', tourneyName: '',
@@ -1435,10 +1437,30 @@ export function MatchSummaryPage() {
     exportMatchCSV(stats.players, playerNames, `match-${id}-stats.csv`);
   }
 
-  function handleMaxPreps() {
-    if (!stats) return;
+  function downloadMaxPreps() {
     const uuid = getStorageItem(STORAGE_KEYS.MAXPREPS_TEAM_ID, '');
     exportMaxPrepsCSV(stats.players, playerNames, playerJerseys, stats.setsPlayed, uuid, maxPrepsFilename(match));
+  }
+
+  // MaxPreps matches players by jersey # and needs the Team ID on line 1 —
+  // warn before downloading a file it would reject.
+  function handleMaxPreps() {
+    if (!stats) return;
+    const problems = [];
+    if (!getStorageItem(STORAGE_KEYS.MAXPREPS_TEAM_ID, '')) {
+      problems.push('No MaxPreps Team ID is saved in Settings.');
+    }
+    const noJersey = Object.keys(stats.players)
+      .filter((id) => String(playerJerseys[id] ?? '').trim() === '')
+      .map((id) => playerNames[id] ?? 'Unknown player');
+    if (noJersey.length) {
+      problems.push(`Missing jersey number: ${noJersey.join(', ')}. Add numbers on the team roster.`);
+    }
+    if (problems.length) {
+      setMaxPrepsWarn(`${problems.join(' ')} MaxPreps may reject this file.`);
+      return;
+    }
+    downloadMaxPreps();
   }
 
   // Media-ready one-page box score PDF: active roster (by jersey #) + team totals,
@@ -2384,6 +2406,15 @@ export function MatchSummaryPage() {
         </Modal>
       )}
 
+      {maxPrepsWarn && (
+        <ConfirmDialog
+          title="MaxPreps file may not upload"
+          message={maxPrepsWarn}
+          confirmLabel="Download anyway"
+          onCancel={() => setMaxPrepsWarn(null)}
+          onConfirm={() => { setMaxPrepsWarn(null); downloadMaxPreps(); }}
+        />
+      )}
       {editOpen && (
         <Modal
           title="Edit Match Details"
