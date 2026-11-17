@@ -114,7 +114,14 @@ const nkMatch  = m => `${norm(m.opponent_name)}|${(m.date ?? '').slice(0, 10)}`;
 // historical-records key used to include `value`, so correcting a stat
 // duplicated the record instead of updating it — same bug class as the core
 // tables above, fixed here the same way: uid first, this key as a fallback.)
-const nkHistorical  = h => `${norm(h.category)}|${norm(h.stat)}|${norm(h.player_name ?? '')}`;
+// Year/date/opponent/career span are part of the key: team records have no
+// player name, so without them every typed-in team record for one stat (e.g.
+// Team Kills 2019 and 2022) collapsed into a single record during sync.
+export const nkHistorical  = h => [
+  norm(h.category), norm(h.stat), norm(h.player_name ?? ''),
+  String(h.season_year ?? '').trim(), String(h.date ?? '').slice(0, 10), norm(h.opponent ?? ''),
+  String(h.career_year_start ?? ''), String(h.career_year_end ?? ''),
+].join('|');
 const nkSeasonHist  = h => String(h.year ?? '');
 const nkTourney     = t => `${norm(t.name)}|${String(t.year ?? '')}`;
 const nkCommit      = c => `${norm(c.player_name)}|${String(c.grad_year ?? '')}`;
