@@ -151,7 +151,7 @@ export function SeasonDetailPage() {
             digs: playerRank('dig', L.digs), assists: playerRank('ast', L.assists),
           },
           team: Object.fromEntries(
-            ['k', 'ace', 'blk', 'dig', 'ast'].map(k => [k, allTimeRank(teamBoards[k], thisYear)])
+            ['k', 'ace', 'blk', 'dig', 'ast', 'hit_pct', 'si_pct', 'ace_pct'].map(k => [k, allTimeRank(teamBoards[k], thisYear)])
           ),
         });
       } catch {
@@ -583,6 +583,7 @@ export function SeasonDetailPage() {
                     >
                       <div className="text-[10px] font-black uppercase tracking-wider text-white">{label}</div>
                       <div className="text-xl font-black text-primary tabular-nums mt-0.5">{val}</div>
+                      {allTimeLabel(allTimeRanks?.team?.[stat])}
                     </button>
                   ))}
                 </div>

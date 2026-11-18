@@ -909,7 +909,7 @@ export function HomePage() {
             assists: playerRank('ast', seasonLeaders.assists),
           },
           team: Object.fromEntries(
-            ['k', 'ace', 'blk', 'dig', 'ast'].map(key => [key, teamRank(key)])
+            ['k', 'ace', 'blk', 'dig', 'ast', 'hit_pct', 'si_pct', 'ace_pct'].map(key => [key, teamRank(key)])
           ),
         });
       } catch {
@@ -1297,6 +1297,7 @@ export function HomePage() {
               >
                 <div className="text-xs font-black uppercase tracking-wider text-white">{label}</div>
                 <div className="text-2xl font-black text-primary tabular-nums mt-0.5">{val}</div>
+                {seasonEnded && allTimeLabel(allTimeRanks?.team?.[stat])}
                 {!seasonEnded && deltaVal != null && deltaVal !== 0 && (
                   <span className={`flex items-center justify-center gap-px text-[9px] font-bold leading-none tabular-nums mt-0.5 ${deltaVal > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {deltaVal > 0 ? '▲' : '▼'}{fmt(deltaVal)}
