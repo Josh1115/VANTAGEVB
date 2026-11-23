@@ -18,6 +18,7 @@ import { usePlan } from '../hooks/usePlan';
 import { renewalReminderDays } from '../utils/planLimits';
 import { useStorageEstimate } from '../hooks/useStorageEstimate';
 import { syncWithCloud } from '../stats/backup';
+import { friendlySyncError } from '../utils/syncErrorMessage';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { NetDivider } from '../components/ui/NetDivider';
@@ -491,7 +492,7 @@ export function HomePage() {
       setLastSyncedAt(now);
       showToast('Saved to cloud — close the app so other devices pick it up.', 'success');
     } catch (e) {
-      showToast(e.message ?? 'Cloud save failed', 'error');
+      showToast(friendlySyncError(e, 'Sync failed'), 'error');
     } finally {
       setCloudSaving(false);
     }
@@ -702,6 +703,7 @@ export function HomePage() {
       // Stored as free text on HistoryPage ("#2"), so strip any leading "#".
       playoffSeed:      String(historyEntry?.playoff_seed ?? '').replace(/^#\s*/, '').trim() || null,
       teamState:        team.state ?? null,
+      classification:   season.classification ?? null,
       seasonYear:       season.year,
     };
   }, [defaultTeamId, defaultSeasonId]);
@@ -1108,7 +1110,7 @@ export function HomePage() {
                 // Only rankings that have a value are shown; delta arrow when the
                 // previous value is known and numeric.
                 const ranks = [
-                  { label: 'CLASS',                         cur: seasonRecord.classRank,    prev: seasonRecord.prevClassRank },
+                  { label: seasonRecord.classification ? `CLASS ${seasonRecord.classification}` : 'CLASS', cur: seasonRecord.classRank,    prev: seasonRecord.prevClassRank },
                   { label: seasonRecord.teamState ?? 'STATE', cur: seasonRecord.stateRank,    prev: seasonRecord.prevStateRank },
                   { label: 'NATIONAL',                      cur: seasonRecord.nationalRank, prev: seasonRecord.prevNationalRank },
                 ].filter((r) => r.cur != null && r.cur !== '');
@@ -1297,7 +1299,9 @@ export function HomePage() {
               >
                 <div className="text-xs font-black uppercase tracking-wider text-white">{label}</div>
                 <div className="text-2xl font-black text-primary tabular-nums mt-0.5">{val}</div>
-                {seasonEnded && allTimeLabel(allTimeRanks?.team?.[stat])}
+                {seasonEnded && allTimeRanks?.team?.[stat] != null && (
+                  <div className="leading-none mt-0.5">{allTimeLabel(allTimeRanks.team[stat])}</div>
+                )}
                 {!seasonEnded && deltaVal != null && deltaVal !== 0 && (
                   <span className={`flex items-center justify-center gap-px text-[9px] font-bold leading-none tabular-nums mt-0.5 ${deltaVal > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {deltaVal > 0 ? '▲' : '▼'}{fmt(deltaVal)}

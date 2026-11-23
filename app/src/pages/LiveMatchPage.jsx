@@ -30,6 +30,8 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { Confetti } from '../components/ui/Confetti';
 import { SetSummaryModal } from '../components/match/SetSummaryModal';
 import { ServeZoneModal } from '../components/match/ServeZoneModal';
+import { ErrorBoundary } from '../components/ui/ErrorBoundary';
+import { PopupErrorFallback } from '../components/ui/PopupErrorFallback';
 
 // 100dvh reports the browser's own dynamic-viewport-height calculation, which
 // is more reliable than measuring window.innerHeight by hand — but only on
@@ -62,6 +64,8 @@ export function LiveMatchPage() {
   const [liberoPickerSlot, setLiberoPickerSlot] = useState(1); // which slot (1 or 2) the picker is assigning
   const [liberoSwapOpen,   setLiberoSwapOpen]   = useState(false);
   const [rotErrOpen,       setRotErrOpen]       = useState(false);
+  // Bumped when the stats pop-up's safety net trips, so the next open retries fresh.
+  const [statsSafeKey,     setStatsSafeKey]     = useState(0);
 
   const [liberoPlayer,        setLiberoPlayer]        = useState(null);
   const [liberoPlayer2,       setLiberoPlayer2]        = useState(null);
@@ -613,25 +617,38 @@ export function LiveMatchPage() {
         />
       )}
 
-      {subOpen          && <SubstitutionModal onClose={() => setSubOpen(false)} />}
-      {subFixOpen       && <SubstitutionModal initialCorrection onClose={() => setSubFixOpen(false)} />}
+      {subOpen && (
+        <ErrorBoundary fallback={<PopupErrorFallback onClose={() => setSubOpen(false)} />}>
+          <SubstitutionModal onClose={() => setSubOpen(false)} />
+        </ErrorBoundary>
+      )}
+      {subFixOpen && (
+        <ErrorBoundary fallback={<PopupErrorFallback onClose={() => setSubFixOpen(false)} />}>
+          <SubstitutionModal initialCorrection onClose={() => setSubFixOpen(false)} />
+        </ErrorBoundary>
+      )}
       {liberoPickerOpen && (
-        <LiberoPickerModal
-          slot={liberoPickerSlot}
-          excludeId={liberoPickerSlot === 2 ? liberoPlayer?.id : liberoPlayer2?.id}
-          onClose={() => setLiberoPickerOpen(false)}
-          onPick={handleLiberoPick}
-        />
+        <ErrorBoundary fallback={<PopupErrorFallback onClose={() => setLiberoPickerOpen(false)} />}>
+          <LiberoPickerModal
+            slot={liberoPickerSlot}
+            excludeId={liberoPickerSlot === 2 ? liberoPlayer?.id : liberoPlayer2?.id}
+            onClose={() => setLiberoPickerOpen(false)}
+            onPick={handleLiberoPick}
+          />
+        </ErrorBoundary>
       )}
       {liberoSwapOpen && liberoPlayer && (
-        <LiberoSwapModal
-          liberoPlayer={liberoPlayer}
-          liberoPlayer2={liberoPlayer2}
-          onClose={() => setLiberoSwapOpen(false)}
-          onConfirm={(player, idx) => { swapLibero(player, idx); setLiberoSwapOpen(false); }}
-        />
+        <ErrorBoundary fallback={<PopupErrorFallback onClose={() => setLiberoSwapOpen(false)} />}>
+          <LiberoSwapModal
+            liberoPlayer={liberoPlayer}
+            liberoPlayer2={liberoPlayer2}
+            onClose={() => setLiberoSwapOpen(false)}
+            onConfirm={(player, idx) => { swapLibero(player, idx); setLiberoSwapOpen(false); }}
+          />
+        </ErrorBoundary>
       )}
       {menuOpen && (
+        <ErrorBoundary fallback={<PopupErrorFallback onClose={() => setMenuOpen(false)} />}>
         <MenuDrawer
           onClose={() => setMenuOpen(false)}
           flipLayout={flipLayout}
@@ -652,18 +669,34 @@ export function LiveMatchPage() {
             });
           }}
         />
+        </ErrorBoundary>
       )}
-      <LiveStatsModal
-        open={statsOpen}
-        onClose={() => setStatsOpen(false)}
-        teamName={teamName}
-        opponentName={opponentName}
-        recordAlerts={activeAlerts}
-        records={records}
-        seasonRotation={seasonRotation}
-      />
-      {summaryOpen && <ScoringSummaryModal onClose={() => setSummaryOpen(false)} />}
-      {timeoutOpen && <TimeoutOverlay onClose={handleTimeoutClose} recordAlerts={activeAlerts} scoreAtLastTimeout={scoreAtTimeoutClose} seasonId={seasonId} />}
+      <ErrorBoundary
+        key={statsSafeKey}
+        fallback={statsOpen
+          ? <PopupErrorFallback onClose={() => { setStatsOpen(false); setStatsSafeKey((k) => k + 1); }} />
+          : null}
+      >
+        <LiveStatsModal
+          open={statsOpen}
+          onClose={() => setStatsOpen(false)}
+          teamName={teamName}
+          opponentName={opponentName}
+          recordAlerts={activeAlerts}
+          records={records}
+          seasonRotation={seasonRotation}
+        />
+      </ErrorBoundary>
+      {summaryOpen && (
+        <ErrorBoundary fallback={<PopupErrorFallback onClose={() => setSummaryOpen(false)} />}>
+          <ScoringSummaryModal onClose={() => setSummaryOpen(false)} />
+        </ErrorBoundary>
+      )}
+      {timeoutOpen && (
+        <ErrorBoundary fallback={<PopupErrorFallback onClose={handleTimeoutClose} />}>
+          <TimeoutOverlay onClose={handleTimeoutClose} recordAlerts={activeAlerts} scoreAtLastTimeout={scoreAtTimeoutClose} seasonId={seasonId} />
+        </ErrorBoundary>
+      )}
 
       {confettiNav && (
         <Confetti
@@ -674,24 +707,29 @@ export function LiveMatchPage() {
         />
       )}
 
-      {summaryModalData && (
-        <SetSummaryModal
-          winner={summaryModalData.winner}
-          teamName={teamName}
-          opponentName={opponentName}
-          onClose={() => setSummaryModalData(null)}
-          onContinue={async () => {
-            const { winner } = summaryModalData;
-            setSummaryModalData(null);
-            await endSet(winner);
-            if (winner === SIDE.US) {
-              setConfettiNav({ path: `/matches/${matchIdParam}/set-lineup`, matchWin: false });
-            } else {
-              navigate(`/matches/${matchIdParam}/set-lineup`);
-            }
-          }}
-        />
-      )}
+      {summaryModalData && (() => {
+        const continueToNextSet = async () => {
+          const { winner } = summaryModalData;
+          setSummaryModalData(null);
+          await endSet(winner);
+          if (winner === SIDE.US) {
+            setConfettiNav({ path: `/matches/${matchIdParam}/set-lineup`, matchWin: false });
+          } else {
+            navigate(`/matches/${matchIdParam}/set-lineup`);
+          }
+        };
+        return (
+          <ErrorBoundary fallback={<PopupErrorFallback onClose={continueToNextSet} label="Continue to Next Set" />}>
+            <SetSummaryModal
+              winner={summaryModalData.winner}
+              teamName={teamName}
+              opponentName={opponentName}
+              onClose={() => setSummaryModalData(null)}
+              onContinue={continueToNextSet}
+            />
+          </ErrorBoundary>
+        );
+      })()}
 
       {pendingServeContact && (() => {
         const pid = pendingServeContact.player_id;
@@ -710,13 +748,15 @@ export function LiveMatchPage() {
           serverAceZones = aceZoneHints[pid] ?? {};
         }
         return (
-          <ServeZoneModal
-            pendingContact={pendingServeContact}
-            reticles={serveReticles}
-            onConfirm={confirmServeZone}
-            onDismiss={dismissServeZoneModal}
-            serverAceZones={serverAceZones}
-          />
+          <ErrorBoundary fallback={<PopupErrorFallback onClose={dismissServeZoneModal} />}>
+            <ServeZoneModal
+              pendingContact={pendingServeContact}
+              reticles={serveReticles}
+              onConfirm={confirmServeZone}
+              onDismiss={dismissServeZoneModal}
+              serverAceZones={serverAceZones}
+            />
+          </ErrorBoundary>
         );
       })()}
 

@@ -14,6 +14,7 @@ import { findDuplicatePlayerGroups, findDuplicateOpponentGroups, findDuplicateOr
 import { Button } from '../ui/Button';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { MergeBackupModal } from './MergeBackupModal';
+import { friendlySyncError } from '../../utils/syncErrorMessage';
 import { DedupeModal } from './DedupeModal';
 
 // `onStorageChange` tells the parent to re-poll the browser storage-quota
@@ -129,7 +130,7 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
       showToast('Saved to cloud — close the app so other devices pick it up.', 'success');
       onStorageChange?.();
     } catch (e) {
-      showToast(e.message ?? 'Cloud save failed', 'error');
+      showToast(friendlySyncError(e, 'Sync failed'), 'error');
     } finally {
       setCloudSaving(false);
     }
@@ -143,7 +144,7 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
       showToast('Restored from cloud', 'success');
       window.location.reload();
     } catch (e) {
-      showToast(e.message ?? 'Cloud restore failed', 'error');
+      showToast(friendlySyncError(e, 'Cloud restore failed'), 'error');
     } finally {
       setCloudRestoring(false);
     }
@@ -165,7 +166,7 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
       showToast('Backup restored', 'success');
       window.location.reload();
     } catch (e) {
-      showToast(e.message ?? 'Restore failed', 'error');
+      showToast(friendlySyncError(e, 'Restore failed'), 'error');
     } finally {
       setRestoringId(null);
     }
@@ -181,7 +182,7 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
       showToast('Backup imported successfully', 'success');
       window.location.reload();
     } catch (e) {
-      showToast(e.message ?? 'Import failed', 'error');
+      showToast(friendlySyncError(e, 'Import failed'), 'error');
       setImporting(false);
       setPendingFile(null);
     }

@@ -413,7 +413,7 @@ export function SeasonDetailPage() {
           const last5W = last5.filter((m) => (m.our_sets_won ?? 0) > (m.opp_sets_won ?? 0)).length;
           const ranks = [
             { label: classification ? `CLASS ${classification}` : 'CLASS', cur: classRank },
-            { label: 'STATE', cur: stateRank },
+            { label: team.state ?? 'STATE', cur: stateRank },
             { label: 'NATIONAL', cur: nationalRank },
           ].filter((r) => r.cur != null && r.cur !== '');
           const doneCount = matches.filter((m) => m.status === MATCH_STATUS.COMPLETE).length;
@@ -511,6 +511,29 @@ export function SeasonDetailPage() {
           const mc = completedNonExhib.length;
           return (
             <div className="space-y-2">
+              {/* Percentage boxes */}
+              {(seasonStats.team.hit_pct != null || seasonStats.team.si_pct != null || seasonStats.team.ace_pct != null) && (
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: 'SRV%', val: fmtPct(seasonStats.team.si_pct),      stat: 'si_pct'  },
+                    { label: 'ACE%', val: fmtPct(seasonStats.team.ace_pct),     stat: 'ace_pct' },
+                    { label: 'HIT%', val: fmtHitting(seasonStats.team.hit_pct), stat: 'hit_pct' },
+                  ].map(({ label, val, stat }) => (
+                    <button
+                      key={label}
+                      onClick={() => navigate(`/seasons/${id}/team?stat=${stat}`)}
+                      className="bg-surface rounded-xl p-3 text-center active:scale-95 transition-transform"
+                    >
+                      <div className="text-xs font-black uppercase tracking-wider text-white">{label}</div>
+                      <div className="text-2xl font-black text-primary tabular-nums mt-0.5">{val}</div>
+                      {allTimeRanks?.team?.[stat] != null && (
+                        <div className="leading-none mt-0.5">{allTimeLabel(allTimeRanks.team[stat])}</div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {/* Season Leaders */}
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white px-0.5">Season Leaders</p>
               <div className="grid grid-cols-7 gap-2">
@@ -568,26 +591,6 @@ export function SeasonDetailPage() {
                 })}
               </div>
 
-              {/* Percentage boxes */}
-              {(seasonStats.team.hit_pct != null || seasonStats.team.si_pct != null || seasonStats.team.ace_pct != null) && (
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { label: 'HIT%', val: fmtHitting(seasonStats.team.hit_pct), stat: 'hit_pct' },
-                    { label: 'SRV%', val: fmtPct(seasonStats.team.si_pct),      stat: 'si_pct'  },
-                    { label: 'ACE%', val: fmtPct(seasonStats.team.ace_pct),     stat: 'ace_pct' },
-                  ].map(({ label, val, stat }) => (
-                    <button
-                      key={label}
-                      onClick={() => navigate(`/seasons/${id}/team?stat=${stat}`)}
-                      className="bg-surface rounded-xl p-3 text-center active:scale-95 transition-transform"
-                    >
-                      <div className="text-[10px] font-black uppercase tracking-wider text-white">{label}</div>
-                      <div className="text-xl font-black text-primary tabular-nums mt-0.5">{val}</div>
-                      {allTimeLabel(allTimeRanks?.team?.[stat])}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           );
         })()}
