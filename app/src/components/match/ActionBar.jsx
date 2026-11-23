@@ -75,7 +75,11 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
     onSubOpen();
   };
 
-  const btnBase = 'flex-1 h-full flex flex-col items-center justify-center font-bold rounded-none select-none transition-[transform,filter,background-color] duration-75 active:brightness-75 active:scale-y-90 active:scale-x-[0.97] border-r border-slate-700 last:border-r-0';
+  const btnBase = 'flex-1 h-full flex flex-col items-center justify-center font-bold rounded-none select-none transition-[transform,filter,background-color] duration-75 active:brightness-75 active:scale-y-90 active:scale-x-[0.97] border-r border-slate-900/80 last:border-r-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]';
+  // Working buttons: lighter "key" background + white text. Only buttons that truly
+  // can't be used right now (UNDO with nothing to undo, SUB at the limit) look faded.
+  const KEY = 'bg-slate-700/70 hover:bg-slate-600/80';
+  const OFF = 'bg-slate-800 text-slate-500 opacity-40';
 
   return (
     <>
@@ -87,11 +91,11 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         onPointerDown={backHold.onDown}
         onPointerUp={backHold.onUp}
         onPointerLeave={backHold.onUp}
-        className={`${btnBase} hover:bg-slate-700 relative overflow-hidden
-          ${backHold.held ? 'bg-slate-600 text-orange-300' : 'bg-slate-800 text-slate-300'}`}
+        className={`${btnBase} relative overflow-hidden
+          ${backHold.held ? 'bg-slate-600 text-orange-300' : `${KEY} text-white`}`}
       >
         <HoldProgressRing active={backHold.held} durationMs={HOLD_MS} />
-        <span className={`text-[1.53vmin] leading-none ${backHold.held ? 'text-orange-400' : 'text-slate-500'}`}>ROT BACK</span>
+        <span className={`text-[1.53vmin] leading-none ${backHold.held ? 'text-orange-400' : 'text-white'}`}>ROT BACK</span>
       </button>
 
       {/* Rotate forward — hold to confirm */}
@@ -99,19 +103,18 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         onPointerDown={fwdHold.onDown}
         onPointerUp={fwdHold.onUp}
         onPointerLeave={fwdHold.onUp}
-        className={`${btnBase} hover:bg-slate-700 relative overflow-hidden
-          ${fwdHold.held ? 'bg-slate-600 text-orange-300' : 'bg-slate-800 text-slate-300'}`}
+        className={`${btnBase} relative overflow-hidden
+          ${fwdHold.held ? 'bg-slate-600 text-orange-300' : `${KEY} text-white`}`}
       >
         <HoldProgressRing active={fwdHold.held} durationMs={HOLD_MS} />
-        <span className={`text-[1.53vmin] leading-none ${fwdHold.held ? 'text-orange-400' : 'text-slate-500'}`}>ROT FWD</span>
+        <span className={`text-[1.53vmin] leading-none ${fwdHold.held ? 'text-orange-400' : 'text-white'}`}>ROT FWD</span>
       </button>
 
       {/* Undo */}
       <button
         onPointerDown={(e) => { e.preventDefault(); undoLast(); }}
         disabled={!lastAction}
-        className={`${btnBase} bg-slate-800 hover:bg-slate-700
-          ${lastAction ? 'text-yellow-400' : 'text-slate-600'}`}
+        className={`${btnBase} ${lastAction ? `${KEY} text-yellow-400` : OFF}`}
       >
         <span className="text-[1.53vmin] font-bold leading-none">UNDO</span>
         {undoLabel && (
@@ -124,7 +127,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
       {/* Sub */}
       <button
         onPointerDown={(e) => { e.preventDefault(); handleSub(); }}
-        className={`${btnBase} ${subsMaxed ? 'bg-slate-800 text-slate-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+        className={`${btnBase} ${subsMaxed ? OFF : `${KEY} text-white`}`}
       >
         <span className={`text-[1.53vmin] leading-none ${subsMaxed ? "" : "text-amber-400"}`}>MAKE SUB</span>
       </button>
@@ -135,7 +138,7 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
           onPointerDown={(e) => { e.preventDefault(); onLiberoIn?.(); }}
           className={`${btnBase} ${liberoOnCourt
             ? 'bg-emerald-900/60 text-emerald-300 hover:bg-emerald-800/70'
-            : 'bg-slate-800 text-slate-500 hover:bg-slate-700'}`}
+            : `${KEY} text-white`}`}
         >
           <span className="text-[1.53vmin] leading-none">ASSIGN</span>
           <span className="text-[1.53vmin] leading-none">LIB SWAP</span>
@@ -145,18 +148,18 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
       {/* ROT ERR — home team rotation violation */}
       <button
         onPointerDown={(e) => { e.preventDefault(); onRotErrOpen(); }}
-        className={`${btnBase} bg-slate-800 text-rose-400 hover:bg-rose-950/60`}
+        className={`${btnBase} ${KEY} text-rose-400`}
       >
         <span className="text-[1.53vmin] leading-none">ROT ERR</span>
       </button>
 
       {/* Stats */}
-      <div className="relative flex-1 h-full border-r border-slate-700">
+      <div className="relative flex-1 h-full border-r border-slate-900/80">
         <button
           onPointerDown={(e) => { e.preventDefault(); onStatsOpen(); }}
-          className={`${btnBase} w-full bg-slate-800 text-slate-300 hover:bg-slate-700`}
+          className={`${btnBase} w-full ${KEY} text-white`}
         >
-          <span className={`text-[1.53vmin] leading-none ${alertCount > 0 ? 'text-orange-400' : 'text-slate-500'}`}>STATS</span>
+          <span className={`text-[1.53vmin] leading-none ${alertCount > 0 ? 'text-orange-400' : 'text-white'}`}>STATS</span>
         </button>
         {alertCount > 0 && (
           <span className="pointer-events-none absolute top-1 right-1 h-2 w-2 rounded-full bg-orange-400 animate-pulse" />
@@ -166,25 +169,25 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
       {/* Scoring summary */}
       <button
         onPointerDown={(e) => { e.preventDefault(); onSummaryOpen(); }}
-        className={`${btnBase} bg-slate-800 text-slate-300 hover:bg-slate-700`}
+        className={`${btnBase} ${KEY} text-white`}
       >
-        <span className="text-[1.53vmin] text-slate-500 leading-none">SCOREBOOK</span>
+        <span className="text-[1.53vmin] leading-none">SCOREBOOK</span>
       </button>
 
       {/* Home */}
       <button
         onPointerDown={(e) => { e.preventDefault(); setHomeConfirm(true); }}
-        className={`${btnBase} bg-slate-800 text-slate-400 hover:bg-slate-700`}
+        className={`${btnBase} ${KEY} text-white`}
       >
-        <span className="text-[1.53vmin] text-slate-500 leading-none">DASHBOARD</span>
+        <span className="text-[1.53vmin] leading-none">DASHBOARD</span>
       </button>
 
       {/* Menu */}
       <button
         onPointerDown={(e) => { e.preventDefault(); onMenuOpen(); }}
-        className={`${btnBase} bg-slate-800 text-slate-400 hover:bg-slate-700`}
+        className={`${btnBase} ${KEY} text-white`}
       >
-        <span className="text-[1.53vmin] text-slate-500 leading-none">SETTINGS</span>
+        <span className="text-[1.53vmin] leading-none">SETTINGS</span>
       </button>
     </div>
     <div style={{ height: 'env(safe-area-inset-bottom)' }} />
