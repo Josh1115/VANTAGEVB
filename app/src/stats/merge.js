@@ -835,6 +835,7 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
 
       // ── Contacts ──────────────────────────────────────────────────────
       const contactRows = [];
+      const contactOldIds = [];
       for (const impSet of impSets) {
         const newSetId = localSetMap.get(impSet.id);
         if (newSetId == null) continue;
@@ -848,9 +849,20 @@ export async function executeMerge(preview, decisions, { isMaster = true, matchL
           };
           delete row.id;
           contactRows.push(row);
+          contactOldIds.push(c.id);
         }
       }
-      if (contactRows.length) await db.contacts.bulkAdd(contactRows);
+      if (contactRows.length) {
+        const newIds = await db.contacts.bulkAdd(contactRows, { allKeys: true });
+        // Assist rows point at their kill (kill_contact_id, for setter shot
+        // charts) — contacts get new ids here, so repoint those links.
+        const idMap = new Map(contactOldIds.map((oldId, i) => [oldId, newIds[i]]));
+        const relinks = [];
+        contactRows.forEach((r, i) => {
+          if (r.kill_contact_id != null) relinks.push(db.contacts.update(newIds[i], { kill_contact_id: idMap.get(r.kill_contact_id) ?? null }));
+        });
+        if (relinks.length) await Promise.all(relinks);
+      }
 
       // ── Timeouts ──────────────────────────────────────────────────────
       const timeoutRows = [];

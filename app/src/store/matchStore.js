@@ -110,6 +110,7 @@ const makeSetResetState = () => ({
   liberoReplacedJersey:        '',
   liberoReplacedPositionLabel: '',
   pendingServeContact:         null,
+  pendingAttackContact:        null,
   serveReticles:               [],
   serveReceiveFormations:      null,
   plannedSubs:                 [],
@@ -542,6 +543,7 @@ const INITIAL_STATE = {
   lastSetScore:          15,   // win score for the deciding set (15 or 25)
   playerNicknames:       {},   // { [playerId]: nickname string } — populated at lineup load
   pendingServeContact:   null, // { contactId, result } | null — triggers serve zone modal
+  pendingAttackContact:  null, // { contactId, result, player_id, needsLanding } | null — triggers attack shot modal
   serveReticles:         [],   // [{ contactId, result, court_x, court_y, zone }]
 
   serveReceiveFormations: null, // { [rotationNum]: number[6] } | null — soIdx per grid cell
@@ -823,6 +825,8 @@ export const useMatchStore = create((set, get) => ({
           serveReticles: s.serveReticles.filter(r => r.contactId !== action.contactId),
           pendingServeContact: s.pendingServeContact?.contactId === action.contactId
             ? null : s.pendingServeContact,
+          pendingAttackContact: s.pendingAttackContact?.contactId === action.contactId
+            ? null : s.pendingAttackContact,
           ...cPt,
         });
         break;
@@ -839,6 +843,8 @@ export const useMatchStore = create((set, get) => ({
             .filter(c => c.id !== action.contactId && c.id !== action.blkContactId),
           lastFeedItem: null,
           rallyPhase: bPt.rallyPhase ?? action.prevRallyPhase ?? 'pre_serve',
+          pendingAttackContact: s.pendingAttackContact?.contactId === action.contactId
+            ? null : s.pendingAttackContact,
           ...bPt,
         });
         break;
@@ -1097,6 +1103,7 @@ export const useMatchStore = create((set, get) => ({
       player_id:    assistPlayerId,
       action:       ACTION.SET,
       result:       RESULT.ASSIST,
+      kill_contact_id: killContactId ?? null,
     };
     let assistId;
     try {
@@ -1683,6 +1690,27 @@ export const useMatchStore = create((set, get) => ({
   },
 
   dismissServeZoneModal: () => set({ pendingServeContact: null }),
+
+  // Attack shot chart: PlayerTile asks for a location once an attack's own
+  // follow-up steps (kill type, assist picker, error reason) are finished.
+  // needsLanding=false for NET/BLK errors — only the hit-from spot is asked.
+  requestAttackShot: (contactId, { needsLanding = true } = {}) => {
+    if (!contactId || !getBoolStorageDefaultTrue(STORAGE_KEYS.ATTACK_SHOT_PROMPT)) return;
+    const contact = get().committedContacts.find((c) => c.id === contactId);
+    if (!contact) return; // undone before the prompt opened
+    set({ pendingAttackContact: { contactId, result: contact.result, player_id: contact.player_id, needsLanding } });
+  },
+
+  confirmAttackShot: async (contactId, patch) => {
+    // patch: { from_x, from_y, court_x?, court_y?, zone? } — all 0–1 fractions
+    set((s) => ({
+      pendingAttackContact: null,
+      committedContacts: replaceOneContact(s.committedContacts, contactId, patch),
+    }));
+    try { await db.contacts.update(contactId, patch); } catch { /* location is optional — stat already saved */ }
+  },
+
+  dismissAttackShot: () => set({ pendingAttackContact: null }),
 
   loadSetFormationData: (setRecord) => {
     set({

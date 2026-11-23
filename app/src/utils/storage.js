@@ -34,6 +34,8 @@ export const STORAGE_KEYS = {
   HELP_GUIDE_SEEN:      'vbstat_help_guide_seen',
   SIDELINE_MODE:        'vbstat_sideline_mode',
   SERVE_ZONE_PROMPT:    'vbstat_serve_zone_prompt',
+  ATTACK_SHOT_PROMPT:   'vbstat_attack_shot_prompt',
+  ATTACK_SHOT_FLIP:     'vbstat_attack_shot_flip',
   ARCHIVED_OPPONENTS:   'vbstat_archived_opponents',
   PROFILE_CACHE:        'vbstat_profile_cache',
   PROJECTED_SEASON_MATCHES: 'vbstat_projected_season_matches',

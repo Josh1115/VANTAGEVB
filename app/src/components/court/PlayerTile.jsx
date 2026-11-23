@@ -81,7 +81,7 @@ const LIGHT_JERSEYS = new Set(['white', 'gray', 'yellow']);
 
 export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, heat, stats, zoneHints, isSubIn = false, isDimmed = false }) {
   const {
-    recordContact, addPoint, tapHblk, recordOppBlock, recordAssistForKill, setDigRating,
+    recordContact, addPoint, tapHblk, recordOppBlock, recordAssistForKill, setDigRating, requestAttackShot,
     pendingHblk, serveSide, rallyPhase,
     liberoId, playerNicknames, teamJerseyColor, liberoJerseyColor,
     rallyCount, rotationNum, lineup,
@@ -91,6 +91,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
     tapHblk:             s.tapHblk,
     recordOppBlock:      s.recordOppBlock,
     recordAssistForKill: s.recordAssistForKill,
+    requestAttackShot:   s.requestAttackShot,
     setDigRating:        s.setDigRating,
     pendingHblk:         s.pendingHblk,
     serveSide:           s.serveSide,
@@ -203,7 +204,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
     const { rallyCount: currentRally, serveSide: currentServeSide } = useMatchStore.getState();
     addPoint(SIDE.THEM);
     try {
-      await recordContact({ player_id: slot.playerId, action, result, rally_number: currentRally, serve_side: currentServeSide, _causedPoint: SIDE.THEM, ...extra });
+      return await recordContact({ player_id: slot.playerId, action, result, rally_number: currentRally, serve_side: currentServeSide, _causedPoint: SIDE.THEM, ...extra });
     } catch (err) {
       showToast(`Stat not recorded: ${err?.message ?? err}`, 'error');
     }
@@ -216,6 +217,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
     try {
       const aeId = await recordContact({ player_id: slot.playerId, action: ACTION.ATTACK, result: RESULT.ERROR, error_type: 'blk', rally_number: currentRally, _causedPoint: SIDE.THEM });
       recordOppBlock(aeId);
+      requestAttackShot(aeId, { needsLanding: false });
     } catch (err) {
       showToast(`Stat not recorded: ${err?.message ?? err}`, 'error');
     }
@@ -251,17 +253,20 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   // back to the live lineup if no snapshot was taken.
   const assistLineup = preKillLineupRef.current ?? lineup;
 
-  const handleAssistSelect = (assistPlayerId) => {
-    if (pendingKillId) recordAssistForKill(pendingKillId, assistPlayerId);
+  const handleAssistSelect = async (assistPlayerId) => {
+    const killId = pendingKillId;
+    if (killId) { await recordAssistForKill(killId, assistPlayerId); requestAttackShot(killId); }
     setAssistPickerOpen(false);
     setPendingKillId(null);
     preKillLineupRef.current = null;
   };
 
-  const handleAssistDismiss = () => {
-    if (pendingKillId) {
+  const handleAssistDismiss = async () => {
+    const killId = pendingKillId;
+    if (killId) {
       const setter = assistLineup.find((sl) => sl.positionLabel === 'S' && sl.playerId && sl.playerId !== slot?.playerId);
-      if (setter) recordAssistForKill(pendingKillId, setter.playerId);
+      if (setter) await recordAssistForKill(killId, setter.playerId);
+      requestAttackShot(killId);
     }
     setAssistPickerOpen(false);
     setPendingKillId(null);
@@ -534,7 +539,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
                 cls="bg-orange-900/80 text-orange-300 hover:bg-orange-800/90 serve-unlock-btn !text-[2.2vmin]"
                 style={DELAY_50} />
               <Btn label="OVER PASS"
-                onTap={() => { tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'over' }); setKPending(false); }}
+                onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'over' }); requestAttackShot(id); }}
                 cls="bg-yellow-800/80 text-yellow-200 hover:bg-yellow-700/90 serve-unlock-btn !text-[2.2vmin]"
                 style={DELAY_100} />
             </div>
@@ -547,10 +552,10 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
                   onTap={() => setAePending(false)}
                   cls="bg-slate-700 text-slate-300 hover:bg-slate-600" />
                 <Btn label="OB"
-                  onTap={() => { tapAndScoreThem(ACTION.ATTACK, RESULT.ERROR, { error_type: 'ob' }); setAePending(false); }}
+                  onTap={async () => { setAePending(false); const id = await tapAndScoreThem(ACTION.ATTACK, RESULT.ERROR, { error_type: 'ob' }); requestAttackShot(id); }}
                   cls="bg-red-900/80 text-red-200 hover:bg-red-800/90 serve-unlock-btn" />
                 <Btn label="NET"
-                  onTap={() => { tapAndScoreThem(ACTION.ATTACK, RESULT.ERROR, { error_type: 'net' }); setAePending(false); }}
+                  onTap={async () => { setAePending(false); const id = await tapAndScoreThem(ACTION.ATTACK, RESULT.ERROR, { error_type: 'net' }); requestAttackShot(id, { needsLanding: false }); }}
                   cls="bg-rose-950/80 text-rose-300 hover:bg-rose-900/80 serve-unlock-btn"
                   style={DELAY_50} />
                 <Btn label="BLK"
@@ -558,14 +563,14 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
                   cls="bg-blue-900/80 text-blue-200 hover:bg-blue-800/90 serve-unlock-btn"
                   style={DELAY_100} />
                 <Btn label="BRA"
-                  onTap={() => { tapAndScoreThem(ACTION.ATTACK, RESULT.ERROR, { error_type: 'bra' }); setAePending(false); }}
+                  onTap={async () => { setAePending(false); const id = await tapAndScoreThem(ACTION.ATTACK, RESULT.ERROR, { error_type: 'bra' }); requestAttackShot(id); }}
                   cls="bg-red-950/80 text-red-300 hover:bg-red-900/80 serve-unlock-btn"
                   style={DELAY_150} />
               </>
             ) : (
               <>
                 <Btn label="ATT"
-                  onTap={() => tap(ACTION.ATTACK, RESULT.ATTEMPT)}
+                  onTap={async () => { const id = await tap(ACTION.ATTACK, RESULT.ATTEMPT); requestAttackShot(id); }}
                   cls="bg-orange-950/80 text-orange-200 hover:bg-orange-900/80" />
                 <Btn label="FREE"
                   onTap={() => tap(ACTION.FREEBALL_SEND, RESULT.SUCCESS)}

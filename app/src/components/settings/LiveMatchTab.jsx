@@ -50,6 +50,7 @@ export function LiveMatchTab() {
   const [flipLayout, saveFlipLayout] = useToggleSetting(STORAGE_KEYS.FLIP_LAYOUT);
   const [courtViewMode, saveCourtViewMode] = useCourtViewMode();
   const [serveZonePrompt, saveServeZonePrompt] = useToggleSetting(STORAGE_KEYS.SERVE_ZONE_PROMPT, true);
+  const [attackShotPrompt, saveAttackShotPrompt] = useToggleSetting(STORAGE_KEYS.ATTACK_SHOT_PROMPT, true);
   const [playerNameFormat, savePlayerNameFormat] = useStrSetting(STORAGE_KEYS.PLAYER_NAME_FORMAT, 'initial_last');
   const [rosterSort,       saveRosterSort]       = useStrSetting(STORAGE_KEYS.ROSTER_SORT, 'jersey');
 
@@ -62,6 +63,8 @@ export function LiveMatchTab() {
       <ToggleRow label="Haptic Feedback" description="Brief vibration on each contact tap" checked={hapticOn} onChange={saveHaptic} />
 
       <ToggleRow label="Serve Attempt / Ace Spray Chart" description="After each serve that lands in, ask where it landed in the opponent's court to build the spray chart on the match summary" checked={serveZonePrompt} onChange={saveServeZonePrompt} />
+
+      <ToggleRow label="Attack Shot Chart" description="After each attack, tap where the hitter hit from, then where the ball landed, to build shot charts" checked={attackShotPrompt} onChange={saveAttackShotPrompt} />
 
       <ToggleRow label="Sound Effects" description="Audio cues for aces, kills, and blocks" checked={soundsOn} onChange={saveSounds}>
         <button

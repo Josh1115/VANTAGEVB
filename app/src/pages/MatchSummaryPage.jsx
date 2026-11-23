@@ -21,6 +21,7 @@ import { Button } from '../components/ui/Button';
 import { Spinner } from '../components/ui/Spinner';
 import { StatTable } from '../components/stats/StatTable';
 import { ServeReticlePlot, PlayerServePlacementCard } from '../components/stats/ServeReticlePlot';
+import { ShotChartPanel } from '../components/stats/AttackShotChart';
 import { RotationSpotlight } from '../components/stats/RotationSpotlight';
 import { PointQualityPanel } from '../components/stats/PointQualityPanel';
 import { RotationRadarChart } from '../components/charts/RotationRadarChart';
@@ -1058,6 +1059,9 @@ export function MatchSummaryPage() {
     ? Object.fromEntries(Object.entries(players).map(([pid, p]) => [pid, p.jersey_number ?? '']))
     : {}, [players]);
   const playerList    = useMemo(() => players ? Object.values(players) : [], [players]);
+  const shotPlayerNames = useMemo(() => players
+    ? Object.fromEntries(Object.values(players).map((p) => [p.id, `${p.jersey_number ? `#${p.jersey_number} ` : ''}${p.name?.split(' ').pop() ?? ''}`.trim()]))
+    : {}, [players]);
   const positionMap   = useMemo(() => players
     ? Object.fromEntries(Object.entries(players).map(([pid, p]) => [Number(pid), p.position]))
     : {}, [players]);
@@ -1937,6 +1941,14 @@ export function MatchSummaryPage() {
             {tab === 'attacking' && (
               <div className="space-y-4">
                 <StatTable columns={TAB_COLUMNS['attacking']} rows={playerRows} totalsRow={statTotals?.attacking} onNameClick={handlePlayerClick} showGlossary />
+
+                {/* Attack shot chart (hit-from → landing spot) */}
+                {displayStats?.contacts && (
+                  <div className="bg-slate-900/60 border border-slate-700/60 rounded-xl p-3">
+                    <p className="text-xs font-black uppercase tracking-wider text-white text-center mb-2">Shot Chart</p>
+                    <ShotChartPanel contacts={displayStats.contacts} playerNames={shotPlayerNames} />
+                  </div>
+                )}
 
                 {/* Set Distribution by Position */}
                 {(() => {

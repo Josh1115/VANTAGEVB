@@ -30,6 +30,8 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { Confetti } from '../components/ui/Confetti';
 import { SetSummaryModal } from '../components/match/SetSummaryModal';
 import { ServeZoneModal } from '../components/match/ServeZoneModal';
+import { AttackShotModal } from '../components/match/AttackShotModal';
+import { shotContacts } from '../utils/attackShot';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { PopupErrorFallback } from '../components/ui/PopupErrorFallback';
 
@@ -105,7 +107,7 @@ export function LiveMatchPage() {
     endSet, endMatch, finishRevisedSet, clearPendingSetWin,
     confirmServeZone, dismissServeZoneModal, loadServeReticles, loadSetFormationData,
     pendingSetWin, ourScore, oppScore, ourSetsWon, oppSetsWon, ourTimeouts, oppTimeouts, format,
-    pendingServeContact, serveReticles,
+    pendingServeContact, serveReticles, pendingAttackContact, confirmAttackShot, dismissAttackShot,
     teamId, lineup, setNumber, currentRun,
   } = useMatchStore(useShallow((s) => ({
     recordHomeRotError:   s.recordHomeRotError,
@@ -133,6 +135,9 @@ export function LiveMatchPage() {
     oppTimeouts:          s.oppTimeouts,
     format:               s.format,
     pendingServeContact:  s.pendingServeContact,
+    pendingAttackContact: s.pendingAttackContact,
+    confirmAttackShot:    s.confirmAttackShot,
+    dismissAttackShot:    s.dismissAttackShot,
     serveReticles:        s.serveReticles,
     teamId:               s.teamId,
     lineup:               s.lineup,
@@ -755,6 +760,26 @@ export function LiveMatchPage() {
               onConfirm={confirmServeZone}
               onDismiss={dismissServeZoneModal}
               serverAceZones={serverAceZones}
+            />
+          </ErrorBoundary>
+        );
+      })()}
+
+      {pendingAttackContact && !pendingServeContact && !pendingSetWin && (() => {
+        const pid  = pendingAttackContact.player_id;
+        const slot = lineup.find((sl) => sl.playerId === pid);
+        const label = slot ? `${slot.jersey !== '' && slot.jersey != null ? `#${slot.jersey} ` : ''}${slot.playerName?.split(' ').pop() ?? ''}`.trim() : '';
+        return (
+          <ErrorBoundary fallback={<PopupErrorFallback onClose={dismissAttackShot} />}>
+            <AttackShotModal
+              key={pendingAttackContact.contactId}
+              pending={pendingAttackContact}
+              playerLabel={label}
+              priorShots={shotContacts(committedContacts, { playerId: pid }).filter((c) => c.id !== pendingAttackContact.contactId)}
+              // "Place initial contact" hint for the team's first 3 attacks of the match
+              showHint={allMatchContacts.filter((c) => c.action === 'attack' && !c.opponent_contact).length <= 3}
+              onConfirm={confirmAttackShot}
+              onDismiss={dismissAttackShot}
             />
           </ErrorBoundary>
         );

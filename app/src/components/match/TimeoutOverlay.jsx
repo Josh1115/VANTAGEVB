@@ -29,6 +29,7 @@ import { CourtHeatMap } from '../charts/CourtHeatMap';
 import { RecordAlertPanel } from './RecordAlertPanel';
 import { CourtWhiteboard } from './CourtWhiteboard';
 import { InsightsPanel } from '../stats/InsightsPanel';
+import { ShotChartPanel } from '../stats/AttackShotChart';
 import { fmtPct, fmtHitting } from '../../stats/formatters';
 
 const TABS = [
@@ -238,6 +239,11 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
       hit_pct: agg[r].ta > 0 ? (agg[r].k - agg[r].ae) / agg[r].ta : null,
     }));
   }, [setContacts]);
+
+  // Labels for shot chart chips ("#12 Smith"), from everyone on the lineup.
+  const shotPlayerNames = useMemo(() => Object.fromEntries(
+    lineup.filter((sl) => sl.playerId).map((sl) => [sl.playerId, `${sl.jersey ? `#${sl.jersey} ` : ''}${sl.playerName?.split(' ').pop() ?? ''}`.trim()])
+  ), [lineup]);
 
   const attackDistByPos = useMemo(() => {
     const posMap = {};
@@ -525,12 +531,15 @@ export function TimeoutOverlay({ onClose, recordAlerts = [], scoreAtLastTimeout 
           {activeTab === 'attacking' && (
             <>
               <SubToggle
-                options={[['players', 'PLAYERS'], ['position', 'BY POSITION'], ['pass', 'BY PASS']]}
+                options={[['players', 'PLAYERS'], ['position', 'BY POSITION'], ['pass', 'BY PASS'], ['shots', 'SHOT CHART']]}
                 value={attackView}
                 onChange={setAttackView}
               />
               {attackView === 'players' && (
                 <StatTable columns={TAB_COLUMNS['attacking']} rows={playerRows} totalsRow={totalsRow} />
+              )}
+              {attackView === 'shots' && (
+                <ShotChartPanel contacts={setContacts} playerNames={shotPlayerNames} className="mt-2" />
               )}
               {attackView === 'position' && (
                 <div className="space-y-1">
