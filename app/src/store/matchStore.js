@@ -1712,6 +1712,53 @@ export const useMatchStore = create((set, get) => ({
 
   dismissAttackShot: () => set({ pendingAttackContact: null }),
 
+  // One-screen kill: K saves the kill (as PURE) right away, then this opens
+  // the kill pop-up — setter + kill type, plus the shot court when the shot
+  // chart setting is on. `lineup` = who was on court for the rally.
+  requestKillPopup: (contactId, { lineup, liberoId = null }) => {
+    const contact = get().committedContacts.find((c) => c.id === contactId);
+    if (!contact) return;
+    set({ pendingAttackContact: {
+      contactId, result: contact.result, player_id: contact.player_id, needsLanding: true,
+      kill: { lineup: lineup ?? [], liberoId, shotOn: getBoolStorageDefaultTrue(STORAGE_KEYS.ATTACK_SHOT_PROMPT) },
+    } });
+  },
+
+  // One-screen attack error: AE saves the error at once, then this opens the
+  // pop-up with reason pills (OB / NET / BLK / BRA) + the shot court when on.
+  requestAttackErrorPopup: (contactId) => {
+    const contact = get().committedContacts.find((c) => c.id === contactId);
+    if (!contact) return;
+    set({ pendingAttackContact: {
+      contactId, result: contact.result, player_id: contact.player_id, needsLanding: true,
+      aerr: { shotOn: getBoolStorageDefaultTrue(STORAGE_KEYS.ATTACK_SHOT_PROMPT) },
+    } });
+  },
+
+  // Saves the attack-error pop-up's choices. errorType null = not classified.
+  finishAttackError: async (contactId, { errorType = null, shot = null } = {}) => {
+    set({ pendingAttackContact: null });
+    if (!get().committedContacts.some((c) => c.id === contactId)) return; // undone meanwhile
+    const patch = { ...(shot ?? {}), ...(errorType ? { error_type: errorType } : {}) };
+    if (Object.keys(patch).length) {
+      set((cur) => ({ committedContacts: replaceOneContact(cur.committedContacts, contactId, patch) }));
+      try { await db.contacts.update(contactId, patch); } catch { /* stat already saved */ }
+    }
+    if (errorType === 'blk') await get().recordOppBlock(contactId); // their block, same undo step
+  },
+
+  // Saves the kill pop-up's choices. shot = location patch or null (skipped).
+  finishKill: async (contactId, { killType = 'pure', assistId = null, shot = null } = {}) => {
+    set({ pendingAttackContact: null });
+    if (!get().committedContacts.some((c) => c.id === contactId)) return; // undone meanwhile
+    const patch = { ...(shot ?? {}), ...(killType !== 'pure' ? { kill_type: killType } : {}) };
+    if (Object.keys(patch).length) {
+      set((cur) => ({ committedContacts: replaceOneContact(cur.committedContacts, contactId, patch) }));
+      try { await db.contacts.update(contactId, patch); } catch { /* stat already saved */ }
+    }
+    if (assistId) await get().recordAssistForKill(contactId, assistId);
+  },
+
   loadSetFormationData: (setRecord) => {
     set({
       serveReceiveFormations: setRecord?.serve_receive_formations ?? null,

@@ -107,7 +107,7 @@ export function LiveMatchPage() {
     endSet, endMatch, finishRevisedSet, clearPendingSetWin,
     confirmServeZone, dismissServeZoneModal, loadServeReticles, loadSetFormationData,
     pendingSetWin, ourScore, oppScore, ourSetsWon, oppSetsWon, ourTimeouts, oppTimeouts, format,
-    pendingServeContact, serveReticles, pendingAttackContact, confirmAttackShot, dismissAttackShot,
+    pendingServeContact, serveReticles, pendingAttackContact, confirmAttackShot, dismissAttackShot, finishKill, finishAttackError,
     teamId, lineup, setNumber, currentRun,
   } = useMatchStore(useShallow((s) => ({
     recordHomeRotError:   s.recordHomeRotError,
@@ -138,6 +138,8 @@ export function LiveMatchPage() {
     pendingAttackContact: s.pendingAttackContact,
     confirmAttackShot:    s.confirmAttackShot,
     dismissAttackShot:    s.dismissAttackShot,
+    finishKill:           s.finishKill,
+    finishAttackError:    s.finishAttackError,
     serveReticles:        s.serveReticles,
     teamId:               s.teamId,
     lineup:               s.lineup,
@@ -765,7 +767,7 @@ export function LiveMatchPage() {
         );
       })()}
 
-      {pendingAttackContact && !pendingServeContact && !pendingSetWin && (() => {
+      {pendingAttackContact && !pendingServeContact && (!pendingSetWin || pendingAttackContact.kill || pendingAttackContact.aerr) && (() => {
         const pid  = pendingAttackContact.player_id;
         const slot = lineup.find((sl) => sl.playerId === pid);
         const label = slot ? `${slot.jersey !== '' && slot.jersey != null ? `#${slot.jersey} ` : ''}${slot.playerName?.split(' ').pop() ?? ''}`.trim() : '';
@@ -778,14 +780,17 @@ export function LiveMatchPage() {
               priorShots={shotContacts(committedContacts, { playerId: pid }).filter((c) => c.id !== pendingAttackContact.contactId)}
               // "Place initial contact" hint for the team's first 3 attacks of the match
               showHint={allMatchContacts.filter((c) => c.action === 'attack' && !c.opponent_contact).length <= 3}
-              onConfirm={confirmAttackShot}
+              onConfirm={(id, patch, extras) => (
+                !extras ? confirmAttackShot(id, patch)
+                : 'errorType' in extras ? finishAttackError(id, { ...extras, shot: patch })
+                : finishKill(id, { ...extras, shot: patch }))}
               onDismiss={dismissAttackShot}
             />
           </ErrorBoundary>
         );
       })()}
 
-      {pendingSetWin && (() => {
+      {pendingSetWin && !pendingAttackContact?.kill && !pendingAttackContact?.aerr && (() => {
         const setsNeeded  = format === FORMAT.BEST_OF_3 ? 2 : 3;
         const newSetsUs   = ourSetsWon + (pendingSetWin === SIDE.US   ? 1 : 0);
         const newSetsThem = oppSetsWon + (pendingSetWin === SIDE.THEM ? 1 : 0);

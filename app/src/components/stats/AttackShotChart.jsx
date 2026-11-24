@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { VIEW_W, VIEW_H, MARGIN, COURT_LEN, COURT_WID, courtToView, shotContacts, killsOffSetter, SHOT_COLORS, useShotFlip } from '../../utils/attackShot';
+import { VIEW_W, VIEW_H, MARGIN, COURT_LEN, COURT_WID, courtToView, shotContacts, killsOffSetter, landingZone, SHOT_COLORS, useShotFlip } from '../../utils/attackShot';
 
 // Sideways court (our side left, theirs right) with one line per attack:
 // from where it was hit to where it landed. Kill = green, error = red,
@@ -18,21 +18,54 @@ const ZONE_CELLS = [
   { zone: 6, x0: FRONT, x1: 1,     y0: 1 / 3, y1: 2 / 3 },
 ];
 
+// Result filter pills shared by the shot chart boxes.
+const SHOT_RESULT_FILTERS = [['all', 'ALL'], ['kill', 'KILLS'], ['error', 'ERRORS'], ['attempt', 'IN PLAY']];
+function filterShotsByResult(shots, result) {
+  if (result === 'all') return shots;
+  if (result === 'kill' || result === 'error') return shots.filter((c) => c.result === result);
+  return shots.filter((c) => c.result !== 'kill' && c.result !== 'error');
+}
+const shotChip = (active) => `px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap ${active ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'}`;
+function ResultPills({ value, onChange }) {
+  return (
+    <div className="flex justify-center gap-1.5 flex-wrap">
+      {SHOT_RESULT_FILTERS.map(([v, l]) => (
+        <button key={v} className={shotChip(value === v)} onClick={() => onChange(v)}>{l}</button>
+      ))}
+    </div>
+  );
+}
+
 // `overlay` is drawn on top without being turned by FLIP (for upright text).
-export function AttackShotChart({ shots = [], showLegend = true, flipped = false, children, overlay, className = '' }) {
+// `zoneShots` (optional) = shots used for the per-zone kill count / kill %
+// printed in each opponent zone (kept separate so a result filter doesn't
+// skew the %). `zonePct` = false shows kill counts only (e.g. kills off sets).
+// `sideLabelGap` = how far below the court US / THEM sit (court meters).
+export function AttackShotChart({ shots = [], showLegend = true, flipped = false, children, overlay, className = '', zoneShots = null, zonePct = true, sideLabelGap = 1.8, sideLabelSize = 0.7 }) {
   const L = MARGIN, T = MARGIN, R = MARGIN + COURT_LEN, B = MARGIN + COURT_WID, NX = MARGIN + COURT_LEN / 2;
-  const kills  = shots.filter((c) => c.result === 'kill').length;
-  const errors = shots.filter((c) => c.result === 'error').length;
+  const legendShots = zoneShots ?? shots;
+  const kills  = legendShots.filter((c) => c.result === 'kill').length;
+  const errors = legendShots.filter((c) => c.result === 'error').length;
+  const zoneTally = {};
+  if (zoneShots) {
+    for (const c of zoneShots) {
+      const z = c.zone ?? landingZone(c.court_x, c.court_y);
+      if (!z) continue;
+      zoneTally[z] ??= { n: 0, k: 0 };
+      zoneTally[z].n++;
+      if (c.result === 'kill') zoneTally[z].k++;
+    }
+  }
   return (
     <div className={className}>
       <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} style={{ width: '100%', display: 'block' }}>
         <rect width={VIEW_W} height={VIEW_H} fill="#0b1220" />
-        <rect x={L} y={T} width={COURT_LEN} height={COURT_WID} fill="#0f172a" stroke="#475569" strokeWidth={0.08} />
+        <rect x={L} y={T} width={COURT_LEN} height={COURT_WID} fill="#0f172a" stroke="#ffffff" strokeWidth={0.08} />
         {/* attack lines (3 m from net) */}
-        <line x1={NX - 3} y1={T} x2={NX - 3} y2={B} stroke="#334155" strokeWidth={0.06} />
-        <line x1={NX + 3} y1={T} x2={NX + 3} y2={B} stroke="#334155" strokeWidth={0.06} />
-        <text x={L + COURT_LEN / 4} y={B + 1.8} textAnchor="middle" fill="#64748b" fontSize={0.7} fontWeight="bold">{flipped ? 'THEM' : 'US'}</text>
-        <text x={R - COURT_LEN / 4} y={B + 1.8} textAnchor="middle" fill="#64748b" fontSize={0.7} fontWeight="bold">{flipped ? 'US' : 'THEM'}</text>
+        <line x1={NX - 3} y1={T} x2={NX - 3} y2={B} stroke="#ffffff" strokeWidth={0.06} />
+        <line x1={NX + 3} y1={T} x2={NX + 3} y2={B} stroke="#ffffff" strokeWidth={0.06} />
+        <text x={L + COURT_LEN / 4} y={B + sideLabelGap} textAnchor="middle" fill="#64748b" fontSize={sideLabelSize} fontWeight="bold">{flipped ? 'THEM' : 'US'}</text>
+        <text x={R - COURT_LEN / 4} y={B + sideLabelGap} textAnchor="middle" fill="#64748b" fontSize={sideLabelSize} fontWeight="bold">{flipped ? 'US' : 'THEM'}</text>
         {/* Flipped = whole court turned around so our side is on the right */}
         <g transform={flipped ? `rotate(180 ${VIEW_W / 2} ${VIEW_H / 2})` : undefined}>
         {/* Opponent court split into six equal zones: 3 lanes × front/back halves */}
@@ -49,11 +82,11 @@ export function AttackShotChart({ shots = [], showLegend = true, flipped = false
           const b = hasEnd ? courtToView(c.court_x, c.court_y) : null;
           return (
             <g key={c.id ?? `${c.from_x}-${c.from_y}`} opacity={0.85}>
-              {b && <line x1={a.vx} y1={a.vy} x2={b.vx} y2={b.vy} stroke={color} strokeWidth={0.045} />}
-              <circle cx={a.vx} cy={a.vy} r={0.11} fill={color} />
+              {b && <line x1={a.vx} y1={a.vy} x2={b.vx} y2={b.vy} stroke={color} strokeWidth={0.035} />}
+              <circle cx={a.vx} cy={a.vy} r={0.09} fill={color} />
               {b && (c.result === 'kill'
-                ? <circle cx={b.vx} cy={b.vy} r={0.18} fill="none" stroke={color} strokeWidth={0.05} />
-                : <path d={`M${b.vx - 0.14},${b.vy - 0.14} L${b.vx + 0.14},${b.vy + 0.14} M${b.vx + 0.14},${b.vy - 0.14} L${b.vx - 0.14},${b.vy + 0.14}`} stroke={color} strokeWidth={0.05} />)}
+                ? <circle cx={b.vx} cy={b.vy} r={0.15} fill="none" stroke={color} strokeWidth={0.04} />
+                : <path d={`M${b.vx - 0.115},${b.vy - 0.115} L${b.vx + 0.115},${b.vy + 0.115} M${b.vx + 0.115},${b.vy - 0.115} L${b.vx - 0.115},${b.vy + 0.115}`} stroke={color} strokeWidth={0.04} />)}
             </g>
           );
         })}
@@ -70,6 +103,21 @@ export function AttackShotChart({ shots = [], showLegend = true, flipped = false
           const top   = Math.min(pts[0][1], pts[1][1]);
           return (
             <text key={zone} x={right - 0.15} y={top + 0.35} textAnchor="end" fill="#ffffff" fontSize={0.25} fontWeight="bold" pointerEvents="none">{zone}</text>
+          );
+        })}
+        {/* Per-zone kills + kill % (of attacks that landed in that zone) */}
+        {zoneShots && ZONE_CELLS.map(({ zone, x0, x1, y0, y1 }) => {
+          const t = zoneTally[zone];
+          if (!t) return null;
+          const { vx, vy } = courtToView((x0 + x1) / 2, (y0 + y1) / 2);
+          const cx = flipped ? VIEW_W - vx : vx, cy = flipped ? VIEW_H - vy : vy;
+          return (
+            <g key={`zs-${zone}`} pointerEvents="none" opacity={0.9}>
+              <text x={cx} y={cy - 0.05} textAnchor="middle" fill="#ffffff" fontSize={0.34} fontWeight="bold">{t.k} K</text>
+              {zonePct && (
+                <text x={cx} y={cy + 0.35} textAnchor="middle" fill={SHOT_COLORS.kill} fontSize={0.3} fontWeight="bold">{Math.round((t.k / t.n) * 100)}%</text>
+              )}
+            </g>
           );
         })}
         {overlay}
@@ -90,6 +138,7 @@ export function AttackShotChart({ shots = [], showLegend = true, flipped = false
 export function ShotChartPanel({ contacts = [], playerNames = {}, className = '' }) {
   const [mode, setMode]   = useState('hitters');
   const [pick, setPick]   = useState(null); // playerId | null = everyone
+  const [result, setResult] = useState('all');
   const allShots = useMemo(() => shotContacts(contacts), [contacts]);
   const [flipped, toggleFlip] = useShotFlip();
 
@@ -121,6 +170,7 @@ export function ShotChartPanel({ contacts = [], playerNames = {}, className = ''
         ))}
         <button className={chip(flipped)} onClick={toggleFlip} title="Show our team on the other side">⇄ FLIP</button>
       </div>
+      {mode === 'hitters' && <ResultPills value={result} onChange={setResult} />}
       <div className="flex gap-1.5 overflow-x-auto pb-1">
         <button className={chip(activePick == null)} onClick={() => setPick(null)}>All</button>
         {ids.map((id) => (
@@ -129,7 +179,7 @@ export function ShotChartPanel({ contacts = [], playerNames = {}, className = ''
       </div>
       {mode === 'setters' && !ids.length
         ? <p className="text-center text-xs text-slate-500 py-6">No kills with a recorded setter and shot location yet.</p>
-        : <AttackShotChart shots={shots} flipped={flipped} />}
+        : <AttackShotChart shots={mode === 'hitters' ? filterShotsByResult(shots, result) : shots} zoneShots={shots} zonePct={mode === 'hitters'} flipped={flipped} />}
     </div>
   );
 }
@@ -138,6 +188,7 @@ export function ShotChartPanel({ contacts = [], playerNames = {}, className = ''
 // attacks; 'setter' = kills off their sets. Renders nothing with no shots.
 export function PlayerShotChartBox({ contacts = [], playerId, mode = 'hitter', title = 'Shot Chart' }) {
   const [flipped, toggleFlip] = useShotFlip();
+  const [result, setResult] = useState('all');
   const shots = useMemo(() => (mode === 'setter'
     ? killsOffSetter(contacts, playerId)
     : shotContacts(contacts).filter((c) => c.player_id === playerId)), [contacts, playerId, mode]);
@@ -149,7 +200,8 @@ export function PlayerShotChartBox({ contacts = [], playerId, mode = 'hitter', t
       <div className="flex justify-center">
         <button className={chip(flipped)} onClick={toggleFlip} title="Show our team on the other side">⇄ FLIP</button>
       </div>
-      <AttackShotChart shots={shots} flipped={flipped} />
+      {mode !== 'setter' && <ResultPills value={result} onChange={setResult} />}
+      <AttackShotChart shots={mode === 'setter' ? shots : filterShotsByResult(shots, result)} zoneShots={shots} zonePct={mode !== 'setter'} flipped={flipped} />
     </div>
   );
 }

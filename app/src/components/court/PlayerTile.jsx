@@ -7,7 +7,6 @@ import { ACTION, RESULT, SERVE_TYPE, SIDE, POSITION_KEYS } from '../../constants
 import { usePlayerNameFormat } from '../../hooks/useSettingsStorage';
 import { fmtPlayerName } from '../../stats/formatters';
 import { playSound } from '../../utils/sound';
-import { AssistPickerModal } from '../match/AssistPickerModal';
 
 // ── Module-level style constants — defined once, never re-created on render ──
 const JERSEY_SVG_STYLE = { width: '121%', height: '3.025vmin', top: '50%', left: '-10.5%', transform: 'translateY(-50%)' };
@@ -81,7 +80,7 @@ const LIGHT_JERSEYS = new Set(['white', 'gray', 'yellow']);
 
 export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, heat, stats, zoneHints, isSubIn = false, isDimmed = false }) {
   const {
-    recordContact, addPoint, tapHblk, recordOppBlock, recordAssistForKill, setDigRating, requestAttackShot,
+    recordContact, addPoint, tapHblk, setDigRating, requestAttackShot, requestKillPopup, requestAttackErrorPopup,
     pendingHblk, serveSide, rallyPhase,
     liberoId, playerNicknames, teamJerseyColor, liberoJerseyColor,
     rallyCount, rotationNum, lineup,
@@ -89,9 +88,9 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
     recordContact:       s.recordContact,
     addPoint:            s.addPoint,
     tapHblk:             s.tapHblk,
-    recordOppBlock:      s.recordOppBlock,
-    recordAssistForKill: s.recordAssistForKill,
     requestAttackShot:   s.requestAttackShot,
+    requestKillPopup:    s.requestKillPopup,
+    requestAttackErrorPopup: s.requestAttackErrorPopup,
     setDigRating:        s.setDigRating,
     pendingHblk:         s.pendingHblk,
     serveSide:           s.serveSide,
@@ -118,10 +117,6 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
   const [receiveType,        setReceiveType]        = useState(null);
   const [serveRecorded,      setServeRecorded]      = useState(false);
   const [sePending,          setSePending]          = useState(false);
-  const [aePending,          setAePending]          = useState(false);
-  const [kPending,           setKPending]           = useState(false);
-  const [assistPickerOpen,   setAssistPickerOpen]   = useState(false);
-  const [pendingKillId,      setPendingKillId]      = useState(null);
   const [pendingRating,      setPendingRating]      = useState(null); // null | { contactId, isFree } — dig/free contact awaiting an optional DigRTG/FreeRTG tap
   const [passRing,           setPassRing]           = useState(null); // null | 0|1|2|3
   const [passBadge,          setPassBadge]          = useState(null); // null | { rating, key }
@@ -140,9 +135,6 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
     setServeType(null);
     setReceiveType(null);
     setSePending(false);
-    setAePending(false);
-    setAssistPickerOpen(false);
-    setPendingKillId(null);
     setPendingRating(null);
   }, [rallyCount, serveSide]);
 
@@ -155,10 +147,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
       setServeType(null);
       setReceiveType(null);
       setSePending(false);
-      setAePending(false);
-      setAssistPickerOpen(false);
-      setPendingKillId(null);
-      setPendingRating(null);
+        setPendingRating(null);
     }
   }, [rallyPhase]);
 
@@ -210,19 +199,6 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
     }
   };
 
-  const handleAeBlocked = async () => {
-    flashJersey();
-    const currentRally = useMatchStore.getState().rallyCount;
-    addPoint(SIDE.THEM);
-    try {
-      const aeId = await recordContact({ player_id: slot.playerId, action: ACTION.ATTACK, result: RESULT.ERROR, error_type: 'blk', rally_number: currentRally, _causedPoint: SIDE.THEM });
-      recordOppBlock(aeId);
-      requestAttackShot(aeId, { needsLanding: false });
-    } catch (err) {
-      showToast(`Stat not recorded: ${err?.message ?? err}`, 'error');
-    }
-  };
-
   const tapPass = (rating, scoreThem = false) => {
     const extra = receiveType ? { receive_type: receiveType } : {};
     if (scoreThem) tapAndScoreThem(ACTION.PASS, String(rating), extra);
@@ -245,30 +221,6 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
       : 'partner';  // another player tapped — tap here to complete
 
   const [nameFormat] = usePlayerNameFormat();
-
-  // Lineup as it was during the rally that produced the pending kill — falls
-  // back to the live lineup if no snapshot was taken.
-  const assistLineup = preKillLineupRef.current ?? lineup;
-
-  const handleAssistSelect = async (assistPlayerId) => {
-    const killId = pendingKillId;
-    if (killId) { await recordAssistForKill(killId, assistPlayerId); requestAttackShot(killId); }
-    setAssistPickerOpen(false);
-    setPendingKillId(null);
-    preKillLineupRef.current = null;
-  };
-
-  const handleAssistDismiss = async () => {
-    const killId = pendingKillId;
-    if (killId) {
-      const setter = assistLineup.find((sl) => sl.positionLabel === 'S' && sl.playerId && sl.playerId !== slot?.playerId);
-      if (setter) await recordAssistForKill(killId, setter.playerId);
-      requestAttackShot(killId);
-    }
-    setAssistPickerOpen(false);
-    setPendingKillId(null);
-    preKillLineupRef.current = null;
-  };
 
   const tileStats = useMemo(() => {
     const s = stats;
@@ -505,66 +457,11 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
 
         {/* Row 2 — Attack: ATT FREE K AE (or kill-type sub-panel, or AE reason sub-panel) */}
         <div className="px-[7.5%]">
-          <span className={`text-[1.3vmin] font-bold uppercase tracking-wide leading-none ${aePending ? 'text-red-300' : kPending ? 'text-orange-300' : 'text-white'}`}>
-            {aePending ? 'Attack Error — OB, NET, BLK, or BRA?' : kPending ? 'Kill Type' : 'Hitting'}
+          <span className={`text-[1.3vmin] font-bold uppercase tracking-wide leading-none text-white`}>
+            Hitting
           </span>
         </div>
-        {kPending ? (
-          <>
-            <div className="flex flex-none h-[3.837vmin] py-0 px-[7.5%] gap-[0.5vmin]">
-              <Btn label="×"
-                onTap={() => setKPending(false)}
-                cls="bg-slate-700 text-slate-300 hover:bg-slate-600" />
-              <Btn label="PURE"
-                onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'pure' }); if (id) { setPendingKillId(id); setAssistPickerOpen(true); } }}
-                cls="bg-orange-600/80 text-white hover:bg-orange-500/90 serve-unlock-btn !text-[2.2vmin]" />
-              <Btn label="TOUCH"
-                onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'touch' }); if (id) { setPendingKillId(id); setAssistPickerOpen(true); } }}
-                cls="bg-cyan-900/80 text-cyan-300 hover:bg-cyan-800/90 serve-unlock-btn !text-[2.2vmin]"
-                style={DELAY_50} />
-              <Btn label="TOOL"
-                onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'tool' }); if (id) { setPendingKillId(id); setAssistPickerOpen(true); } }}
-                cls="bg-amber-700/80 text-amber-100 hover:bg-amber-600/90 serve-unlock-btn !text-[2.2vmin]"
-                style={DELAY_100} />
-            </div>
-            <div className="flex flex-none h-[3.837vmin] py-0 px-[7.5%] gap-[0.5vmin] border-b border-black/30">
-              <Btn label="TIP/ROLL"
-                onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'tip' }); if (id) { setPendingKillId(id); setAssistPickerOpen(true); } }}
-                cls="bg-lime-900/80 text-lime-300 hover:bg-lime-800/90 serve-unlock-btn !text-[2.2vmin]" />
-              <Btn label="BACK ROW"
-                onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'bk' }); if (id) { setPendingKillId(id); setAssistPickerOpen(true); } }}
-                cls="bg-orange-900/80 text-orange-300 hover:bg-orange-800/90 serve-unlock-btn !text-[2.2vmin]"
-                style={DELAY_50} />
-              <Btn label="OVER PASS"
-                onTap={async () => { setKPending(false); const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'over' }); requestAttackShot(id); }}
-                cls="bg-yellow-800/80 text-yellow-200 hover:bg-yellow-700/90 serve-unlock-btn !text-[2.2vmin]"
-                style={DELAY_100} />
-            </div>
-          </>
-        ) : (
           <div className="flex flex-none h-[3.837vmin] py-0 px-[7.5%] gap-[0.5vmin] border-b border-black/30">
-            {aePending ? (
-              <>
-                <Btn label="×"
-                  onTap={() => setAePending(false)}
-                  cls="bg-slate-700 text-slate-300 hover:bg-slate-600" />
-                <Btn label="OB"
-                  onTap={async () => { setAePending(false); const id = await tapAndScoreThem(ACTION.ATTACK, RESULT.ERROR, { error_type: 'ob' }); requestAttackShot(id); }}
-                  cls="bg-red-900/80 text-red-200 hover:bg-red-800/90 serve-unlock-btn" />
-                <Btn label="NET"
-                  onTap={async () => { setAePending(false); const id = await tapAndScoreThem(ACTION.ATTACK, RESULT.ERROR, { error_type: 'net' }); requestAttackShot(id, { needsLanding: false }); }}
-                  cls="bg-rose-950/80 text-rose-300 hover:bg-rose-900/80 serve-unlock-btn"
-                  style={DELAY_50} />
-                <Btn label="BLK"
-                  onTap={() => { handleAeBlocked(); setAePending(false); }}
-                  cls="bg-blue-900/80 text-blue-200 hover:bg-blue-800/90 serve-unlock-btn"
-                  style={DELAY_100} />
-                <Btn label="BRA"
-                  onTap={async () => { setAePending(false); const id = await tapAndScoreThem(ACTION.ATTACK, RESULT.ERROR, { error_type: 'bra' }); requestAttackShot(id); }}
-                  cls="bg-red-950/80 text-red-300 hover:bg-red-900/80 serve-unlock-btn"
-                  style={DELAY_150} />
-              </>
-            ) : (
               <>
                 <Btn label="ATT"
                   onTap={async () => { const id = await tap(ACTION.ATTACK, RESULT.ATTEMPT); requestAttackShot(id); }}
@@ -573,15 +470,21 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
                   onTap={() => tap(ACTION.FREEBALL_SEND, RESULT.SUCCESS)}
                   cls="bg-violet-950/80 text-violet-300 hover:bg-violet-900/80" />
                 <Btn label="K"
-                  onTap={() => setKPending(true)}
+                  onTap={async () => {
+                    const id = await tapAndScore(ACTION.ATTACK, RESULT.KILL, { kill_type: 'pure' });
+                    const snap = preKillLineupRef.current ?? lineup;
+                    preKillLineupRef.current = null;
+                    if (id) requestKillPopup(id, { lineup: snap, liberoId });
+                  }}
                   cls="bg-orange-600/80 text-white hover:bg-orange-500/90" />
                 <Btn label="AE"
-                  onTap={() => setAePending(true)}
+                  onTap={async () => {
+                    const id = await tapAndScoreThem(ACTION.ATTACK, RESULT.ERROR);
+                    if (id) requestAttackErrorPopup(id);
+                  }}
                   cls="bg-red-950/80 text-red-300 hover:bg-red-900/80" />
               </>
-            )}
           </div>
-        )}
 
         {/* Row 3 — Defense: DIG FREE SBLK HBLK (or DigRTG/FreeRTG rating sub-panel) */}
         <div className="px-[7.5%]">
@@ -673,16 +576,6 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
 
       </div>
 
-      <AssistPickerModal
-        open={assistPickerOpen}
-        attackerPlayerId={slot?.playerId}
-        lineup={assistLineup}
-        liberoId={liberoId}
-        playerNicknames={playerNicknames}
-        nameFormat={nameFormat}
-        onSelect={handleAssistSelect}
-        onDismiss={handleAssistDismiss}
-      />
 
       {/* Position fix picker — portal so the tile's overflow-hidden can't clip it */}
       {posPickerOpen && createPortal(

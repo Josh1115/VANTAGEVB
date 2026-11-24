@@ -290,7 +290,8 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
   const showWinProb  = totalRallies >= 5;
 
   const [nudgeOpen,       setNudgeOpen]       = useState(null); // null | 'us' | 'them'
-  const [timeoutConfirm,  setTimeoutConfirm]  = useState(null); // null | 'us' | 'them'
+  // Timeout: one tap calls it (no confirm box) — UNDO shows "TO" if it was a mistake.
+  const callTimeoutNow = (side) => { callTimeout(side); onTimeoutCalled?.(); };
   const [usHolding,       setUsHolding]       = useState(false);
   const [themHolding,     setThemHolding]     = useState(false);
   const [subWarnOpen,     setSubWarnOpen]     = useState(false);
@@ -417,9 +418,9 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
             </div>
             <div className="flex items-center gap-1">
               {flipped ? (
-                <TimeoutBox used={oppTimeouts} onTap={() => setTimeoutConfirm('them')} />
+                <TimeoutBox used={oppTimeouts} onTap={() => callTimeoutNow(SIDE.THEM)} />
               ) : (
-                <TimeoutBox used={ourTimeouts} onTap={() => setTimeoutConfirm('us')} />
+                <TimeoutBox used={ourTimeouts} onTap={() => callTimeoutNow(SIDE.US)} />
               )}
               {(() => {
                 const subsLeft  = maxSubsPerSet - subsUsed;
@@ -564,7 +565,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
             {flipped ? (
               // Flipped: show our corner on the right
               <>
-                <TimeoutBox used={ourTimeouts} onTap={() => setTimeoutConfirm('us')} />
+                <TimeoutBox used={ourTimeouts} onTap={() => callTimeoutNow(SIDE.US)} />
                 <div className="flex flex-col items-center">
                   <div className="border-2 border-orange-500 rounded px-[1.8vmin] py-[0.5vmin] bg-orange-950/30">
                     <span className="text-[3.1vmin] font-black text-orange-400 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{ourSetsWon}</span>
@@ -574,7 +575,7 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
             ) : (
               // Normal: show opponent corner on the right
               <>
-                <TimeoutBox used={oppTimeouts} onTap={() => setTimeoutConfirm('them')} />
+                <TimeoutBox used={oppTimeouts} onTap={() => callTimeoutNow(SIDE.THEM)} />
                 <div className="flex flex-col items-center">
                   <div className="border-2 border-slate-500 rounded px-[1.8vmin] py-[0.5vmin] bg-slate-800/40">
                     <span className="text-[3.1vmin] font-black text-slate-300 leading-none tabular-nums" style={{ fontFamily: "'Orbitron', sans-serif" }}>{oppSetsWon}</span>
@@ -598,46 +599,6 @@ export const ScoreHeader = memo(function ScoreHeader({ liberoPlayer, liberoPlaye
         showWinProb={showWinProb}
       />
 
-
-      {/* ── Timeout confirmation popup ── */}
-      {timeoutConfirm && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onPointerDown={(e) => { e.preventDefault(); setTimeoutConfirm(null); }}
-          />
-          <div
-            className="fixed left-1/2 -translate-x-1/2 z-50"
-            style={{ top: 'calc(15.15vmin + env(safe-area-inset-top))' }}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <div className="animate-nudge-pop flex flex-col items-center gap-3 bg-slate-800 border border-slate-600 rounded-xl px-6 py-4 shadow-2xl">
-              <span className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                Call Timeout — {timeoutConfirm === 'us' ? (teamName || 'HOME') : (opponentName || 'AWAY')}
-              </span>
-              <div className="flex gap-3">
-                <button
-                  onPointerDown={(e) => { e.preventDefault(); setTimeoutConfirm(null); }}
-                  className="px-4 py-2 rounded-lg text-sm font-bold bg-slate-700 border border-slate-500 text-slate-300 hover:bg-slate-600 select-none"
-                >
-                  Cancel
-                </button>
-                <button
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    callTimeout(timeoutConfirm === 'us' ? SIDE.US : SIDE.THEM);
-                    onTimeoutCalled?.();
-                    setTimeoutConfirm(null);
-                  }}
-                  className="px-4 py-2 rounded-lg text-sm font-bold bg-primary border border-primary text-white hover:brightness-110 select-none"
-                >
-                  Confirm
-                </button>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
 
       {/* ── Sub limit warning ── */}
       {subWarnOpen && (

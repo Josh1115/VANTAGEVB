@@ -1,5 +1,4 @@
 import { memo, useRef, useState } from 'react';
-import { HoldProgressRing } from '../ui/HoldProgressRing';
 import { useNavigate } from 'react-router-dom';
 import { useMatchStore } from '../../store/matchStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -94,8 +93,13 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         className={`${btnBase} relative overflow-hidden
           ${backHold.held ? 'bg-slate-600 text-orange-300' : `${KEY} text-white`}`}
       >
-        <HoldProgressRing active={backHold.held} durationMs={HOLD_MS} />
-        <span className={`text-[1.53vmin] leading-none ${backHold.held ? 'text-orange-400' : 'text-white'}`}>ROT BACK</span>
+        {/* Box fill: grows left→right over HOLD_MS while held, snaps back on release */}
+        <span
+          aria-hidden
+          className="absolute inset-y-0 left-0 bg-orange-500/45 pointer-events-none"
+          style={{ width: backHold.held ? '100%' : '0%', transition: backHold.held ? `width ${HOLD_MS}ms linear` : 'none' }}
+        />
+        <span className={`relative text-[1.53vmin] leading-none ${backHold.held ? 'text-white tracking-widest' : 'text-white'}`}>{backHold.held ? 'HOLD' : 'ROT BACK'}</span>
       </button>
 
       {/* Rotate forward — hold to confirm */}
@@ -106,8 +110,13 @@ export const ActionBar = memo(function ActionBar({ onSubOpen, onMenuOpen, onStat
         className={`${btnBase} relative overflow-hidden
           ${fwdHold.held ? 'bg-slate-600 text-orange-300' : `${KEY} text-white`}`}
       >
-        <HoldProgressRing active={fwdHold.held} durationMs={HOLD_MS} />
-        <span className={`text-[1.53vmin] leading-none ${fwdHold.held ? 'text-orange-400' : 'text-white'}`}>ROT FWD</span>
+        {/* Box fill: grows left→right over HOLD_MS while held, snaps back on release */}
+        <span
+          aria-hidden
+          className="absolute inset-y-0 left-0 bg-orange-500/45 pointer-events-none"
+          style={{ width: fwdHold.held ? '100%' : '0%', transition: fwdHold.held ? `width ${HOLD_MS}ms linear` : 'none' }}
+        />
+        <span className={`relative text-[1.53vmin] leading-none ${fwdHold.held ? 'text-white tracking-widest' : 'text-white'}`}>{fwdHold.held ? 'HOLD' : 'ROT FWD'}</span>
       </button>
 
       {/* Undo */}
