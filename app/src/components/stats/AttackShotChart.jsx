@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { fmtHitting } from '../../stats/formatters';
 import { VIEW_W, VIEW_H, MARGIN, COURT_LEN, COURT_WID, courtToView, shotContacts, killsOffSetter, landingZone, SHOT_COLORS, useShotFlip } from '../../utils/attackShot';
 
 // Sideways court (our side left, theirs right) with one line per attack:
@@ -51,13 +52,35 @@ export function AttackShotChart({ shots = [], showLegend = true, flipped = false
     for (const c of zoneShots) {
       const z = c.zone ?? landingZone(c.court_x, c.court_y);
       if (!z) continue;
-      zoneTally[z] ??= { n: 0, k: 0 };
+      zoneTally[z] ??= { n: 0, k: 0, e: 0 };
       zoneTally[z].n++;
       if (c.result === 'kill') zoneTally[z].k++;
+      else if (c.result === 'error') zoneTally[z].e++;
     }
   }
   return (
     <div className={className}>
+      {/* Per-zone kills / kill % / hitting % (attacks that landed in that zone),
+          listed above the court so they're easy to read. */}
+      {zoneShots && (
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 mb-1.5">
+          {[1, 2, 3, 4, 5, 6].map((z) => {
+            const t = zoneTally[z];
+            return (
+              <div key={z} className="bg-slate-800/70 rounded-md px-1 py-1 text-center leading-tight">
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-wide">Zone {z}</div>
+                <div className="text-sm font-bold text-white tabular-nums">{t ? t.k : 0} K</div>
+                {zonePct && (
+                  <div className="text-[11px] font-semibold tabular-nums">
+                    <span style={{ color: SHOT_COLORS.kill }}>{t ? `${Math.round((t.k / t.n) * 100)}%` : '—'}</span>
+                    <span className="text-slate-300 ml-1">{t ? fmtHitting((t.k - t.e) / t.n) : '—'}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
       <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} style={{ width: '100%', display: 'block' }}>
         <rect width={VIEW_W} height={VIEW_H} fill="#0b1220" />
         <rect x={L} y={T} width={COURT_LEN} height={COURT_WID} fill="#0f172a" stroke="#ffffff" strokeWidth={0.08} />
@@ -102,21 +125,8 @@ export function AttackShotChart({ shots = [], showLegend = true, flipped = false
           const right = Math.max(pts[0][0], pts[1][0]);
           const top   = Math.min(pts[0][1], pts[1][1]);
           return (
-            <text key={zone} x={right - 0.15} y={top + 0.35} textAnchor="end" fill="#ffffff" fontSize={0.25} fontWeight="bold" pointerEvents="none">{zone}</text>
-          );
-        })}
-        {/* Per-zone kills + kill % (of attacks that landed in that zone) */}
-        {zoneShots && ZONE_CELLS.map(({ zone, x0, x1, y0, y1 }) => {
-          const t = zoneTally[zone];
-          if (!t) return null;
-          const { vx, vy } = courtToView((x0 + x1) / 2, (y0 + y1) / 2);
-          const cx = flipped ? VIEW_W - vx : vx, cy = flipped ? VIEW_H - vy : vy;
-          return (
-            <g key={`zs-${zone}`} pointerEvents="none" opacity={0.9}>
-              <text x={cx} y={cy - 0.05} textAnchor="middle" fill="#ffffff" fontSize={0.34} fontWeight="bold">{t.k} K</text>
-              {zonePct && (
-                <text x={cx} y={cy + 0.35} textAnchor="middle" fill={SHOT_COLORS.kill} fontSize={0.3} fontWeight="bold">{Math.round((t.k / t.n) * 100)}%</text>
-              )}
+            <g key={zone} pointerEvents="none">
+              <text x={right - 0.15} y={top + 0.35} textAnchor="end" fill="#ffffff" fontSize={0.25} fontWeight="bold">{zone}</text>
             </g>
           );
         })}

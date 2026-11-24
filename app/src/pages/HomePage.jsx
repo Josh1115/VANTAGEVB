@@ -958,6 +958,11 @@ export function HomePage() {
 
   const inProgress    = recentMatches?.find((m) => m.status === MATCH_STATUS.IN_PROGRESS);
   const nextMatchDayLabel = nextMatch ? getMatchDayLabel(nextMatch.date) : null;
+  const gameDayMatch = nextMatchDayLabel === 'TODAY' && !inProgress ? nextMatch : null;
+  // Start New Season: always when there's no season yet or it has ended; otherwise
+  // only when at least one game is played and nothing is left on the schedule.
+  const showStartSeason = !seasonRecord || seasonRecord.seasonEnded
+    || (nextMatch === null && seasonRecord.total > 0);
 
   const storageEstimate = useStorageEstimate();
   const storageUsagePct = storageEstimate?.quota ? storageEstimate.usage / storageEstimate.quota : 0;
@@ -1017,16 +1022,25 @@ export function HomePage() {
 
         {/* ── Quick start ── */}
         <div className="flex gap-3">
-          {/* New Match */}
+          {/* New Match — on game day it starts today's scheduled match in one tap */}
           <button
-            onClick={() => navigate('/matches/new')}
+            onClick={() => navigate(gameDayMatch ? `/matches/new?season=${gameDayMatch.season_id}&match=${gameDayMatch.id}` : '/matches/new')}
             className="group flex-1 basis-0 min-w-0 card-top-glow btn-shimmer bg-primary/90 hover:bg-primary rounded-xl px-3 py-4 text-center flex items-center justify-center gap-3 transition-[transform,filter,background-color] duration-75 active:scale-[0.97] active:brightness-90 animate-slide-up-fade shadow-lg"
             style={{ animationDelay: '0ms' }}
           >
             <span className="text-5xl inline-block vb-ball-spin">🏐</span>
             <div>
-              <div className="font-bold text-lg text-white leading-tight">Start New Match</div>
-              <div className="text-sm text-orange-100/80">Start recording stats</div>
+              {gameDayMatch ? (
+                <>
+                  <div className="font-bold text-lg text-white leading-tight">Start vs {gameDayMatch.opponent_name ?? 'TBD'}</div>
+                  <div className="text-sm text-orange-100/80">Today{gameDayMatch.match_time ? ` · ${fmtTime(gameDayMatch.match_time)}` : ''}</div>
+                </>
+              ) : (
+                <>
+                  <div className="font-bold text-lg text-white leading-tight">Start New Match</div>
+                  <div className="text-sm text-orange-100/80">Start recording stats</div>
+                </>
+              )}
             </div>
           </button>
 
@@ -1043,6 +1057,14 @@ export function HomePage() {
             </div>
           </button>
         </div>
+
+        {gameDayMatch && (
+          <div className="-mt-2 text-center">
+            <button onClick={() => navigate('/matches/new')} className="text-xs text-slate-400 underline hover:text-white transition-colors">
+              Start a different match
+            </button>
+          </div>
+        )}
 
         {/* ── Team quick-switch pills (multi-team accounts only) ── */}
         {teamPillGroups && switchableTeams.length > 1 && (
@@ -1877,8 +1899,9 @@ export function HomePage() {
           </button>
         </div>
 
-        {/* ── Start New Season (same size as Whiteboard, centered) ── */}
-        <div className="flex justify-center animate-slide-up-fade" style={{ animationDelay: '220ms' }}>
+        {/* ── Start New Season — only once the season is over (or has nothing left
+             scheduled) so it can't be tapped by accident mid-season ── */}
+        {showStartSeason && <div className="flex justify-center animate-slide-up-fade" style={{ animationDelay: '220ms' }}>
           <button
             onClick={handleStartNewSeason}
             className="group w-[calc(50%-0.25rem)] card-top-glow bg-primary/90 hover:bg-primary rounded-xl p-3 text-center flex items-center justify-center gap-2.5 active:scale-[0.97] transition-[transform,background-color] duration-75"
@@ -1890,7 +1913,7 @@ export function HomePage() {
             </div>
             <span className="text-lg text-orange-100/70">›</span>
           </button>
-        </div>
+        </div>}
 
         <div
           className="text-[11px] font-semibold tracking-[0.18em] text-slate-600 text-center pt-2 pb-1"
