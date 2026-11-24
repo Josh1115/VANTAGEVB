@@ -133,3 +133,23 @@ export function ShotChartPanel({ contacts = [], playerNames = {}, className = ''
     </div>
   );
 }
+
+// One player's shot chart in a boxed card (player page). mode 'hitter' = their
+// attacks; 'setter' = kills off their sets. Renders nothing with no shots.
+export function PlayerShotChartBox({ contacts = [], playerId, mode = 'hitter', title = 'Shot Chart' }) {
+  const [flipped, toggleFlip] = useShotFlip();
+  const shots = useMemo(() => (mode === 'setter'
+    ? killsOffSetter(contacts, playerId)
+    : shotContacts(contacts).filter((c) => c.player_id === playerId)), [contacts, playerId, mode]);
+  if (!shots.length) return null;
+  const chip = (active) => `px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap ${active ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'}`;
+  return (
+    <div className="bg-slate-900/60 border border-slate-700/60 rounded-xl p-3 space-y-2">
+      <p className="text-xs font-black uppercase tracking-wider text-white text-center">{title}</p>
+      <div className="flex justify-center">
+        <button className={chip(flipped)} onClick={toggleFlip} title="Show our team on the other side">⇄ FLIP</button>
+      </div>
+      <AttackShotChart shots={shots} flipped={flipped} />
+    </div>
+  );
+}

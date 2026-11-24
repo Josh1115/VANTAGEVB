@@ -123,7 +123,7 @@ export function PlayerServePlacementCard({ player, contacts, playerJerseys }) {
  */
 // Team serve placement in a boxed card, with player pills (All + each server).
 // playerNames = { [playerId]: label }.
-export function ServeReticlePlot({ contacts, serveType, playerNames = {} }) {
+export function ServeReticlePlot({ contacts, serveType, playerNames = {}, showPlayerPills = true }) {
   const [pick, setPick] = useState(null); // playerId | null = everyone
   // Own ALL/FLOAT/TOP pills; follows the page's serve-type toggle when that changes.
   const [chartType, setChartType] = useState(serveType ?? 'all');
@@ -156,12 +156,12 @@ export function ServeReticlePlot({ contacts, serveType, playerNames = {} }) {
           <button key={v} className={chip(normalizeServeType(chartType) === normalizeServeType(v))} onClick={() => setChartType(v)}>{l}</button>
         ))}
       </div>
-      <div className="flex gap-1.5 overflow-x-auto pb-1">
+      {showPlayerPills && <div className="flex gap-1.5 overflow-x-auto pb-1">
         <button className={chip(activePick == null)} onClick={() => setPick(null)}>All</button>
         {serverIds.map((id) => (
           <button key={id} className={chip(activePick === id)} onClick={() => setPick(id)}>{playerNames[id] ?? 'Player'}</button>
         ))}
-      </div>
+      </div>}
       <div className="flex justify-center gap-3 text-xs">
         <span className="text-yellow-400 font-bold">★ {aces} ace{aces !== 1 ? 's' : ''}</span>
         <span className="text-emerald-400 font-bold">○ {ins} in-play</span>

@@ -36,6 +36,8 @@ const AWARDS_FILTERS = [
 import { StatTable } from '../components/stats/StatTable';
 import { Spinner } from '../components/ui/Spinner';
 import { EmptyState } from '../components/ui/EmptyState';
+import { PlayerShotChartBox } from '../components/stats/AttackShotChart';
+import { ServeReticlePlot } from '../components/stats/ServeReticlePlot';
 import { Badge } from '../components/ui/Badge';
 import { VER_TIERS } from '../components/stats/VERBadge';
 
@@ -619,7 +621,7 @@ export function PlayerStatsPage() {
           wpaByMatch[m.id] = wpa[String(pid)] ?? null;
         }
 
-        setStats({ playerRow, allRows, trends, teamPoints, oppPoints, teamRow, wpaByMatch });
+        setStats({ playerRow, allRows, trends, teamPoints, oppPoints, teamRow, wpaByMatch, contacts });
       })
       .finally(() => setLoading(false));
   }, [matches, pid]);
@@ -828,6 +830,15 @@ export function PlayerStatsPage() {
                 <p className="px-8 pt-1 text-[10px] text-slate-500">
                   Projected totals = current pace over {projectedMatches} matches ({teamMatchesPlayed} played so far). Adjust in Settings → Personalization.
                 </p>
+              )}
+              {stats.contacts && (
+                <div className="mt-3 space-y-3">
+                  {statTab === 'serving' && (
+                    <ServeReticlePlot contacts={stats.contacts.filter((c) => c.player_id === pid)} serveType={serveView} showPlayerPills={false} />
+                  )}
+                  {statTab === 'attacking' && <PlayerShotChartBox contacts={stats.contacts} playerId={pid} />}
+                  {statTab === 'setting' && <PlayerShotChartBox contacts={stats.contacts} playerId={pid} mode="setter" title="Kills Off Sets" />}
+                </div>
               )}
             </div>
             <PerGameTrendGraph key={`${statTab}-${serveView}`} rows={byGameRows} statTab={statTab} serveView={serveView} initialKey={statParamEntry?.trendKey} />

@@ -27,6 +27,8 @@ import { usePlan } from '../hooks/usePlan';
 import { MATCHES_LOCKED_MESSAGE } from '../utils/planLimits';
 import { consumeMatchSlotStrict } from '../utils/supabase';
 import { readTrialCreated, noteTrialMatchCreated, raiseTrialCreatedFloor } from '../utils/trialMatchCount';
+import { ShotChartPanel } from '../components/stats/AttackShotChart';
+import { ServeReticlePlot } from '../components/stats/ServeReticlePlot';
 import { useUiStore, selectShowToast, selectShowUpgradeNudge } from '../store/uiStore';
 
 
@@ -107,9 +109,13 @@ export function SeasonDetailPage() {
       }
       return best;
     }
+    const shotNames = Object.fromEntries(players.map((p) =>
+      [p.id, `${p.jersey_number ? `#${p.jersey_number} ` : ''}${p.name?.split(' ').pop() ?? ''}`.trim()]));
     return {
       team: ts,
       teamId: season.team_id,
+      contacts,
+      shotNames,
       // Only APR carries a minimum-attempts qualifier — it's a rate stat, so a
       // tiny sample can be misleadingly high/low. The counting stats below
       // (kills, aces, blocks, digs, assists, reception count) have no minimum:
@@ -590,6 +596,15 @@ export function SeasonDetailPage() {
                   );
                 })}
               </div>
+
+              {/* Season shot chart + serve placement (whole team, player pills) */}
+              {seasonStats.contacts.some((c) => c.action === 'attack' && c.from_x != null) && (
+                <div className="bg-slate-900/60 border border-slate-700/60 rounded-xl p-3">
+                  <p className="text-xs font-black uppercase tracking-wider text-white text-center mb-2">Shot Chart</p>
+                  <ShotChartPanel contacts={seasonStats.contacts} playerNames={seasonStats.shotNames} />
+                </div>
+              )}
+              <ServeReticlePlot contacts={seasonStats.contacts} serveType="all" playerNames={seasonStats.shotNames} />
 
             </div>
           );
