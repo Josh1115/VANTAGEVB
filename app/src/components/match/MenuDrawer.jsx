@@ -8,6 +8,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { db } from '../../db/schema';
 import { SIDE } from '../../constants';
 import { STORAGE_KEYS, getBoolStorageDefaultTrue, setBoolStorage } from '../../utils/storage';
+import { usePlayerNameFormat, PLAYER_NAME_FORMATS } from '../../hooks/useSettingsStorage';
 
 const JERSEY_COLORS = [
   { id: 'black',  label: 'Black',  bg: '#111827', border: '#374151' },
@@ -104,6 +105,14 @@ export function MenuDrawer({
     setBoolStorage(STORAGE_KEYS.ATTACK_SHOT_PROMPT, next);
     setShotChartOn(next);
   };
+  // Same as Settings → Live Match → Serve spray chart; read at each serve.
+  const [serveChartOn, setServeChartOn] = useState(() => getBoolStorageDefaultTrue(STORAGE_KEYS.SERVE_ZONE_PROMPT));
+  const toggleServeChart = () => {
+    const next = !serveChartOn;
+    setBoolStorage(STORAGE_KEYS.SERVE_ZONE_PROMPT, next);
+    setServeChartOn(next);
+  };
+  const [nameFormat, saveNameFormat] = usePlayerNameFormat();
   const {
     matchId, currentSetId, ourScore, oppScore, fudgeScore,
     endSet, resetCurrentSet, resetToRotation,
@@ -221,6 +230,25 @@ export function MenuDrawer({
               <div className="flex items-center justify-between px-4 py-3">
                 <span className="text-sm font-medium text-white">Hitting Spray Chart</span>
                 <Switch on={shotChartOn} onToggle={toggleShotChart} />
+              </div>
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="text-sm font-medium text-white">Serve Spray Chart</span>
+                <Switch on={serveChartOn} onToggle={toggleServeChart} />
+              </div>
+              <div className="px-4 py-3">
+                <div className="text-sm font-medium text-white">Player Names</div>
+                <div className="mt-2 flex flex-wrap gap-1 p-1 rounded-lg bg-slate-900/70">
+                  {PLAYER_NAME_FORMATS.map(({ id, example }) => (
+                    <button
+                      key={id}
+                      onClick={() => saveNameFormat(id)}
+                      aria-pressed={nameFormat === id}
+                      className={`flex-1 min-w-[4.5rem] py-1.5 px-1 rounded-md text-xs font-semibold whitespace-nowrap transition-colors ${
+                        nameFormat === id ? 'bg-primary text-white shadow' : 'text-slate-400 hover:text-white'
+                      }`}
+                    >{example}</button>
+                  ))}
+                </div>
               </div>
             </MenuCard>
 

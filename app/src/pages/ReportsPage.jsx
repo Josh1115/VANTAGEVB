@@ -15,7 +15,7 @@ import { TabBar } from '../components/ui/Tab';
 import { Spinner } from '../components/ui/Spinner';
 import { EmptyState } from '../components/ui/EmptyState';
 import { StatTable } from '../components/stats/StatTable';
-import { ServeReticlePlot, PlayerServePlacementCard } from '../components/stats/ServeReticlePlot';
+import { ServeReticlePlot } from '../components/stats/ServeReticlePlot';
 import { RotationSpotlight } from '../components/stats/RotationSpotlight';
 import { PointQualityPanel } from '../components/stats/PointQualityPanel';
 import { HittingBarChart } from '../components/charts/HittingBarChart';
@@ -25,6 +25,7 @@ import { SideoutPieChart } from '../components/charts/SideoutPieChart';
 import { PlayerTrendsChart } from '../components/charts/PlayerTrendsChart';
 import { TeamComparison } from '../components/stats/TeamComparison';
 import { SetDistByRotationPanel } from '../components/stats/panels/SetDistByRotationPanel';
+import { ShotChartPanel } from '../components/stats/AttackShotChart';
 
 const TABS = [
   { value: 'team',     label: 'Team Stats'        },
@@ -285,7 +286,6 @@ export function ReportsPage() {
   const [teamView,              setTeamView]              = useState('totals');
   const [playerStatView,        setPlayerStatView]        = useState('serving');
   const [playerServeView,       setPlayerServeView]       = useState('all');
-  const [selectedServingPlayerId, setSelectedServingPlayerId] = useState(null);
   const [selectedGender,   setSelectedGender]   = useState('');
   const [selectedTeamId,   setSelectedTeamId]   = useState(() => getIntStorage(STORAGE_KEYS.DEFAULT_TEAM_ID,   null) ?? '');
   const [selectedSeasonId, setSelectedSeasonId] = useState(() => getIntStorage(STORAGE_KEYS.DEFAULT_SEASON_ID, null) ?? '');
@@ -372,7 +372,9 @@ export function ReportsPage() {
       : Promise.resolve([]),
     [selectedTeamId]
   );
-  const { playerNames, playerJerseys } = useMemo(() => buildPlayerMaps(players), [players]);
+  const { playerNames } = useMemo(() => buildPlayerMaps(players), [players]);
+  const shotPlayerNames = useMemo(() => Object.fromEntries((players ?? []).map((p) =>
+    [p.id, `${p.jersey_number ? `#${p.jersey_number} ` : ''}${p.name?.split(' ').pop() ?? ''}`.trim()])), [players]);
   const positionMap = useMemo(() => players
     ? Object.fromEntries((Array.isArray(players) ? players : Object.values(players)).map(p => [p.id, p.position]))
     : {}, [players]);
@@ -1336,7 +1338,7 @@ export function ReportsPage() {
                     ].map(({ value, label }) => (
                       <button
                         key={value}
-                        onClick={() => { setPlayerServeView(value); setSelectedServingPlayerId(null); }}
+                        onClick={() => { setPlayerServeView(value); }}
                         className={chipClass(playerServeView === value)}
                       >
                         {label}
@@ -1352,22 +1354,10 @@ export function ReportsPage() {
                       columns={SERVING_COLS[playerServeView]}
                       rows={playerRows}
                       totalsRow={playerTotalsRow}
-                      onRowClick={(row) => setSelectedServingPlayerId(selectedServingPlayerId => String(selectedServingPlayerId) === String(row.id) ? null : row.id)}
-                      selectedRowId={selectedServingPlayerId}
                       onNameClick={handlePlayerClick}
                       showGlossary
                     />
-                    {selectedServingPlayerId && contacts.length > 0 && (() => {
-                      const player = playerRows.find(r => String(r.id) === String(selectedServingPlayerId));
-                      return player ? (
-                        <PlayerServePlacementCard
-                          player={player}
-                          contacts={contacts}
-                          playerJerseys={playerJerseys}
-                        />
-                      ) : null;
-                    })()}
-                    <ServeReticlePlot contacts={contacts} serveType={playerServeView} />
+                    <ServeReticlePlot contacts={contacts} serveType={playerServeView} playerNames={shotPlayerNames} />
                   </>
                 )}
                 {playerStatView === 'passing' && (
@@ -1380,6 +1370,13 @@ export function ReportsPage() {
                 {playerStatView === 'attacking' && (
                   <>
                     <StatTable columns={TAB_COLUMNS.attacking} rows={playerRows} totalsRow={playerTotalsRow} onNameClick={handlePlayerClick} showGlossary />
+                    {/* Attack shot chart (hit-from → landing spot) for the current filter */}
+                    {contacts.length > 0 && (
+                      <div className="bg-slate-900/60 border border-slate-700/60 rounded-xl p-3">
+                        <p className="text-xs font-black uppercase tracking-wider text-white text-center mb-2">Shot Chart</p>
+                        <ShotChartPanel contacts={contacts} playerNames={shotPlayerNames} />
+                      </div>
+                    )}
                     {(() => {
                       const POS_ORDER  = ['OH', 'MB', 'OPP', 'S'];
                       const POS_LABELS = { OH: 'Outside', MB: 'Middle', OPP: 'Opposite/RS', S: 'Setter' };

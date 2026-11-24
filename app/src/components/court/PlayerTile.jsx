@@ -4,7 +4,7 @@ import { useMatchStore } from '../../store/matchStore';
 import { useUiStore } from '../../store/uiStore';
 import { useShallow } from 'zustand/react/shallow';
 import { ACTION, RESULT, SERVE_TYPE, SIDE, POSITION_KEYS } from '../../constants';
-import { getStorageItem, STORAGE_KEYS } from '../../utils/storage';
+import { usePlayerNameFormat } from '../../hooks/useSettingsStorage';
 import { fmtPlayerName } from '../../stats/formatters';
 import { playSound } from '../../utils/sound';
 import { AssistPickerModal } from '../match/AssistPickerModal';
@@ -244,10 +244,7 @@ export const PlayerTile = memo(function PlayerTile({ slot, position, isServer, h
       ? 'mine'      // this player tapped first — waiting for partner
       : 'partner';  // another player tapped — tap here to complete
 
-  const nameFormat = useMemo(
-    () => getStorageItem(STORAGE_KEYS.PLAYER_NAME_FORMAT, 'initial_last'),
-    []
-  );
+  const [nameFormat] = usePlayerNameFormat();
 
   // Lineup as it was during the rally that produced the pending kill — falls
   // back to the live lineup if no snapshot was taken.

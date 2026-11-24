@@ -12,20 +12,55 @@ export function AttackShotModal({ pending, playerLabel, priorShots = [], showHin
   const color = SHOT_COLORS[pending.result] ?? SHOT_COLORS.attempt;
   const resultLabel = pending.result === 'kill' ? 'KILL' : pending.result === 'error' ? 'ERR' : 'ATT';
 
+  // Drag support: press on the hit-from spot, slide to the landing spot, lift.
+  // A press that barely moves still works as tap 1 of tap-tap.
+  const dragRef = useRef(null); // { startX, startY, moved } while a finger is down after tap 1
+  const [dragTo, setDragTo] = useState(null);
+  const DRAG_MIN = 0.04; // fraction of court width a finger must move to count as a drag
+
+  function toCourt(e) {
+    const rect = courtRef.current.getBoundingClientRect();
+    return viewToCourt(...flipTap((e.clientX - rect.left) / rect.width, (e.clientY - rect.top) / rect.height, flipped));
+  }
+
+  function landing(p) {
+    return { from_x: from.x, from_y: from.y, court_x: p.x, court_y: p.y, zone: landingZone(p.x, p.y) };
+  }
+
   function handleTap(e) {
     e.preventDefault();
-    const rect = courtRef.current.getBoundingClientRect();
-    const p = viewToCourt(...flipTap((e.clientX - rect.left) / rect.width, (e.clientY - rect.top) / rect.height, flipped));
+    const p = toCourt(e);
     if (!from) {
       if (p.x > 0.5) return; // hit-from spot must be on our side of the net
       if (!pending.needsLanding) { onConfirm(pending.contactId, { from_x: p.x, from_y: p.y }); return; }
       setFrom(p);
+      dragRef.current = { startX: e.clientX, startY: e.clientY, moved: false };
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
       return;
     }
-    onConfirm(pending.contactId, {
-      from_x: from.x, from_y: from.y,
-      court_x: p.x, court_y: p.y, zone: landingZone(p.x, p.y),
-    });
+    onConfirm(pending.contactId, landing(p));
+  }
+
+  function handleMove(e) {
+    const d = dragRef.current;
+    if (!d) return;
+    const w = courtRef.current.getBoundingClientRect().width;
+    if (!d.moved && Math.hypot(e.clientX - d.startX, e.clientY - d.startY) < DRAG_MIN * w) return;
+    d.moved = true;
+    setDragTo(toCourt(e));
+  }
+
+  function handleUp(e) {
+    const d = dragRef.current;
+    dragRef.current = null;
+    if (!d) return;
+    if (d.moved) onConfirm(pending.contactId, landing(toCourt(e)));
+    // not moved: tap-tap mode, wait for the landing tap
+  }
+
+  function handleCancel() {
+    dragRef.current = null;
+    setDragTo(null);
   }
 
   function handleSkip(e) {
@@ -38,14 +73,17 @@ export function AttackShotModal({ pending, playerLabel, priorShots = [], showHin
 
   return (
     <div className="fixed inset-0 z-[70] bg-black/85 flex flex-col items-center justify-center gap-1.5 p-1.5">
-      <p className="text-white font-bold text-sm tracking-wide text-center">
-        {!from ? 'Tap where they hit from' : 'Tap where the ball landed'}
+      <p className="text-white font-bold text-sm tracking-wide text-center uppercase bg-black/80 px-3 py-1 rounded-md">
+        {!from ? (pending.needsLanding ? <><u>Tap</u> or <u>drag</u> from where they hit</> : <><u>Tap</u> where they hit from</>) : dragTo ? 'Let go where the ball landed' : <><u>Tap</u> where the ball landed</>}
       </p>
       <div
         ref={courtRef}
         className="rounded overflow-hidden"
         style={{ width: 'min(98vw, 145vh)', touchAction: 'none', cursor: 'crosshair' }}
         onPointerDown={handleTap}
+        onPointerMove={handleMove}
+        onPointerUp={handleUp}
+        onPointerCancel={handleCancel}
       >
         <AttackShotChart
           shots={priorShots}
@@ -74,7 +112,11 @@ export function AttackShotModal({ pending, playerLabel, priorShots = [], showHin
           </>}
         >
           {/* Their side is grayed out until the hit-from spot is placed on ours */}
-          {!from && <rect x={MARGIN + COURT_LEN / 2} y={MARGIN} width={COURT_LEN / 2} height={COURT_WID} fill="#000" opacity={0.6} pointerEvents="none" />}
+          {!from && <rect x={MARGIN + COURT_LEN / 2 + 0.05} y={MARGIN} width={COURT_LEN / 2 - 0.05} height={COURT_WID} fill="#000" opacity={0.6} pointerEvents="none" />}
+          {fromView && dragTo && (() => { const t = courtToView(dragTo.x, dragTo.y); return <>
+            <line x1={fromView.vx} y1={fromView.vy} x2={t.vx} y2={t.vy} stroke={color} strokeWidth={0.12} pointerEvents="none" />
+            <circle cx={t.vx} cy={t.vy} r={0.3} fill="none" stroke={color} strokeWidth={0.1} pointerEvents="none" />
+          </>; })()}
           {fromView && <circle cx={fromView.vx} cy={fromView.vy} r={0.35} fill={color} stroke="white" strokeWidth={0.08} />}
         </AttackShotChart>
       </div>

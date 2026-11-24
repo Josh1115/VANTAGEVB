@@ -31,8 +31,8 @@ export function AttackShotChart({ shots = [], showLegend = true, flipped = false
         {/* attack lines (3 m from net) */}
         <line x1={NX - 3} y1={T} x2={NX - 3} y2={B} stroke="#334155" strokeWidth={0.06} />
         <line x1={NX + 3} y1={T} x2={NX + 3} y2={B} stroke="#334155" strokeWidth={0.06} />
-        <text x={L + COURT_LEN / 4} y={B + 1.2} textAnchor="middle" fill="#64748b" fontSize={0.7} fontWeight="bold">{flipped ? 'THEM' : 'US'}</text>
-        <text x={R - COURT_LEN / 4} y={B + 1.2} textAnchor="middle" fill="#64748b" fontSize={0.7} fontWeight="bold">{flipped ? 'US' : 'THEM'}</text>
+        <text x={L + COURT_LEN / 4} y={B + 1.8} textAnchor="middle" fill="#64748b" fontSize={0.7} fontWeight="bold">{flipped ? 'THEM' : 'US'}</text>
+        <text x={R - COURT_LEN / 4} y={B + 1.8} textAnchor="middle" fill="#64748b" fontSize={0.7} fontWeight="bold">{flipped ? 'US' : 'THEM'}</text>
         {/* Flipped = whole court turned around so our side is on the right */}
         <g transform={flipped ? `rotate(180 ${VIEW_W / 2} ${VIEW_H / 2})` : undefined}>
         {/* Opponent court split into six equal zones: 3 lanes × front/back halves */}
@@ -40,6 +40,8 @@ export function AttackShotChart({ shots = [], showLegend = true, flipped = false
         <line x1={NX} y1={T + COURT_WID / 3}     x2={R} y2={T + COURT_WID / 3}     stroke="#334155" strokeOpacity={0.6} strokeWidth={0.03} strokeDasharray="0.3 0.25" />
         <line x1={NX} y1={T + COURT_WID * 2 / 3} x2={R} y2={T + COURT_WID * 2 / 3} stroke="#334155" strokeOpacity={0.6} strokeWidth={0.03} strokeDasharray="0.3 0.25" />
 
+        {/* net — drawn under the shot lines so shots cross over it */}
+        <line x1={NX} y1={T - 0.6} x2={NX} y2={B + 0.6} stroke="#e8530b" strokeOpacity={0.6} strokeWidth={0.1} />
         {shots.map((c) => {
           const color = SHOT_COLORS[c.result] ?? SHOT_COLORS.attempt;
           const a = courtToView(c.from_x, c.from_y);
@@ -57,19 +59,17 @@ export function AttackShotChart({ shots = [], showLegend = true, flipped = false
         })}
         {children}
         </g>
-        {/* net — drawn after the court contents so the pop-up's gray-out sits under it */}
-        <line x1={NX} y1={T - 0.6} x2={NX} y2={B + 0.6} stroke="#e8530b" strokeWidth={0.16} />
         {/* Zone numbers — drawn outside the turned group so they stay upright,
-            tucked into each zone's top-left corner as seen on screen. */}
+            tucked into each zone's top-right corner as seen on screen. */}
         {ZONE_CELLS.map(({ zone, x0, x1, y0, y1 }) => {
           const pts = [[x0, y0], [x1, y1]].map(([x, y]) => {
             const { vx, vy } = courtToView(x, y);
             return flipped ? [VIEW_W - vx, VIEW_H - vy] : [vx, vy];
           });
-          const left = Math.min(pts[0][0], pts[1][0]);
-          const top  = Math.min(pts[0][1], pts[1][1]);
+          const right = Math.max(pts[0][0], pts[1][0]);
+          const top   = Math.min(pts[0][1], pts[1][1]);
           return (
-            <text key={zone} x={left + 0.15} y={top + 0.35} fill="#ffffff" fontSize={0.25} fontWeight="bold" pointerEvents="none">{zone}</text>
+            <text key={zone} x={right - 0.15} y={top + 0.35} textAnchor="end" fill="#ffffff" fontSize={0.25} fontWeight="bold" pointerEvents="none">{zone}</text>
           );
         })}
         {overlay}

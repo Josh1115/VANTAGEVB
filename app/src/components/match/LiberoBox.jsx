@@ -1,7 +1,7 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { useMatchStore } from '../../store/matchStore';
 import { useShallow } from 'zustand/react/shallow';
-import { getStorageItem, STORAGE_KEYS } from '../../utils/storage';
+import { usePlayerNameFormat } from '../../hooks/useSettingsStorage';
 import { fmtPlayerName } from '../../stats/formatters';
 
 // One libero pill — a single tappable button with two stacked lines:
@@ -66,10 +66,7 @@ export const LiberoBox = memo(function LiberoBox({ liberoPlayer, liberoPlayer2, 
   })));
   const swapLibero = useMatchStore((s) => s.swapLibero);
 
-  const nameFormat = useMemo(
-    () => getStorageItem(STORAGE_KEYS.PLAYER_NAME_FORMAT, 'initial_last'),
-    []
-  );
+  const [nameFormat] = usePlayerNameFormat();
 
   if (!liberoPlayer) {
     return (

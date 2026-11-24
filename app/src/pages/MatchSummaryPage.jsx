@@ -20,7 +20,7 @@ import { TabBar } from '../components/ui/Tab';
 import { Button } from '../components/ui/Button';
 import { Spinner } from '../components/ui/Spinner';
 import { StatTable } from '../components/stats/StatTable';
-import { ServeReticlePlot, PlayerServePlacementCard } from '../components/stats/ServeReticlePlot';
+import { ServeReticlePlot } from '../components/stats/ServeReticlePlot';
 import { ShotChartPanel } from '../components/stats/AttackShotChart';
 import { RotationSpotlight } from '../components/stats/RotationSpotlight';
 import { PointQualityPanel } from '../components/stats/PointQualityPanel';
@@ -803,7 +803,6 @@ export function MatchSummaryPage() {
 
   const [tab, setTab] = useState('scoring');
   const [serveView,     setServeView]     = useState('all');
-  const [selectedServingPlayerId, setSelectedServingPlayerId] = useState(null);
   const [scoringView,   setScoringView]   = useState('scoring');
   const [stats, setStats] = useState(null);
   const [contacts, setContacts] = useState([]);
@@ -1904,32 +1903,20 @@ export function MatchSummaryPage() {
                 <SubToggle
                   options={[['all', 'ALL'], ['float', 'FLOAT'], ['top', 'TOP SPIN']]}
                   value={serveView}
-                  onChange={(v) => { setServeView(v); setSelectedServingPlayerId(null); }}
+                  onChange={(v) => { setServeView(v); }}
                 />
                 <StatTable
                   columns={SERVING_COLS[serveView]}
                   rows={playerRows}
                   totalsRow={statTotals?.[serveView]}
-                  onRowClick={(row) => setSelectedServingPlayerId(id => String(id) === String(row.id) ? null : row.id)}
-                  selectedRowId={selectedServingPlayerId}
                   onNameClick={handlePlayerClick}
                   showGlossary
                 />
-                {selectedServingPlayerId && displayStats?.contacts && (() => {
-                  const player = playerRows.find(r => String(r.id) === String(selectedServingPlayerId));
-                  return player ? (
-                    <PlayerServePlacementCard
-                      player={player}
-                      contacts={displayStats.contacts}
-                      playerJerseys={playerJerseys}
-                    />
-                  ) : null;
-                })()}
                 {displayStats?.serveZones && (
                   <ServeZoneGrid zones={displayStats.serveZones} />
                 )}
                 {displayStats?.contacts && (
-                  <ServeReticlePlot contacts={displayStats.contacts} serveType={serveView} />
+                  <ServeReticlePlot contacts={displayStats.contacts} serveType={serveView} playerNames={shotPlayerNames} />
                 )}
               </>
             )}

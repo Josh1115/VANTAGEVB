@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FORMAT, ACCENT_COLORS } from '../constants';
 import {
   getStorageItem, setStorageItem,
@@ -117,4 +117,27 @@ export function useDefaultFormat() {
     setDefaultFormatState(val);
   };
   return [defaultFormat, save];
+}
+
+// Player name format on the live court. Shared by the Settings page, the live
+// Match Menu and the player tiles: saving fires an event so tiles already on
+// screen re-render with the new format right away.
+export const PLAYER_NAME_FORMATS = [
+  { id: 'initial_last', label: 'Initial + Last',   example: 'J. Smith'   },
+  { id: 'last',         label: 'Last Name',         example: 'Smith'      },
+  { id: 'first',        label: 'First Name',        example: 'John'       },
+  { id: 'first_last',   label: 'First + Last',      example: 'John Smith' },
+  { id: 'nickname',     label: 'Nickname',          example: 'Johnny'     },
+];
+const NAME_FORMAT_EVENT = 'vbstat:player-name-format';
+const readNameFormat = () => getStorageItem(STORAGE_KEYS.PLAYER_NAME_FORMAT, 'initial_last');
+export function usePlayerNameFormat() {
+  const [fmt, setFmt] = useState(readNameFormat);
+  useEffect(() => {
+    const onChange = () => setFmt(readNameFormat());
+    window.addEventListener(NAME_FORMAT_EVENT, onChange);
+    return () => window.removeEventListener(NAME_FORMAT_EVENT, onChange);
+  }, []);
+  const save = (v) => { setStorageItem(STORAGE_KEYS.PLAYER_NAME_FORMAT, v); window.dispatchEvent(new Event(NAME_FORMAT_EVENT)); };
+  return [fmt, save];
 }

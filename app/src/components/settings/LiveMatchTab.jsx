@@ -1,6 +1,6 @@
 import { STORAGE_KEYS } from '../../utils/storage';
 import { previewSound } from '../../utils/sound';
-import { useToggleSetting, useStrSetting, useCourtViewMode } from '../../hooks/useSettingsStorage';
+import { useToggleSetting, useStrSetting, useCourtViewMode, usePlayerNameFormat, PLAYER_NAME_FORMATS } from '../../hooks/useSettingsStorage';
 
 const COURT_VIEW_OPTIONS = [
   { id: 'smart',  label: 'Smart',  desc: 'Players slide into serve-receive and on-court positions automatically' },
@@ -14,13 +14,6 @@ const ROSTER_SORT_OPTIONS = [
   { id: 'last',      label: 'Last Name',   example: 'Smith'},
 ];
 
-const PLAYER_NAME_FORMATS = [
-  { id: 'initial_last', label: 'Initial + Last',   example: 'J. Smith'   },
-  { id: 'last',         label: 'Last Name',         example: 'Smith'      },
-  { id: 'first',        label: 'First Name',        example: 'John'       },
-  { id: 'first_last',   label: 'First + Last',      example: 'John Smith' },
-  { id: 'nickname',     label: 'Nickname',          example: 'Johnny'     },
-];
 
 function ToggleRow({ label, description, checked, onChange, children }) {
   return (
@@ -51,7 +44,7 @@ export function LiveMatchTab() {
   const [courtViewMode, saveCourtViewMode] = useCourtViewMode();
   const [serveZonePrompt, saveServeZonePrompt] = useToggleSetting(STORAGE_KEYS.SERVE_ZONE_PROMPT, true);
   const [attackShotPrompt, saveAttackShotPrompt] = useToggleSetting(STORAGE_KEYS.ATTACK_SHOT_PROMPT, true);
-  const [playerNameFormat, savePlayerNameFormat] = useStrSetting(STORAGE_KEYS.PLAYER_NAME_FORMAT, 'initial_last');
+  const [playerNameFormat, savePlayerNameFormat] = usePlayerNameFormat();
   const [rosterSort,       saveRosterSort]       = useStrSetting(STORAGE_KEYS.ROSTER_SORT, 'jersey');
 
   return (

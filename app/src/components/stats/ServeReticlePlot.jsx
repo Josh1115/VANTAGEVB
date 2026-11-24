@@ -121,29 +121,50 @@ export function PlayerServePlacementCard({ player, contacts, playerJerseys }) {
  * contacts: raw contact array
  * serveType: 'all' | 'float' | 'top' | 'topspin'
  */
-export function ServeReticlePlot({ contacts, serveType }) {
-  const type = normalizeServeType(serveType);
+// Team serve placement in a boxed card, with player pills (All + each server).
+// playerNames = { [playerId]: label }.
+export function ServeReticlePlot({ contacts, serveType, playerNames = {} }) {
+  const [pick, setPick] = useState(null); // playerId | null = everyone
+  // Own ALL/FLOAT/TOP pills; follows the page's serve-type toggle when that changes.
+  const [chartType, setChartType] = useState(serveType ?? 'all');
+  const [lastPropType, setLastPropType] = useState(serveType);
+  if (serveType !== lastPropType) { setLastPropType(serveType); setChartType(serveType ?? 'all'); }
+  const type = normalizeServeType(chartType);
 
-  const serves = contacts.filter(c =>
-    c.action === 'serve' && !c.opponent_contact && c.court_x != null &&
-    (type === 'all' || c.serve_type === type)
-  );
-  if (!serves.length) return null;
+  const allServes = contacts.filter(c => c.action === 'serve' && !c.opponent_contact && c.court_x != null);
+  if (!allServes.length) return null;
+  const teamServes = allServes.filter(c => type === 'all' || c.serve_type === type);
+
+  const jerseyNum = (id) => parseInt(String(playerNames[id] ?? '').replace('#', ''), 10);
+  const serverIds = [...new Set(teamServes.map(c => c.player_id))]
+    .sort((a, b) => (jerseyNum(a) || 999) - (jerseyNum(b) || 999));
+  const activePick = serverIds.includes(pick) ? pick : null;
+  const serves = activePick == null ? teamServes : teamServes.filter(c => c.player_id === activePick);
 
   const zoneCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
   for (const c of serves) if (c.zone) zoneCounts[c.zone]++;
 
   const aces = serves.filter(c => c.result === 'ace').length;
   const ins  = serves.filter(c => c.result !== 'ace').length;
+  const chip = (active) => `px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap ${active ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'}`;
 
   return (
-    <div className="mt-4">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide">Serve Placement</p>
-        <div className="flex gap-3 text-xs text-slate-400">
-          {aces > 0 && <span className="text-yellow-400 font-bold">★ {aces} ace{aces !== 1 ? 's' : ''}</span>}
-          {ins > 0  && <span className="text-emerald-400 font-bold">○ {ins} in-play</span>}
-        </div>
+    <div className="bg-slate-900/60 border border-slate-700/60 rounded-xl p-3 space-y-2">
+      <p className="text-xs font-black uppercase tracking-wider text-white text-center">Serve Placement</p>
+      <div className="flex justify-center gap-2">
+        {[['all', 'ALL'], ['float', 'FLOAT'], ['top', 'TOP SPIN']].map(([v, l]) => (
+          <button key={v} className={chip(normalizeServeType(chartType) === normalizeServeType(v))} onClick={() => setChartType(v)}>{l}</button>
+        ))}
+      </div>
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
+        <button className={chip(activePick == null)} onClick={() => setPick(null)}>All</button>
+        {serverIds.map((id) => (
+          <button key={id} className={chip(activePick === id)} onClick={() => setPick(id)}>{playerNames[id] ?? 'Player'}</button>
+        ))}
+      </div>
+      <div className="flex justify-center gap-3 text-xs">
+        <span className="text-yellow-400 font-bold">★ {aces} ace{aces !== 1 ? 's' : ''}</span>
+        <span className="text-emerald-400 font-bold">○ {ins} in-play</span>
       </div>
       <div className="rounded-lg overflow-hidden" style={{ aspectRatio: `${RW} / ${RH}` }}>
         <svg viewBox={`0 0 ${RW} ${RH}`} style={{ width: '100%', height: '100%', display: 'block' }}>
