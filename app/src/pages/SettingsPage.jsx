@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
-import { TabBar } from '../components/ui/Tab';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { useStorageEstimate } from '../hooks/useStorageEstimate';
 import { db } from '../db/schema';
@@ -25,8 +24,8 @@ const SETTINGS_TABS = [
   { value: 'live-match',      label: 'Live Match'      },
   { value: 'match-rules',     label: 'Match Rules'     },
   { value: 'personalization', label: 'Personalization' },
-  { value: 'data',            label: 'Data Management' },
-  { value: 'help',            label: 'Help & Guides'   },
+  { value: 'data',            label: 'Data'            },
+  { value: 'help',            label: 'Help'            },
   { value: 'pricing',         label: 'Pricing'         },
   { value: 'about',           label: 'About'           },
 ];
@@ -83,7 +82,21 @@ export function SettingsPage() {
       <div className="p-4 space-y-4">
         {/* Settings */}
         <section className="bg-surface rounded-xl overflow-hidden">
-          <TabBar tabs={SETTINGS_TABS} active={settingsTab} onChange={setSettingsTab} centered dividers />
+          <div className="flex flex-wrap justify-center gap-2 px-3 py-3 border-b border-slate-700">
+            {SETTINGS_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setSettingsTab(tab.value)}
+                className={`px-3.5 py-1.5 rounded-full text-sm font-semibold border transition-colors ${
+                  settingsTab === tab.value
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-bg text-slate-300 border-slate-600 hover:border-slate-400'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
           {settingsTab === 'pricing'         && <PricingTab />}
           {settingsTab === 'help'            && <HelpTab onOpenTopic={setHelpTopic} />}
           {settingsTab === 'personalization' && <PersonalizationTab />}
