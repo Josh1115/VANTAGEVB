@@ -239,9 +239,10 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
       )}
 
       <div>
-        <label className="block text-sm font-medium mb-1">MaxPreps Team IDs</label>
+        <p className="text-[15px] font-black uppercase tracking-wider text-primary underline underline-offset-4 decoration-2">MaxPreps</p>
+        <label className="block text-sm font-medium mt-3 mb-1">Team IDs</label>
         <div className="text-xs text-slate-400 mb-2">
-          Required for MaxPreps .txt export. Each team (Varsity, JV, etc.) has its own ID. To find it: go to that team's MaxPreps page → Roster/Stats → Import Stats → the UUID in that page's URL is the Team ID. Saved IDs sync to your other devices.
+          Needed for MaxPreps export. Find it on your team's MaxPreps page → Roster/Stats → Import Stats — it's the long code in the web address.
         </div>
         {(maxPrepsTeams ?? []).length === 0 ? (
           <p className="text-xs text-slate-500">Add a team first.</p>
@@ -263,6 +264,7 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
           </div>
         )}
       </div>
+      <div className="!mt-6"><p className="text-[15px] font-black uppercase tracking-wider text-primary underline underline-offset-4 decoration-2">Backup Files</p></div>
       <Button className="w-full" variant="secondary" onClick={handleExport}>
         Export Full Backup (JSON)
       </Button>
@@ -320,8 +322,9 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
       )}
 
       {autoBackups && autoBackups.length > 0 && (
-        <div>
-          <p className="text-sm font-medium mb-1.5">Auto-Saves</p>
+        <div className="!mt-6">
+          <p className="text-[15px] font-black uppercase tracking-wider text-primary underline underline-offset-4 decoration-2 mb-1">Auto-Saves</p>
+          <p className="text-xs text-slate-400 mb-2">Saved automatically. Tap Restore to go back to one.</p>
           <div className="flex flex-col gap-1.5">
             {autoBackups.map((b) => {
               const isMatchEnd = b.label === 'match_end';
@@ -350,8 +353,8 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
       )}
 
       {session && (
-        <div className="pt-1">
-          <p className="text-sm font-medium mb-1.5">Cloud Backup</p>
+        <div className="!mt-6">
+          <p className="text-[15px] font-black uppercase tracking-wider text-primary underline underline-offset-4 decoration-2 mb-2">Cloud Sync</p>
           <div className="flex gap-2">
             <Button
               className="flex-1"
@@ -370,11 +373,11 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
               {cloudRestoring ? 'Restoring…' : 'Restore from Cloud'}
             </Button>
           </div>
-          <p className="text-[11px] text-slate-500 mt-1.5">
-            Pulls in matches from your other devices and pushes this one's up — use this if a match isn't showing up everywhere yet.
+          <p className="text-xs text-slate-400 mt-2">
+            Use if a match isn't showing on all your devices.
           </p>
-          <p className="text-[11px] text-amber-500 mt-1">
-            After syncing, fully close the app so other devices can see this update.
+          <p className="text-xs text-amber-500 mt-1">
+            After syncing, fully close the app.
           </p>
           <p className="text-[11px] text-slate-500 mt-1">
             {lastCloudSave
@@ -384,6 +387,7 @@ export function DataManagementTab({ onStorageChange, autoOpenDedupe }) {
         </div>
       )}
 
+      <div className="!mt-10"><p className="text-[15px] font-black uppercase tracking-wider text-primary underline underline-offset-4 decoration-2 !text-red-400 mb-2">Danger Zone</p></div>
       <Button className="w-full" variant="danger" onClick={() => setConfirmClear(true)}>
         Clear All Data
       </Button>

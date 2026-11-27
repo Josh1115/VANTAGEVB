@@ -35,11 +35,13 @@ export function PersonalizationTab() {
   return (
     <div className="p-4 space-y-5">
 
+      <p className="text-[15px] font-black uppercase tracking-wider text-primary underline underline-offset-4 decoration-2 -mb-2">Your Program</p>
+
       {/* Program name */}
       <div>
         <label className="block text-sm font-medium mb-1">Program Name</label>
         <div className="text-xs text-slate-400 mb-2">
-          Used in PDF report headers and export filenames (e.g. "Lincoln Wildcats").
+          Shown on PDF reports and export file names.
         </div>
         <input
           type="text"
@@ -55,7 +57,7 @@ export function PersonalizationTab() {
       <div>
         <label className="block text-sm font-medium mb-1">Coach Name</label>
         <div className="text-xs text-slate-400 mb-2">
-          Appears on PDF reports and CSV exports.
+          Shown on PDF reports and CSV exports.
         </div>
         <input
           type="text"
@@ -71,7 +73,7 @@ export function PersonalizationTab() {
       <div>
         <label className="block text-sm font-medium mb-1">Playoff Organization</label>
         <div className="text-xs text-slate-400 mb-2">
-          Shown on playoff match bars and in match type dropdowns. Enter your governing body abbreviation — the app appends "Playoffs" automatically (e.g. "IHSA" → "IHSA Playoffs").
+          Your state association, e.g. IHSA.
         </div>
         <input
           type="text"
@@ -90,7 +92,7 @@ export function PersonalizationTab() {
       <div>
         <label className="block text-sm font-medium mb-1">Win Message</label>
         <div className="text-xs text-slate-400 mb-2">
-          Shown on the confetti screen after winning a match. Leave blank to use team abbreviation + WIN MATCH.
+          Shown on the win screen. Blank = team name + WIN MATCH.
         </div>
         <textarea
           rows={2}
@@ -102,104 +104,7 @@ export function PersonalizationTab() {
         />
       </div>
 
-      {/* Default team */}
-      <div>
-        <div className="flex items-center justify-between mb-1">
-          <label className="text-sm font-medium">Default Team</label>
-          <Link to="/help/default-team" className="text-[10px] text-slate-500 hover:text-slate-300 underline">
-            what does this do?
-          </Link>
-        </div>
-        <div className="text-xs text-slate-400 mb-2">Pre-selected in tool pages and session setup</div>
-        <select
-          value={defaultTeamId ?? ''}
-          onChange={async (e) => {
-            const newTeamId = Number(e.target.value) || null;
-            saveDefaultTeam(newTeamId);
-            // Immediately resolve to that team's most recent season rather
-            // than leaving Default Season blank — a default should only
-            // ever be unset when there's truly nothing to pick.
-            const newTeamSeasons = newTeamId ? await db.seasons.where('team_id').equals(newTeamId).toArray() : [];
-            const latest = newTeamSeasons.length
-              ? newTeamSeasons.reduce((a, b) => (Number(b.year) > Number(a.year) ? b : a))
-              : null;
-            saveDefaultSeason(latest?.id ?? null);
-          }}
-          className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
-        >
-          {(teams ?? []).length === 0 && <option value="">No default</option>}
-          {(teams ?? []).map((t) => {
-            const genderLabel = t.gender === 'F' ? 'Girls' : t.gender === 'M' ? 'Boys' : t.gender === 'Mixed' ? 'Mixed' : null;
-            return <option key={t.id} value={t.id}>{genderLabel ? `${genderLabel} - ${t.name}` : t.name}</option>;
-          })}
-        </select>
-      </div>
-
-      {/* Default season — only shown when a default team is set */}
-      {defaultTeamId && (
-        <div>
-          <label className="block text-sm font-medium mb-1">Default Season</label>
-          <div className="text-xs text-slate-400 mb-2">Pre-selected in Reports and tool pages for this team</div>
-          <select
-            value={defaultSeasonId ?? ''}
-            onChange={(e) => saveDefaultSeason(Number(e.target.value) || null)}
-            className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
-          >
-            {(defaultTeamSeasons ?? []).length === 0 && <option value="">No default</option>}
-            {(defaultTeamSeasons ?? []).map((s) => (
-              <option key={s.id} value={s.id}>{s.name ?? s.year}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Projected season length */}
-      <div>
-        <label className="block text-sm font-medium mb-1">Projected Season Length</label>
-        <div className="text-xs text-slate-400 mb-2">
-          Number of matches in a full season. On a player's profile, Season Stats shows a
-          projected-totals row extrapolated to this many matches. Default {DEFAULT_PROJECTED_MATCHES}.
-        </div>
-        <input
-          type="number"
-          inputMode="numeric"
-          min={1}
-          max={200}
-          value={projectedMatchesDraft}
-          onChange={(e) => setProjectedMatchesDraft(e.target.value)}
-          onBlur={() => {
-            saveProjectedMatches(projectedMatchesDraft);
-            const saved = Math.max(1, Math.min(200, Math.round(Number(projectedMatchesDraft)) || DEFAULT_PROJECTED_MATCHES));
-            setProjectedMatchesDraft(String(saved));
-          }}
-          className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
-        />
-      </div>
-
-      {/* Match card score display */}
-      <div>
-        <div className="text-sm font-medium mb-0.5">Match Card Scores</div>
-        <div className="text-xs text-slate-400 mb-2">How scores appear on match cards</div>
-        <div className="flex gap-2">
-          {[
-            { val: 'sets',   label: 'Set Count',   example: '●●○' },
-            { val: 'scores', label: 'Set Scores',  example: '25-18 · 25-22' },
-          ].map(({ val, label, example }) => (
-            <button
-              key={val}
-              onClick={() => saveScoreDetail(val)}
-              className={`flex-1 py-2 px-2 rounded-lg text-sm font-semibold border transition-colors flex flex-col items-center gap-0.5 ${
-                scoreDetail === val
-                  ? 'bg-primary text-white border-primary'
-                  : 'bg-bg text-slate-300 border-slate-600 hover:border-slate-400'
-              }`}
-            >
-              <span>{label}</span>
-              <span className={`text-[10px] font-normal font-mono ${scoreDetail === val ? 'text-orange-100/70' : 'text-slate-500'}`}>{example}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+      <p className="text-[15px] font-black uppercase tracking-wider text-primary underline underline-offset-4 decoration-2 -mb-2">Look &amp; Feel</p>
 
       {/* Theme */}
       <div>
@@ -228,7 +133,7 @@ export function PersonalizationTab() {
       {/* Accent color */}
       <div>
         <div className="text-sm font-medium mb-1">Accent Color</div>
-        <div className="text-xs text-slate-400 mb-3">Applied to buttons, badges, and highlights throughout the app</div>
+        <div className="text-xs text-slate-400 mb-3">Color of buttons and highlights.</div>
         <div className="flex flex-wrap justify-center gap-3">
           {ACCENT_COLORS.map((c) => (
             <button
@@ -253,12 +158,112 @@ export function PersonalizationTab() {
         </div>
       </div>
 
+      {/* Match card score display */}
+      <div>
+        <div className="text-sm font-medium mb-0.5">Match Card Scores</div>
+        <div className="text-xs text-slate-400 mb-2">How scores show on match cards.</div>
+        <div className="flex gap-2">
+          {[
+            { val: 'sets',   label: 'Set Count',   example: '●●○' },
+            { val: 'scores', label: 'Set Scores',  example: '25-18 · 25-22' },
+          ].map(({ val, label, example }) => (
+            <button
+              key={val}
+              onClick={() => saveScoreDetail(val)}
+              className={`flex-1 py-2 px-2 rounded-lg text-sm font-semibold border transition-colors flex flex-col items-center gap-0.5 ${
+                scoreDetail === val
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-bg text-slate-300 border-slate-600 hover:border-slate-400'
+              }`}
+            >
+              <span>{label}</span>
+              <span className={`text-[10px] font-normal font-mono ${scoreDetail === val ? 'text-orange-100/70' : 'text-slate-500'}`}>{example}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <p className="text-[15px] font-black uppercase tracking-wider text-primary underline underline-offset-4 decoration-2 -mb-2">Defaults</p>
+
+      {/* Default team */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-sm font-medium">Default Team</label>
+          <Link to="/help/default-team" className="text-[10px] text-slate-500 hover:text-slate-300 underline">
+            what does this do?
+          </Link>
+        </div>
+        <div className="text-xs text-slate-400 mb-2">Picked first on tool pages.</div>
+        <select
+          value={defaultTeamId ?? ''}
+          onChange={async (e) => {
+            const newTeamId = Number(e.target.value) || null;
+            saveDefaultTeam(newTeamId);
+            // Immediately resolve to that team's most recent season rather
+            // than leaving Default Season blank — a default should only
+            // ever be unset when there's truly nothing to pick.
+            const newTeamSeasons = newTeamId ? await db.seasons.where('team_id').equals(newTeamId).toArray() : [];
+            const latest = newTeamSeasons.length
+              ? newTeamSeasons.reduce((a, b) => (Number(b.year) > Number(a.year) ? b : a))
+              : null;
+            saveDefaultSeason(latest?.id ?? null);
+          }}
+          className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
+        >
+          {(teams ?? []).length === 0 && <option value="">No default</option>}
+          {(teams ?? []).map((t) => {
+            const genderLabel = t.gender === 'F' ? 'Girls' : t.gender === 'M' ? 'Boys' : t.gender === 'Mixed' ? 'Mixed' : null;
+            return <option key={t.id} value={t.id}>{genderLabel ? `${genderLabel} - ${t.name}` : t.name}</option>;
+          })}
+        </select>
+      </div>
+
+      {/* Default season — only shown when a default team is set */}
+      {defaultTeamId && (
+        <div>
+          <label className="block text-sm font-medium mb-1">Default Season</label>
+          <div className="text-xs text-slate-400 mb-2">Picked first in Reports and tools.</div>
+          <select
+            value={defaultSeasonId ?? ''}
+            onChange={(e) => saveDefaultSeason(Number(e.target.value) || null)}
+            className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
+          >
+            {(defaultTeamSeasons ?? []).length === 0 && <option value="">No default</option>}
+            {(defaultTeamSeasons ?? []).map((s) => (
+              <option key={s.id} value={s.id}>{s.name ?? s.year}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Projected season length */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Projected Season Length</label>
+        <div className="text-xs text-slate-400 mb-2">
+          Matches in a full season, used for projected stats. Default {DEFAULT_PROJECTED_MATCHES}.
+        </div>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={200}
+          value={projectedMatchesDraft}
+          onChange={(e) => setProjectedMatchesDraft(e.target.value)}
+          onBlur={() => {
+            saveProjectedMatches(projectedMatchesDraft);
+            const saved = Math.max(1, Math.min(200, Math.round(Number(projectedMatchesDraft)) || DEFAULT_PROJECTED_MATCHES));
+            setProjectedMatchesDraft(String(saved));
+          }}
+          className="w-full bg-bg border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
+        />
+      </div>
+
       {/* Reset personalization */}
       <button
         onClick={() => setConfirmResetPersonalization(true)}
-        className="w-full rounded-lg border border-slate-600 bg-slate-800/40 py-2.5 text-sm font-semibold text-slate-400 hover:text-slate-200 hover:border-slate-400 transition-colors"
+        className="block mx-auto !mt-10 text-xs text-slate-500 underline underline-offset-2 hover:text-slate-300"
       >
-        Restore all personalized settings to default
+        Reset to defaults
       </button>
 
       {confirmResetPersonalization && (
@@ -286,7 +291,7 @@ export function PersonalizationTab() {
               saveDefaultTeam(null);
               saveDefaultSeason(null);
             }
-            saveScoreDetail('sets');
+            saveScoreDetail('scores');
             saveProjectedMatches(DEFAULT_PROJECTED_MATCHES);
             setProjectedMatchesDraft(String(DEFAULT_PROJECTED_MATCHES));
             saveSidelineMode(false);
