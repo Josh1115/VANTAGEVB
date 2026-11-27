@@ -3,24 +3,49 @@ import { Link } from 'react-router-dom';
 import { GuideGroup } from './GuideGroup';
 import { FAQ_TOPICS } from './helpContent';
 
-const ALL_GUIDES = [
-  { to: '/help/first-match',         icon: '🆕', label: 'Your First Match'                 },
-  { to: '/help/default-team',         icon: '🏠', label: 'Setting Up Default Team & Season' },
-  { to: '/help/roster',               icon: '👥', label: 'Managing Your Roster'             },
-  { to: '/help/live-match',           icon: '📲', label: 'Live Match Screen Guide'          },
-  { to: '/help/serve-receive',        icon: '📐', label: 'Serve-Receive Formation Setup'    },
-  { to: '/help/substitutions',        icon: '🔄', label: 'Substitutions & Lineup Changes'   },
-  { to: '/help/match-summary',        icon: '📋', label: 'Match Summary Walkthrough'        },
-  { to: '/help/exporting',            icon: '📤', label: 'Exporting & Sharing Stats'        },
-  { to: '/help/reports',              icon: '📈', label: 'Reading the Reports Page'         },
-  { to: '/help/player-report',        icon: '📊', label: 'Reading Player Reports'           },
-  { to: '/help/pre-match-prep',       icon: '🎯', label: 'Pre-Match Prep Workflow'          },
-  { to: '/help/season-history',       icon: '🏆', label: 'Season History & Playoff Entry'   },
-  { to: '/help/end-season',           icon: '🏁', label: 'How to End a Season'              },
-  { to: '/help/vantage-win-factors',  icon: '🏆', label: 'Reading Your Win Factors'         },
-  { to: '/help/vantage-rotations',    icon: '🔄', label: 'Rotation Intelligence'            },
-  { to: '/help/vantage-attack',       icon: '⚡', label: 'Attack Analytics'                 },
+// One list drives both the grouped page and search, so a new guide only has to
+// be added here. Every guide has its own icon so the list is easy to scan.
+const GUIDE_GROUPS = [
+  { title: 'Getting Started', items: [
+    { to: '/help/first-match',  icon: '🆕', label: 'Your First Match'                 },
+    { to: '/help/default-team', icon: '🏠', label: 'Setting Up Default Team & Season' },
+    { to: '/help/roster',       icon: '👥', label: 'Managing Your Roster'             },
+  ] },
+  { title: 'Recording a Match', items: [
+    { to: '/help/live-match',    icon: '📲', label: 'Live Match Screen Guide'        },
+    { to: '/help/serve-receive', icon: '📐', label: 'Serve-Receive Formation Setup'  },
+    { to: '/help/substitutions', icon: '🔁', label: 'Substitutions & Lineup Changes' },
+    { to: '/help/spray-charts',  icon: '🎯', label: 'Spray Charts'                   },
+    { to: '/help/bench-tools',   icon: '⏱️', label: 'Between Sets & Timeouts'        },
+  ] },
+  { title: 'After the Match', items: [
+    { to: '/help/match-summary', icon: '📋', label: 'Match Summary Walkthrough' },
+    { to: '/help/exporting',     icon: '📤', label: 'Exporting & Sharing Stats' },
+  ] },
+  { title: 'Analysis & Reports', items: [
+    { to: '/help/reports',        icon: '📈', label: 'Reading the Reports Page' },
+    { to: '/help/player-report',  icon: '📊', label: 'Reading Player Reports'   },
+    { to: '/help/pre-match-prep', icon: '🗒️', label: 'Pre-Match Prep Workflow'  },
+    { to: '/help/scouting',       icon: '🔍', label: 'Opponent Scouting'        },
+  ] },
+  { title: 'Season Management', items: [
+    { to: '/help/season-history',  icon: '📜', label: 'Season History & Playoff Entry' },
+    { to: '/help/end-season',      icon: '🏁', label: 'How to End a Season'            },
+    { to: '/help/records-awards',  icon: '🥇', label: 'Records, Awards & History'      },
+  ] },
+  { title: 'More Tools', items: [
+    { to: '/help/cloud-sync',      icon: '☁️', label: 'Cloud Sync & Devices'        },
+    { to: '/help/whiteboard-tools', icon: '🖍️', label: 'Whiteboard & Practice Tools' },
+  ] },
+  { title: 'Find Your Vantage', isVantage: true,
+    groupDesc: 'Deep-dive guides on using your data to make better coaching decisions.',
+    items: [
+      { to: '/help/vantage-win-factors', icon: '🏆', label: 'Reading Your Win Factors', desc: 'Which stats predict your wins'    },
+      { to: '/help/vantage-rotations',   icon: '🔄', label: 'Rotation Intelligence',    desc: 'Find & fix your weak rotations'   },
+      { to: '/help/vantage-attack',      icon: '⚡', label: 'Attack Analytics',          desc: 'Hit%, IS/OOS, pass-to-kill chain' },
+    ] },
 ];
+const ALL_GUIDES = GUIDE_GROUPS.flatMap((g) => g.items);
 
 // `onOpenTopic` opens a FAQ topic in <HelpModal>, which is rendered by the
 // parent (not here) — it stays mounted across tab switches so it doesn't
@@ -95,44 +120,9 @@ export function HelpTab({ onOpenTopic }) {
       })() : (
       <div className="space-y-4">
 
-        <GuideGroup title="Getting Started" items={[
-          { to: '/help/first-match',  icon: '🆕', label: 'Your First Match'                 },
-          { to: '/help/default-team', icon: '🏠', label: 'Setting Up Default Team & Season' },
-          { to: '/help/roster',       icon: '👥', label: 'Managing Your Roster'             },
-        ]} />
-
-        <GuideGroup title="Recording a Match" items={[
-          { to: '/help/live-match',    icon: '📲', label: 'Live Match Screen Guide'        },
-          { to: '/help/serve-receive', icon: '📐', label: 'Serve-Receive Formation Setup'  },
-          { to: '/help/substitutions', icon: '🔄', label: 'Substitutions & Lineup Changes' },
-        ]} />
-
-        <GuideGroup title="After the Match" items={[
-          { to: '/help/match-summary', icon: '📋', label: 'Match Summary Walkthrough' },
-          { to: '/help/exporting',     icon: '📤', label: 'Exporting & Sharing Stats' },
-        ]} />
-
-        <GuideGroup title="Analysis & Reports" items={[
-          { to: '/help/reports',        icon: '📈', label: 'Reading the Reports Page' },
-          { to: '/help/player-report',  icon: '📊', label: 'Reading Player Reports'   },
-          { to: '/help/pre-match-prep', icon: '🎯', label: 'Pre-Match Prep Workflow'  },
-        ]} />
-
-        <GuideGroup title="Season Management" items={[
-          { to: '/help/season-history', icon: '🏆', label: 'Season History & Playoff Entry' },
-          { to: '/help/end-season',     icon: '🏁', label: 'How to End a Season'            },
-        ]} />
-
-        <GuideGroup
-          title="Find Your Vantage"
-          groupDesc="Deep-dive guides on using your data to make better coaching decisions."
-          isVantage
-          items={[
-            { to: '/help/vantage-win-factors', icon: '🏆', label: 'Reading Your Win Factors', desc: 'Which stats predict your wins'    },
-            { to: '/help/vantage-rotations',   icon: '🔄', label: 'Rotation Intelligence',    desc: 'Find & fix your weak rotations'   },
-            { to: '/help/vantage-attack',      icon: '⚡', label: 'Attack Analytics',          desc: 'Hit%, IS/OOS, pass-to-kill chain' },
-          ]}
-        />
+        {GUIDE_GROUPS.map((g) => (
+          <GuideGroup key={g.title} title={g.title} groupDesc={g.groupDesc} isVantage={g.isVantage} items={g.items} />
+        ))}
 
         {/* FAQ modals */}
         <div>

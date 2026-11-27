@@ -4,23 +4,28 @@ import { useUiStore } from '../../store/uiStore';
 import { supabase } from '../../utils/supabase';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 
-function VantageChevron({ open }) {
-  return (
-    <svg
-      width="20" height="16"
-      viewBox="0 0 20 16"
-      aria-hidden="true"
-      className={`transition-transform duration-200 shrink-0 ${open ? 'rotate-180' : ''}`}
-    >
-      <polygon points="0,0 20,0 10,16" fill="#e8530b" />
-      <polygon points="3.5,0 16.5,0 10,11" fill="#fef3ee" />
-    </svg>
-  );
-}
+const ROW = 'w-full flex items-center justify-between px-4 py-3 text-sm font-semibold hover:bg-slate-700/40 active:bg-slate-700/60 transition-colors';
 
 // Always-visible account block below the tabs: signed-in email, change
 // password, sign out, delete account. Not tied to any one settings tab.
-export function AccountSection() {
+// Letter circle + email. Shown on its own under Account Level on
+// the Settings page (AccountSection `bare` leaves it out).
+export function AccountIdentity({ className = '' }) {
+  const { session } = useAuth();
+  if (!session) return null;
+  return (
+    <div className={`flex items-center gap-3 ${className}`}>
+      <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-sm font-bold text-slate-200 shrink-0">
+        {session.user.email?.[0]?.toUpperCase() ?? '?'}
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-white truncate">{session.user.email}</p>
+      </div>
+    </div>
+  );
+}
+
+export function AccountSection({ bare = false }) {
   const showToast = useUiStore((s) => s.showToast);
   const { session } = useAuth();
 
@@ -50,81 +55,81 @@ export function AccountSection() {
   }
 
   return (
-    <section className="bg-surface rounded-xl p-4 space-y-3">
-      {session && (
-        <div className="flex items-center gap-3 pb-3 border-b border-slate-700/60">
-          <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-sm font-bold text-slate-200 shrink-0">
-            {session.user.email?.[0]?.toUpperCase() ?? '?'}
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-white truncate">{session.user.email}</p>
-            <p className="text-xs text-slate-500">Signed in</p>
-          </div>
-        </div>
-      )}
+    <section className={bare ? 'space-y-3 pt-4 border-t border-slate-700/60' : 'bg-surface rounded-xl p-4 space-y-3'}>
+      {session && !bare && <AccountIdentity className="pb-3 border-b border-slate-700/60" />}
 
-      {/* Change Password */}
-      <button
-        onClick={() => { setShowChangePw(v => !v); setNewPassword(''); setConfirmPassword(''); }}
-        className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-700/50 hover:bg-slate-700 active:scale-95 border border-slate-600/50 text-slate-200 font-semibold text-sm transition-all duration-150"
-      >
-        <span className="flex items-center gap-2">
-          <svg className="w-4 h-4 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-          </svg>
-          Change Password
-        </span>
-        <VantageChevron open={showChangePw} />
-      </button>
-
-      {showChangePw && (
-        <div className="space-y-2 pt-1">
-          <input
-            type="password"
-            placeholder="New password (min 8 characters)"
-            value={newPassword}
-            onChange={e => setNewPassword(e.target.value)}
-            className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
-          />
-          <input
-            type="password"
-            placeholder="Confirm new password"
-            value={confirmPassword}
-            onChange={e => setConfirmPassword(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleChangePassword()}
-            className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
-          />
+      {/* Account actions — one grouped list, every row the same: icon + label left, › right */}
+      <div className="rounded-xl bg-slate-800/60 border border-slate-700/60 overflow-hidden divide-y divide-slate-700/60">
+        <div>
           <button
-            onClick={handleChangePassword}
-            disabled={changingPw || !newPassword || !confirmPassword}
-            className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold tracking-wide disabled:opacity-40 active:scale-[0.98] transition-transform"
+            onClick={() => { setShowChangePw(v => !v); setNewPassword(''); setConfirmPassword(''); }}
+            className={ROW}
           >
-            {changingPw ? 'Updating…' : 'Update Password'}
+            <span className="flex items-center gap-3">
+              <svg className="w-4 h-4 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              <span className="text-slate-200">Change Password</span>
+            </span>
+            <span className={`text-slate-500 text-lg leading-none transition-transform duration-200 ${showChangePw ? 'rotate-90' : ''}`}>›</span>
           </button>
+          {showChangePw && (
+            <div className="space-y-2 px-4 pb-4 pt-1">
+              <input
+                type="password"
+                placeholder="New password (min 8 characters)"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
+              />
+              <input
+                type="password"
+                placeholder="Confirm new password"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleChangePassword()}
+                className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
+              />
+              <button
+                onClick={handleChangePassword}
+                disabled={changingPw || !newPassword || !confirmPassword}
+                className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold tracking-wide disabled:opacity-40 active:scale-[0.98] transition-transform"
+              >
+                {changingPw ? 'Updating…' : 'Update Password'}
+              </button>
+            </div>
+          )}
         </div>
-      )}
 
-      {/* Sign Out */}
-      <button
-        onClick={() => setConfirmLogout(true)}
-        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 active:scale-95 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 font-semibold text-sm transition-all duration-150"
-      >
-        <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-          <polyline points="16 17 21 12 16 7" />
-          <line x1="21" y1="12" x2="9" y2="12" />
-        </svg>
-        Sign Out
-      </button>
+        <button onClick={() => setConfirmLogout(true)} className={ROW}>
+          <span className="flex items-center gap-3">
+            <svg className="w-4 h-4 shrink-0 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            <span className="text-red-400">Sign Out</span>
+          </span>
+          <span className="text-slate-500 text-lg leading-none">›</span>
+        </button>
+      </div>
 
-      {/* Delete Account */}
-      <button
-        onClick={() => setConfirmDeleteAccount(true)}
-        className="w-full text-center text-xs text-slate-500 hover:text-red-400 transition-colors pt-1"
-      >
-        Delete account
-      </button>
+      {/* Delete Account — its own box, set apart from the everyday actions */}
+      <div className="rounded-xl bg-slate-800/60 border border-slate-700/60 overflow-hidden">
+        <button onClick={() => setConfirmDeleteAccount(true)} className={ROW}>
+          <span className="flex items-center gap-3">
+            <svg className="w-4 h-4 shrink-0 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              <path d="M10 11v6" /><path d="M14 11v6" />
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+            </svg>
+            <span className="text-red-400">Delete Account</span>
+          </span>
+          <span className="text-slate-500 text-lg leading-none">›</span>
+        </button>
+      </div>
 
       {confirmLogout && (
         <ConfirmDialog

@@ -273,6 +273,26 @@ export function HelpEndSeasonPage() {
           </p>
         </Step>
 
+        {/* Step 7 */}
+        <Step number={7} title="Start your next season">
+          <p className="text-sm text-slate-400 leading-relaxed">
+            Once a season has ended (or has nothing left on the schedule), a <span className="text-white font-semibold">Start New Season</span> button appears on the Dashboard. It walks you through setting up next year in a few taps:
+          </p>
+          <div className="space-y-2 mt-3">
+            {[
+              ['1. Finish the old season', 'If the current season is still open, it asks you to end it first and shows the post-season checklist.'],
+              ['2. Pick the team', 'Choose girls or boys and the level (Varsity, JV, etc.).'],
+              ['3. Check off returning players', 'Freshmen through juniors from last season are listed — uncheck anyone who isn\'t coming back. Returning players move up a grade automatically and keep their jersey numbers.'],
+              ['4. Add the rest', 'The Dashboard checklist then walks you through adding new players and your schedule.'],
+            ].map(([t, d]) => (
+              <div key={t} className="flex gap-2">
+                <span className="text-sm font-semibold shrink-0 leading-relaxed" style={{ color: PRIMARY }}>{t}</span>
+                <span className="text-sm text-slate-400 leading-relaxed">{d}</span>
+              </div>
+            ))}
+          </div>
+        </Step>
+
         {/* Tips */}
         <div className="space-y-3">
           <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider pl-10">Tips</p>
@@ -280,6 +300,7 @@ export function HelpEndSeasonPage() {
             ['You can end a season with unplayed matches', 'If your playoff run ended early, any remaining scheduled matches simply stay on the schedule as unplayed. They won\'t affect records or stats.'],
             ['Playoff finish is inferred automatically', 'The app reads your last completed playoff match and fills in the Finish field — e.g., "Regional Final" if you lost in that round, or "Won Sectional" if you won. You can always override it.'],
             ['Graduating is reversible', 'Graduated players are just moved off the active roster — they still exist with all their stats intact. You can put any player back from the Roster tab.'],
+            ['Made a season by mistake?', 'Use Delete Season on the team\'s Roster tab or the season page. You\'ll type the year to confirm, and any grade or roster changes the Start New Season wizard made are undone.'],
             ['Come back later', 'The post-season checklist doesn\'t have to be completed right away. You can dismiss it and return to the History page to fill in details whenever you\'re ready.'],
           ].map(([title, body]) => (
             <div key={title} className="pl-10 flex gap-3">

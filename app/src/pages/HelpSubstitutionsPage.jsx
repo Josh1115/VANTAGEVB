@@ -2,7 +2,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { BG, SURFACE, SURFACE2, BORDER, TXT, TXT4, TXT5, PRIMARY, BLUE, EMERALD, HelpStep as Step } from './helpTheme';
 
 function DiagActionBar() {
-  const btns = ['↺ ROT', '↻ ROT', 'UNDO', 'SUB 2/18', '≡'];
+  const btns = ['ROT BACK', 'ROT FWD', 'UNDO', 'MAKE SUB', 'LIB SWAP'];
   return (
     <svg viewBox="0 0 320 48" className="w-full rounded-xl" style={{ background: SURFACE2 }}>
       {btns.map((label, i) => {
@@ -134,7 +134,7 @@ export function HelpSubstitutionsPage() {
         </Step>
 
         <Step number={3} title="Sub limits — NFHS vs. club rules"
-          note="The default sub limit is 18 per set, which follows club/collegiate conventions. Strict NFHS (high school) rules allow 12 subs per set. If your league uses 12, this can be changed in Settings → Match Settings → Max Subs Per Set. The counter in the action bar respects whichever limit is configured." />
+          note="The default sub limit is 18 per set, which follows club/collegiate conventions. Strict NFHS (high school) rules allow 12 subs per set. If your league uses 12, this can be changed in Settings → Match Rules. The counter in the action bar respects whichever limit is configured." />
 
         <Step number={4} title="Exhausted sub slots"
           note="Once a player has been subbed out, they are marked 'Sub used' and grayed out in the Player OUT grid. This means they can only re-enter the game in the same position they left — the app enforces this by preventing them from being selected as the outgoing player again. If a player shows 'Sub used', plan around it." />

@@ -48,98 +48,115 @@ export function LiveMatchTab() {
   const [rosterSort,       saveRosterSort]       = useStrSetting(STORAGE_KEYS.ROSTER_SORT, 'jersey');
 
   return (
-    <div className="p-4 divide-y divide-slate-700/60 space-y-0">
-      <p className="text-xs text-slate-400 pb-3">Applied during active stat recording</p>
+    <div className="p-4 space-y-5">
+      <p className="text-xs text-slate-400">Applied during active stat recording</p>
 
-      <ToggleRow label="Keep Screen Awake" description="Prevent the screen from sleeping during a match" checked={wakeLock} onChange={saveWakeLock} />
+      {/* Screen & Sound */}
+      <div>
+        <p className="text-[15px] font-black uppercase tracking-wider text-primary underline underline-offset-4 decoration-2 mb-2">Screen & Sound</p>
+        <div className="divide-y divide-slate-700/60">
+        <ToggleRow label="Keep Screen Awake" description="Prevent the screen from sleeping during a match" checked={wakeLock} onChange={saveWakeLock} />
 
-      <ToggleRow label="Haptic Feedback" description="Brief vibration on each contact tap" checked={hapticOn} onChange={saveHaptic} />
+        <ToggleRow label="Haptic Feedback" description="Brief vibration on each contact tap" checked={hapticOn} onChange={saveHaptic} />
 
-      <ToggleRow label="Serve Attempt / Ace Spray Chart" description="After each serve that lands in, ask where it landed in the opponent's court to build the spray chart on the match summary" checked={serveZonePrompt} onChange={saveServeZonePrompt} />
-
-      <ToggleRow label="Attack Shot Chart" description="After each attack, tap where the hitter hit from, then where the ball landed, to build shot charts" checked={attackShotPrompt} onChange={saveAttackShotPrompt} />
-
-      <ToggleRow label="Sound Effects" description="Audio cues for aces, kills, and blocks" checked={soundsOn} onChange={saveSounds}>
-        <button
-          onClick={(e) => { e.stopPropagation(); previewSound(); }}
-          className="mt-1 text-[10px] font-semibold text-primary hover:text-orange-300 transition-colors"
-        >
-          ▶ Preview
-        </button>
-      </ToggleRow>
-
-      {/* Player name format */}
-      <div className="py-3 first:pt-0 last:pb-0">
-        <div className="text-sm font-medium mb-0.5">Player Name Format</div>
-        <div className="text-xs text-slate-400 mb-3">How names appear on the player badge bar during a match</div>
-        <div className="flex flex-col gap-1.5">
-          {PLAYER_NAME_FORMATS.map(({ id, label, example }) => (
-            <button
-              key={id}
-              onClick={() => savePlayerNameFormat(id)}
-              className={`flex items-center justify-between px-3 py-2 rounded-lg border text-sm transition-colors ${
-                playerNameFormat === id
-                  ? 'bg-primary/20 border-primary text-white'
-                  : 'bg-bg border-slate-700 text-slate-300 hover:border-slate-500'
-              }`}
-            >
-              <span className="font-medium">{label}</span>
-              <span className={`font-mono text-xs ${playerNameFormat === id ? 'text-primary' : 'text-slate-500'}`}>
-                {example}
-              </span>
-            </button>
-          ))}
+        <ToggleRow label="Sound Effects" description="Audio cues for aces, kills, and blocks" checked={soundsOn} onChange={saveSounds}>
+          <button
+            onClick={(e) => { e.stopPropagation(); previewSound(); }}
+            className="mt-1 text-[10px] font-semibold text-primary hover:text-orange-300 transition-colors"
+          >
+            ▶ Preview
+          </button>
+        </ToggleRow>
         </div>
       </div>
 
-      {/* Lineup roster sort */}
-      <div className="py-3 first:pt-0 last:pb-0">
-        <div className="text-sm font-medium mb-0.5">Lineup Roster Sort</div>
-        <div className="text-xs text-slate-400 mb-3">Order of players in the lineup builder dropdown</div>
-        <div className="flex gap-2">
-          {ROSTER_SORT_OPTIONS.map(({ id, label, example }) => (
-            <button
-              key={id}
-              onClick={() => saveRosterSort(id)}
-              className={`flex-1 flex flex-col items-center gap-0.5 px-2 py-2 rounded-lg border text-sm transition-colors ${
-                rosterSort === id
-                  ? 'bg-primary/20 border-primary text-white'
-                  : 'bg-bg border-slate-700 text-slate-300 hover:border-slate-500'
-              }`}
-            >
-              <span className="font-medium text-xs">{label}</span>
-              <span className={`font-mono text-[10px] ${rosterSort === id ? 'text-primary' : 'text-slate-500'}`}>{example}</span>
-            </button>
-          ))}
+      {/* Charts */}
+      <div>
+        <p className="text-[15px] font-black uppercase tracking-wider text-primary underline underline-offset-4 decoration-2 mb-2">Charts</p>
+        <div className="divide-y divide-slate-700/60">
+        <ToggleRow label="Serve Attempt / Ace Spray Chart" description="After each serve that lands in, ask where it landed in the opponent's court to build the spray chart on the match summary" checked={serveZonePrompt} onChange={saveServeZonePrompt} />
+
+        <ToggleRow label="Attack Shot Chart" description="After each attack, tap where the hitter hit from, then where the ball landed, to build shot charts" checked={attackShotPrompt} onChange={saveAttackShotPrompt} />
         </div>
       </div>
 
-      <ToggleRow label="Flip Team Layout" description="Show your team on the right side of the scoreboard" checked={flipLayout} onChange={saveFlipLayout} />
+      {/* Layout & Names */}
+      <div>
+        <p className="text-[15px] font-black uppercase tracking-wider text-primary underline underline-offset-4 decoration-2 mb-2">Layout & Names</p>
+        <div className="divide-y divide-slate-700/60">
+        <ToggleRow label="Flip Team Layout" description="Show your team on the right side of the scoreboard" checked={flipLayout} onChange={saveFlipLayout} />
 
-      {/* Court view */}
-      <div className="py-3 first:pt-0 last:pb-0">
-        <div className="text-sm font-medium mb-0.5">Court View</div>
-        <div className="text-xs text-slate-400 mb-3">How players are arranged on the court during a live match</div>
-        <div className="flex gap-2">
-          {COURT_VIEW_OPTIONS.map(({ id, label }) => (
-            <button
-              key={id}
-              onClick={() => saveCourtViewMode(id)}
-              className={`flex-1 px-2 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                courtViewMode === id
-                  ? 'bg-primary/20 border-primary text-white'
-                  : 'bg-bg border-slate-700 text-slate-300 hover:border-slate-500'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+        {/* Court view */}
+        <div className="py-3 first:pt-0 last:pb-0">
+          <div className="text-sm font-medium mb-0.5">Court View</div>
+          <div className="text-xs text-slate-400 mb-3">How players are arranged on the court during a live match</div>
+          <div className="flex gap-2">
+            {COURT_VIEW_OPTIONS.map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => saveCourtViewMode(id)}
+                className={`flex-1 px-2 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                  courtViewMode === id
+                    ? 'bg-primary/20 border-primary text-white'
+                    : 'bg-bg border-slate-700 text-slate-300 hover:border-slate-500'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="text-xs text-slate-400 mt-2">
+            {COURT_VIEW_OPTIONS.find((o) => o.id === courtViewMode)?.desc}
+          </div>
         </div>
-        <div className="text-xs text-slate-400 mt-2">
-          {COURT_VIEW_OPTIONS.find((o) => o.id === courtViewMode)?.desc}
+
+        {/* Player name format */}
+        <div className="py-3 first:pt-0 last:pb-0">
+          <div className="text-sm font-medium mb-0.5">Player Name Format</div>
+          <div className="text-xs text-slate-400 mb-3">How names appear on the player badge bar during a match</div>
+          <div className="flex flex-col gap-1.5">
+            {PLAYER_NAME_FORMATS.map(({ id, label, example }) => (
+              <button
+                key={id}
+                onClick={() => savePlayerNameFormat(id)}
+                className={`flex items-center justify-between px-3 py-2 rounded-lg border text-sm transition-colors ${
+                  playerNameFormat === id
+                    ? 'bg-primary/20 border-primary text-white'
+                    : 'bg-bg border-slate-700 text-slate-300 hover:border-slate-500'
+                }`}
+              >
+                <span className="font-medium">{label}</span>
+                <span className={`font-mono text-xs ${playerNameFormat === id ? 'text-primary' : 'text-slate-500'}`}>
+                  {example}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Lineup roster sort */}
+        <div className="py-3 first:pt-0 last:pb-0">
+          <div className="text-sm font-medium mb-0.5">Lineup Roster Sort</div>
+          <div className="text-xs text-slate-400 mb-3">Order of players in the lineup builder dropdown</div>
+          <div className="flex gap-2">
+            {ROSTER_SORT_OPTIONS.map(({ id, label, example }) => (
+              <button
+                key={id}
+                onClick={() => saveRosterSort(id)}
+                className={`flex-1 flex flex-col items-center gap-0.5 px-2 py-2 rounded-lg border text-sm transition-colors ${
+                  rosterSort === id
+                    ? 'bg-primary/20 border-primary text-white'
+                    : 'bg-bg border-slate-700 text-slate-300 hover:border-slate-500'
+                }`}
+              >
+                <span className="font-medium text-xs">{label}</span>
+                <span className={`font-mono text-[10px] ${rosterSort === id ? 'text-primary' : 'text-slate-500'}`}>{example}</span>
+              </button>
+            ))}
+          </div>
+        </div>
         </div>
       </div>
-
     </div>
   );
 }

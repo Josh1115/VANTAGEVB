@@ -42,6 +42,12 @@ const HelpPreMatchPrepPage     = lazy(() => import('./pages/HelpPreMatchPrepPage
 const HelpExportingPage        = lazy(() => import('./pages/HelpExportingPage').then(m => ({ default: m.HelpExportingPage })));
 const HelpFirstMatchPage       = lazy(() => import('./pages/HelpFirstMatchPage').then(m => ({ default: m.HelpFirstMatchPage })));
 const HelpLiveMatchPage        = lazy(() => import('./pages/HelpLiveMatchPage').then(m => ({ default: m.HelpLiveMatchPage })));
+const HelpSprayChartsPage = lazy(() => import('./pages/HelpFeatureGuides').then(m => ({ default: m.HelpSprayChartsPage })));
+const HelpRecordsAwardsPage = lazy(() => import('./pages/HelpFeatureGuides').then(m => ({ default: m.HelpRecordsAwardsPage })));
+const HelpScoutingPage = lazy(() => import('./pages/HelpFeatureGuides').then(m => ({ default: m.HelpScoutingPage })));
+const HelpBenchToolsPage = lazy(() => import('./pages/HelpFeatureGuides').then(m => ({ default: m.HelpBenchToolsPage })));
+const HelpCloudSyncPage = lazy(() => import('./pages/HelpFeatureGuides').then(m => ({ default: m.HelpCloudSyncPage })));
+const HelpWhiteboardToolsPage = lazy(() => import('./pages/HelpFeatureGuides').then(m => ({ default: m.HelpWhiteboardToolsPage })));
 const HelpPlayerReportPage     = lazy(() => import('./pages/HelpPlayerReportPage').then(m => ({ default: m.HelpPlayerReportPage })));
 const HelpReportsPage          = lazy(() => import('./pages/HelpReportsPage').then(m => ({ default: m.HelpReportsPage })));
 const HelpRosterPage           = lazy(() => import('./pages/HelpRosterPage').then(m => ({ default: m.HelpRosterPage })));
@@ -103,6 +109,12 @@ export const router = createBrowserRouter([
       { path: 'help/exporting',              element: <S><HelpExportingPage /></S> },
       { path: 'help/first-match',           element: <S><HelpFirstMatchPage /></S> },
       { path: 'help/live-match',            element: <S><HelpLiveMatchPage /></S> },
+      { path: 'help/spray-charts', element: <S><HelpSprayChartsPage /></S> },
+      { path: 'help/records-awards', element: <S><HelpRecordsAwardsPage /></S> },
+      { path: 'help/scouting', element: <S><HelpScoutingPage /></S> },
+      { path: 'help/bench-tools', element: <S><HelpBenchToolsPage /></S> },
+      { path: 'help/cloud-sync', element: <S><HelpCloudSyncPage /></S> },
+      { path: 'help/whiteboard-tools', element: <S><HelpWhiteboardToolsPage /></S> },
       { path: 'help/player-report',         element: <S><HelpPlayerReportPage /></S> },
       { path: 'help/reports',               element: <S><HelpReportsPage /></S> },
       { path: 'help/roster',                element: <S><HelpRosterPage /></S> },

@@ -1,13 +1,10 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { TabBar } from '../components/ui/Tab';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { useStorageEstimate } from '../hooks/useStorageEstimate';
-import { exportBackup } from '../stats/backup';
 import { db } from '../db/schema';
-import { useUiStore } from '../store/uiStore';
 import { usePlan, PLAN_LABELS, TRIAL_MATCH_LIMIT } from '../hooks/usePlan';
 import { countActiveSeasonTeams } from '../utils/teams';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -19,30 +16,29 @@ import { LiveMatchTab } from '../components/settings/LiveMatchTab';
 import { MatchRulesTab } from '../components/settings/MatchRulesTab';
 import { HelpTab } from '../components/settings/HelpTab';
 import { DataManagementTab } from '../components/settings/DataManagementTab';
-import { LegalTab } from '../components/settings/LegalTab';
-import { AccountSection } from '../components/settings/AccountSection';
+import { AboutTab } from '../components/settings/AboutTab';
+import { AccountSection, AccountIdentity } from '../components/settings/AccountSection';
 
 const fmtMB = (bytes) => (bytes / (1024 * 1024)).toFixed(1);
 
 const SETTINGS_TABS = [
-  { value: 'pricing',         label: 'Pricing'         },
-  { value: 'personalization', label: 'Personalization' },
   { value: 'live-match',      label: 'Live Match'      },
   { value: 'match-rules',     label: 'Match Rules'     },
-  { value: 'help',            label: 'Help & Guides'   },
+  { value: 'personalization', label: 'Personalization' },
   { value: 'data',            label: 'Data Management' },
-  { value: 'legal',           label: 'Legal'           },
+  { value: 'help',            label: 'Help & Guides'   },
+  { value: 'pricing',         label: 'Pricing'         },
+  { value: 'about',           label: 'About'           },
 ];
 
 export function SettingsPage() {
-  const showToast = useUiStore((s) => s.showToast);
   const { plan, isActive, isMaster, teamsAllowed } = usePlan();
 
   // Dashboard nudges (e.g. the duplicate-records banner) can deep-link here
   // via navigate('/settings', { state: { tab, openDedupe } }) instead of
   // landing a coach on the default tab and making them hunt for the button.
   const location = useLocation();
-  const [settingsTab, setSettingsTab] = useState(location.state?.tab ?? 'pricing');
+  const [settingsTab, setSettingsTab] = useState(location.state?.tab ?? 'live-match');
   const [helpTopic,   setHelpTopic]   = useState(null);
   const [storageRefreshKey, setStorageRefreshKey] = useState(0);
 
@@ -68,57 +64,35 @@ export function SettingsPage() {
   const usagePct = storage?.quota ? storage.usage / storage.quota : 0;
   const showStorageWarning = usagePct > 0.8;
 
-  async function handleExport() {
-    try {
-      await exportBackup();
-      showToast('Backup exported', 'success');
-      setStorageRefreshKey(k => k + 1);
-    } catch {
-      showToast('Export failed', 'error');
-    }
-  }
-
   return (
     <div>
-      <PageHeader title="Settings" />
+      {/* Same logo-over-title header as Teams / Records / History / Reports */}
+      <header className="sticky top-0 z-20 bg-bg border-b border-slate-800 px-4 pb-3 pt-safe flex flex-col items-center gap-0.5">
+        <div className="relative mx-auto" style={{ width: 'min(52vw, 260px)' }}>
+          <img
+            src="/logo.png"
+            alt="VANTAGE"
+            className="h-auto w-full block"
+            style={{ transform: 'translateX(-3%)' }}
+          />
+          <span className="absolute text-slate-400 select-none" style={{ top: '6%', right: '2%', fontSize: 'min(2.2vw, 11px)' }}>™</span>
+        </div>
+        <span className="text-lg font-bold text-white tracking-wide">Settings</span>
+      </header>
 
       <div className="p-4 space-y-4">
-
-        {/* About */}
-        <section className="bg-surface rounded-xl p-5">
-          <div className="text-center mb-4">
-            <div className="relative mx-auto" style={{ width: 'min(72vw, 340px)' }}>
-              <img
-                src="/logo.png"
-                alt="VANTAGE"
-                className="h-auto w-full block"
-                style={{ transform: 'translateX(-3%)' }}
-              />
-              <span className="absolute text-slate-400 select-none" style={{ top: '6%', right: '2%', fontSize: 'min(3vw, 14px)' }}>™</span>
-            </div>
-            <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-400 mt-1">Immediate Impact Analytics</p>
-          </div>
-          <div className="border-t border-slate-700 mb-4" />
-          <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-slate-500 mb-2 text-center">Mission Statement</p>
-          <p className="text-[15.75px] text-white font-semibold leading-relaxed text-center">
-            Vantage was built on a simple belief: the best decisions happen in the moment, not after the fact. By putting real-time, in-game data directly in coaches' hands, we empower coaches and players to become their best — and make the game better, one decision at a time.
-          </p>
-          <div className="border-t border-slate-700 my-4" />
-          <p className="text-[15.75px] text-slate-200 leading-relaxed text-center">
-            Vantage is a comprehensive volleyball statistics platform built for coaches who want a competitive edge. Record every contact live during a match — serves, passes, attacks, blocks, and digs — and instantly access deep analytics: rotation efficiency, player VER ratings, win correlation insights, and real-time performance alerts. All data lives on your device and works offline. From pre-match lineup prep to gametime decisions, Vantage gives your program the same data-driven tools used at the highest levels of the sport.
-          </p>
-          <button
-            onClick={handleExport}
-            className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-700/60 hover:bg-slate-700 active:scale-95 border border-slate-600/50 text-slate-300 hover:text-white font-semibold text-sm transition-all duration-150"
-          >
-            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            Export Backup
-          </button>
+        {/* Settings */}
+        <section className="bg-surface rounded-xl overflow-hidden">
+          <TabBar tabs={SETTINGS_TABS} active={settingsTab} onChange={setSettingsTab} centered dividers />
+          {settingsTab === 'pricing'         && <PricingTab />}
+          {settingsTab === 'help'            && <HelpTab onOpenTopic={setHelpTopic} />}
+          {settingsTab === 'personalization' && <PersonalizationTab />}
+          {settingsTab === 'live-match'      && <LiveMatchTab />}
+          {settingsTab === 'match-rules'     && <MatchRulesTab />}
+          {settingsTab === 'data'            && <DataManagementTab onStorageChange={() => setStorageRefreshKey(k => k + 1)} autoOpenDedupe={location.state?.openDedupe} />}
+          {settingsTab === 'about'           && <AboutTab />}
         </section>
+
 
         {/* Install banner */}
         {!isInstalled && (canInstall || isIOS) && (
@@ -150,6 +124,15 @@ export function SettingsPage() {
           </section>
         )}
 
+        {/* Account — plan level, credits, storage and sign-in all in one card */}
+        <section className="bg-surface rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-700">
+            <h2
+              className="text-[18.4px] font-black uppercase leading-none text-center"
+              style={{ color: '#ffffff', letterSpacing: '0.15em' }}
+            >Account</h2>
+          </div>
+          <div className="p-4 space-y-4">
         {/* Account level */}
         <div className={`w-fit mx-auto relative overflow-hidden btn-shimmer flex items-center gap-2 rounded-full px-3 py-1.5 border ${
           isMaster ? 'bg-yellow-400/10 border-yellow-400/30'
@@ -167,6 +150,8 @@ export function SettingsPage() {
             {isMaster ? 'Master' : isActive ? PLAN_LABELS[plan] : 'Expired'}
           </span>
         </div>
+
+        <AccountIdentity className="justify-center" />
 
         {/* Credit usage */}
         {(() => {
@@ -258,19 +243,10 @@ export function SettingsPage() {
           </div>
         )}
 
-        {/* Settings */}
-        <section className="bg-surface rounded-xl overflow-hidden">
-          <TabBar tabs={SETTINGS_TABS} active={settingsTab} onChange={setSettingsTab} />
-          {settingsTab === 'pricing'         && <PricingTab />}
-          {settingsTab === 'help'            && <HelpTab onOpenTopic={setHelpTopic} />}
-          {settingsTab === 'personalization' && <PersonalizationTab />}
-          {settingsTab === 'live-match'      && <LiveMatchTab />}
-          {settingsTab === 'match-rules'     && <MatchRulesTab />}
-          {settingsTab === 'data'            && <DataManagementTab onStorageChange={() => setStorageRefreshKey(k => k + 1)} autoOpenDedupe={location.state?.openDedupe} />}
-          {settingsTab === 'legal'           && <LegalTab />}
+        <AccountSection bare />
+          </div>
         </section>
 
-        <AccountSection />
 
         <p className="text-center text-xs text-slate-800 pb-2">© VANTAGE</p>
 

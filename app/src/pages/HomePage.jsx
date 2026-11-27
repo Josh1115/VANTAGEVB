@@ -991,7 +991,7 @@ export function HomePage() {
             <span className="text-amber-400 text-lg shrink-0">⚠️</span>
             <div className="min-w-0">
               <p className="text-sm font-bold text-amber-300">Storage almost full ({Math.round(storageUsagePct * 100)}%)</p>
-              <p className="text-xs text-amber-500 mt-0.5">Export a backup now to avoid losing data. <button onClick={() => navigate('/settings')} className="underline hover:text-amber-300 transition-colors">Go to Settings →</button></p>
+              <p className="text-xs text-amber-500 mt-0.5">Export a backup now to avoid losing data. <button onClick={() => navigate('/settings', { state: { tab: 'data' } })} className="underline hover:text-amber-300 transition-colors">Go to Settings →</button></p>
             </div>
           </div>
         )}

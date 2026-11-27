@@ -175,11 +175,9 @@ function DiagGoLive() {
       <line x1="0" y1="106" x2="320" y2="106" stroke={BORDER} strokeWidth="0.5" />
       {/* Action bar */}
       <rect x="0" y="174" width="320" height="26" fill={SURFACE} />
-      <text x="32"  y="190" fill={TXT4} fontSize="8" textAnchor="middle">↺ ROT</text>
-      <text x="96"  y="190" fill={TXT4} fontSize="8" textAnchor="middle">↻ ROT</text>
-      <text x="160" y="190" fill={TXT4} fontSize="8" textAnchor="middle">UNDO</text>
-      <text x="234" y="190" fill={TXT4} fontSize="8" textAnchor="middle">SUB</text>
-      <text x="296" y="190" fill={TXT4} fontSize="8" textAnchor="middle">≡</text>
+      {['ROT BACK', 'ROT FWD', 'UNDO', 'MAKE SUB', 'LIB SWAP', 'ROT ERR', 'STATS', 'SCOREBOOK', 'DASHBOARD', 'SETTINGS'].map((lbl, i) => (
+        <text key={lbl} x={16 + i * 32} y="190" fill={TXT4} fontSize="5.2" fontWeight="700" textAnchor="middle">{lbl}</text>
+      ))}
     </svg>
   );
 }
@@ -280,7 +278,7 @@ export function HelpFirstMatchPage() {
         <Step
           number={6}
           title="Track Stats Live"
-          note="The live match screen shows your six players in a 2×3 grid mirroring the court. The current server tile is highlighted in orange. Tap a player tile to record a stat for that player, then confirm the action in the panel that appears. Use the Action Bar at the bottom to rotate, undo, sub, or open the menu."
+          note="The live match screen shows your six players in a 2×3 grid mirroring the court. The current server tile is highlighted in orange. Each tile has its own stat buttons — tap K, ACE, DIG, a pass rating and so on right on the player's tile. Use the Action Bar at the bottom to undo, make subs, swap the libero, view live stats, or tap SETTINGS for the match menu (where End Match lives)."
         >
           <DiagGoLive />
         </Step>
@@ -288,7 +286,7 @@ export function HelpFirstMatchPage() {
         <Step
           number={7}
           title="Read the Match Summary"
-          note="When the match ends, tap End Match to see the full summary — final score, kills, aces, and VER ratings for every player. Tap any player row to drill into their individual report card with per-set breakdowns and trend charts."
+          note="When the match ends, tap SETTINGS → End Match to see the full summary — final score, kills, aces, and VER ratings for every player. Tap any player row to drill into their individual report card with per-set breakdowns and trend charts."
         >
           <DiagMatchSummary />
         </Step>
@@ -299,7 +297,7 @@ export function HelpFirstMatchPage() {
           {[
             ['Auto-backup', 'The app saves a backup of all your data to local storage after every point. If the app closes mid-match, reopen it — you can restore from the auto-backup in Settings → Data.'],
             ['Default team', 'Set a Default Team and Season in Settings so the home screen shows your team record, stat leaders, and totals the moment you open the app.'],
-            ['Offline-first', 'No internet required during a match. All data is stored on-device. Export a backup file after important matches to keep a copy safe.'],
+            ['Offline-first', 'No internet required during a match. Data is saved on your device right away and syncs to the cloud the next time you\'re online.'],
             ['Build a lineup first', 'Saved lineups unlock serve-receive formations and planned substitutions. See the Serve-Receive Formation Setup guide for full details.'],
           ].map(([title, body]) => (
             <div key={title} className="pl-10 flex gap-3">

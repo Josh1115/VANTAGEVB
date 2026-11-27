@@ -49,11 +49,9 @@ export const HELP_ILLUSTRATIONS = {
         <text x="333" y="144" fill="#e8530b" fontSize="7" textAnchor="middle">tap to record stats</text>
         {/* Action bar */}
         <rect x="0" y="156" width="400" height="34" fill="#1e293b"/>
-        <text x="40"  y="177" fill="#94a3b8" fontSize="8" textAnchor="middle">↺ ROT</text>
-        <text x="112" y="177" fill="#94a3b8" fontSize="8" textAnchor="middle">↻ ROT</text>
-        <text x="193" y="177" fill="#94a3b8" fontSize="8" textAnchor="middle">UNDO</text>
-        <text x="278" y="177" fill="#94a3b8" fontSize="8" textAnchor="middle">SUB (6/18)</text>
-        <text x="358" y="177" fill="#94a3b8" fontSize="8" textAnchor="middle">≡</text>
+        {['ROT BACK', 'ROT FWD', 'UNDO', 'MAKE SUB', 'LIB SWAP', 'ROT ERR', 'STATS', 'SCOREBOOK', 'DASHBOARD', 'SETTINGS'].map((lbl, i) => (
+          <text key={lbl} x={20 + i * 40} y="177" fill="#94a3b8" fontSize="6.5" fontWeight="bold" textAnchor="middle">{lbl}</text>
+        ))}
       </svg>
     );
   },
@@ -133,11 +131,11 @@ export const HELP_ILLUSTRATIONS = {
 
   'action-bar': function ActionBar() {
     const btns = [
-      { label: '↺ ROT',    sub: 'rotate back',   hi: false },
-      { label: '↻ ROT',    sub: 'rotate forward', hi: false },
-      { label: 'UNDO',     sub: 'remove last tap',hi: true  },
-      { label: 'SUB',      sub: 'substitutions',  hi: false },
-      { label: '≡',        sub: 'menu',           hi: false },
+      { label: 'ROT BACK', sub: 'hold: rotate back', hi: false },
+      { label: 'ROT FWD',  sub: 'hold: rotate fwd',  hi: false },
+      { label: 'UNDO',     sub: 'remove last tap',   hi: true  },
+      { label: 'MAKE SUB', sub: 'substitutions',     hi: false },
+      { label: 'SETTINGS', sub: 'match menu',        hi: false },
     ];
     return (
       <svg viewBox="0 0 320 96" className="w-full" aria-hidden="true">
@@ -149,7 +147,7 @@ export const HELP_ILLUSTRATIONS = {
               fill={hi ? 'rgba(232,83,11,0.18)' : '#1e293b'}
               stroke={hi ? '#e8530b' : '#334155'}
               strokeWidth={hi ? 1.5 : 1}/>
-            <text x="28" y="46" fill={hi ? '#e8530b' : 'white'} fontSize={label === '≡' ? '14' : '9'}
+            <text x="28" y="46" fill={hi ? '#e8530b' : 'white'} fontSize="7.5"
               textAnchor="middle" fontWeight="bold">{label}</text>
             <text x="28" y="76" fill="#64748b" fontSize="7" textAnchor="middle">{sub}</text>
           </g>
@@ -485,7 +483,7 @@ export const FAQ_TOPICS = [
     content: [
       {
         heading: 'Opening the Sub Panel',
-        body: 'During a live set, tap the Sub button in the action bar (bottom of the screen). The sub panel shows your 6 court players and your bench.',
+        body: 'During a live set, tap MAKE SUB in the action bar (bottom of the screen). The sub panel shows your 6 court players and your bench.',
       },
       {
         heading: 'Making a Single Sub',
@@ -698,7 +696,7 @@ export const FAQ_TOPICS = [
       },
       {
         heading: 'Opponent Actions',
-        body: 'If the opponent scores off an ace or an attack without any of your players touching the ball, use the OPP buttons. This keeps the serve-side indicator and rotation tracker accurate.',
+        body: 'When the opponent wins a rally, record what your player did on their tile (for example a 0 pass when you get aced, or an error button like NET or DROP). If no one on your side touched it, use Adjust Score in the SETTINGS match menu. This keeps the serve-side indicator and rotation tracker accurate.',
       },
       {
         heading: 'Serve Side Sync',
@@ -710,7 +708,7 @@ export const FAQ_TOPICS = [
       },
       {
         heading: 'Stats Modal During a Match',
-        body: 'Tap the chart icon to open the Stats modal without leaving the live screen. Check the ROTATION tab mid-match to spot struggling rotations. Close it and you\'re back exactly where you were.',
+        body: 'Tap STATS in the action bar to open the Stats modal without leaving the live screen. Check the ROTATION tab mid-match to spot struggling rotations. Close it and you\'re back exactly where you were.',
       },
     ],
   },
@@ -835,11 +833,11 @@ export const FAQ_TOPICS = [
       },
       {
         heading: 'Sharing Between Devices (File-Based)',
-        body: 'Export on device A → send the file → import or merge on device B. This method has no automatic sync — both devices will match right after the merge, but future changes don\'t carry over on their own. For that, use Save to Cloud instead (see below).',
+        body: 'Export on device A → send the file → import or merge on device B. This method has no automatic sync — both devices will match right after the merge, but future changes don\'t carry over on their own. For that, use cloud sync instead (see below).',
       },
       {
-        heading: 'Save to Cloud & Restore from Cloud',
-        body: 'Settings → Data Management → Save to Cloud uploads your data and automatically merges it with whatever is already saved there first — it never erases the other coach\'s games. This is how a JV coach and a Varsity coach can share one login: each records their own team, and every tap of Save to Cloud folds the other coach\'s games in too, so both devices build up to having both teams\' data. Restore from Cloud is different — it fully replaces your device\'s data with the cloud copy, no merging. Only use Restore when setting up a brand-new device; using it instead of Save to Cloud on a device with unsaved changes will wipe them.',
+        heading: 'Cloud Sync & Restore from Cloud',
+        body: 'When you\'re signed in, the app syncs on its own every time it opens and whenever you come back online. Settings → Data Management → Sync Now does the same on demand: it uploads your data and automatically merges it with whatever is already saved there first — it never erases the other coach\'s games. This is how a JV coach and a Varsity coach can share one login: each records their own team, and every sync folds the other coach\'s games in too, so both devices build up to having both teams\' data. Restore from Cloud is different — it fully replaces your device\'s data with the cloud copy, no merging. Only use Restore when setting up a brand-new device; using it instead of Sync Now on a device with unsaved changes will wipe them.',
       },
       {
         heading: 'MaxPreps Export',

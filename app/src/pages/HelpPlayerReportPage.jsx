@@ -281,7 +281,7 @@ export function HelpPlayerReportPage() {
           <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-3 space-y-1">
             <p className="text-slate-300 text-sm font-semibold">Not sure what a stat means?</p>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Open the stat glossary from Settings → Help &amp; Guide → "What do the stats mean?"
+              Open the stat glossary from Settings → Help &amp; Guides → "Stat Abbreviations" (and "VER Score Explained")
               Every metric — including VER weights, WPA formula, and grade thresholds — is explained
               in detail.
             </p>
